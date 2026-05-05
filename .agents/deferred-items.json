@@ -135,6 +135,28 @@
       "notes": "Discovered while verifying Plan 04 stayed shipped (2026-05-04 sweep). Plan 04's verification commands (`rg '_token_cache: ClassVar' app/connectors/`) returned 0 hits when Plan 04 shipped because sync_provider.py was either added later or the rg was scoped tighter — worth checking git blame before assuming it's a regression vs. a pre-existing miss."
     },
     {
+      "id": "tech-debt-alembic-schema-drift",
+      "phase": "tech-debt-19",
+      "title": "Pre-existing model<->DB schema drift surfaced by `alembic check` advisory step on every PR",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-05-05",
+      "introduced_commit": "737b27be",
+      "summary": "CI step `Migration safety (alembic upgrade + check)` is `continue-on-error: true`. It autogenerates a diff between the live DB (after `alembic upgrade head`) and SQLAlchemy models, and currently emits a 200+-line `New upgrade operations detected` block on every PR. The drift accumulated across multiple shipped phases — none of it caused by PR #98, all of it visible on main `a6f452bf` and earlier. Confirmed by checking gh run 25339533176 (main, pre-#98) which carries the identical annotation.",
+      "code_refs": [
+        ".github/workflows/ci.yml (Migration safety job, alembic check step — advisory, continue-on-error: true)",
+        "app/example/ (deleted in eddcd1ac/F007) -- but no migration drops the `items` table",
+        "app/shared/models.py (TimestampMixin uses DateTime(timezone=True))",
+        "alembic/versions/ (~15 historical migrations declare TIMESTAMP() without tz on created_at/updated_at across blueprint_checkpoints, calibration_records, calibration_summaries, collaborative_documents, component_qa_results, design_connections, design_import_assets, design_imports, design_token_snapshots, esp_connections, rendering_screenshots, rendering_tests, etc.)",
+        "alembic/versions/ (NOT NULL drift on rendering_screenshots/rendering_tests/calibration_records/calibration_summaries/component_qa_results created_at+updated_at)",
+        "alembic/versions/ (PK index drift: ix_*_id missing on a dozen tables — most DBs auto-create, advisory still flags)"
+      ],
+      "symptom_if_broken": "Future `alembic revision --autogenerate` will mass-generate the accumulated drift as a single 200+-op migration if anyone runs it without first reading this entry — risk of accidentally landing a destructive migration that drops `items`, alters timestamp types in production, and adds NOT NULL constraints that break inserts where the column allows NULL today. Also: model contract (NOT NULL) doesn't match runtime contract (nullable in DB) on 5 tables, so an insert pattern that the model says is invalid may currently succeed in production, and tightening models to match the DB (or vice versa) will surface the inconsistency.",
+      "closes_when": "Single migration rev that (a) drops `items` table + 3 indexes, (b) ALTER COLUMNs the ~30 timestamp columns to `TIMESTAMP WITH TIME ZONE`, (c) adds NOT NULL constraints on the 10 affected created_at/updated_at columns (NULL backfill required first — verify count of NULL rows pre-migration), (d) reconciles the qa_overrides unique constraint, memory_entries HNSW index, and design_connections/design_token_snapshots column comments. After landing, `alembic check` should exit 0 and the CI annotation goes away. Belongs in Session 19 (backend sweep) alongside F057 migration squash.",
+      "fast_closure_path": "Run `alembic revision --autogenerate -m 'reconcile model<->schema drift'` against a fresh DB at head, hand-review the generated ops (split into multiple revs if too large), null-backfill the columns that need NOT NULL before applying. Squawk gate (Migration safety squawk job) will catch unsafe ALTER COLUMNs — expect to add `op.execute('SET lock_timeout = ...')` guards.",
+      "notes": "The advisory check has been failing-as-non-blocking on every PR for some time. Surfaced as a question on PR #98 (https://github.com/linardsb/merkle-email-hub/pull/98). NOT a regression introduced by recent work. Tracked here so a future PR doesn't autogenerate it as a destructive migration without realizing the scope."
+    },
+    {
       "id": "tech-debt-03-tenant-isolation-regression-harness",
       "phase": "tech-debt-03",
       "title": "Cross-entity tenant-isolation regression test self-skips — no integration DB harness",
