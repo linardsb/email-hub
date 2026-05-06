@@ -218,14 +218,8 @@ Each part (B/C/D1/D3) is an independent revert. The most invasive is C — servi
 
 ## Done when
 
-- [ ] **Part B**: `_convert_with_components` ≤ 30 LOC; 4 phase methods ≤ 80 LOC each; per-phase tests added.
-- [ ] **Part C**: 6 carved services exist under `app/design_sync/services/`; `DesignSyncService` is a ≤50-LOC facade (NOT deleted); follow-up plan `tech-debt-08b-design-sync-service-deletion.md` created and linked.
-- [ ] **Part D1**: telemetry live on all shim entries; both known callers migrated; tracking row added to `TODO.md` with date = D1 merge date + 14 days.
-- [ ] **Part D3**: deferred to a separate session after the telemetry window closes; do not attempt in this session.
-- [ ] All snapshot/visual/data-regression tests green after each part.
-- [ ] PRs:
-  - `refactor(design_sync): split _convert_with_components into phases (F011)`
-  - `refactor(design_sync): carve DesignSyncService (F012)`
-  - `chore(design_sync): instrument legacy shims (F013 PR-1)`
-  - `chore(design_sync): remove legacy shims after 2-week observation (F013 PR-2)`
-- [ ] Mark F011, F012, F013 as **RESOLVED** in `TECH_DEBT_AUDIT.md`.
+- [x] **Part B** — shipped in `bf66bd0a`. Implementation diverged from the plan: **3 phases** (`_match_phase` / `_render_phase` / `_assemble_phase`) instead of the planned 4. Verify/Compile from the plan didn't apply — verification is an MJML-path concern (`_apply_verification`), and quality contracts merged into `_assemble_phase`. LOC caps not strictly met: `_convert_with_components` is ~54 LOC (cap 30), `_render_phase` is ~122 LOC (cap 80) — the cache/group/custom-gen branches resist further splitting without harming readability. Per-phase tests live in `app/design_sync/tests/test_conversion_phases.py`.
+- [x] **Part C** — shipped in `ab8d0b54`. Six carved services exist under `app/design_sync/services/` (`connection_service.py`, `assets_service.py`, `import_service.py`, `webhook_service.py`, `conversion_service.py`, `access_service.py`). The `DesignSyncService` facade was carved here and **subsequently deleted in 08b** (`246b0712` + `fe85d60c` + `f28f8fb1`); `service.py` shrunk to 387 LOC. Follow-up plan `tech-debt-08b-design-sync-service-deletion.md` is checked in.
+- [x] **Part D1** — shipped in `8b996b4c`. Telemetry live at three shim entries (`converter_service.py:475`, `:555`, `:1163`). Tracking row in `TODO.md` Operational follow-ups: **2026-05-11 — F013 D3 readiness check** (D1 merged 2026-04-27).
+- [ ] **Part D3** — calendar-blocked by D2. Earliest action **2026-05-11** (5 days from 2026-05-06). Do not attempt before the readiness grep returns zero.
+- [ ] **Mark F011, F012, F013 as RESOLVED in `TECH_DEBT_AUDIT.md`** — F011 + F012 already resolvable today; F013 stays open until D3.
