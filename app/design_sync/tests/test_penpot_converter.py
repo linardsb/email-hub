@@ -17,6 +17,7 @@ from app.design_sync.converter import (
     node_to_email_html,
     sanitize_web_tags_for_email,
 )
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.design_sync.figma.layout_analyzer import TextBlock
 from app.design_sync.protocol import (
     DesignNode,
@@ -678,13 +679,10 @@ class TestConverterNoDivOrP:
                 ),
             ],
         )
-        # Test recursive path (no layout divs); component path uses div wrappers by design
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
+        # Test that converter output is table-based (modern component path).
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert "<table" in result.html
-        # No layout divs in recursive output
-        assert "<div" not in result.html
 
     def test_node_to_email_html_uses_tables(self) -> None:
         node = DesignNode(
@@ -970,9 +968,8 @@ class TestEmailSkeletonMetaTags:
                 ),
             ],
         )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert "border-collapse: collapse" in result.html
         assert "mso-table-lspace: 0pt" in result.html
         assert "-ms-interpolation-mode: bicubic" in result.html
@@ -1083,9 +1080,8 @@ class TestLayoutAnalyzerIntegration:
                 ),
             ],
         )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert result.layout is not None
         assert len(result.layout.sections) >= 1
         assert result.sections_count >= 1
@@ -1124,9 +1120,8 @@ class TestLayoutAnalyzerIntegration:
                 ),
             ],
         )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert 'width="700"' in result.html
         assert "max-width:700px" in result.html
 
@@ -1164,9 +1159,8 @@ class TestLayoutAnalyzerIntegration:
                 ),
             ],
         )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert 'width="800"' in result.html
         assert "max-width:800px" in result.html
 
@@ -1234,63 +1228,11 @@ class TestBuildPropsMapFromNodes:
         assert props["f1"].layout_direction == "column"
 
 
-class TestInterSectionSpacer:
-    def test_spacer_row_when_spacing_after(self) -> None:
-        """Sections with spacing_after > 0 produce spacer <tr> rows."""
-        from app.design_sync.converter_service import DesignConverterService
-        from app.design_sync.protocol import DesignFileStructure, ExtractedTokens
-
-        structure = DesignFileStructure(
-            file_name="test.fig",
-            pages=[
-                DesignNode(
-                    id="page",
-                    name="Page",
-                    type=DesignNodeType.PAGE,
-                    children=[
-                        DesignNode(
-                            id="f1",
-                            name="Header",
-                            type=DesignNodeType.FRAME,
-                            x=0,
-                            y=0,
-                            width=600,
-                            height=80,
-                            children=[
-                                DesignNode(
-                                    id="t1",
-                                    name="title",
-                                    type=DesignNodeType.TEXT,
-                                    text_content="Header",
-                                ),
-                            ],
-                        ),
-                        DesignNode(
-                            id="f2",
-                            name="Content",
-                            type=DesignNodeType.FRAME,
-                            x=0,
-                            y=120,  # 40px gap from header bottom (80)
-                            width=600,
-                            height=200,
-                            children=[
-                                DesignNode(
-                                    id="t2",
-                                    name="body",
-                                    type=DesignNodeType.TEXT,
-                                    text_content="Content",
-                                ),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
-        assert "mso-line-height-rule:exactly" in result.html
-        assert 'aria-hidden="true"' in result.html
+# `TestInterSectionSpacer` was deleted in 08c part 2: it asserted the legacy
+# recursive renderer's `mso-line-height-rule:exactly` + `aria-hidden="true"`
+# spacer-row markup. Inter-section spacing in the modern component-template
+# path is handled inside the assembled component HTML and doesn't surface
+# those exact strings on a synthetic two-frame fixture.
 
 
 class TestMultiColumnLayout:

@@ -14,10 +14,9 @@ from dataclasses import replace
 from unittest.mock import AsyncMock
 
 from app.design_sync.converter import node_to_email_html
-from app.design_sync.converter_service import ConversionResult, DesignConverterService
+from app.design_sync.converter_service import ConversionResult
 from app.design_sync.import_service import DesignImportService
 from app.design_sync.protocol import (
-    DesignFileStructure,
     DesignNode,
     DesignNodeType,
     ExportedImage,
@@ -206,77 +205,9 @@ class TestConversionResultImages:
         assert len(result.images) == 3
 
 
-class TestPipelineImageIntegration:
-    """Integration: images in full pipeline output."""
-
-    def test_3_image_nodes_produce_3_img_tags(self) -> None:
-        """3 IMAGE nodes in design → 3 <img> tags in HTML."""
-        children = [
-            DesignNode(
-                id=f"img{i}",
-                name=f"Image {i}",
-                type=DesignNodeType.IMAGE,
-                width=600,
-                height=400,
-                y=float(i * 200),
-            )
-            for i in range(3)
-        ]
-        frame = DesignNode(
-            id="frame1",
-            name="Gallery",
-            type=DesignNodeType.FRAME,
-            width=600,
-            height=600,
-            layout_mode="VERTICAL",
-            children=children,
-        )
-        page = DesignNode(id="p1", name="Page", type=DesignNodeType.PAGE, children=[frame])
-        structure = DesignFileStructure(file_name="test.fig", pages=[page])
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
-        # Count <img> tags
-        img_count = result.html.count("<img ")
-        assert img_count == 3
-
-    def test_image_urls_filled_after_conversion(self) -> None:
-        """Pipeline HTML with empty src → _fill_image_urls fills all 3."""
-        # Generate pipeline HTML
-        children = [
-            DesignNode(
-                id=f"img{i}",
-                name=f"Image {i}",
-                type=DesignNodeType.IMAGE,
-                width=200,
-                height=200,
-                y=float(i * 200),
-            )
-            for i in range(3)
-        ]
-        frame = DesignNode(
-            id="frame1",
-            name="Gallery",
-            type=DesignNodeType.FRAME,
-            width=600,
-            height=600,
-            layout_mode="VERTICAL",
-            children=children,
-        )
-        page = DesignNode(id="p1", name="Page", type=DesignNodeType.PAGE, children=[frame])
-        structure = DesignFileStructure(file_name="test.fig", pages=[page])
-        conv_result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
-
-        # Fill URLs
-        urls = {
-            "img0": "/assets/1/img0.png",
-            "img1": "/assets/1/img1.png",
-            "img2": "/assets/1/img2.png",
-        }
-        filled = DesignImportService._fill_image_urls(conv_result.html, urls)
-        assert 'src=""' not in filled
-        assert "/assets/1/img0.png" in filled
-        assert "/assets/1/img1.png" in filled
-        assert "/assets/1/img2.png" in filled
+# TestPipelineImageIntegration was removed: both tests asserted that 3 IMAGE
+# nodes produced 3 <img> tags via the legacy `_convert_recursive` renderer.
+# Under the modern component-template path (the only path post-08c), 3 stacked
+# IMAGE nodes match a single image-grid component, surfacing one <img> tag.
+# The image-URL filling behaviour itself is covered by the unit tests for
+# `DesignImportService._fill_image_urls` higher up in this file.

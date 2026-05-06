@@ -258,46 +258,10 @@ class TestConvertDocumentMjml:
 # ── Shim equivalence ──
 
 
-class TestShimEquivalence:
-    def test_convert_shim_html(self) -> None:
-        """convert() shim produces same output as convert_document()."""
-        structure = _make_structure()
-        tokens = _make_tokens()
-        service = DesignConverterService()
-
-        # Legacy shim
-        shim_result = service.convert(structure, tokens)
-
-        # Direct document path
-        doc = EmailDesignDocument.from_legacy(structure, tokens)
-        doc_result = service.convert_document(doc)
-
-        assert shim_result.sections_count == doc_result.sections_count
-        assert shim_result.html == doc_result.html
-
-    @pytest.mark.asyncio
-    async def test_convert_mjml_shim(self) -> None:
-        """convert_mjml() shim produces same output as convert_document_mjml()."""
-        structure = _make_structure()
-        tokens = _make_tokens()
-        service = DesignConverterService()
-
-        compiled_html = "<html><body><p>MJML</p></body></html>"
-
-        with patch.object(service, "compile_mjml", new_callable=AsyncMock) as mock_compile:
-            mock_compile.return_value = MjmlCompileResult(
-                html=compiled_html, errors=[], build_time_ms=5
-            )
-            shim_result = await service.convert_mjml(structure, tokens)
-
-        with patch.object(service, "compile_mjml", new_callable=AsyncMock) as mock_compile:
-            mock_compile.return_value = MjmlCompileResult(
-                html=compiled_html, errors=[], build_time_ms=5
-            )
-            doc = EmailDesignDocument.from_legacy(structure, tokens)
-            doc_result = await service.convert_document_mjml(doc)
-
-        assert shim_result.sections_count == doc_result.sections_count
+# `TestShimEquivalence` was deleted in 08c part 2: the `convert()` and
+# `convert_mjml()` shims went away in part 3 / F013, so equivalence with the
+# document path is no longer expressible. The document path is now the only
+# path, and its happy-cases are covered above.
 
 
 # ── from_legacy() tests ──

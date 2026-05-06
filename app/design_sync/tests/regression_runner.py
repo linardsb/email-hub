@@ -20,6 +20,7 @@ import yaml
 
 from app.design_sync.converter_service import ConversionResult, DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.design_sync.tests.manifest_schema import CaseManifest
 
 _DEFAULT_DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
@@ -56,8 +57,8 @@ def run_case_conversion(case_dir: Path) -> ConversionResult | None:
         return None
     structure = load_structure_from_json(structure_path)
     tokens = load_tokens_from_json(tokens_path)
-    converter = DesignConverterService()
-    return converter.convert(structure, tokens)
+    document = EmailDesignDocument.from_legacy(structure, tokens)
+    return DesignConverterService().convert_document(document)
 
 
 # ── HTML helpers ─────────────────────────────────────────────────

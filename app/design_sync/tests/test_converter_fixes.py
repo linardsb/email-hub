@@ -52,39 +52,18 @@ class TestHasVisibleContent:
 
 
 class TestEmptyFramePruningService:
-    """B3: Empty frames are pruned at the service level (_collect_frames)."""
+    """B3: Empty frames behave consistently in the modern document path."""
 
-    def test_empty_frame_pruned_from_conversion(self) -> None:
-        from app.design_sync.converter_service import DesignConverterService
-        from app.design_sync.protocol import DesignFileStructure, ExtractedTokens
-
-        structure = DesignFileStructure(
-            file_name="test.fig",
-            pages=[
-                DesignNode(
-                    id="page",
-                    name="Page",
-                    type=DesignNodeType.PAGE,
-                    children=[
-                        DesignNode(
-                            id="empty",
-                            name="Empty",
-                            type=DesignNodeType.FRAME,
-                            width=600,
-                            children=[],
-                        ),
-                    ],
-                ),
-            ],
-        )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
-        assert result.sections_count == 0
-        assert "No frames found" in result.warnings
+    # `test_empty_frame_pruned_from_conversion` was deleted in 08c part 2.
+    # It asserted the legacy `_collect_frames`-based "No frames found" warning
+    # on an empty FRAME. Under the modern document path, an empty FRAME still
+    # matches a section template, so the empty-frame branch is exercised
+    # higher up (in `from_legacy`'s section dropping) and isn't observable
+    # via this kind of integration test.
 
     def test_visible_frame_kept(self) -> None:
         from app.design_sync.converter_service import DesignConverterService
+        from app.design_sync.email_design_document import EmailDesignDocument
         from app.design_sync.protocol import DesignFileStructure, ExtractedTokens
 
         structure = DesignFileStructure(
@@ -113,9 +92,8 @@ class TestEmptyFramePruningService:
                 ),
             ],
         )
-        result = DesignConverterService().convert(
-            structure, ExtractedTokens(), use_components=False
-        )
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert result.sections_count >= 1
         assert "Hello" in result.html
 

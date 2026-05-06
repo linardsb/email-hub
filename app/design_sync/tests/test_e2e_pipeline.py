@@ -330,119 +330,13 @@ def _make_e2e_structure() -> DesignFileStructure:
     return DesignFileStructure(file_name="Summer Campaign.fig", pages=[page])
 
 
-class TestEndToEndPipeline:
-    """Full pipeline: tokens + structure → email HTML.
-
-    Uses a shared conversion result to avoid running the pipeline 14+ times.
-    """
-
-    @pytest.fixture(scope="class")
-    def pipeline_html(self) -> str:
-        """Run the full pipeline once and cache the HTML for all tests."""
-        tokens = _make_e2e_tokens()
-        structure = _make_e2e_structure()
-        result = DesignConverterService().convert(structure, tokens, use_components=False)
-        return result.html
-
-    @pytest.fixture(scope="class")
-    def pipeline_result(self) -> ConversionResult:
-        """Run the full pipeline once and cache the result for metadata tests."""
-        tokens = _make_e2e_tokens()
-        structure = _make_e2e_structure()
-        return DesignConverterService().convert(structure, tokens, use_components=False)
-
-    def test_token_validation_zero_warnings(self) -> None:
-        """Clean tokens → zero warnings from validate_and_transform."""
-        tokens = _make_e2e_tokens()
-        _validated, warnings = validate_and_transform(tokens)
-        error_warnings = [w for w in warnings if w.level == "error"]
-        assert len(error_warnings) == 0
-
-    def test_html_skeleton(self, pipeline_html: str) -> None:
-        """Pipeline output has DOCTYPE, MSO conditionals, 600px container."""
-        assert "<!DOCTYPE html>" in pipeline_html
-        assert "<!--[if mso]>" in pipeline_html
-        assert "<![endif]-->" in pipeline_html
-        assert 'width="600"' in pipeline_html
-
-    def test_sections_count(self, pipeline_result: ConversionResult) -> None:
-        """4 top-level frames → 4 sections."""
-        assert pipeline_result.sections_count == 4
-
-    def test_dark_mode_css(self, pipeline_html: str) -> None:
-        """Dark tokens → dark mode CSS in output."""
-        assert "@media (prefers-color-scheme: dark)" in pipeline_html
-        assert "[data-ogsb]" in pipeline_html
-        assert 'name="color-scheme"' in pipeline_html
-
-    def test_gradient_in_hero(self, pipeline_html: str) -> None:
-        """Hero section has gradient CSS + solid bgcolor fallback."""
-        assert "linear-gradient" in pipeline_html
-        assert 'bgcolor="#004C99"' in pipeline_html
-
-    def test_multi_column_content(self, pipeline_html: str) -> None:
-        """Two-column content → MSO ghost table + inline-block."""
-        assert "display:inline-block" in pipeline_html
-        assert 'class="column"' in pipeline_html
-
-    def test_typography_font_stacks(self, pipeline_html: str) -> None:
-        """Typography → email-safe font stacks in output."""
-        assert "Inter" in pipeline_html
-        assert "Arial" in pipeline_html
-
-    def test_spacing_applied(self, pipeline_html: str) -> None:
-        """Auto-layout padding + spacer rows in output."""
-        assert "height:24px" in pipeline_html
-        assert "padding:" in pipeline_html
-
-    def test_button_with_vml(self, pipeline_html: str) -> None:
-        """CTA button → <a> + VML <v:roundrect>."""
-        assert '<a href="#"' in pipeline_html
-        assert "Shop Now" in pipeline_html
-        assert "v:roundrect" in pipeline_html
-
-    def test_builder_annotations(self, pipeline_html: str) -> None:
-        """All sections have data-section-id, content has data-slot-name."""
-        assert 'data-section-id="section_0"' in pipeline_html
-        assert 'data-section-id="section_1"' in pipeline_html
-        assert 'data-section-id="section_2"' in pipeline_html
-        assert 'data-section-id="section_3"' in pipeline_html
-        assert "data-slot-name" in pipeline_html
-        assert 'data-component-name="Header"' in pipeline_html
-        assert 'data-component-name="Footer"' in pipeline_html
-
-    def test_image_placeholders(self, pipeline_html: str) -> None:
-        """IMAGE nodes → <img src="" data-node-id="..."> placeholders."""
-        assert 'data-node-id="logo"' in pipeline_html
-        assert 'data-node-id="hero_img"' in pipeline_html
-        assert 'data-node-id="col1_img"' in pipeline_html
-
-    def test_image_url_filling(self, pipeline_html: str) -> None:
-        """After conversion, _fill_image_urls replaces src placeholders."""
-        urls = {
-            "logo": "/assets/1/logo.png",
-            "hero_img": "/assets/1/hero.png",
-            "col1_img": "/assets/1/content.png",
-        }
-        filled = DesignImportService._fill_image_urls(pipeline_html, urls)
-        assert "/assets/1/logo.png" in filled
-        assert "/assets/1/hero.png" in filled
-        assert "/assets/1/content.png" in filled
-
-    def test_html_validity(self, pipeline_html: str) -> None:
-        """Output HTML has no unclosed or mismatched tags."""
-        errors = _check_html_balance(pipeline_html)
-        assert errors == [], f"HTML balance errors: {errors}"
-
-    def test_multiline_text_produces_multiple_paragraphs(self, pipeline_html: str) -> None:
-        """Multi-line text in column 2 → multiple <p> tags."""
-        assert "Premium quality materials" in pipeline_html
-        assert "Sustainable sourcing" in pipeline_html
-        assert "Free shipping" in pipeline_html
-
-    def test_semantic_heading(self, pipeline_html: str) -> None:
-        """Text content appears in output (heading detection depends on layout analysis)."""
-        assert "Summer Collection 2026" in pipeline_html
+# TestEndToEndPipeline was deleted in 08c part 2: its fixtures ran the
+# legacy  renderer (use_components=False), and every
+# test in the class asserted specific HTML structure that the modern
+# component-template path does not reproduce (gradient markup, ghost-table
+# multi-column layouts, image src placeholders, builder annotation slots).
+# The end-to-end coverage of the modern document path lives in
+# test_snapshot_regression.py (real Figma fixtures, expected.html files).
 
 
 class TestMjmlOutputFormat:
@@ -450,14 +344,16 @@ class TestMjmlOutputFormat:
 
     @pytest.mark.asyncio
     async def test_convert_mjml_output_contains_mjml_markers(self) -> None:
-        """convert_mjml() produces HTML with section markers from MJML generation."""
+        """convert_document_mjml() produces HTML with section markers from MJML generation."""
         from unittest.mock import AsyncMock, patch
 
         from app.design_sync.converter_service import MjmlCompileResult
+        from app.design_sync.email_design_document import EmailDesignDocument
 
         tokens = _make_e2e_tokens()
         structure = _make_e2e_structure()
         service = DesignConverterService()
+        document = EmailDesignDocument.from_legacy(structure, tokens)
 
         compiled_html = (
             "<html><body>"
@@ -468,28 +364,13 @@ class TestMjmlOutputFormat:
             mock_compile.return_value = MjmlCompileResult(
                 html=compiled_html, errors=[], build_time_ms=30.0
             )
-            result = await service.convert_mjml(structure, tokens)
+            result = await service.convert_document_mjml(document)
 
         assert result.html
         assert result.sections_count >= 1
         assert result.layout is not None
 
-    @pytest.mark.asyncio
-    async def test_convert_mjml_fallback_produces_valid_html(self) -> None:
-        """MjmlCompileError falls back to recursive converter producing table-based HTML."""
-        from unittest.mock import AsyncMock, patch
-
-        from app.design_sync.exceptions import MjmlCompileError
-
-        tokens = _make_e2e_tokens()
-        structure = _make_e2e_structure()
-        service = DesignConverterService()
-
-        with patch.object(service, "compile_mjml", new_callable=AsyncMock) as mock_compile:
-            mock_compile.side_effect = MjmlCompileError("Sidecar down")
-            result = await service.convert_mjml(structure, tokens)
-
-        assert result.html
-        assert "<!DOCTYPE" in result.html
-        assert "<table" in result.html
-        assert any("MJML compilation failed" in w for w in result.warnings)
+    # `test_convert_mjml_fallback_produces_valid_html` was deleted in 08c part 2.
+    # It asserted the MJML→recursive-converter fallback behaviour that lived only
+    # in the deprecated `convert_mjml()` shim; `convert_document_mjml()` does not
+    # fall back, by design (see its docstring).

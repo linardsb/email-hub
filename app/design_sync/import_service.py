@@ -264,26 +264,35 @@ class DesignImportService:
                             raw_data = (
                                 design_import.structure_json if conn.provider == "penpot" else None
                             )
+                            from app.design_sync.email_design_document import (
+                                EmailDesignDocument,
+                            )
+                            from app.design_sync.figma.tree_normalizer import normalize_tree
+
+                            structure_norm, _norm_stats = normalize_tree(
+                                structure, raw_file_data=raw_data
+                            )
+                            legacy_document = EmailDesignDocument.from_legacy(
+                                structure_norm,
+                                extracted_tokens,
+                                selected_nodes=None,
+                                connection_config=conn.config_json,
+                                _pre_normalized=True,
+                            )
                             if output_format == "mjml":
-                                conversion = await converter.convert_mjml(
-                                    structure,
-                                    extracted_tokens,
-                                    raw_file_data=raw_data,
-                                    selected_nodes=None,
+                                conversion = await converter.convert_document_mjml(
+                                    legacy_document,
                                     target_clients=target_clients,
-                                    connection_config=conn.config_json,
                                     connection_id=_conn_id,
+                                    global_design_image=structure_norm.design_image,
                                 )
                             else:
-                                conversion = converter.convert(
-                                    structure,
-                                    extracted_tokens,
-                                    raw_file_data=raw_data,
-                                    selected_nodes=None,
+                                conversion = converter.convert_document(
+                                    legacy_document,
                                     target_clients=target_clients,
-                                    connection_config=conn.config_json,
                                     image_urls=_image_url_map,
                                     connection_id=_conn_id,
+                                    global_design_image=structure_norm.design_image,
                                 )
 
                         initial_html = conversion.html

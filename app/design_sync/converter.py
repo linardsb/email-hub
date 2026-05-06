@@ -38,6 +38,21 @@ from app.design_sync.token_transforms import (  # noqa: F401  (re-exports)
 from app.shared.color import contrast_ratio as _contrast_ratio
 from app.shared.color import relative_luminance as _relative_luminance
 
+# Re-exports must be explicit for strict type-checkers.
+__all__ = [
+    "_NodeProps",
+    "_contrast_ratio",
+    "_has_visible_content",
+    "_relative_luminance",
+    "_sanitize_css_value",
+    "convert_colors_to_palette",
+    "convert_spacing",
+    "convert_typography",
+    # Symbols still defined in this file (kept for tests until parts 3-4):
+    "node_to_email_html",
+    "sanitize_web_tags_for_email",
+]
+
 if TYPE_CHECKING:
     from app.design_sync.figma.layout_analyzer import EmailSection
 

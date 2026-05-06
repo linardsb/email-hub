@@ -515,10 +515,13 @@ class TestTemplateEnginePipeline:
 class TestConvertMjmlServicePipeline:
     @pytest.mark.asyncio
     async def test_pipeline_convert_mjml_service(self) -> None:
-        """DesignConverterService.convert_mjml() end-to-end with mocked sidecar."""
+        """DesignConverterService.convert_document_mjml() end-to-end with mocked sidecar."""
+        from app.design_sync.email_design_document import EmailDesignDocument
+
         service = DesignConverterService()
         structure = _make_structure()
         tokens = _make_tokens()
+        document = EmailDesignDocument.from_legacy(structure, tokens)
 
         compiled_html = (
             "<html><body>"
@@ -531,7 +534,7 @@ class TestConvertMjmlServicePipeline:
             mock_compile.return_value = MjmlCompileResult(
                 html=compiled_html, errors=[], build_time_ms=50.0
             )
-            result = await service.convert_mjml(structure, tokens)
+            result = await service.convert_document_mjml(document)
 
         assert isinstance(result, ConversionResult)
         assert result.html
