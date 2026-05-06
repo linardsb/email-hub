@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.design_sync.converter import _gradient_to_css
 from app.design_sync.converter_service import dark_mode_meta_tags, dark_mode_style_block
+from app.design_sync.dark_mode_gradient import _gradient_to_css
 from app.design_sync.protocol import ExtractedColor, ExtractedGradient, ExtractedTokens
 from app.design_sync.token_transforms import (
     TokenWarning,

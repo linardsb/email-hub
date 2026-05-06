@@ -23,8 +23,7 @@ from html.parser import HTMLParser
 
 import pytest
 
-from app.design_sync.converter_service import ConversionResult, DesignConverterService
-from app.design_sync.import_service import DesignImportService
+from app.design_sync.converter_service import DesignConverterService
 from app.design_sync.protocol import (
     DesignFileStructure,
     DesignNode,
@@ -35,7 +34,6 @@ from app.design_sync.protocol import (
     ExtractedTokens,
     ExtractedTypography,
 )
-from app.design_sync.token_transforms import validate_and_transform
 
 
 class _TagBalanceChecker(HTMLParser):

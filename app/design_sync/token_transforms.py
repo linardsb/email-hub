@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
+
+import yaml
 
 if TYPE_CHECKING:
     from app.design_sync.caniemail import CanieMailData
@@ -26,6 +29,27 @@ from app.projects.design_system import BrandPalette, Typography
 from app.shared.color import contrast_ratio, relative_luminance
 
 logger = get_logger(__name__)
+
+
+# ── YAML-backed font fallback data (08c part 4 — moved from converter.py) ──
+_FONT_DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "email_client_fonts.yaml"
+_FONT_DATA: dict[str, Any] = (
+    yaml.safe_load(_FONT_DATA_PATH.read_text()) if _FONT_DATA_PATH.exists() else {}
+)
+_FALLBACK_MAP: dict[str, list[str]] = _FONT_DATA.get("fallback_map", {})
+
+
+def _font_stack(family: str) -> str:
+    """Build email-safe CSS font stack using data/email_client_fonts.yaml."""
+    family_clean = family.strip("'\"").strip()
+    if "," in family_clean:
+        return family_clean
+    for mapped_name, chain in _FALLBACK_MAP.items():
+        if mapped_name.strip("'\"").lower() == family_clean.lower():
+            return f"{family_clean}, {', '.join(str(f) for f in chain)}"
+    if family_clean.lower() in {"sans-serif", "serif", "monospace", "cursive", "fantasy"}:
+        return family_clean
+    return f"{family_clean}, Arial, Helvetica, sans-serif"
 
 
 @dataclass(frozen=True)
@@ -909,12 +933,6 @@ def convert_typography(styles: list[ExtractedTypography]) -> Typography:
 
     Heuristic: largest font_size → heading, most common family → body.
     """
-    # `_font_stack` still lives in converter.py until Part 4.3 of 08c.
-    # Function-scoped import keeps token_transforms.py free of a top-level
-    # converter dependency (which would form a cycle through the deprecated
-    # re-exports).
-    from app.design_sync.converter import _font_stack
-
     if not styles:
         return Typography()
 
