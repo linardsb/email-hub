@@ -6315,7 +6315,7 @@ ESLint `no-restricted-syntax` rule in `eslint.config.mjs` catches `refreshInterv
 
 - [x] ~~48.1 Pipeline DAG schema and template registry~~ DONE
 - [x] ~~48.2 Parallel agent executor with topological ordering~~ DONE
-- [x] 48.3 Typed artifact protocol for inter-agent data flow
+- [x] ~~48.3 Typed artifact protocol for inter-agent data flow~~ DONE
 - [x] ~~48.4 Adversarial evaluator agent~~ DONE
 - [x] ~~48.5 Quality contracts and stage gates~~ DONE
 - [x] ~~48.6 Email component tree JSON schema~~ DONE
