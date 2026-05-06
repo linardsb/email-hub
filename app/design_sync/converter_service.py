@@ -23,7 +23,6 @@ from app.design_sync.figma.layout_analyzer import (
     EmailSectionType,
     TextBlock,
 )
-from app.design_sync.figma.tree_normalizer import normalize_tree
 from app.design_sync.html_formatter import format_email_html
 from app.design_sync.mjml_template_engine import (
     build_template_context,
@@ -54,7 +53,6 @@ if TYPE_CHECKING:
     from app.design_sync.component_matcher import ComponentMatch
     from app.design_sync.component_renderer import RenderedSection
     from app.design_sync.email_design_document import EmailDesignDocument
-    from app.design_sync.vlm_classifier import VLMSectionClassification
 
 logger = get_logger(__name__)
 
@@ -438,168 +436,6 @@ class DesignConverterService:
             verification_initial_fidelity=vr.initial_fidelity,
             verification_final_fidelity=vr.final_fidelity,
         )
-
-    # ── Legacy entry points (shim to document path) ──────────────────
-
-    def convert(
-        self,
-        structure: DesignFileStructure,
-        tokens: ExtractedTokens,
-        *,
-        raw_file_data: dict[str, Any] | None = None,
-        selected_nodes: list[str] | None = None,
-        target_clients: list[str] | None = None,
-        use_components: bool = True,
-        connection_config: dict[str, Any] | None = None,
-        image_urls: dict[str, str] | None = None,
-        connection_id: str | None = None,
-        vlm_classifications: dict[str, VLMSectionClassification] | None = None,
-    ) -> ConversionResult:
-        """Convert a design file structure into an email HTML skeleton.
-
-        Shim: builds an ``EmailDesignDocument`` via ``from_legacy()`` and
-        delegates to ``convert_document()``.  Falls back to the legacy
-        recursive converter when ``use_components`` is False (requires
-        the full DesignNode tree which the document path doesn't carry).
-
-        Deprecated (Tech Debt F013): emits telemetry on every call.
-        Callers should migrate to ``convert_document()`` after building
-        an ``EmailDesignDocument`` themselves.
-        """
-        caller_frame = inspect.stack()[1]
-        logger.info(
-            "design_sync.converter.shim_called",
-            entry="convert",
-            caller=caller_frame.function,
-            caller_module=caller_frame.frame.f_globals.get("__name__"),
-        )
-        _stdlib_warnings.warn(
-            "DesignConverterService.convert() is deprecated; use convert_document() "
-            "after building an EmailDesignDocument. Scheduled removal after "
-            "14-day telemetry window.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from app.design_sync.email_design_document import EmailDesignDocument
-
-        # Normalize once — reused by both from_legacy and recursive fallback
-        structure, _norm_stats = normalize_tree(structure, raw_file_data=raw_file_data)
-
-        document = EmailDesignDocument.from_legacy(
-            structure,
-            tokens,
-            selected_nodes=selected_nodes,
-            connection_config=connection_config,
-            _pre_normalized=True,
-            vlm_classifications=vlm_classifications,
-        )
-
-        if use_components:
-            return self.convert_document(
-                document,
-                target_clients=target_clients,
-                use_components=True,
-                image_urls=image_urls,
-                connection_id=connection_id,
-                global_design_image=structure.design_image,
-            )
-
-        # Recursive converter requires full DesignNode frames
-        frames = self._collect_frames(structure, selected_nodes)
-        if not frames:
-            logger.warning("design_sync.converter_no_frames")
-            return ConversionResult(html="", sections_count=0, warnings=["No frames found"])
-
-        layout = document.to_layout_description()
-        container_width = document.layout.container_width
-        compat = ConverterCompatibility(target_clients=target_clients)
-
-        return self._convert_recursive(
-            frames=frames,
-            layout=layout,
-            tokens=document.to_extracted_tokens(),
-            warnings=[],
-            compat=compat,
-            container_width=container_width,
-            raw_file_data=raw_file_data,
-        )
-
-    async def convert_mjml(
-        self,
-        structure: DesignFileStructure,
-        tokens: ExtractedTokens,
-        *,
-        raw_file_data: dict[str, Any] | None = None,
-        selected_nodes: list[str] | None = None,
-        target_clients: list[str] | None = None,
-        connection_config: dict[str, Any] | None = None,
-        connection_id: str | None = None,
-    ) -> ConversionResult:
-        """Convert a design file structure into email HTML via MJML.
-
-        Shim: builds an ``EmailDesignDocument`` via ``from_legacy()`` and
-        delegates to ``convert_document_mjml()``.  Falls back to the
-        recursive converter if MJML compilation fails (requires full
-        DesignNode tree preserved from the original structure).
-
-        Deprecated (Tech Debt F013): emits telemetry on every call.
-        Callers should migrate to ``convert_document_mjml()`` after
-        building an ``EmailDesignDocument`` themselves.
-        """
-        caller_frame = inspect.stack()[1]
-        logger.info(
-            "design_sync.converter.shim_called",
-            entry="convert_mjml",
-            caller=caller_frame.function,
-            caller_module=caller_frame.frame.f_globals.get("__name__"),
-        )
-        _stdlib_warnings.warn(
-            "DesignConverterService.convert_mjml() is deprecated; use "
-            "convert_document_mjml() after building an EmailDesignDocument. "
-            "Scheduled removal after 14-day telemetry window.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from app.design_sync.email_design_document import EmailDesignDocument
-
-        # Normalize once — reused by both from_legacy and recursive fallback
-        structure, _norm_stats = normalize_tree(structure, raw_file_data=raw_file_data)
-
-        document = EmailDesignDocument.from_legacy(
-            structure,
-            tokens,
-            selected_nodes=selected_nodes,
-            connection_config=connection_config,
-            _pre_normalized=True,
-        )
-
-        if not document.sections:
-            return ConversionResult(html="", sections_count=0, warnings=["No frames found"])
-
-        try:
-            return await self.convert_document_mjml(
-                document,
-                target_clients=target_clients,
-                connection_id=connection_id,
-                global_design_image=structure.design_image,
-            )
-        except MjmlCompileError:
-            logger.warning("design_sync.mjml_fallback", reason="compilation_failed")
-            # Reuse already-normalized structure for recursive fallback
-            frames = self._collect_frames(structure, selected_nodes)
-            if not frames:
-                return ConversionResult(html="", sections_count=0, warnings=["No frames found"])
-            layout = document.to_layout_description()
-            compat = ConverterCompatibility(target_clients=target_clients)
-            return self._convert_recursive(
-                frames=frames,
-                layout=layout,
-                tokens=document.to_extracted_tokens(),
-                warnings=["MJML compilation failed, falling back to recursive converter"],
-                compat=compat,
-                container_width=document.layout.container_width,
-                raw_file_data=raw_file_data,
-            )
 
     async def _convert_mjml_from_layout(
         self,
