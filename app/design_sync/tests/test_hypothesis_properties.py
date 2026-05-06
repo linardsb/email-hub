@@ -9,13 +9,13 @@ from __future__ import annotations
 import hypothesis.strategies as st
 from hypothesis import given, settings
 
-from app.design_sync.converter import sanitize_web_tags_for_email
 from app.design_sync.figma.tree_normalizer import normalize_tree
 from app.design_sync.protocol import (
     DesignFileStructure,
     DesignNode,
     DesignNodeType,
 )
+from app.design_sync.sanitizers import sanitize_web_tags_for_email
 
 # ---------------------------------------------------------------------------
 # Strategies

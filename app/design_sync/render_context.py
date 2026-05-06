@@ -12,9 +12,8 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from app.design_sync.compatibility import ConverterCompatibility
-    from app.design_sync.converter import _NodeProps
     from app.design_sync.figma.layout_analyzer import EmailSection, TextBlock
-    from app.design_sync.protocol import ExtractedGradient
+    from app.design_sync.protocol import ExtractedGradient, _NodeProps
 
 
 @dataclass(frozen=True)

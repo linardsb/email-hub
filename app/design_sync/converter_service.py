@@ -15,14 +15,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.design_sync.compatibility import CompatibilityHint, ConverterCompatibility
 from app.design_sync.conversion_phases import MatchPhase, RenderPhase
-from app.design_sync.converter import (
-    _has_visible_content,
-    _NodeProps,
-    _sanitize_css_value,
-    convert_colors_to_palette,
-    convert_typography,
-    node_to_email_html,
-)
+from app.design_sync.converter import node_to_email_html
 from app.design_sync.exceptions import MjmlCompileError
 from app.design_sync.figma.layout_analyzer import (
     DesignLayoutDescription,
@@ -44,15 +37,18 @@ from app.design_sync.protocol import (
     ExtractedColor,
     ExtractedGradient,
     ExtractedTokens,
+    _NodeProps,
 )
 from app.design_sync.quality_contracts import QualityWarning, run_quality_contracts
 from app.design_sync.render_context import RenderContext
+from app.design_sync.sanitizers import _has_visible_content, _sanitize_css_value
 from app.design_sync.section_cache import (
     SectionCache,
     SectionCacheEntry,
     compute_section_hash,
     get_section_cache,
 )
+from app.design_sync.token_transforms import convert_colors_to_palette, convert_typography
 
 if TYPE_CHECKING:
     from app.design_sync.component_matcher import ComponentMatch

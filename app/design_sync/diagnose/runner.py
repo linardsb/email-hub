@@ -10,7 +10,6 @@ from typing import Any
 from app.core.logging import get_logger
 from app.design_sync.component_matcher import match_all
 from app.design_sync.component_renderer import ComponentRenderer, RenderedSection
-from app.design_sync.converter import sanitize_web_tags_for_email
 from app.design_sync.converter_service import (
     COMPONENT_SHELL,
     build_component_style_block,
@@ -35,6 +34,7 @@ from app.design_sync.diagnose.models import (
 from app.design_sync.figma.layout_analyzer import analyze_layout
 from app.design_sync.html_formatter import format_email_html
 from app.design_sync.protocol import DesignFileStructure, ExtractedTokens
+from app.design_sync.sanitizers import sanitize_web_tags_for_email
 from app.design_sync.visual_verify import VerificationLoopResult
 
 logger = get_logger(__name__)
@@ -236,8 +236,8 @@ class DiagnosticRunner:
         container_width: int,
     ) -> str:
         """Assemble rendered sections into full email HTML (mirrors converter_service)."""
-        from app.design_sync.converter import (
-            _sanitize_css_value,
+        from app.design_sync.sanitizers import _sanitize_css_value
+        from app.design_sync.token_transforms import (
             convert_colors_to_palette,
             convert_typography,
         )

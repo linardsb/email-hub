@@ -314,3 +314,26 @@ class DesignSyncProvider(Protocol):
             SyncFailedError: If export fails.
         """
         ...
+
+
+@dataclass(frozen=True)
+class _NodeProps:
+    """Supplementary visual properties not carried by DesignNode."""
+
+    bg_color: str | None = None
+    font_family: str | None = None
+    font_size: float | None = None
+    font_weight: str | None = None
+    padding_top: float = 0
+    padding_right: float = 0
+    padding_bottom: float = 0
+    padding_left: float = 0
+    border_color: str | None = None
+    border_width: float = 0
+    layout_direction: str | None = None  # "row" | "column" | None
+    item_spacing: float = 0
+    counter_axis_spacing: float = 0
+    line_height_px: float | None = None
+    letter_spacing_px: float | None = None
+    text_transform: str | None = None
+    text_decoration: str | None = None

@@ -14,14 +14,29 @@ from app.core.logging import get_logger
 from app.design_sync.protocol import (
     DesignNode,
     DesignNodeType,
-    ExtractedColor,
     ExtractedGradient,
-    ExtractedSpacing,
-    ExtractedTypography,
     StyleRun,
+    _NodeProps,
 )
 from app.design_sync.render_context import RenderContext
-from app.projects.design_system import BrandPalette, Typography
+
+# ── Deprecated re-exports ────────────────────────────────────────────────
+# These symbols moved to dedicated modules during 08c part 1. The aliases
+# below let existing importers (notably `app/design_sync/tests/*`) keep
+# working until 08c parts 2 & 4 migrate or delete those callsites. The
+# aliases — and this entire file — go away in part 4.
+from app.design_sync.sanitizers import (  # noqa: F401  (re-exports)
+    _has_visible_content,
+    _sanitize_css_value,
+    sanitize_web_tags_for_email,
+)
+from app.design_sync.token_transforms import (  # noqa: F401  (re-exports)
+    convert_colors_to_palette,
+    convert_spacing,
+    convert_typography,
+)
+from app.shared.color import contrast_ratio as _contrast_ratio
+from app.shared.color import relative_luminance as _relative_luminance
 
 if TYPE_CHECKING:
     from app.design_sync.figma.layout_analyzer import EmailSection
@@ -53,36 +68,6 @@ _NODE_HTML_MAP: dict[DesignNodeType, str] = {
 }
 
 
-@dataclass(frozen=True)
-class _NodeProps:
-    """Supplementary visual properties not carried by DesignNode."""
-
-    bg_color: str | None = None
-    font_family: str | None = None
-    font_size: float | None = None
-    font_weight: str | None = None
-    padding_top: float = 0
-    padding_right: float = 0
-    padding_bottom: float = 0
-    padding_left: float = 0
-    border_color: str | None = None
-    border_width: float = 0
-    layout_direction: str | None = None  # "row" | "column" | None
-    item_spacing: float = 0
-    counter_axis_spacing: float = 0
-    line_height_px: float | None = None
-    letter_spacing_px: float | None = None
-    text_transform: str | None = None
-    text_decoration: str | None = None
-
-
-def _has_visible_content(node: DesignNode) -> bool:
-    """Return True if node or any descendant has visible content (text/image)."""
-    if node.type in (DesignNodeType.TEXT, DesignNodeType.IMAGE):
-        return True
-    return any(_has_visible_content(c) for c in (node.children or []))
-
-
 def _is_inline_row(children: list[DesignNode]) -> bool:
     """Detect rows where inline rendering is better than multi-column ghost tables.
 
@@ -101,117 +86,6 @@ def _is_inline_row(children: list[DesignNode]) -> bool:
         for c in children
     )
     return has_text and all_small_or_text
-
-
-_DANGEROUS_CSS_RE = re.compile(
-    r"expression\s*\(|url\s*\(\s*javascript\s*:|url\s*\(\s*data\s*:\s*text/html"
-    r"|-moz-binding\s*:",
-    re.IGNORECASE,
-)
-
-
-def _sanitize_css_value(value: str) -> str:
-    """Strip characters that could break out of a CSS property value.
-
-    Removes semicolons, braces, angle brackets, and other injection vectors.
-    Preserves balanced parentheses for safe CSS functions (rgb, hsl, calc).
-    Returns empty string if the value is entirely unsafe.
-    """
-    # Strip control characters FIRST so they can't break up dangerous keywords
-    sanitized = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", value)
-    # Block dangerous CSS functions
-    sanitized = _DANGEROUS_CSS_RE.sub("", sanitized)
-    # Strip characters that could terminate style attribute or inject HTML
-    # Parentheses are preserved for safe CSS functions like rgb(), hsl(), calc()
-    sanitized = re.sub(r'[;<>{}\'"\\]+', "", sanitized)
-    return sanitized.strip()
-
-
-def _relative_luminance(hex_color: str) -> float:
-    """Calculate relative luminance of a hex color (0=black, 1=white)."""
-    hex_clean = hex_color.lstrip("#")
-    if len(hex_clean) == 3:
-        hex_clean = "".join(c * 2 for c in hex_clean)
-    if len(hex_clean) != 6:
-        return 0.0
-    try:
-        r, g, b = int(hex_clean[0:2], 16), int(hex_clean[2:4], 16), int(hex_clean[4:6], 16)
-    except ValueError:
-        return 0.0
-
-    def _linearize(val: int) -> float:
-        srgb = val / 255.0
-        return srgb / 12.92 if srgb <= 0.03928 else ((srgb + 0.055) / 1.055) ** 2.4
-
-    return 0.2126 * _linearize(r) + 0.7152 * _linearize(g) + 0.0722 * _linearize(b)
-
-
-def _contrast_ratio(lum1: float, lum2: float) -> float:
-    """WCAG contrast ratio between two luminances."""
-    lighter = max(lum1, lum2)
-    darker = min(lum1, lum2)
-    return (lighter + 0.05) / (darker + 0.05)
-
-
-def convert_colors_to_palette(colors: list[ExtractedColor]) -> BrandPalette:
-    """Map extracted design colors to BrandPalette.
-
-    Heuristic: match color names to palette roles (primary, secondary, accent,
-    background, text, link). Falls back to positional assignment.
-    Ensures adequate contrast between text and background.
-    """
-    role_map: dict[str, str] = {}
-    name_hints: dict[str, list[str]] = {
-        "primary": ["primary", "brand", "main"],
-        "secondary": ["secondary", "accent-2"],
-        "accent": ["accent", "highlight", "cta"],
-        "background": ["background", "bg", "surface"],
-        "text": ["text", "body", "foreground", "fg"],
-        "link": ["link", "url", "anchor"],
-    }
-
-    # Name-based matching
-    for color in colors:
-        lower_name = color.name.lower()
-        for role, hints in name_hints.items():
-            if role not in role_map and any(h in lower_name for h in hints):
-                role_map[role] = color.hex
-                break
-
-    # Positional fallback for unfilled roles
-    unmatched = [c for c in colors if c.hex not in role_map.values()]
-    for role in ("primary", "secondary", "accent"):
-        if role not in role_map and unmatched:
-            role_map[role] = unmatched.pop(0).hex
-
-    # Ensure text/background contrast meets WCAG AA minimum (3:1)
-    bg_hex = role_map.get("background", "#ffffff")
-    text_hex = role_map.get("text", "#000000")
-    bg_lum = _relative_luminance(bg_hex)
-    text_lum = _relative_luminance(text_hex)
-    if _contrast_ratio(bg_lum, text_lum) < 3.0:
-        role_map["text"] = "#ffffff" if bg_lum < 0.5 else "#000000"
-        logger.info(
-            "design_sync.contrast_fix",
-            bg=bg_hex,
-            original_text=text_hex,
-            fixed_text=role_map["text"],
-        )
-
-    # Ensure link color also has adequate contrast against background
-    link_hex = role_map.get("link", "#0000ee")
-    link_lum = _relative_luminance(link_hex)
-    if _contrast_ratio(bg_lum, link_lum) < 3.0:
-        role_map["link"] = "#99ccff" if bg_lum < 0.5 else "#0000ee"
-
-    return BrandPalette(
-        primary=role_map.get("primary", "#333333"),
-        secondary=role_map.get("secondary", "#666666"),
-        accent=role_map.get("accent", "#0066cc"),
-        background=role_map.get("background", "#ffffff"),
-        text=role_map.get("text", "#000000"),
-        link=role_map.get("link", "#0000ee"),
-    )
 
 
 def _font_stack(family: str) -> str:
@@ -277,97 +151,6 @@ def _meaningful_alt(
 def _is_safe_url(url: str) -> bool:
     """Only allow http/https and internal API URLs for background images."""
     return url.startswith(("http://", "https://", "/api/"))
-
-
-def convert_typography(styles: list[ExtractedTypography]) -> Typography:
-    """Map extracted typography to Typography design system model.
-
-    Heuristic: largest font_size → heading, most common family → body.
-    """
-    if not styles:
-        return Typography()
-
-    # Heading: style with largest size or name containing "heading"/"title"
-    heading_style = None
-    for s in styles:
-        if any(kw in s.name.lower() for kw in ("heading", "title", "h1", "h2")):
-            heading_style = s
-            break
-    if heading_style is None:
-        heading_style = max(styles, key=lambda s: s.size)
-
-    # Body: style with name containing "body"/"paragraph"/"text", or smallest
-    body_style = None
-    for s in styles:
-        if any(kw in s.name.lower() for kw in ("body", "paragraph", "text", "regular")):
-            body_style = s
-            break
-    if body_style is None:
-        body_style = min(styles, key=lambda s: s.size)
-
-    def _px_or_none(val: float | None) -> str | None:
-        if val is None:
-            return None
-        return f"{round(val)}px"
-
-    def _spacing_px_or_none(val: float | None) -> str | None:
-        if val is None or val == 0.0:
-            return None
-        return f"{round(val, 1)}px"
-
-    return Typography(
-        heading_font=_font_stack(heading_style.family),
-        body_font=_font_stack(body_style.family),
-        base_size=f"{int(body_style.size)}px",
-        heading_line_height=_px_or_none(heading_style.line_height),
-        body_line_height=_px_or_none(body_style.line_height),
-        heading_letter_spacing=_spacing_px_or_none(heading_style.letter_spacing),
-        body_letter_spacing=_spacing_px_or_none(body_style.letter_spacing),
-        heading_text_transform=heading_style.text_transform,
-    )
-
-
-# Standard spacing scale — values that align to 4px/8px multiples get named
-_SPACING_SCALE: dict[int, str] = {
-    4: "2xs",
-    8: "xs",
-    12: "sm",
-    16: "md",
-    20: "md-lg",
-    24: "lg",
-    32: "xl",
-    40: "xl-2",
-    48: "2xl",
-    64: "3xl",
-}
-
-
-def convert_spacing(spacing: list[ExtractedSpacing]) -> dict[str, float]:
-    """Convert extracted spacing tokens to a named spacing scale.
-
-    Maps numeric spacing values to semantic names. Values that align to
-    the standard 4px/8px scale get standard names (xs, sm, md, lg, xl).
-    Non-standard values keep their original name.
-
-    Returns:
-        Mapping of semantic name → pixel value.
-    """
-    result: dict[str, float] = {}
-    for token in spacing:
-        px = token.value
-        int_px = int(px)
-        # Use standard scale name if value matches
-        if int_px in _SPACING_SCALE:
-            name = _SPACING_SCALE[int_px]
-        else:
-            # Normalize name: strip "spacing-" prefix, lowercase
-            name = token.name.lower().removeprefix("spacing-").removeprefix("space-")
-            if not name:
-                name = f"{int_px}px"
-        # Avoid overwriting a scale entry with a different value
-        if name not in result:
-            result[name] = px
-    return result
 
 
 def _contrasting_text_color(bg_hex: str) -> str:
@@ -1197,176 +980,6 @@ def node_to_email_html(node: DesignNode, ctx: RenderContext | None = None) -> st
             return _render_image_only_frame_node(node, ctx)
         return _render_frame_node(node, ctx)
     return ""
-
-
-_LAYOUT_CSS_RE = re.compile(
-    r"(?:^|;)\s*(?:width|max-width|float|display\s*:\s*(?:inline-block|flex|grid))",
-    re.IGNORECASE,
-)
-
-_DIV_TOKEN_RE = re.compile(r"(<div(?:\s[^>]*)?>|</div>)", re.IGNORECASE)
-_TD_TAG_RE = re.compile(r"</?td[\s>]", re.IGNORECASE)
-
-
-def _is_inside_td(html_str: str, pos: int) -> bool:
-    """Check whether *pos* is inside a ``<td>`` cell (handles nested tables)."""
-    depth = 0
-    for m in _TD_TAG_RE.finditer(html_str, 0, pos):
-        if m.group().startswith("</"):
-            depth -= 1
-        else:
-            depth += 1
-    return depth > 0
-
-
-def sanitize_web_tags_for_email(html_str: str) -> str:
-    """Clean web tags for email-safe output.
-
-    Rules:
-    - MSO conditional comments: preserved untouched.
-    - ``<p>`` tags: stripped everywhere — content kept, styles merged into
-      parent ``<td>`` when inside one, ``<br><br>`` separators when outside.
-    - ``<h1>``-``<h6>`` tags: stripped everywhere — same merge/unwrap logic.
-    - ``<div>`` with layout CSS (width/max-width/flex/float/inline-block):
-      converted to ``<table role="presentation"><tr><td>`` wrapper.
-    - ``<div>`` simple wrapper inside ``<td>`` (e.g. text-align): preserved.
-    - ``<div>`` outside ``<td>`` with no layout CSS: unwrapped.
-    """
-    # 1. Stash MSO conditionals
-    mso_blocks: list[str] = []
-
-    def _stash(m: re.Match[str]) -> str:
-        mso_blocks.append(m.group(0))
-        return f"__MSO_{len(mso_blocks) - 1}__"
-
-    html_str = re.compile(r"<!--\[if\s[^\]]*\]>.*?<!\[endif\]-->", re.DOTALL).sub(_stash, html_str)
-
-    # 2. Strip <p> and <h1>-<h6> tags — merge styles into parent <td> when inside one
-    ph_re = re.compile(r"<(p|h[1-6])(\s[^>]*)?>(.+?)</\1>", re.DOTALL)
-    matches = list(ph_re.finditer(html_str))
-    for i, m in enumerate(reversed(matches)):
-        idx_from_end = i  # 0 = last match
-        attrs = m.group(2) or ""
-        inner_content = m.group(3)
-        if _is_inside_td(html_str, m.start()):
-            # Extract transferable attributes from the p/h tag
-            extra_td_attrs: list[str] = []
-            for attr_name in ("data-slot", "data-slot-name", "class"):
-                attr_match = re.search(rf'{attr_name}=["\']([^"\']*)["\']', attrs)
-                if attr_match:
-                    extra_td_attrs.append(attr_match.group(0))
-
-            # Extract and convert inline styles (margin → padding)
-            style_match = re.search(r'style=["\']([^"\']*)["\']', attrs)
-            inner_style = style_match.group(1) if style_match else ""
-            inner_style = re.sub(r"\bmargin\b", "padding", inner_style)
-
-            # Find parent <td> tag
-            td_before = html_str[: m.start()].rfind("<td")
-            if td_before >= 0:
-                td_end = html_str.index(">", td_before) + 1
-                td_tag = html_str[td_before:td_end]
-
-                # Merge styles into parent td
-                if inner_style:
-                    td_style_match = re.search(r'style=["\']([^"\']*)["\']', td_tag)
-                    if td_style_match:
-                        merged = td_style_match.group(1).rstrip(";") + ";" + inner_style
-                        td_tag = (
-                            td_tag[: td_style_match.start(1)]
-                            + merged
-                            + td_tag[td_style_match.end(1) :]
-                        )
-                    else:
-                        td_tag = td_tag[:-1] + f' style="{inner_style}">'
-
-                # Transfer data-slot / class attributes to parent td
-                for attr_str in extra_td_attrs:
-                    attr_key = attr_str.split("=")[0]
-                    if attr_key not in td_tag:
-                        td_tag = td_tag[:-1] + f" {attr_str}>"
-
-                # Apply td modifications + strip the p/h tag in one pass
-                new_html = (
-                    html_str[:td_before]
-                    + td_tag
-                    + html_str[td_end : m.start()]
-                    + inner_content
-                    + html_str[m.end() :]
-                )
-                html_str = new_html
-            else:
-                html_str = html_str[: m.start()] + inner_content + html_str[m.end() :]
-        else:
-            suffix = "" if idx_from_end == 0 else "<br><br>"
-            html_str = html_str[: m.start()] + inner_content + suffix + html_str[m.end() :]
-
-    # 3. Handle <div>...</div> pairs with a stack-based approach
-    tokens = list(_DIV_TOKEN_RE.finditer(html_str))
-
-    # Pair open/close tags via stack, classify + extract style in one pass
-    pairs: list[tuple[str, str, int, int]] = []  # (action, style_val, open_idx, close_idx)
-    stack: list[int] = []
-    for ti, tok in enumerate(tokens):
-        if tok.group().startswith("</"):
-            if stack:
-                open_idx = stack.pop()
-                open_tok = tokens[open_idx]
-                attrs_match = re.match(r"<div(\s[^>]*)?>", open_tok.group(), re.IGNORECASE)
-                attrs = attrs_match.group(1) if attrs_match and attrs_match.group(1) else ""
-                style_match = re.search(r'style=["\']([^"\']*)["\']', attrs)
-                style_val = style_match.group(1) if style_match else ""
-
-                # Preserve <div class="column"> — structural email
-                # element for mobile stacking (CSS .column { display: block !important; })
-                if 'class="column"' in attrs:
-                    action = "preserve"
-                elif _LAYOUT_CSS_RE.search(style_val):
-                    action = "convert"
-                elif _is_inside_td(html_str, open_tok.start()):
-                    action = "preserve"
-                else:
-                    action = "unwrap"
-                pairs.append((action, style_val, open_idx, ti))
-        else:
-            stack.append(ti)
-
-    # Build replacements from classified pairs
-    all_replacements: list[tuple[int, int, str]] = []
-    for action, style_val, open_idx, close_idx in pairs:
-        open_tok = tokens[open_idx]
-        close_tok = tokens[close_idx]
-
-        if action == "convert":
-            # Sanitize to prevent attribute breakout (defense-in-depth)
-            safe_style = (
-                style_val.replace('"', "").replace("'", "").replace("<", "").replace(">", "")
-            )
-            # Block dangerous CSS functions in div→table conversion
-            safe_style = _DANGEROUS_CSS_RE.sub("", safe_style)
-            table_open = (
-                '<table role="presentation" cellpadding="0" cellspacing="0" border="0">'
-                f'<tr><td style="{safe_style}">'
-            )
-            all_replacements.append((open_tok.start(), open_tok.end(), table_open))
-            all_replacements.append((close_tok.start(), close_tok.end(), "</td></tr></table>"))
-        elif action == "preserve":
-            pass  # keep both open and close as-is
-        else:  # unwrap
-            all_replacements.append((open_tok.start(), open_tok.end(), ""))
-            all_replacements.append((close_tok.start(), close_tok.end(), ""))
-
-    # Apply replacements in reverse order
-    for start, end, replacement in sorted(all_replacements, key=lambda r: r[0], reverse=True):
-        html_str = html_str[:start] + replacement + html_str[end:]
-
-    # 4. Restore MSO blocks and strip p/h inside them too
-    for i, block in enumerate(mso_blocks):
-        # Strip p/h tags inside MSO blocks — Outlook handles td just as well
-        cleaned = ph_re.sub(r"\3", block)
-        html_str = html_str.replace(f"__MSO_{i}__", cleaned)
-
-    return html_str
 
 
 def _group_into_rows(

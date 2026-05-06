@@ -596,8 +596,8 @@ class DesignImportService:
 
         design_tokens: dict[str, object] | None = None
         if tokens is not None:
-            from app.design_sync.converter import convert_spacing
             from app.design_sync.protocol import ExtractedSpacing
+            from app.design_sync.token_transforms import convert_spacing
 
             spacing_tokens = [ExtractedSpacing(name=s.name, value=s.value) for s in tokens.spacing]
             design_tokens = {
@@ -814,7 +814,7 @@ class DesignImportService:
     def _sanitize_email_html(response: ScaffolderResponse) -> ScaffolderResponse:
         """Post-process: convert web tags to email-safe and fix contrast."""
         from app.ai.agents.scaffolder.schemas import ScaffolderResponse as _SR
-        from app.design_sync.converter import sanitize_web_tags_for_email
+        from app.design_sync.sanitizers import sanitize_web_tags_for_email
 
         html = sanitize_web_tags_for_email(response.html)
         html = DesignImportService._fix_text_contrast(html)
@@ -838,7 +838,7 @@ class DesignImportService:
         background-color, then replaces dark text colors only within that
         element's content. Light-background sections are left untouched.
         """
-        from app.design_sync.converter import _relative_luminance
+        from app.shared.color import relative_luminance
 
         _DARK_TEXT = re.compile(
             r"color:\s*(#000000|#111111|#222222|#333333|#444444|#1a1a1a)",
@@ -858,7 +858,7 @@ class DesignImportService:
         dark_ranges: list[tuple[int, int]] = []
         for m in _BG_TAG.finditer(html_str):
             bg_hex = m.group(3) or m.group(4)
-            if not bg_hex or _relative_luminance(bg_hex) >= 0.2:
+            if not bg_hex or relative_luminance(bg_hex) >= 0.2:
                 continue
             tag_name = m.group(1).lower()
             # Find the matching closing tag from this position
