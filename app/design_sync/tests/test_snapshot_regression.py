@@ -28,6 +28,7 @@ import yaml
 
 from app.design_sync.converter_service import ConversionResult, DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.design_sync.visual_verify import (
     VerificationLoopResult,
     VerificationResult,
@@ -206,8 +207,8 @@ def _run_conversion(case_dir: Path) -> ConversionResult:
     _require_fixtures(case_dir)
     structure = load_structure_from_json(case_dir / "structure.json")
     tokens = load_tokens_from_json(case_dir / "tokens.json")
-    converter = DesignConverterService()
-    return converter.convert(structure, tokens)
+    document = EmailDesignDocument.from_legacy(structure, tokens)
+    return DesignConverterService().convert_document(document)
 
 
 # ── Snapshot tests ────────────────────────────────────────────────

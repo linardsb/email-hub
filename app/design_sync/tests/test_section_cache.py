@@ -13,6 +13,7 @@ from app.auth.dependencies import get_current_user
 from app.auth.models import User
 from app.core.rate_limit import limiter
 from app.design_sync.converter_service import DesignConverterService
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.design_sync.figma.layout_analyzer import (
     ButtonElement,
     ColumnLayout,
@@ -407,9 +408,9 @@ class TestConverterCacheIntegration:
         structure = _make_structure()
         tokens = _make_tokens()
 
-        result = service.convert(
-            structure,
-            tokens,
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        result = service.convert_document(
+            document,
             use_components=True,
             connection_id="conn_test",
         )
@@ -417,9 +418,8 @@ class TestConverterCacheIntegration:
         assert result.sections_count >= 1
         assert result.html != ""
         # Cache should have been populated — second call should hit
-        result2 = service.convert(
-            structure,
-            tokens,
+        result2 = service.convert_document(
+            document,
             use_components=True,
             connection_id="conn_test",
         )
@@ -434,7 +434,8 @@ class TestConverterCacheIntegration:
         structure = _make_structure()
         tokens = _make_tokens()
 
-        result = service.convert(structure, tokens, use_components=True)
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        result = service.convert_document(document, use_components=True)
         assert result.cache_hit_rate is None
         clear_section_cache()
 
@@ -454,9 +455,9 @@ class TestConverterCacheIntegration:
             mock_cfg.design_sync.custom_component_enabled = False
             mock_cfg.design_sync.custom_component_max_per_email = 0
 
-            result = service.convert(
-                structure,
-                tokens,
+            document = EmailDesignDocument.from_legacy(structure, tokens)
+            result = service.convert_document(
+                document,
                 use_components=True,
                 connection_id="conn_test",
             )
@@ -533,13 +534,14 @@ class TestConverterCacheIntegration:
             ],
         )
 
+        document = EmailDesignDocument.from_legacy(structure, tokens)
         # First conversion — all misses
-        r1 = service.convert(structure, tokens, use_components=True, connection_id="conn_partial")
+        r1 = service.convert_document(document, use_components=True, connection_id="conn_partial")
         assert r1.sections_count >= 2
         assert r1.cache_hit_rate == 0.0
 
         # Second conversion — same input — all hits
-        r2 = service.convert(structure, tokens, use_components=True, connection_id="conn_partial")
+        r2 = service.convert_document(document, use_components=True, connection_id="conn_partial")
         assert r2.cache_hit_rate == 1.0
 
         # Modify text in frame2
@@ -578,8 +580,9 @@ class TestConverterCacheIntegration:
         )
 
         # Third conversion — partial hit (header cached, content re-rendered)
-        r3 = service.convert(
-            structure_modified, tokens, use_components=True, connection_id="conn_partial"
+        document_modified = EmailDesignDocument.from_legacy(structure_modified, tokens)
+        r3 = service.convert_document(
+            document_modified, use_components=True, connection_id="conn_partial"
         )
         assert r3.cache_hit_rate is not None
         assert 0.0 < r3.cache_hit_rate < 1.0
@@ -592,9 +595,9 @@ class TestConverterCacheIntegration:
         structure = _make_structure()
         tokens = _make_tokens()
 
-        r1 = service.convert(
-            structure,
-            tokens,
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        r1 = service.convert_document(
+            document,
             use_components=True,
             connection_id="conn_tc",
             target_clients=["gmail"],
@@ -602,9 +605,8 @@ class TestConverterCacheIntegration:
         assert r1.cache_hit_rate == 0.0
 
         # Same structure, different target_clients
-        r2 = service.convert(
-            structure,
-            tokens,
+        r2 = service.convert_document(
+            document,
             use_components=True,
             connection_id="conn_tc",
             target_clients=["outlook"],

@@ -264,26 +264,35 @@ class DesignImportService:
                             raw_data = (
                                 design_import.structure_json if conn.provider == "penpot" else None
                             )
+                            from app.design_sync.email_design_document import (
+                                EmailDesignDocument,
+                            )
+                            from app.design_sync.figma.tree_normalizer import normalize_tree
+
+                            structure_norm, _norm_stats = normalize_tree(
+                                structure, raw_file_data=raw_data
+                            )
+                            legacy_document = EmailDesignDocument.from_legacy(
+                                structure_norm,
+                                extracted_tokens,
+                                selected_nodes=None,
+                                connection_config=conn.config_json,
+                                _pre_normalized=True,
+                            )
                             if output_format == "mjml":
-                                conversion = await converter.convert_mjml(
-                                    structure,
-                                    extracted_tokens,
-                                    raw_file_data=raw_data,
-                                    selected_nodes=None,
+                                conversion = await converter.convert_document_mjml(
+                                    legacy_document,
                                     target_clients=target_clients,
-                                    connection_config=conn.config_json,
                                     connection_id=_conn_id,
+                                    global_design_image=structure_norm.design_image,
                                 )
                             else:
-                                conversion = converter.convert(
-                                    structure,
-                                    extracted_tokens,
-                                    raw_file_data=raw_data,
-                                    selected_nodes=None,
+                                conversion = converter.convert_document(
+                                    legacy_document,
                                     target_clients=target_clients,
-                                    connection_config=conn.config_json,
                                     image_urls=_image_url_map,
                                     connection_id=_conn_id,
+                                    global_design_image=structure_norm.design_image,
                                 )
 
                         initial_html = conversion.html
@@ -596,8 +605,8 @@ class DesignImportService:
 
         design_tokens: dict[str, object] | None = None
         if tokens is not None:
-            from app.design_sync.converter import convert_spacing
             from app.design_sync.protocol import ExtractedSpacing
+            from app.design_sync.token_transforms import convert_spacing
 
             spacing_tokens = [ExtractedSpacing(name=s.name, value=s.value) for s in tokens.spacing]
             design_tokens = {
@@ -814,7 +823,7 @@ class DesignImportService:
     def _sanitize_email_html(response: ScaffolderResponse) -> ScaffolderResponse:
         """Post-process: convert web tags to email-safe and fix contrast."""
         from app.ai.agents.scaffolder.schemas import ScaffolderResponse as _SR
-        from app.design_sync.converter import sanitize_web_tags_for_email
+        from app.design_sync.sanitizers import sanitize_web_tags_for_email
 
         html = sanitize_web_tags_for_email(response.html)
         html = DesignImportService._fix_text_contrast(html)
@@ -838,7 +847,7 @@ class DesignImportService:
         background-color, then replaces dark text colors only within that
         element's content. Light-background sections are left untouched.
         """
-        from app.design_sync.converter import _relative_luminance
+        from app.shared.color import relative_luminance
 
         _DARK_TEXT = re.compile(
             r"color:\s*(#000000|#111111|#222222|#333333|#444444|#1a1a1a)",
@@ -858,7 +867,7 @@ class DesignImportService:
         dark_ranges: list[tuple[int, int]] = []
         for m in _BG_TAG.finditer(html_str):
             bg_hex = m.group(3) or m.group(4)
-            if not bg_hex or _relative_luminance(bg_hex) >= 0.2:
+            if not bg_hex or relative_luminance(bg_hex) >= 0.2:
                 continue
             tag_name = m.group(1).lower()
             # Find the matching closing tag from this position

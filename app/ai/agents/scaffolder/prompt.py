@@ -153,8 +153,8 @@ def build_design_context_section(design_context: dict[str, object]) -> str:
         colors = tokens.get("colors", [])
         if isinstance(colors, list) and colors:
             # Compute palette roles from colors
-            from app.design_sync.converter import convert_colors_to_palette
             from app.design_sync.protocol import ExtractedColor
+            from app.design_sync.token_transforms import convert_colors_to_palette
 
             extracted = [
                 ExtractedColor(
@@ -174,9 +174,9 @@ def build_design_context_section(design_context: dict[str, object]) -> str:
                 f"- Link: `{palette.link}` — use for hyperlinks\n"
             )
 
-            from app.design_sync.converter import _relative_luminance
+            from app.shared.color import relative_luminance
 
-            if _relative_luminance(palette.background) < 0.3:
+            if relative_luminance(palette.background) < 0.3:
                 parts.append(
                     f"\n**DARK BACKGROUND DETECTED — Text color rules:**\n"
                     f"- ALL body text MUST use `{palette.text}` (light color)\n"

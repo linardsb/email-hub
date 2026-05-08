@@ -17,8 +17,8 @@ import numpy as np
 from PIL import Image
 
 from app.core.logging import get_logger
-from app.design_sync.converter import _relative_luminance
 from app.design_sync.image_sampler import sample_edge_color
+from app.shared.color import relative_luminance
 from app.shared.imaging import safe_image_open
 
 if TYPE_CHECKING:
@@ -426,14 +426,14 @@ def _invert_text_colors(section_html: str, bgcolor: str) -> str:
     has low luminance (dark-on-dark), replaces it with ``#ffffff``.
     Leaves light text colors untouched (they already contrast).
     """
-    bg_lum = _relative_luminance(bgcolor)
+    bg_lum = relative_luminance(bgcolor)
     if bg_lum >= _DARK_LUMINANCE_THRESHOLD:
         return section_html
 
     def _replace_dark_color(m: re.Match[str]) -> str:
         prefix = m.group(1)  # "color:" (with optional whitespace)
         hex_val = m.group(2)
-        text_lum = _relative_luminance(hex_val)
+        text_lum = relative_luminance(hex_val)
         if text_lum < _DARK_LUMINANCE_THRESHOLD:
             return f"{prefix}#ffffff"
         return m.group(0)

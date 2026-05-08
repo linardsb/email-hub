@@ -12,6 +12,7 @@ from app.design_sync.converter_service import (
     MjmlCompileResult,
     MjmlError,
 )
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.design_sync.protocol import (
     DesignFileStructure,
     DesignNode,
@@ -20,6 +21,18 @@ from app.design_sync.protocol import (
     ExtractedTokens,
     ExtractedTypography,
 )
+
+
+def _make_document(
+    structure: DesignFileStructure | None = None,
+    tokens: ExtractedTokens | None = None,
+) -> EmailDesignDocument:
+    """Build an EmailDesignDocument from the test factory pair."""
+    return EmailDesignDocument.from_legacy(
+        structure if structure is not None else _make_structure(),
+        tokens if tokens is not None else _make_tokens(),
+    )
+
 
 # ---------------------------------------------------------------------------
 # Factory helpers
@@ -100,7 +113,7 @@ class TestConvertMjmlSuccess:
             mock_compile.return_value = MjmlCompileResult(
                 html=compiled_html, errors=[], build_time_ms=50.0
             )
-            result = await service.convert_mjml(_make_structure(), _make_tokens())
+            result = await service.convert_document_mjml(_make_document())
 
         assert isinstance(result, ConversionResult)
         assert result.html
@@ -117,8 +130,8 @@ class TestConvertMjmlSuccess:
             mock_compile.return_value = MjmlCompileResult(
                 html="<html></html>", errors=[], build_time_ms=30.0
             )
-            await service.convert_mjml(
-                _make_structure(), _make_tokens(), target_clients=["gmail", "outlook"]
+            await service.convert_document_mjml(
+                _make_document(), target_clients=["gmail", "outlook"]
             )
 
         call_kwargs = mock_compile.call_args
@@ -133,7 +146,7 @@ class TestConvertMjmlSuccess:
             mock_compile.return_value = MjmlCompileResult(
                 html="<html></html>", errors=[], build_time_ms=20.0
             )
-            result = await service.convert_mjml(_make_structure(), _make_tokens())
+            result = await service.convert_document_mjml(_make_document())
 
         # _make_structure has 1 frame which yields at least 1 section
         assert result.sections_count >= 1
@@ -147,7 +160,7 @@ class TestConvertMjmlSuccess:
             mock_compile.return_value = MjmlCompileResult(
                 html="<html></html>", errors=[], build_time_ms=20.0
             )
-            result = await service.convert_mjml(_make_structure(), _make_tokens())
+            result = await service.convert_document_mjml(_make_document())
 
         assert result.layout is not None
         assert result.layout.file_name == "Test"
@@ -165,7 +178,7 @@ class TestConvertMjmlValidation:
                 errors=[MjmlError(line=5, message="Unknown attribute", tag_name="mj-text")],
                 build_time_ms=40.0,
             )
-            result = await service.convert_mjml(_make_structure(), _make_tokens())
+            result = await service.convert_document_mjml(_make_document())
 
         assert any("MJML had 1 validation issues" in w for w in result.warnings)
 
@@ -179,7 +192,7 @@ class TestConvertMjmlValidation:
             mock_compile.return_value = MjmlCompileResult(
                 html=compiled_html, errors=[], build_time_ms=20.0
             )
-            result = await service.convert_mjml(_make_structure(), _make_tokens())
+            result = await service.convert_document_mjml(_make_document())
 
         # frame1 should be found in the layout and marker-injected
         # (depending on layout analysis of _make_structure)
@@ -193,8 +206,9 @@ class TestConvertMjmlNoFrames:
         service = DesignConverterService()
         empty_structure = DesignFileStructure(file_name="Empty", pages=[])
 
-        result = await service.convert_mjml(empty_structure, _make_tokens())
+        empty_document = EmailDesignDocument.from_legacy(empty_structure, _make_tokens())
+        result = await service.convert_document_mjml(empty_document)
 
         assert result.sections_count == 0
         assert result.html == ""
-        assert "No frames found" in result.warnings
+        assert "No sections found" in result.warnings

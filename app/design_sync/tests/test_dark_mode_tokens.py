@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.design_sync.converter import _gradient_to_css
 from app.design_sync.converter_service import dark_mode_meta_tags, dark_mode_style_block
+from app.design_sync.dark_mode_gradient import _gradient_to_css
 from app.design_sync.protocol import ExtractedColor, ExtractedGradient, ExtractedTokens
 from app.design_sync.token_transforms import (
     TokenWarning,
@@ -290,7 +290,10 @@ class TestDarkModeStyleBlock:
             colors=[ExtractedColor(name="bg", hex="#FFFFFF")],
             dark_colors=[],
         )
-        result = DesignConverterService().convert(structure, tokens)
+        from app.design_sync.email_design_document import EmailDesignDocument
+
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        result = DesignConverterService().convert_document(document)
         assert 'name="color-scheme"' not in result.html
 
     def test_dark_mode_meta_tags_in_skeleton(self) -> None:
@@ -330,7 +333,10 @@ class TestDarkModeStyleBlock:
             colors=[ExtractedColor(name="Background", hex="#FFFFFF")],
             dark_colors=[ExtractedColor(name="Background", hex="#1A1A2E")],
         )
-        result = DesignConverterService().convert(structure, tokens)
+        from app.design_sync.email_design_document import EmailDesignDocument
+
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        result = DesignConverterService().convert_document(document)
         assert 'name="color-scheme"' in result.html
         assert "@media (prefers-color-scheme: dark)" in result.html
 

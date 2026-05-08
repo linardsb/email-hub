@@ -15,17 +15,14 @@ from typing import TYPE_CHECKING
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from app.design_sync.converter import (
-    _sanitize_css_value,
-    convert_colors_to_palette,
-    convert_typography,
-)
 from app.design_sync.figma.layout_analyzer import (
     ColumnLayout,
     DesignLayoutDescription,
     EmailSection,
     EmailSectionType,
 )
+from app.design_sync.sanitizers import _sanitize_css_value
+from app.design_sync.token_transforms import convert_colors_to_palette, convert_typography
 
 if TYPE_CHECKING:
     from app.design_sync.protocol import ExtractedColor, ExtractedTokens

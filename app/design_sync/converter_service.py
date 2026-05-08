@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
-import inspect
-import warnings as _stdlib_warnings
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -15,22 +12,12 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.design_sync.compatibility import CompatibilityHint, ConverterCompatibility
 from app.design_sync.conversion_phases import MatchPhase, RenderPhase
-from app.design_sync.converter import (
-    _has_visible_content,
-    _NodeProps,
-    _sanitize_css_value,
-    convert_colors_to_palette,
-    convert_typography,
-    node_to_email_html,
-)
 from app.design_sync.exceptions import MjmlCompileError
 from app.design_sync.figma.layout_analyzer import (
     DesignLayoutDescription,
     EmailSection,
     EmailSectionType,
-    TextBlock,
 )
-from app.design_sync.figma.tree_normalizer import normalize_tree
 from app.design_sync.html_formatter import format_email_html
 from app.design_sync.mjml_template_engine import (
     build_template_context,
@@ -42,23 +29,23 @@ from app.design_sync.protocol import (
     DesignNode,
     DesignNodeType,
     ExtractedColor,
-    ExtractedGradient,
     ExtractedTokens,
+    _NodeProps,
 )
 from app.design_sync.quality_contracts import QualityWarning, run_quality_contracts
-from app.design_sync.render_context import RenderContext
+from app.design_sync.sanitizers import _has_visible_content, _sanitize_css_value
 from app.design_sync.section_cache import (
     SectionCache,
     SectionCacheEntry,
     compute_section_hash,
     get_section_cache,
 )
+from app.design_sync.token_transforms import convert_colors_to_palette, convert_typography
 
 if TYPE_CHECKING:
     from app.design_sync.component_matcher import ComponentMatch
     from app.design_sync.component_renderer import RenderedSection
     from app.design_sync.email_design_document import EmailDesignDocument
-    from app.design_sync.vlm_classifier import VLMSectionClassification
 
 logger = get_logger(__name__)
 
@@ -442,168 +429,6 @@ class DesignConverterService:
             verification_initial_fidelity=vr.initial_fidelity,
             verification_final_fidelity=vr.final_fidelity,
         )
-
-    # ── Legacy entry points (shim to document path) ──────────────────
-
-    def convert(
-        self,
-        structure: DesignFileStructure,
-        tokens: ExtractedTokens,
-        *,
-        raw_file_data: dict[str, Any] | None = None,
-        selected_nodes: list[str] | None = None,
-        target_clients: list[str] | None = None,
-        use_components: bool = True,
-        connection_config: dict[str, Any] | None = None,
-        image_urls: dict[str, str] | None = None,
-        connection_id: str | None = None,
-        vlm_classifications: dict[str, VLMSectionClassification] | None = None,
-    ) -> ConversionResult:
-        """Convert a design file structure into an email HTML skeleton.
-
-        Shim: builds an ``EmailDesignDocument`` via ``from_legacy()`` and
-        delegates to ``convert_document()``.  Falls back to the legacy
-        recursive converter when ``use_components`` is False (requires
-        the full DesignNode tree which the document path doesn't carry).
-
-        Deprecated (Tech Debt F013): emits telemetry on every call.
-        Callers should migrate to ``convert_document()`` after building
-        an ``EmailDesignDocument`` themselves.
-        """
-        caller_frame = inspect.stack()[1]
-        logger.info(
-            "design_sync.converter.shim_called",
-            entry="convert",
-            caller=caller_frame.function,
-            caller_module=caller_frame.frame.f_globals.get("__name__"),
-        )
-        _stdlib_warnings.warn(
-            "DesignConverterService.convert() is deprecated; use convert_document() "
-            "after building an EmailDesignDocument. Scheduled removal after "
-            "14-day telemetry window.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from app.design_sync.email_design_document import EmailDesignDocument
-
-        # Normalize once — reused by both from_legacy and recursive fallback
-        structure, _norm_stats = normalize_tree(structure, raw_file_data=raw_file_data)
-
-        document = EmailDesignDocument.from_legacy(
-            structure,
-            tokens,
-            selected_nodes=selected_nodes,
-            connection_config=connection_config,
-            _pre_normalized=True,
-            vlm_classifications=vlm_classifications,
-        )
-
-        if use_components:
-            return self.convert_document(
-                document,
-                target_clients=target_clients,
-                use_components=True,
-                image_urls=image_urls,
-                connection_id=connection_id,
-                global_design_image=structure.design_image,
-            )
-
-        # Recursive converter requires full DesignNode frames
-        frames = self._collect_frames(structure, selected_nodes)
-        if not frames:
-            logger.warning("design_sync.converter_no_frames")
-            return ConversionResult(html="", sections_count=0, warnings=["No frames found"])
-
-        layout = document.to_layout_description()
-        container_width = document.layout.container_width
-        compat = ConverterCompatibility(target_clients=target_clients)
-
-        return self._convert_recursive(
-            frames=frames,
-            layout=layout,
-            tokens=document.to_extracted_tokens(),
-            warnings=[],
-            compat=compat,
-            container_width=container_width,
-            raw_file_data=raw_file_data,
-        )
-
-    async def convert_mjml(
-        self,
-        structure: DesignFileStructure,
-        tokens: ExtractedTokens,
-        *,
-        raw_file_data: dict[str, Any] | None = None,
-        selected_nodes: list[str] | None = None,
-        target_clients: list[str] | None = None,
-        connection_config: dict[str, Any] | None = None,
-        connection_id: str | None = None,
-    ) -> ConversionResult:
-        """Convert a design file structure into email HTML via MJML.
-
-        Shim: builds an ``EmailDesignDocument`` via ``from_legacy()`` and
-        delegates to ``convert_document_mjml()``.  Falls back to the
-        recursive converter if MJML compilation fails (requires full
-        DesignNode tree preserved from the original structure).
-
-        Deprecated (Tech Debt F013): emits telemetry on every call.
-        Callers should migrate to ``convert_document_mjml()`` after
-        building an ``EmailDesignDocument`` themselves.
-        """
-        caller_frame = inspect.stack()[1]
-        logger.info(
-            "design_sync.converter.shim_called",
-            entry="convert_mjml",
-            caller=caller_frame.function,
-            caller_module=caller_frame.frame.f_globals.get("__name__"),
-        )
-        _stdlib_warnings.warn(
-            "DesignConverterService.convert_mjml() is deprecated; use "
-            "convert_document_mjml() after building an EmailDesignDocument. "
-            "Scheduled removal after 14-day telemetry window.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        from app.design_sync.email_design_document import EmailDesignDocument
-
-        # Normalize once — reused by both from_legacy and recursive fallback
-        structure, _norm_stats = normalize_tree(structure, raw_file_data=raw_file_data)
-
-        document = EmailDesignDocument.from_legacy(
-            structure,
-            tokens,
-            selected_nodes=selected_nodes,
-            connection_config=connection_config,
-            _pre_normalized=True,
-        )
-
-        if not document.sections:
-            return ConversionResult(html="", sections_count=0, warnings=["No frames found"])
-
-        try:
-            return await self.convert_document_mjml(
-                document,
-                target_clients=target_clients,
-                connection_id=connection_id,
-                global_design_image=structure.design_image,
-            )
-        except MjmlCompileError:
-            logger.warning("design_sync.mjml_fallback", reason="compilation_failed")
-            # Reuse already-normalized structure for recursive fallback
-            frames = self._collect_frames(structure, selected_nodes)
-            if not frames:
-                return ConversionResult(html="", sections_count=0, warnings=["No frames found"])
-            layout = document.to_layout_description()
-            compat = ConverterCompatibility(target_clients=target_clients)
-            return self._convert_recursive(
-                frames=frames,
-                layout=layout,
-                tokens=document.to_extracted_tokens(),
-                warnings=["MJML compilation failed, falling back to recursive converter"],
-                compat=compat,
-                container_width=document.layout.container_width,
-                raw_file_data=raw_file_data,
-            )
 
     async def _convert_mjml_from_layout(
         self,
@@ -1140,170 +965,6 @@ class DesignConverterService:
                 exc_info=True,
             )
             return None
-
-    def _convert_recursive(
-        self,
-        *,
-        frames: list[DesignNode],
-        layout: DesignLayoutDescription,
-        tokens: ExtractedTokens,
-        warnings: list[str],
-        compat: ConverterCompatibility,
-        container_width: int,
-        raw_file_data: dict[str, Any] | None = None,
-    ) -> ConversionResult:
-        """Legacy recursive converter (original tr-stacking approach).
-
-        Deprecated (Tech Debt F013): emits telemetry on every call. Will be
-        removed after a 14-day observation window confirms zero unexpected
-        callers. Tracking entry: TODO.md → Operational follow-ups.
-        """
-        caller_frame = inspect.stack()[1]
-        logger.info(
-            "design_sync.converter.shim_called",
-            entry="_convert_recursive",
-            caller=caller_frame.function,
-            caller_module=caller_frame.frame.f_globals.get("__name__"),
-        )
-        _stdlib_warnings.warn(
-            "_convert_recursive is deprecated; use convert_document with "
-            "use_components=True. Scheduled removal after 14-day telemetry window.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        # Build O(1) lookup maps from layout analysis
-        sections_by_node_id: dict[str, EmailSection] = {
-            section.node_id: section for section in layout.sections
-        }
-
-        button_node_ids: set[str] = set()
-        for section in layout.sections:
-            for btn in section.buttons:
-                button_node_ids.add(btn.node_id)
-
-        text_meta: dict[str, TextBlock] = {}
-        for section in layout.sections:
-            for tb in section.texts:
-                text_meta[tb.node_id] = tb
-
-        # Build props_map: from raw file data (Penpot) or from DesignNode tree (Figma)
-        if raw_file_data:
-            props_map = self._build_props_map(raw_file_data)
-        else:
-            props_map = self._build_props_map_from_nodes(frames)
-
-        # Compute body font size from typography tokens for heading detection
-        typography = convert_typography(tokens.typography)
-        body_font_size = 16.0
-        if typography.base_size:
-            with contextlib.suppress(ValueError, TypeError):
-                body_font_size = float(typography.base_size.replace("px", ""))
-
-        # Build gradient name → ExtractedGradient lookup
-        gradients_map: dict[str, ExtractedGradient] = (
-            {g.name: g for g in tokens.gradients} if tokens.gradients else {}
-        )
-
-        # Convert each frame to HTML section
-        section_parts: list[str] = []
-        section_idx = 0
-        for frame in frames:
-            # Skip childless frames at section level (empty spacer sections)
-            if not frame.children:
-                continue
-            self._collect_vector_warnings(frame, warnings)
-            slot_counter: dict[str, int] = {}
-            section_html = node_to_email_html(
-                frame,
-                RenderContext(
-                    indent=1,
-                    props_map=props_map or {},
-                    section_map=sections_by_node_id or {},
-                    button_ids=frozenset(button_node_ids) if button_node_ids else frozenset(),
-                    text_meta=text_meta or {},
-                    body_font_size=body_font_size,
-                    compat=compat,
-                    gradients_map=gradients_map or {},
-                    slot_counter=slot_counter,
-                ),
-            )
-            section_parts.append(
-                f'<tr data-section-id="section_{section_idx}"><td>\n{section_html}\n</td></tr>'
-            )
-            section_idx += 1
-
-            # Inter-section spacer from layout analysis
-            frame_section = sections_by_node_id.get(frame.id)
-            if frame_section and frame_section.spacing_after and frame_section.spacing_after > 0:
-                spacer_h = int(frame_section.spacing_after)
-                section_parts.append(
-                    f'<tr><td style="height:{spacer_h}px;font-size:1px;'
-                    f'line-height:1px;mso-line-height-rule:exactly;" '
-                    f'aria-hidden="true">&nbsp;</td></tr>'
-                )
-
-        sections_html = "\n".join(section_parts)
-
-        # Apply token-derived values (sanitize for CSS context)
-        palette = convert_colors_to_palette(tokens.colors)
-        bg_color = _sanitize_css_value(palette.background) or "#ffffff"
-        text_color = _sanitize_css_value(palette.text) or "#000000"
-
-        safe_body_font = _sanitize_css_value(typography.body_font)
-        style_block = (
-            "<style>\n"
-            f"  body {{ font-family: {safe_body_font}; margin: 0; padding: 0; }}\n"
-            "  table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }\n"
-            "  img { -ms-interpolation-mode: bicubic; border: 0; display: block;"
-            " outline: none; text-decoration: none; }\n"
-            "</style>"
-        )
-
-        # Dark mode CSS (only if dark tokens present)
-        if tokens.dark_colors:
-            dark_css = dark_mode_style_block(tokens.colors, tokens.dark_colors)
-            dark_meta = dark_mode_meta_tags()
-            if dark_meta:
-                style_block = dark_meta + "\n" + style_block
-            if dark_css:
-                style_block = style_block + "\n" + dark_css
-
-        # Check max-width support (used on wrapper table)
-        if compat.has_targets:
-            compat.check_and_warn("max-width", context="Email wrapper table")
-
-        result_html = EMAIL_SKELETON.format(
-            style_block=style_block,
-            bg_color=bg_color,
-            text_color=text_color,
-            body_font=safe_body_font or "Arial, Helvetica, sans-serif",
-            sections=sections_html,
-            container_width=container_width,
-        )
-        result_html = format_email_html(result_html)
-
-        logger.info(
-            "design_sync.converter_result",
-            sections_count=len(frames),
-            warnings_count=len(warnings),
-        )
-
-        input_button_count = sum(len(s.buttons) for s in layout.sections)
-        quality_warnings = run_quality_contracts(
-            result_html,
-            input_section_count=len(frames),
-            input_button_count=input_button_count,
-        )
-
-        return ConversionResult(
-            html=result_html,
-            sections_count=len(frames),
-            warnings=warnings,
-            layout=layout,
-            compatibility_hints=compat.hints,
-            quality_warnings=quality_warnings,
-        )
 
     @staticmethod
     def _build_component_style_block(body_font: str, tokens: ExtractedTokens) -> str:

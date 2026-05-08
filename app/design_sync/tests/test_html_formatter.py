@@ -429,6 +429,7 @@ class TestFullEmailRoundTrip:
     def test_converter_output_well_formed(self) -> None:
         """Build a mini email via DesignConverterService, verify formatting."""
         from app.design_sync.converter_service import DesignConverterService
+        from app.design_sync.email_design_document import EmailDesignDocument
         from app.design_sync.protocol import (
             DesignFileStructure,
             DesignNode,
@@ -472,7 +473,8 @@ class TestFullEmailRoundTrip:
                 ),
             ],
         )
-        result = DesignConverterService().convert(structure, ExtractedTokens())
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         html = result.html
 
         # Basic structure present
@@ -493,6 +495,7 @@ class TestFullEmailRoundTrip:
     def test_formatted_output_is_idempotent(self) -> None:
         """Converter output should already be formatted (format is idempotent)."""
         from app.design_sync.converter_service import DesignConverterService
+        from app.design_sync.email_design_document import EmailDesignDocument
         from app.design_sync.protocol import (
             DesignFileStructure,
             DesignNode,
@@ -527,5 +530,6 @@ class TestFullEmailRoundTrip:
                 ),
             ],
         )
-        result = DesignConverterService().convert(structure, ExtractedTokens())
+        document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
+        result = DesignConverterService().convert_document(document)
         assert format_email_html(result.html) == result.html

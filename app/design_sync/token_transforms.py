@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Literal
+
+import yaml
 
 if TYPE_CHECKING:
     from app.design_sync.caniemail import CanieMailData
@@ -22,8 +25,31 @@ from app.design_sync.protocol import (
     ExtractedTokens,
     ExtractedTypography,
 )
+from app.projects.design_system import BrandPalette, Typography
+from app.shared.color import contrast_ratio, relative_luminance
 
 logger = get_logger(__name__)
+
+
+# ── YAML-backed font fallback data (08c part 4 — moved from converter.py) ──
+_FONT_DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "email_client_fonts.yaml"
+_FONT_DATA: dict[str, Any] = (
+    yaml.safe_load(_FONT_DATA_PATH.read_text()) if _FONT_DATA_PATH.exists() else {}
+)
+_FALLBACK_MAP: dict[str, list[str]] = _FONT_DATA.get("fallback_map", {})
+
+
+def _font_stack(family: str) -> str:
+    """Build email-safe CSS font stack using data/email_client_fonts.yaml."""
+    family_clean = family.strip("'\"").strip()
+    if "," in family_clean:
+        return family_clean
+    for mapped_name, chain in _FALLBACK_MAP.items():
+        if mapped_name.strip("'\"").lower() == family_clean.lower():
+            return f"{family_clean}, {', '.join(str(f) for f in chain)}"
+    if family_clean.lower() in {"sans-serif", "serif", "monospace", "cursive", "fantasy"}:
+        return family_clean
+    return f"{family_clean}, Arial, Helvetica, sans-serif"
 
 
 @dataclass(frozen=True)
@@ -588,11 +614,11 @@ def _validate_dark_mode_contrast(
         dark_by_name.get("text") or dark_by_name.get("body") or dark_by_name.get("foreground")
     )
     if dark_bg and dark_text:
-        from app.design_sync.converter import _contrast_ratio, _relative_luminance
+        from app.shared.color import contrast_ratio, relative_luminance
 
-        bg_lum = _relative_luminance(dark_bg.hex)
-        text_lum = _relative_luminance(dark_text.hex)
-        ratio = _contrast_ratio(bg_lum, text_lum)
+        bg_lum = relative_luminance(dark_bg.hex)
+        text_lum = relative_luminance(dark_text.hex)
+        ratio = contrast_ratio(bg_lum, text_lum)
         if ratio < 4.5:
             warnings.append(
                 TokenWarning(
@@ -840,3 +866,148 @@ def validate_and_transform(
         gradients=gradients,
     )
     return validated, warnings
+
+
+# ── Token → design-system mappers (moved from converter.py during 08c part 1) ──
+
+
+def convert_colors_to_palette(colors: list[ExtractedColor]) -> BrandPalette:
+    """Map extracted design colors to BrandPalette.
+
+    Heuristic: match color names to palette roles (primary, secondary, accent,
+    background, text, link). Falls back to positional assignment.
+    Ensures adequate contrast between text and background.
+    """
+    role_map: dict[str, str] = {}
+    name_hints: dict[str, list[str]] = {
+        "primary": ["primary", "brand", "main"],
+        "secondary": ["secondary", "accent-2"],
+        "accent": ["accent", "highlight", "cta"],
+        "background": ["background", "bg", "surface"],
+        "text": ["text", "body", "foreground", "fg"],
+        "link": ["link", "url", "anchor"],
+    }
+
+    for color in colors:
+        lower_name = color.name.lower()
+        for role, hints in name_hints.items():
+            if role not in role_map and any(h in lower_name for h in hints):
+                role_map[role] = color.hex
+                break
+
+    unmatched = [c for c in colors if c.hex not in role_map.values()]
+    for role in ("primary", "secondary", "accent"):
+        if role not in role_map and unmatched:
+            role_map[role] = unmatched.pop(0).hex
+
+    bg_hex = role_map.get("background", "#ffffff")
+    text_hex = role_map.get("text", "#000000")
+    bg_lum = relative_luminance(bg_hex)
+    text_lum = relative_luminance(text_hex)
+    if contrast_ratio(bg_lum, text_lum) < 3.0:
+        role_map["text"] = "#ffffff" if bg_lum < 0.5 else "#000000"
+        logger.info(
+            "design_sync.contrast_fix",
+            bg=bg_hex,
+            original_text=text_hex,
+            fixed_text=role_map["text"],
+        )
+
+    link_hex = role_map.get("link", "#0000ee")
+    link_lum = relative_luminance(link_hex)
+    if contrast_ratio(bg_lum, link_lum) < 3.0:
+        role_map["link"] = "#99ccff" if bg_lum < 0.5 else "#0000ee"
+
+    return BrandPalette(
+        primary=role_map.get("primary", "#333333"),
+        secondary=role_map.get("secondary", "#666666"),
+        accent=role_map.get("accent", "#0066cc"),
+        background=role_map.get("background", "#ffffff"),
+        text=role_map.get("text", "#000000"),
+        link=role_map.get("link", "#0000ee"),
+    )
+
+
+def convert_typography(styles: list[ExtractedTypography]) -> Typography:
+    """Map extracted typography to Typography design system model.
+
+    Heuristic: largest font_size → heading, most common family → body.
+    """
+    if not styles:
+        return Typography()
+
+    heading_style = None
+    for s in styles:
+        if any(kw in s.name.lower() for kw in ("heading", "title", "h1", "h2")):
+            heading_style = s
+            break
+    if heading_style is None:
+        heading_style = max(styles, key=lambda s: s.size)
+
+    body_style = None
+    for s in styles:
+        if any(kw in s.name.lower() for kw in ("body", "paragraph", "text", "regular")):
+            body_style = s
+            break
+    if body_style is None:
+        body_style = min(styles, key=lambda s: s.size)
+
+    def _px_or_none(val: float | None) -> str | None:
+        if val is None:
+            return None
+        return f"{round(val)}px"
+
+    def _spacing_px_or_none(val: float | None) -> str | None:
+        if val is None or val == 0.0:
+            return None
+        return f"{round(val, 1)}px"
+
+    return Typography(
+        heading_font=_font_stack(heading_style.family),
+        body_font=_font_stack(body_style.family),
+        base_size=f"{int(body_style.size)}px",
+        heading_line_height=_px_or_none(heading_style.line_height),
+        body_line_height=_px_or_none(body_style.line_height),
+        heading_letter_spacing=_spacing_px_or_none(heading_style.letter_spacing),
+        body_letter_spacing=_spacing_px_or_none(body_style.letter_spacing),
+        heading_text_transform=heading_style.text_transform,
+    )
+
+
+_SPACING_SCALE: dict[int, str] = {
+    4: "2xs",
+    8: "xs",
+    12: "sm",
+    16: "md",
+    20: "md-lg",
+    24: "lg",
+    32: "xl",
+    40: "xl-2",
+    48: "2xl",
+    64: "3xl",
+}
+
+
+def convert_spacing(spacing: list[ExtractedSpacing]) -> dict[str, float]:
+    """Convert extracted spacing tokens to a named spacing scale.
+
+    Maps numeric spacing values to semantic names. Values that align to
+    the standard 4px/8px scale get standard names (xs, sm, md, lg, xl).
+    Non-standard values keep their original name.
+
+    Returns:
+        Mapping of semantic name → pixel value.
+    """
+    result: dict[str, float] = {}
+    for token in spacing:
+        px = token.value
+        int_px = int(px)
+        if int_px in _SPACING_SCALE:
+            name = _SPACING_SCALE[int_px]
+        else:
+            name = token.name.lower().removeprefix("spacing-").removeprefix("space-")
+            if not name:
+                name = f"{int_px}px"
+        if name not in result:
+            result[name] = px
+    return result

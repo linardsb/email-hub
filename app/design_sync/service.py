@@ -308,8 +308,10 @@ async def backfill_training_case(
 
         structure = load_structure_from_json(case_dir / "structure.json")
         tokens = load_tokens_from_json(case_dir / "tokens.json")
-        converter = DesignConverterService()
-        result = converter.convert(structure, tokens)
+        from app.design_sync.email_design_document import EmailDesignDocument
+
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        result = DesignConverterService().convert_document(document)
     else:
         from app.design_sync.html_import.adapter import HtmlImportAdapter
 

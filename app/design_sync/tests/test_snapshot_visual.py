@@ -26,6 +26,7 @@ import yaml
 
 from app.design_sync.converter_service import DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.rendering.exceptions import VisualDiffError
 from app.rendering.local.profiles import RenderingProfile
 from app.rendering.local.runner import capture_screenshot
@@ -118,7 +119,8 @@ def _run_conversion(case_dir: Path) -> str:
     """Convert design inputs → HTML string."""
     structure = load_structure_from_json(case_dir / "structure.json")
     tokens = load_tokens_from_json(case_dir / "tokens.json")
-    result = DesignConverterService().convert(structure, tokens)
+    document = EmailDesignDocument.from_legacy(structure, tokens)
+    result = DesignConverterService().convert_document(document)
     return result.html
 
 

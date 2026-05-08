@@ -15,7 +15,7 @@ from typing import Literal
 from lxml import html as lxml_html
 
 from app.design_sync.component_matcher import _PLACEHOLDER_PATTERNS
-from app.design_sync.converter import _contrast_ratio, _relative_luminance
+from app.shared.color import contrast_ratio, relative_luminance
 
 # Regex to extract inline CSS color properties
 _COLOR_RE = re.compile(r"(?:^|;)\s*color\s*:\s*(#[0-9a-fA-F]{3,6})\b", re.IGNORECASE)
@@ -94,9 +94,9 @@ def check_contrast(html: str) -> list[QualityWarning]:
         if not bg_color:
             continue
 
-        text_lum = _relative_luminance(text_color)
-        bg_lum = _relative_luminance(bg_color)
-        ratio = _contrast_ratio(text_lum, bg_lum)
+        text_lum = relative_luminance(text_color)
+        bg_lum = relative_luminance(bg_color)
+        ratio = contrast_ratio(text_lum, bg_lum)
 
         # Determine if large text (lower threshold)
         size_match = _FONT_SIZE_RE.search(style)

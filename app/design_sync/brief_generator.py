@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from app.design_sync.converter import _relative_luminance, convert_colors_to_palette
 from app.design_sync.figma.layout_analyzer import (
     ColumnLayout,
     DesignLayoutDescription,
     EmailSection,
 )
 from app.design_sync.protocol import ExtractedTokens
+from app.design_sync.token_transforms import convert_colors_to_palette
+from app.shared.color import relative_luminance
 
 _MAX_BRIEF_LENGTH = 4000
 
@@ -79,7 +80,7 @@ def _format_section(section: EmailSection, index: int, asset_url_prefix: str) ->
         lines.append(f"- Height: {section.height:.0f}px")
     if section.bg_color:
         lines.append(f"- Background: {section.bg_color}")
-        is_dark = _relative_luminance(section.bg_color) < 0.5
+        is_dark = relative_luminance(section.bg_color) < 0.5
         lines.append(
             f"- Theme: {'dark background — use light/white text' if is_dark else 'light background'}"
         )
