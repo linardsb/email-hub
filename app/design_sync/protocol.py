@@ -317,7 +317,7 @@ class DesignSyncProvider(Protocol):
 
 
 @dataclass(frozen=True)
-class _NodeProps:
+class _NodeProps:  # pyright: ignore[reportUnusedClass]
     """Supplementary visual properties not carried by DesignNode."""
 
     bg_color: str | None = None
