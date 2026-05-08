@@ -6,6 +6,24 @@
 **Estimated effort:** Full session.
 **Prerequisite:** Plan 01 landed (kills `cms/apps/web/src/types/{outlook,chaos,css-compiler}.ts` duplicates).
 
+## Execution structure
+
+Session 9 — Workspace decomposition
+- Findings: F042
+- Effort: M (single session — F042 is the only finding still owned by this plan)
+- Plan: tech-debt-09-frontend-cleanup.md §B
+- Branch: refactor/tech-debt-09-frontend (10 commits ahead of main, no PR — F042 hook extraction staged in `962cf10b`, mixed with off-scope F044/F045/F048/F049 commits that belong to other sessions; rebase or cherry-pick the F042 commit onto a fresh branch before opening the PR)
+- Scope:
+  - F042: extract `useWorkspaceTemplate`, `useWorkspaceDialogs`, `useWorkspaceFollowMode`, `useAgentMode` hooks from `cms/apps/web/src/app/projects/[id]/workspace/page.tsx`; slim the page to a thin composition root (target <150 LOC, currently 771); preserve existing per-hook tests and add hook-isolation tests that fail if a hook leaks state into the page
+
+Status of carved/closed findings (do **not** re-execute under this plan):
+- F041 → closed via `tech-debt-09a-icons-split.md` (PR #48 merged)
+- F043 → moved to `tech-debt-09c-ts-strict-tests.md` (Session 16)
+- F044 → marked landed in `tech-debt-00-status-and-roadmap.md` Phase 1 (verify before re-attempting; commit `57b973ea` on branch)
+- F045 → moved to Session 3 (`tech-debt-01-quick-wins.md` frontend subset)
+- F048 → marked landed in roadmap Phase 1 (verify; commit `f06bc431` on branch)
+- F049 → moved to Session 19 backend sweep (`tech-debt-19-backend-sweep.md`)
+
 ## Findings addressed
 
 F041 (`custom-icons.tsx` 9882 LOC) — Critical
