@@ -33,6 +33,9 @@ def test_decode_rejects_wrong_algorithm() -> None:
         mock_settings.return_value.auth.jwt_secret_key = "test-secret"
 
         # Sign with HS384 instead of HS256
+        # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret
+        # "test-secret" is a fixture for verifying the decoder rejects mismatched
+        # algorithms; never reaches a real auth path. Alert #158 false positive.
         token: str = pyjwt.encode(
             {
                 "sub": "1",
@@ -55,6 +58,9 @@ def test_decode_rejects_none_algorithm() -> None:
         mock_settings.return_value.auth.jwt_secret_key = "test-secret"
 
         # Sign with empty key — PyJWT will reject on decode due to key mismatch
+        # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret
+        # Empty-string key is the test setup for verifying signature mismatch
+        # rejection; never reaches a real auth path. Alert #159 false positive.
         token: str = pyjwt.encode(
             {
                 "sub": "1",
