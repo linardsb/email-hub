@@ -62,7 +62,7 @@ export function BlueprintRunsList({
   return (
     <div className="bg-background flex h-full flex-col">
       {/* Filter bar */}
-      <div className="border-border scrollbar-none flex items-center gap-1 overflow-x-auto border-b px-3 py-2">
+      <div className="border-border flex scrollbar-none items-center gap-1 overflow-x-auto border-b px-3 py-2">
         {FILTER_OPTIONS.map((opt) => (
           <Button
             key={opt.value}
