@@ -174,6 +174,24 @@
       "closes_when": "A `db: AsyncSession` fixture lands (likely under `app/tests/conftest.py` or root conftest) that creates an isolated Postgres schema per test (or truncates between tests), AND `app/tests/test_tenant_isolation.py` runs green in CI without `TEST_DATABASE__URL` gating. Promote the four `xfail(strict=True)` entries (templates/memory/qa_results/approvals) to plain `id=...` once each entity's payload schema is wired.",
       "fast_closure_path": "Smallest viable harness: a session-scoped engine pointed at a disposable test DB + a function-scoped `db` fixture that opens an `AsyncSession` and `TRUNCATE`s the relevant tables on teardown. Reuse `seed_org`/`seed_user` from `app/tests/factories.py`. Once the fixture exists, the test activates and the four xfail entities can be wired one at a time.",
       "notes": "F003 is independently closed by `db953681`'s shipped BOLA test (`app/projects/tests/test_bola.py`) and is unaffected by this gap. Briefs is intentionally `xfail(strict=False)` because it needs a user-isolation variant rather than the org-isolation pattern — track separately if it warrants its own entry."
+    },
+    {
+      "id": "phase-deps-mypy2-redundant-cast-figma-style-runs",
+      "phase": "deps (cross-cutting)",
+      "title": "mypy 2.0 redundant-cast suppression on Figma style-run cast",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-05-09",
+      "introduced_commit": "f014ffb6",
+      "summary": "mypy 2.0's improved isinstance narrowing flags `cast(list[Any], overrides)` in app/design_sync/figma/service.py:_parse_style_runs as `redundant-cast` after the `isinstance(overrides, list)` guard. Pyright still narrows the same value to `list[Unknown]` and would error without the cast. Workaround: keep the cast and tag the line with `# type: ignore[redundant-cast]` plus a 2-line comment. The narrower fix is to either (a) tighten the upstream `node_data` typing so `.get('characterStyleOverrides', [])` returns `list[Any]` directly (no cast needed by either checker), or (b) wait for pyright's isinstance narrowing to match mypy 2.0's, at which point the cast becomes truly redundant and the suppression can be deleted.",
+      "code_refs": [
+        "app/design_sync/figma/service.py:160-163 (overrides_list cast + type: ignore[redundant-cast])",
+        "app/design_sync/figma/service.py:152 (isinstance guard whose narrowing mypy now trusts but pyright doesn't)",
+        "pyproject.toml:88 (mypy>=2.0.0 — the bump that introduced the divergence)"
+      ],
+      "symptom_if_broken": "A future genuinely-redundant cast elsewhere in the codebase slips through because reviewers see the existing `# type: ignore[redundant-cast]` precedent and copy it. Less severe but possible: pyright catches up and the suppression silently does nothing — easy to miss without a tracker.",
+      "closes_when": "Either (a) `_parse_style_runs` is refactored so `overrides` is typed as `list[Any]` at the call site (no cast needed by mypy or pyright), OR (b) pyright's isinstance narrowing matches mypy 2.0's behavior and removing both the cast and the ignore-comment leaves `make types` green.",
+      "fix_sketch": "Option (a): change `node_data: dict[str, Any]` to a TypedDict with `characterStyleOverrides: NotRequired[list[Any]]`, then `overrides = node_data.get(...)` is already `list[Any]` and the isinstance guard suffices for both checkers. Option (b): drop the cast + `# type: ignore[redundant-cast]` line and run `uv run pyright app/design_sync/figma/service.py` to confirm pyright accepts the narrowing."
     }
   ],
   "tooling_followups": [
