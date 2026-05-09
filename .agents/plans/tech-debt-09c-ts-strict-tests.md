@@ -7,6 +7,19 @@
 **Goal:** Zero `@ts-nocheck` directives in `cms/apps/web/src/` (excluding `**/*.gen.*`). `pnpm --filter web type-check` green. All 774 existing tests still pass.
 **Estimated effort:** Full session (12 files, 5,095 LOC of test code, real type bugs likely surfaced).
 
+## Execution structure
+
+Session 16 — Frontend test types + middleware default-deny
+- Findings: F051, F068
+- Effort: M
+- Plan: extend tech-debt-09c-ts-strict-tests.md (F051 + F068 sections appended below; F043 stays as the existing plan body and is verify-only at Session 16 time)
+- Branch: refactor/tech-debt-09c-fe-test-types
+- Scope:
+  - F051: cms/apps/web/middleware.ts:7-21,53-72 — default-deny for routes not in ROLE_PERMISSIONS; log the catch
+  - F068: split cms/apps/web/src/hooks/__tests__/use-data-hooks{,-2,-3}.test.ts (615+715+990 LOC numbered split) → co-locate per-hook (use-projects.test.ts etc.) with shared __tests__/setup.ts
+
+F043 (the existing plan body) runs as its own session on `refactor/tech-debt-09c-ts-strict-tests` (26 commits already staged); Session 16 verifies its closure via `grep -rl "@ts-nocheck" cms/apps/web/src` returning zero before merging F051/F068.
+
 ## Risk warning (from parent plan)
 
 > *"Part C type fixes will surface real bugs. The whole reason `@ts-nocheck` was added was to defer them. Budget time to fix the underlying type mismatches."*

@@ -1,6 +1,7 @@
 """Tests for Plan 02 Part C — JWT decode strictness, refresh TTL config-flow, revocation fail-open log."""
 
 import datetime
+import secrets
 from collections.abc import Iterator
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -15,7 +16,7 @@ from app.auth.token import (
     is_token_revoked,
 )
 
-_SECRET = "test-secret"
+_SECRET = secrets.token_urlsafe(32)
 
 
 @pytest.fixture
@@ -28,34 +29,45 @@ def mock_token_settings() -> Iterator[MagicMock]:
         yield mock
 
 
-def _encode(payload: dict[str, Any]) -> str:
-    # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret,python.jwt.security.audit.jwt-exposed-data.jwt-python-exposed-data
-    # _SECRET is a test-only constant patched into get_settings via mock_token_settings;
-    # never reaches a real auth path. Payload is also test-synthesized.
-    # Alerts #156 + #157 dismissed as false positive (test code).
-    return pyjwt.encode(payload, _SECRET, algorithm="HS256")
-
-
 # ── C1d: decode_token rejects tokens missing required claims ──
 
 
 @pytest.mark.usefixtures("mock_token_settings")
 def test_decode_rejects_token_without_jti() -> None:
-    token = _encode({"sub": "1", "role": "admin", "iat": 1, "exp": 9999999999, "type": "access"})
+    payload: dict[str, Any] = {
+        "sub": "1",
+        "role": "admin",
+        "iat": 1,
+        "exp": 9999999999,
+        "type": "access",
+    }
+    token = pyjwt.encode(payload, _SECRET, algorithm="HS256")
     assert decode_token(token) is None
 
 
 @pytest.mark.usefixtures("mock_token_settings")
 def test_decode_rejects_token_without_exp() -> None:
-    token = _encode({"sub": "1", "role": "admin", "iat": 1, "type": "access", "jti": "abc"})
+    payload: dict[str, Any] = {
+        "sub": "1",
+        "role": "admin",
+        "iat": 1,
+        "type": "access",
+        "jti": "abc",
+    }
+    token = pyjwt.encode(payload, _SECRET, algorithm="HS256")
     assert decode_token(token) is None
 
 
 @pytest.mark.usefixtures("mock_token_settings")
 def test_decode_rejects_token_without_iat() -> None:
-    token = _encode(
-        {"sub": "1", "role": "admin", "exp": 9999999999, "type": "access", "jti": "abc"}
-    )
+    payload: dict[str, Any] = {
+        "sub": "1",
+        "role": "admin",
+        "exp": 9999999999,
+        "type": "access",
+        "jti": "abc",
+    }
+    token = pyjwt.encode(payload, _SECRET, algorithm="HS256")
     assert decode_token(token) is None
 
 

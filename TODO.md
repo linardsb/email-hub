@@ -14,3 +14,6 @@
 
 ## Operational follow-ups
 
+> **2026-05-08 — F013 D3 closed early.** Telemetry was at zero; legacy shims
+> deleted in commit `d9132c7c` (3 days ahead of the 14-day window).
+> See `.agents/plans/tech-debt-08-converter-god-functions-followup.md` Part D3.
