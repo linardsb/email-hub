@@ -158,7 +158,9 @@ def _parse_style_runs(node_data: dict[str, Any]) -> tuple[StyleRun, ...]:
 
     # Group contiguous runs by override ID
     runs: list[StyleRun] = []
-    overrides_list = cast(list[Any], overrides)
+    # mypy 2.0's isinstance narrowing makes this cast redundant for mypy,
+    # but pyright still narrows to list[Unknown] and needs the cast.
+    overrides_list = cast("list[Any]", overrides)  # type: ignore[redundant-cast]
     table_d = cast(dict[str, Any], table)
     i = 0
     while i < len(overrides_list):
