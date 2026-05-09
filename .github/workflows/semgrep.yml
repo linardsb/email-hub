@@ -5,6 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    # Skip SAST on PRs that only change lockfiles or generated artifacts —
+    # Semgrep analyzes source code, not third-party lib internals (Trivy +
+    # GHAS dependency scanning cover dep CVEs). Saves CI on dependabot churn.
+    paths-ignore:
+      - "**/uv.lock"
+      - "**/poetry.lock"
+      - "**/Pipfile.lock"
+      - "**/package-lock.json"
+      - "**/pnpm-lock.yaml"
+      - "**/yarn.lock"
   schedule:
     - cron: "0 6 * * 3" # Weekly Wednesday 6am UTC
 
@@ -28,6 +38,19 @@ jobs:
         continue-on-error: true
         run: semgrep ci --sarif --output=semgrep.sarif --exclude='docs/eval-labeling-tool.html'
         env:
+          # Ruleset rationale (security coverage maintained, audit-tier
+          # noise dropped):
+          #   p/python, p/javascript, p/typescript — language-specific
+          #     bug/security rules. Source of jwt-hardcoded-secret etc.
+          #   p/nextjs, p/react — framework-specific issues.
+          #   p/owasp-top-ten — direct OWASP Top 10 coverage.
+          #   p/secrets — hardcoded credentials/tokens.
+          #   p/default — Semgrep's curated default ruleset.
+          # Removed: p/security-audit. Empirically (2026-05-09) it
+          # contributed zero unique findings vs the packs above; its
+          # `LOW CONFIDENCE` rules fired on test fixtures (#156) and
+          # required structural-not-suppression fixes that the
+          # higher-confidence packs already enforce.
           SEMGREP_RULES: >-
             p/python
             p/javascript
@@ -35,7 +58,6 @@ jobs:
             p/nextjs
             p/react
             p/owasp-top-ten
-            p/security-audit
             p/secrets
             p/default
             ./.semgrep/rules
