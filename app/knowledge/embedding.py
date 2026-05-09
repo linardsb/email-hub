@@ -13,6 +13,7 @@ from typing import Any, Protocol
 
 import openai
 
+from app.ai.exceptions import AIConfigurationError
 from app.core.config import Settings
 from app.core.logging import get_logger
 
@@ -59,7 +60,21 @@ class OpenAIEmbeddingProvider:
         """
         self._model = model
         self._dimension = dim
-        self._client = openai.AsyncOpenAI(api_key=api_key, base_url=base_url)
+        self._api_key = api_key
+        self._base_url = base_url
+        # openai>=2.36 validates api_key eagerly in AsyncOpenAI(...).
+        # Defer construction so callers can rely on the no-key fallback —
+        # the failure surfaces at first embed() call.
+        self._client: openai.AsyncOpenAI | None = None
+
+    def _get_client(self) -> openai.AsyncOpenAI:
+        """Construct the AsyncOpenAI client on first use."""
+        if self._client is None:
+            if not self._api_key:
+                msg = "EMBEDDING__API_KEY or AI__API_KEY required for OpenAI embeddings"
+                raise AIConfigurationError(msg)
+            self._client = openai.AsyncOpenAI(api_key=self._api_key, base_url=self._base_url)
+        return self._client
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed texts using OpenAI API with batching for >100 texts.
@@ -73,12 +88,13 @@ class OpenAIEmbeddingProvider:
         start = time.monotonic()
         logger.info("knowledge.embedding.started", text_count=len(texts))
 
+        client = self._get_client()
         all_embeddings: list[list[float]] = []
         batch_size = 100
 
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
-            response = await self._client.embeddings.create(
+            response = await client.embeddings.create(
                 model=self._model,
                 input=batch,
             )
