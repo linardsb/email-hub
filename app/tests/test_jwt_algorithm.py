@@ -4,6 +4,7 @@ Verifies that the JWT implementation uses a hardcoded HS256 algorithm
 and rejects tokens signed with other algorithms.
 """
 
+import secrets
 from unittest.mock import patch
 
 import jwt as pyjwt
@@ -19,7 +20,7 @@ def test_jwt_algorithm_constant_is_hs256() -> None:
 def test_create_access_token_uses_hs256() -> None:
     """Access tokens must be signed with HS256."""
     with patch("app.auth.token.get_settings") as mock_settings:
-        mock_settings.return_value.auth.jwt_secret_key = "test-secret"
+        mock_settings.return_value.auth.jwt_secret_key = secrets.token_urlsafe(32)
         mock_settings.return_value.auth.access_token_expire_minutes = 30
 
         token = create_access_token(user_id=1, role="admin")
@@ -29,13 +30,10 @@ def test_create_access_token_uses_hs256() -> None:
 
 def test_decode_rejects_wrong_algorithm() -> None:
     """Tokens signed with a different algorithm must be rejected."""
+    secret = secrets.token_urlsafe(32)
     with patch("app.auth.token.get_settings") as mock_settings:
-        mock_settings.return_value.auth.jwt_secret_key = "test-secret"
+        mock_settings.return_value.auth.jwt_secret_key = secret
 
-        # Sign with HS384 instead of HS256
-        # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret
-        # "test-secret" is a fixture for verifying the decoder rejects mismatched
-        # algorithms; never reaches a real auth path. Alert #158 false positive.
         token: str = pyjwt.encode(
             {
                 "sub": "1",
@@ -45,22 +43,24 @@ def test_decode_rejects_wrong_algorithm() -> None:
                 "iat": 1,
                 "exp": 9999999999,
             },
-            "test-secret",
+            secret,
             algorithm="HS384",
         )
-        result = decode_token(token)
-        assert result is None
+        assert decode_token(token) is None
 
 
 def test_decode_rejects_none_algorithm() -> None:
-    """Tokens with alg=none must be rejected."""
-    with patch("app.auth.token.get_settings") as mock_settings:
-        mock_settings.return_value.auth.jwt_secret_key = "test-secret"
+    """Tokens signed with a mismatched secret must be rejected.
 
-        # Sign with empty key — PyJWT will reject on decode due to key mismatch
-        # nosemgrep: python.jwt.security.jwt-hardcode.jwt-python-hardcoded-secret
-        # Empty-string key is the test setup for verifying signature mismatch
-        # rejection; never reaches a real auth path. Alert #159 false positive.
+    Originally written to verify alg=none rejection; PyJWT now blocks alg=none at
+    encode time, so this asserts the broader signature-mismatch rejection path
+    that catches the same class of forgery attempts.
+    """
+    secret = secrets.token_urlsafe(32)
+    wrong_secret = secrets.token_urlsafe(32)
+    with patch("app.auth.token.get_settings") as mock_settings:
+        mock_settings.return_value.auth.jwt_secret_key = secret
+
         token: str = pyjwt.encode(
             {
                 "sub": "1",
@@ -70,10 +70,7 @@ def test_decode_rejects_none_algorithm() -> None:
                 "iat": 1,
                 "exp": 9999999999,
             },
-            "",
+            wrong_secret,
             algorithm="HS256",
         )
-        result = decode_token(token)
-        # Token was signed with empty string key, our decode uses "test-secret"
-        # so signature mismatch → rejected
-        assert result is None
+        assert decode_token(token) is None
