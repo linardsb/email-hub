@@ -28,6 +28,16 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      # React core must move in lockstep — bumping react alone (or react-dom
+      # alone) breaks tests with "Incompatible React versions" because pnpm
+      # pins each lockfile entry separately even with caret ranges.
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
 
   # GitHub Actions workflows
   - package-ecosystem: "github-actions"
