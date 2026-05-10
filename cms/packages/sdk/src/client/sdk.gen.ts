@@ -49,11 +49,14 @@ export const readinessCheckHealthReadyGet = <ThrowOnError extends boolean = fals
 /**
  * Bootstrap
  *
- * Bootstrap first admin user (dev only, zero-users guard, no auth required).
+ * Bootstrap first admin user (dev + zero-users + loopback-or-secret).
  *
- * Creates the initial admin account and returns JWT tokens so you can
- * immediately use authenticated endpoints. Only works when ENVIRONMENT=development
- * and no users exist in the database.
+ * Creates the initial admin account and returns JWT tokens. All three of
+ * the following must hold (F030):
+ * 1. ENVIRONMENT=development
+ * 2. No users exist yet
+ * 3. Request originates from 127.0.0.1/::1 OR carries a valid
+ * X-Bootstrap-Secret header matching AUTH__BOOTSTRAP_SECRET.
  */
 export const bootstrapApiV1AuthBootstrapPost = <ThrowOnError extends boolean = false>(options?: Options<BootstrapApiV1AuthBootstrapPostData, ThrowOnError>) => (options?.client ?? client).post<BootstrapApiV1AuthBootstrapPostResponses, unknown, ThrowOnError>({ url: '/api/v1/auth/bootstrap', ...options });
 

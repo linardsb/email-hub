@@ -1,6 +1,6 @@
 """Authentication and JWT settings."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 class AuthConfig(BaseModel):
@@ -15,3 +15,12 @@ class AuthConfig(BaseModel):
     refresh_token_expire_days: int = 7
     demo_user_email: str = "demo@example.com"
     demo_user_password: str = "admin"  # noqa: S105
+    bootstrap_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description=(
+            "Optional shared secret required by /api/v1/auth/bootstrap when the request "
+            "is not from a loopback address. Empty disables non-loopback bootstrapping. "
+            "Combined with ENVIRONMENT=development + zero-users gates as a third "
+            "independent factor (F030)."
+        ),
+    )

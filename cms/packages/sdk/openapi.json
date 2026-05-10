@@ -115,7 +115,7 @@
           "auth"
         ],
         "summary": "Bootstrap",
-        "description": "Bootstrap first admin user (dev only, zero-users guard, no auth required).\n\nCreates the initial admin account and returns JWT tokens so you can\nimmediately use authenticated endpoints. Only works when ENVIRONMENT=development\nand no users exist in the database.",
+        "description": "Bootstrap first admin user (dev + zero-users + loopback-or-secret).\n\nCreates the initial admin account and returns JWT tokens. All three of\nthe following must hold (F030):\n  1. ENVIRONMENT=development\n  2. No users exist yet\n  3. Request originates from 127.0.0.1/::1 OR carries a valid\n     X-Bootstrap-Secret header matching AUTH__BOOTSTRAP_SECRET.",
         "operationId": "bootstrap_api_v1_auth_bootstrap_post",
         "responses": {
           "200": {

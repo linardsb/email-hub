@@ -51,14 +51,21 @@ async def bootstrap(
     request: Request,
     service: AuthService = Depends(get_service),
 ) -> LoginResponse:
-    """Bootstrap first admin user (dev only, zero-users guard, no auth required).
+    """Bootstrap first admin user (dev + zero-users + loopback-or-secret).
 
-    Creates the initial admin account and returns JWT tokens so you can
-    immediately use authenticated endpoints. Only works when ENVIRONMENT=development
-    and no users exist in the database.
+    Creates the initial admin account and returns JWT tokens. All three of
+    the following must hold (F030):
+      1. ENVIRONMENT=development
+      2. No users exist yet
+      3. Request originates from 127.0.0.1/::1 OR carries a valid
+         X-Bootstrap-Secret header matching AUTH__BOOTSTRAP_SECRET.
     """
-    _ = request
-    return await service.bootstrap_demo()
+    client_host = request.client.host if request.client else None
+    provided_secret = request.headers.get("x-bootstrap-secret")
+    return await service.bootstrap_demo(
+        client_host=client_host,
+        provided_secret=provided_secret,
+    )
 
 
 @router.post("/login", response_model=LoginResponse)

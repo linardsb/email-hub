@@ -2,6 +2,7 @@
 
 import datetime
 import hashlib
+import secrets
 
 import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from app.auth.schemas import (
     UserDetailResponse,
 )
 from app.auth.token import create_access_token, create_refresh_token
+from app.core.exceptions import ForbiddenError
 from app.core.logging import get_logger
 from app.shared.models import utcnow
 from app.shared.schemas import PaginatedResponse
@@ -26,6 +28,10 @@ logger = get_logger(__name__)
 # Brute-force protection constants
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION = datetime.timedelta(minutes=15)
+
+# F030 third-factor: hosts treated as loopback for /bootstrap. TestClient's
+# "testclient" is intentionally excluded so non-loopback paths are exercised.
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1"})
 
 # Pre-computed dummy hash for timing normalization (email enumeration prevention)
 _DUMMY_HASH = bcrypt.hashpw(b"timing-normalization-dummy", bcrypt.gensalt()).decode("utf-8")
@@ -339,18 +345,24 @@ class AuthService:
         logger.info("auth.user_updated", user_id=user_id)
         return UserDetailResponse.model_validate(user)
 
-    async def bootstrap_demo(self) -> LoginResponse:
+    async def bootstrap_demo(
+        self,
+        *,
+        client_host: str | None,
+        provided_secret: str | None,
+    ) -> LoginResponse:
         """Bootstrap the first admin user and return a login response.
 
-        Only works in development environment when zero users exist.
-        This solves the chicken-and-egg problem: the /seed endpoint
-        requires admin auth, but no users exist yet.
+        Only works in development environment when zero users exist AND the
+        request originates from loopback OR carries a valid bootstrap secret
+        (F030 third-factor hardening).
 
         Returns:
             LoginResponse with JWT tokens for the created admin.
 
         Raises:
             InvalidCredentialsError: If environment is not development or users already exist.
+            ForbiddenError: If the request is not from loopback and no valid bootstrap secret was supplied.
         """
         from app.core.config import get_settings
 
@@ -361,6 +373,23 @@ class AuthService:
         count = await self.repo.count()
         if count > 0:
             raise InvalidCredentialsError("Users already exist — use /login instead")
+
+        loopback_ok = client_host in _LOOPBACK_HOSTS
+        configured_secret = settings.auth.bootstrap_secret.get_secret_value()
+        secret_ok = (
+            bool(configured_secret)
+            and provided_secret is not None
+            and secrets.compare_digest(configured_secret, provided_secret)
+        )
+        if not (loopback_ok or secret_ok):
+            logger.warning(
+                "auth.bootstrap_denied",
+                reason="third_factor_failed",
+                client_host=client_host,
+                loopback_ok=loopback_ok,
+                secret_provided=provided_secret is not None,
+            )
+            raise ForbiddenError("Bootstrap requires loopback origin or a valid bootstrap secret")
 
         password = settings.auth.demo_user_password
         user = User(
