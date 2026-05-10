@@ -484,7 +484,7 @@ lint-numeric: ## Check for falsy-numeric or-default anti-pattern in design_sync
 
 migration-lint: ## Lint Alembic migrations for unsafe DDL (requires squawk)
 	@command -v squawk >/dev/null 2>&1 || { echo "Install squawk: brew install sbdchd/squawk/squawk"; exit 1; }
-	@find alembic/versions -name '*.py' -newer alembic/versions/.lint-marker 2>/dev/null | xargs -I{} squawk --reporter=compact {} || squawk --reporter=compact alembic/versions/*.py
+	@find alembic/versions -name '*.py' -newer alembic/versions/.lint-marker 2>/dev/null | xargs -I{} squawk --reporter=tty {} || squawk --reporter=tty alembic/versions/*.py
 
 # === Help ===
 

@@ -91,7 +91,7 @@ repos:
     hooks:
       - id: squawk-migrations
         name: squawk migration lint
-        entry: bash -c 'command -v squawk >/dev/null 2>&1 && git diff --cached --name-only --diff-filter=ACM | grep "alembic/versions/.*\.py$" | xargs -I{} squawk --reporter=compact {} || true'
+        entry: bash -c 'command -v squawk >/dev/null 2>&1 && git diff --cached --name-only --diff-filter=ACM | grep "alembic/versions/.*\.py$" | xargs -I{} squawk --reporter=tty {} || true'
         language: system
         pass_filenames: false
         files: alembic/versions/.*\.py$

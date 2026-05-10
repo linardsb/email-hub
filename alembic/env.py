@@ -2,6 +2,7 @@
 
 import asyncio
 from logging.config import fileConfig
+from typing import Any
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -54,11 +55,11 @@ target_metadata = Base.metadata
 
 
 def _include_object(
-    object_: object,
+    object_: Any,
     name: str | None,
     type_: str,
     reflected: bool,  # noqa: ARG001  (alembic API contract)
-    compare_to: object,  # noqa: ARG001
+    compare_to: Any,  # noqa: ARG001
 ) -> bool:
     """Suppress noisy ``ix_<table>_id`` PK-index findings.
 
