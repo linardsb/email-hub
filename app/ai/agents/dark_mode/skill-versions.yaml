@@ -59,6 +59,6 @@ skills:
     versions:
       1.1.0:
         hash: pending
-        date: '2026-05-05'
+        date: '2026-05-10'
         source: eval-driven
         eval_pass_rate: 0.4
