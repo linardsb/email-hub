@@ -1,4 +1,4 @@
-.PHONY: bootstrap check-env check-env-drift ci ci-be ci-fe dev dev-be dev-fe dev-mock-esp dev-observe docker docker-down test test-fe lint types check check-fe db e2e install-hooks security-check sdk seed-knowledge ontology-sync ontology-sync-dry sync-ontology eval-verify eval-run eval-judge eval-labels eval-labeling-tool eval-analysis eval-blueprint eval-regression eval-check eval-calibrate eval-qa-calibrate eval-qa-coverage eval-dry-run eval-full eval-baseline eval-skill-test eval-golden eval-suggest cli-setup cli-list cli-search cli docker-logs test-properties e2e-ui sdk-local db-migrate db-revision db-squash eval-refresh seed-demo demo bench e2e-firefox e2e-webkit e2e-all-browsers e2e-smoke skill-versions skill-pin skill-unpin skill-rollback grafana lint-polling mutate help
+.PHONY: bootstrap check-env check-env-drift ci ci-be ci-fe dev dev-be dev-fe dev-mock-esp dev-observe docker docker-down test test-integration test-fe lint types check check-fe db e2e install-hooks security-check sdk seed-knowledge ontology-sync ontology-sync-dry sync-ontology eval-verify eval-run eval-judge eval-labels eval-labeling-tool eval-analysis eval-blueprint eval-regression eval-check eval-calibrate eval-qa-calibrate eval-qa-coverage eval-dry-run eval-full eval-baseline eval-skill-test eval-golden eval-suggest cli-setup cli-list cli-search cli docker-logs test-properties e2e-ui sdk-local db-migrate db-revision db-squash eval-refresh seed-demo demo bench e2e-firefox e2e-webkit e2e-all-browsers e2e-smoke skill-versions skill-pin skill-unpin skill-rollback grafana lint-polling mutate help
 
 # === Local Development ===
 
@@ -84,6 +84,14 @@ grafana: ## Open Grafana dashboard in browser
 
 test: ## Run backend unit tests
 	uv run pytest -v -m "not integration and not benchmark and not visual_regression and not collab"
+
+test-integration: ## Run integration tests (tenant-isolation harness against Postgres on :5433)
+	docker compose -f docker-compose.test.yml up -d postgres-tenant-iso
+	@echo "Waiting for postgres-tenant-iso to become healthy..."
+	@until docker compose -f docker-compose.test.yml exec -T postgres-tenant-iso \
+		pg_isready -U postgres -d test >/dev/null 2>&1; do sleep 1; done
+	TEST_DATABASE__URL=postgresql+asyncpg://postgres:postgres@localhost:5433/test \
+		uv run pytest -m integration -v
 
 bench: ## Run performance benchmark tests
 	uv run pytest -v -m benchmark --no-header -rN

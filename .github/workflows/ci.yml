@@ -196,6 +196,42 @@ jobs:
         # gained the include_object filter for redundant PK indexes.
         run: uv run alembic check
 
+  integration:
+    name: Integration tests (tenant isolation)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports: ['5433:5432']
+        options: --health-cmd pg_isready --health-interval 2s --health-timeout 5s --health-retries 30
+    env:
+      # `app/tests/conftest.py::_integration_engine` runs `alembic upgrade head`
+      # itself on session start — no separate migrate step required here.
+      TEST_DATABASE__URL: postgresql+asyncpg://postgres:postgres@localhost:5433/test
+      DATABASE__URL: postgresql+asyncpg://postgres:postgres@localhost:5433/test
+      AUTH__JWT_SECRET_KEY: test-secret-for-ci-not-a-real-key-32chars
+      AUTH__DEMO_USER_PASSWORD: ci-not-admin
+      AUTH_SECRET: test-secret-for-ci-not-a-real-key-32chars
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Tenant isolation regression
+        run: uv run pytest app/tests/test_tenant_isolation.py -v
+
   migration-lint:
     name: Migration safety (squawk)
     runs-on: ubuntu-latest

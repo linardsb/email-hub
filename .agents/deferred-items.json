@@ -169,7 +169,7 @@
       "id": "tech-debt-03-tenant-isolation-regression-harness",
       "phase": "tech-debt-03",
       "title": "Cross-entity tenant-isolation regression test self-skips — no integration DB harness",
-      "status": "deferred",
+      "status": "closed",
       "severity": "soft",
       "introduced": "2026-05-04",
       "summary": "Plan 03 §C calls for a load-bearing cross-org regression test (`app/tests/test_tenant_isolation.py`) that spins up two orgs/users via a real Postgres `db: AsyncSession` fixture and asserts no entity (projects, templates, memory, qa_results, approvals) leaks across orgs. The scoping logic itself (F001/F002) is enforced — every route is on `get_scoped_db`, every repo calls `scoped_access`, and a forgotten swap raises `RuntimeError` (caught by every existing route test). What's missing is the integration harness: there is no project-wide `db: AsyncSession` fixture with table truncation. The test self-skips when `TEST_DATABASE__URL` is unset; once the harness lands the test activates, with `xfail(strict=True)` on templates/memory/qa_results/approvals so they fail-loud and prompt promotion to plain `id=...`.",
@@ -182,7 +182,8 @@
       "symptom_if_broken": "A future repo lands without `scoped_access` filtering and the regression net does not catch it because no integration test ever runs. The fail-loud `RuntimeError` on missing `tenant_access` covers the 'forgot to swap get_db' case but NOT the 'wrote a new repo with no scope filter' case — that's exactly what this regression test exists to catch.",
       "closes_when": "A `db: AsyncSession` fixture lands (likely under `app/tests/conftest.py` or root conftest) that creates an isolated Postgres schema per test (or truncates between tests), AND `app/tests/test_tenant_isolation.py` runs green in CI without `TEST_DATABASE__URL` gating. Promote the four `xfail(strict=True)` entries (templates/memory/qa_results/approvals) to plain `id=...` once each entity's payload schema is wired.",
       "fast_closure_path": "Smallest viable harness: a session-scoped engine pointed at a disposable test DB + a function-scoped `db` fixture that opens an `AsyncSession` and `TRUNCATE`s the relevant tables on teardown. Reuse `seed_org`/`seed_user` from `app/tests/factories.py`. Once the fixture exists, the test activates and the four xfail entities can be wired one at a time.",
-      "notes": "F003 is independently closed by `db953681`'s shipped BOLA test (`app/projects/tests/test_bola.py`) and is unaffected by this gap. Briefs is intentionally `xfail(strict=False)` because it needs a user-isolation variant rather than the org-isolation pattern — track separately if it warrants its own entry."
+      "notes": "F003 is independently closed by `db953681`'s shipped BOLA test (`app/projects/tests/test_bola.py`) and is unaffected by this gap. Briefs is intentionally `xfail(strict=False)` because it needs a user-isolation variant rather than the org-isolation pattern — track separately if it warrants its own entry. — Closed by tech-debt/03-tenant-iso-harness: app/tests/conftest.py provides session-scoped _integration_engine (alembic upgrade head) + per-test db fixture (TRUNCATE RESTART IDENTITY CASCADE); test_tenant_isolation.py wires templates/memory/qa_results/approvals via ENTITY_FIXTURES (EntitySpec dataclass with optional pre_seed for build/template_version dependencies); xfail(strict=True) dropped from those four; briefs stays xfail(strict=False) — user-isolation variant tracked under a new entry.",
+      "closed_commit": "PENDING-MERGE-SHA"
     },
     {
       "id": "phase-deps-mypy2-redundant-cast-figma-style-runs",
@@ -221,6 +222,22 @@
       "closes_when": "A migration linter (Python-aware) reports zero findings on the current alembic/versions/ tree, AND the migration-lint job is promoted back to a hard gate (continue-on-error removed).",
       "fast_closure_path": "Write a tiny Python preprocessor that AST-walks alembic/versions/*.py, extracts every op.execute(\"...\") + op.create_table/alter_column kwargs as raw SQL, writes to a tempfile, and feeds that to squawk. Replace the direct .py invocation with this preprocessor in CI + Makefile + pre-commit hook.",
       "notes": "Surfaced when normalize_schema_drift hit the squawk job in PR #133 — first PR with a non-trivial Python migration since the job was added in #101."
+    },
+    {
+      "id": "tech-debt-03-briefs-user-isolation-test",
+      "phase": "tech-debt-03",
+      "title": "Briefs need a user-isolation (BOLA-by-creator) regression test, not org-isolation",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-05-10",
+      "summary": "The cross-entity tenant-isolation harness (closed in tech-debt-03-tenant-isolation-regression-harness) parametrizes briefs as xfail(strict=False) because briefs are scoped by creator (BOLA-by-creator), not by org. The org-isolation pattern in test_no_cross_org_read does not apply: two users in the same org could still leak each other’s briefs. A user-isolation variant — same org, different creators, GET-by-id and list must filter by user — is needed for the same fail-loud net the other entities now have.",
+      "code_refs": [
+        "app/tests/test_tenant_isolation.py (briefs param at xfail(strict=False))",
+        "app/briefs/repository.py (BOLA-by-creator filtering)"
+      ],
+      "symptom_if_broken": "A repo or route change drops creator-based filtering on briefs; one user in an org reads another user’s briefs and no regression test catches it (only the existing scoped_access fail-loud covers the missing-filter shape — not user-id-scoped leaks within an org).",
+      "closes_when": "A test like test_no_cross_user_read_briefs lands under app/tests/, seeds two users in the SAME org, has user1 create a brief, asserts user2 cannot GET it by id and that user2’s list excludes it. Wire it into the integration harness alongside test_no_cross_org_read.",
+      "notes": "Out of scope for tech-debt/03-tenant-iso-harness per that plan §“Out of scope”."
     }
   ],
   "tooling_followups": [

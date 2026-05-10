@@ -1,0 +1,24 @@
+# Compose services used by `make test-integration`.
+#
+# `postgres-tenant-iso` exposes a dedicated Postgres on host port 5433
+# (one above the dev DB) so it can run alongside the main `make dev` stack
+# without clobbering it. The fixture in `app/tests/conftest.py` runs
+# `alembic upgrade head` against this DB before any test session begins.
+
+services:
+  postgres-tenant-iso:
+    # pgvector image — migrations under alembic/versions/ run
+    # `CREATE EXTENSION IF NOT EXISTS vector`. Matches the image used by
+    # the `migrations` + `integration` jobs in .github/workflows/ci.yml.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d test"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
