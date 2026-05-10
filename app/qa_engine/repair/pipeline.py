@@ -51,6 +51,7 @@ class RepairPipeline:
         current = html
 
         for stage in self._stages:
+            snapshot = current
             try:
                 result = stage.repair(current)
                 current = result.html
@@ -64,12 +65,13 @@ class RepairPipeline:
                         repairs=result.repairs_applied,
                     )
             except Exception as e:
+                current = snapshot
                 logger.warning(
-                    "repair.stage_failed",
+                    "repair.stage_rolled_back",
                     stage=stage.name,
                     error=str(e),
                 )
-                all_warnings.append(f"{stage.name}: repair failed ({e})")
+                all_warnings.append(f"{stage.name}: rolled back ({e})")
 
         return RepairResult(
             html=current,

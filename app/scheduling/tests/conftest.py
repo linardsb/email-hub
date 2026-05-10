@@ -32,6 +32,8 @@ def mock_redis() -> AsyncMock:
     redis.lrange = AsyncMock(return_value=[])
     redis.expire = AsyncMock()
     redis.delete = AsyncMock()
+    # Lua CAS release returns 1 (we owned the lock and released it).
+    redis.eval = AsyncMock(return_value=1)
 
     # scan_iter as an async generator
     async def _empty_scan_iter(match: str = "*") -> AsyncGenerator[bytes]:

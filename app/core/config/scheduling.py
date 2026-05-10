@@ -11,6 +11,13 @@ class SchedulingConfig(BaseModel):
     job_timeout_seconds: int = 3600  # SCHEDULING__JOB_TIMEOUT_SECONDS
     max_run_history: int = 100  # SCHEDULING__MAX_RUN_HISTORY
     run_history_ttl_seconds: int = 86400  # SCHEDULING__RUN_HISTORY_TTL_SECONDS
+    max_concurrent_jobs: int = Field(
+        default=10,
+        ge=1,
+        description=(
+            "Max in-flight scheduled jobs per worker. Excess due jobs are skipped this tick."
+        ),
+    )
     qa_sweep_regression_threshold: float = Field(
         default=0.05,
         description="Score drop threshold (fraction) to flag as regression",
