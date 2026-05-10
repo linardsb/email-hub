@@ -45,4 +45,11 @@ class MemoryEntry(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_memory_project_agent", "project_id", "agent_type"),
         Index("ix_memory_type_decay", "memory_type", "decay_weight"),
+        Index(
+            "ix_memory_entries_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
