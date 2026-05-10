@@ -1,20 +1,28 @@
 """Adobe Campaign sync provider — bidirectional template sync via Delivery API."""
 
+# TODO(tech-debt): the OAuth cache plumbing here mirrors `OAuthConnectorService`
+# (app/connectors/_base/oauth.py) — only the bidirectional CRUD surface keeps
+# this class separate. Future option-(a) unification would migrate onto an
+# `OAuthSyncProviderBase` ABC. See closed deferred-items entry
+# `tech-debt-04-sync-provider-duplication`.
+
 from __future__ import annotations
 
-import hashlib
-import time
 from collections.abc import Mapping, Sequence
-from typing import ClassVar
 
 import httpx
 
 from app.connectors.http_resilience import resilient_request
 from app.connectors.sync_schemas import ESPTemplate
+from app.core.cache import LruWithTtl
 from app.core.config import Settings, get_settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+_TOKEN_CACHE_MAXSIZE = 64
+_TOKEN_REFRESH_GRACE = 60.0
+_DEFAULT_TOKEN_TTL = 86399.0
 
 
 class AdobeSyncProvider:
@@ -26,24 +34,25 @@ class AdobeSyncProvider:
     """
 
     _base_url: str
-    _token_cache: ClassVar[dict[str, tuple[str, float]]] = {}
 
     def __init__(self, settings: Settings | None = None) -> None:
         _settings = settings or get_settings()
         self._base_url = _settings.esp_sync.adobe_base_url
+        self._token_cache: LruWithTtl[str, str] = LruWithTtl(
+            maxsize=_TOKEN_CACHE_MAXSIZE,
+            default_ttl=_DEFAULT_TOKEN_TTL,
+        )
 
     @staticmethod
     def _cache_key(credentials: dict[str, str]) -> str:
-        return hashlib.sha256(credentials["client_id"].encode()).hexdigest()[:16]
+        return f"adobe:{credentials['client_id']}"
 
     async def _get_access_token(self, credentials: dict[str, str]) -> str:
         """Exchange credentials via Adobe IMS for an access token, with caching."""
         key = self._cache_key(credentials)
         cached = self._token_cache.get(key)
-        if cached:
-            token, expiry = cached
-            if time.time() < expiry - 60:
-                return token
+        if cached is not None:
+            return cached
 
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(
@@ -57,8 +66,9 @@ class AdobeSyncProvider:
             resp.raise_for_status()
             data = resp.json()
             token = str(data["access_token"])
-            expires_in = int(data.get("expires_in", 86399))
-            self._token_cache[key] = (token, time.time() + expires_in)
+            expires_in = float(data.get("expires_in", _DEFAULT_TOKEN_TTL))
+            ttl = max(expires_in - _TOKEN_REFRESH_GRACE, 1.0)
+            self._token_cache.put(key, token, ttl=ttl)
             return token
 
     def _headers(self, token: str) -> dict[str, str]:
@@ -82,8 +92,7 @@ class AdobeSyncProvider:
                 client, method, url, headers=self._headers(token), params=params, json=json
             )
             if resp.status_code == 401:
-                key = self._cache_key(credentials)
-                self._token_cache.pop(key, None)
+                self._token_cache.pop(self._cache_key(credentials))
                 token = await self._get_access_token(credentials)
                 resp = await resilient_request(
                     client, method, url, headers=self._headers(token), params=params, json=json
