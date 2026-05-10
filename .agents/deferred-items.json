@@ -109,13 +109,17 @@
         "slate": "no cached extraction — needs live Figma access"
       },
       "fast_closure_path": "For LEGO: ~30-line script using the cached JSON (see phase-50.7-ac-4.fast_closure_path). For perf_reimagined + slate: live Figma extract via `python -m app.design_sync.diagnose.extract --connection-id <N> --node-id <NODE>` then save to data/debug/{slug}/structure.json + tokens.json + manifest.yaml.",
-      "blocks": ["phase-51-converter-fidelity-51.2", "phase-51-converter-fidelity-51.3", "phase-51-converter-fidelity-51.6"]
+      "blocks": [
+        "phase-51-converter-fidelity-51.2",
+        "phase-51-converter-fidelity-51.3",
+        "phase-51-converter-fidelity-51.6"
+      ]
     },
     {
       "id": "tech-debt-04-sync-provider-duplication",
       "phase": "tech-debt-04",
       "title": "sfmc/sync_provider.py and adobe/sync_provider.py carry the F020/F024/F069 anti-patterns Plan 04 collapsed in service.py",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-05-04",
       "summary": "Plan 04 dedup'd app/connectors/{sfmc,adobe}/service.py into OAuthConnectorService (audit F020/F021/F024/F069 RESOLVED). The sister sync_provider.py files (195 LOC each, byte-equivalent except for service-name swaps) were not in scope and still carry: (1) `_token_cache: ClassVar[dict[str, tuple[str, float]]] = {}` — process-wide unbounded cache (F024 anti-pattern); (2) `hashlib.sha256(credentials['client_id'].encode()).hexdigest()[:16]` — truncated cache key with cross-vendor collision risk (F069 anti-pattern); (3) the same OAuth + token-refresh + 401-evict shape that lives in OAuthConnectorService. The audit's RESOLVED claims are accurate for the files cited (service.py:23-158, :30, :62) but the duplication just moved one file over.",
@@ -132,7 +136,10 @@
       "symptom_if_broken": "Two SFMC/Adobe customers with `client_id` values that share the same first 16 hex chars of SHA-256 will get each other's access tokens for the lifetime of the cache entry (cross-tenant token reuse). Process-wide cache also grows unbounded under high-tenant-count workloads — same memory-leak class as F024.",
       "closes_when": "Either (a) the two SyncProvider classes are migrated onto OAuthConnectorService (delete ~330 LOC, vendor sync providers shrink to ~30 LOC each like service.py did), OR (b) at minimum the local _token_cache is replaced with `LruWithTtl(maxsize=64)` and the cache key drops the [:16] truncation in favour of `f'{vendor}:{client_id}'`. Option (a) closes F020 properly across both code paths; option (b) is the surgical-fix bandaid.",
       "fast_closure_path": "Option (b) bandaid: ~10-line patch per file — replace `_token_cache: ClassVar[dict] = {}` with an instance `LruWithTtl(maxsize=64, default_ttl=3600)` initialized in `__init__`, drop the `hashlib.sha256(...).hexdigest()[:16]` and use the full client_id (prefixed by vendor name). Existing cache-hit/miss tests cover the call sites; only the storage shape changes.",
-      "notes": "Discovered while verifying Plan 04 stayed shipped (2026-05-04 sweep). Plan 04's verification commands (`rg '_token_cache: ClassVar' app/connectors/`) returned 0 hits when Plan 04 shipped because sync_provider.py was either added later or the rg was scoped tighter — worth checking git blame before assuming it's a regression vs. a pre-existing miss."
+      "notes": "Discovered while verifying Plan 04 stayed shipped (2026-05-04 sweep). Plan 04's verification commands (`rg '_token_cache: ClassVar' app/connectors/`) returned 0 hits when Plan 04 shipped because sync_provider.py was either added later or the rg was scoped tighter — worth checking git blame before assuming it's a regression vs. a pre-existing miss.",
+      "closed": "2026-05-10",
+      "closed_commit": "3ef5633f",
+      "closure_note": "Closed via Option (b) — surgical bandaid in tech-debt/04-connector-oauth-cache. Replaced `_token_cache: ClassVar[dict]` + SHA-256[:16] cache key with per-instance `LruWithTtl(maxsize=64)` keyed by `f\"{vendor}:{client_id}\"` in app/connectors/{sfmc,adobe}/sync_provider.py. Dropped hashlib + time imports. Added cross-tenant + per-instance regression tests in app/connectors/{sfmc,adobe}/tests/test_sync_provider.py. Option (a) — full migration onto OAuthConnectorService — remains as future work; both files now carry a `# TODO(tech-debt):` marker pointing back to this entry so the next sweep knows the bandaid is intentional."
     },
     {
       "id": "tech-debt-alembic-schema-drift",
@@ -207,7 +214,15 @@
     }
   ],
   "phase_50_summary": {
-    "shipped": ["50.1", "50.2", "50.3", "50.4", "50.5", "50.6", "50.7"],
+    "shipped": [
+      "50.1",
+      "50.2",
+      "50.3",
+      "50.4",
+      "50.5",
+      "50.6",
+      "50.7"
+    ],
     "shipped_commits": [
       "b347e351 (50.1)",
       "82481356 (50.2)",
@@ -218,7 +233,12 @@
       "2fe898f4 (50.7)",
       "0e718efb (50.7 corner_radii fallback fix)"
     ],
-    "open_items": ["phase-50.7-ac-4", "phase-50.7-gap-2", "phase-50.7-gap-3", "phase-50-stranded-templates"],
+    "open_items": [
+      "phase-50.7-ac-4",
+      "phase-50.7-gap-2",
+      "phase-50.7-gap-3",
+      "phase-50-stranded-templates"
+    ],
     "regression_baseline": "make converter-data-regression -> 38 passed, 24 skipped, 0 failed (4 cases: MAAP, Starbucks, Mammut, REFRAME). LEGO + performance_reimagined + slate not in regression suite — see phase-50-stranded-templates."
   }
 }
