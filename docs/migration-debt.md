@@ -43,49 +43,35 @@ pushes), not a safety gate. The CI job is the safety gate.
 This unblock is Phase 2 (audit §2.4 `alembic check` work) territory — the
 migration-lint job will get hardened alongside the new `alembic check` gate.
 
-## `alembic check` is advisory (Phase 2 §2.4)
+## `alembic check` is advisory (Phase 2 §2.4) — **CLOSED 2026-05-10**
 
-The `migrations` job in `.github/workflows/ci.yml` runs `alembic check`
-with `continue-on-error: true`. It reports drift but doesn't fail the build.
+Closed by `tech-debt/19-alembic-drift` — see migration
+`alembic/versions/normalize_schema_drift.py`. The `migrations` job in
+`.github/workflows/ci.yml` is now a hard gate (`continue-on-error: true`
+removed). `alembic check` exits 0 against a fresh DB.
 
-### Why it stays advisory
+What landed:
 
-After Phase 2 imported every model module into `alembic/env.py`, the worst
-class of drift (9 "removed table" findings — model files weren't loading
-into `Base.metadata`) is gone. What remains is long-standing cosmetic
-drift between SQLAlchemy model declarations and the migrations that built
-the schema:
-
-- **`TIMESTAMP()` vs `DateTime(timezone=True)`** on `created_at`/`updated_at`
-  across many tables. Equivalent in Postgres; different to alembic's
-  comparator.
-- **`nullable=False` server-side default vs model-side `Mapped[datetime]`**
-  difference for `TimestampMixin` columns.
-- **PK index normalization** — alembic adds `ix_<table>_id` for every
-  primary key column; many migrations didn't create them.
-- **Column comment drift** — comments in the model that aren't in the DB,
-  or vice versa.
-- **`ix_memory_entries_embedding_hnsw`** — HNSW vector index exists on the
-  DB but not declared on the SQLAlchemy `Index(...)` for `memory_entries`.
-- **`qa_overrides_qa_result_id_key`** unique constraint exists on the DB
-  but isn't declared on the model.
-
-None of these change runtime behavior. Fixing them all is a sweep across
-~20 model files plus a "no-op normalization" migration; that's a separate
-piece of work, not Phase 2's scope.
-
-### What unblocks promoting it to a hard gate
-
-1. Sweep models to align column types: replace any plain `TIMESTAMP()` /
-   `DateTime()` with `DateTime(timezone=True)`. Mostly happens via
-   `TimestampMixin` standardization.
-2. Either (a) add the PK indexes via a no-op migration, or (b) suppress
-   `add_index` for primary key columns in `alembic/env.py`'s
-   `target_metadata.naming_convention` / `include_object` filter.
-3. Reconcile column comments and the missing HNSW + unique-constraint
-   declarations.
-4. Run `alembic check` against a fresh DB. If clean, drop
-   `continue-on-error: true` from `.github/workflows/ci.yml :: migrations`.
+- **TIMESTAMPTZ conversion** on 12 columns across 6 tables (blueprint
+  checkpoints, design connections / import assets / imports / token
+  snapshots, esp connections).
+- **NOT NULL** on 10 created_at/updated_at columns across 5 tables
+  (calibration records / summaries, component qa results, rendering
+  screenshots / tests). NULL backfill ran first; local audit found 0
+  NULLs.
+- **HNSW index parity**: `ix_memory_entries_embedding_hnsw` declared in
+  the model `__table_args__` matching the live `vector_cosine_ops` /
+  `WITH (m=16, ef_construction=64)` indexdef.
+- **Named unique constraint parity**: `qa_overrides_qa_result_id_key`
+  declared in `__table_args__`; the redundant `ix_qa_overrides_qa_result_id`
+  index dropped (the constraint's auto-index covers the query patterns).
+- **Column comment parity**: 5 `collaborative_documents` comments
+  written to DB; `design_token_snapshots.document_json` comment added
+  to model.
+- **JSONB parity**: `design_connections.config_json` model type updated
+  from `JSON` to `JSONB`.
+- **PK index suppression**: `alembic/env.py` `include_object` filter
+  drops noisy `ix_<table>_id` findings for the 7 affected tables.
 
 ## Other migration-related deferrals
 

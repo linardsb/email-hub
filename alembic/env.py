@@ -2,6 +2,7 @@
 
 import asyncio
 from logging.config import fileConfig
+from typing import Any
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -53,6 +54,31 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _include_object(
+    object_: Any,
+    name: str | None,
+    type_: str,
+    reflected: bool,  # noqa: ARG001  (alembic API contract)
+    compare_to: Any,  # noqa: ARG001
+) -> bool:
+    """Suppress noisy ``ix_<table>_id`` PK-index findings.
+
+    Postgres auto-creates a btree index on the primary key column; the
+    explicit ``ix_<table>_id`` declaration that ``index=True`` produces on
+    `Mapped[int] = mapped_column(primary_key=True, index=True)` shows up in
+    ``alembic check`` as drift on every table because the auto-PK btree has
+    a different name (``<table>_pkey``). Filter it out at compare time.
+    """
+    if type_ != "index" or name is None:
+        return True
+    if not (name.startswith("ix_") and name.endswith("_id")):
+        return True
+    cols = [c.name for c in getattr(object_, "columns", [])]
+    if cols == ["id"] and getattr(object_, "unique", False) is False:
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
@@ -61,6 +87,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=_include_object,
     )
 
     with context.begin_transaction():
@@ -69,7 +96,11 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with a connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=_include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

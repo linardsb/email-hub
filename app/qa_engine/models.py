@@ -1,6 +1,6 @@
 """Database models for QA engine."""
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -60,12 +60,12 @@ class QAOverride(Base, TimestampMixin):
     __tablename__ = "qa_overrides"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    # Unique constraint qa_overrides_qa_result_id_key (declared in __table_args__)
+    # is backed by a unique btree index — no separate index= needed.
     qa_result_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("qa_results.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
-        index=True,
     )
     overridden_by_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
@@ -74,3 +74,5 @@ class QAOverride(Base, TimestampMixin):
     checks_overridden: Mapped[list[str]] = mapped_column(JSON, nullable=False)
 
     qa_result: Mapped["QAResult"] = relationship(back_populates="override")
+
+    __table_args__ = (UniqueConstraint("qa_result_id", name="qa_overrides_qa_result_id_key"),)

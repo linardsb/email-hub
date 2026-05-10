@@ -145,7 +145,7 @@
       "id": "tech-debt-alembic-schema-drift",
       "phase": "tech-debt-19",
       "title": "Pre-existing model<->DB schema drift surfaced by `alembic check` advisory step on every PR",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-05-05",
       "introduced_commit": "737b27be",
@@ -161,7 +161,9 @@
       "symptom_if_broken": "Future `alembic revision --autogenerate` will mass-generate the accumulated drift as a single 200+-op migration if anyone runs it without first reading this entry — risk of accidentally landing a destructive migration that drops `items`, alters timestamp types in production, and adds NOT NULL constraints that break inserts where the column allows NULL today. Also: model contract (NOT NULL) doesn't match runtime contract (nullable in DB) on 5 tables, so an insert pattern that the model says is invalid may currently succeed in production, and tightening models to match the DB (or vice versa) will surface the inconsistency.",
       "closes_when": "Single migration rev that (a) drops `items` table + 3 indexes, (b) ALTER COLUMNs the ~30 timestamp columns to `TIMESTAMP WITH TIME ZONE`, (c) adds NOT NULL constraints on the 10 affected created_at/updated_at columns (NULL backfill required first — verify count of NULL rows pre-migration), (d) reconciles the qa_overrides unique constraint, memory_entries HNSW index, and design_connections/design_token_snapshots column comments. After landing, `alembic check` should exit 0 and the CI annotation goes away. Belongs in Session 19 (backend sweep) alongside F057 migration squash.",
       "fast_closure_path": "Run `alembic revision --autogenerate -m 'reconcile model<->schema drift'` against a fresh DB at head, hand-review the generated ops (split into multiple revs if too large), null-backfill the columns that need NOT NULL before applying. Squawk gate (Migration safety squawk job) will catch unsafe ALTER COLUMNs — expect to add `op.execute('SET lock_timeout = ...')` guards.",
-      "notes": "The advisory check has been failing-as-non-blocking on every PR for some time. Surfaced as a question on PR #98 (https://github.com/linardsb/merkle-email-hub/pull/98). NOT a regression introduced by recent work. Tracked here so a future PR doesn't autogenerate it as a destructive migration without realizing the scope."
+      "notes": "The advisory check has been failing-as-non-blocking on every PR for some time. Surfaced as a question on PR #98 (https://github.com/linardsb/merkle-email-hub/pull/98). NOT a regression introduced by recent work. Tracked here so a future PR doesn't autogenerate it as a destructive migration without realizing the scope.",
+      "closed": "2026-05-10",
+      "closed_commit": "PENDING"
     },
     {
       "id": "tech-debt-03-tenant-isolation-regression-harness",
@@ -199,6 +201,26 @@
       "symptom_if_broken": "A future genuinely-redundant cast elsewhere in the codebase slips through because reviewers see the existing `# type: ignore[redundant-cast]` precedent and copy it. Less severe but possible: pyright catches up and the suppression silently does nothing — easy to miss without a tracker.",
       "closes_when": "Either (a) `_parse_style_runs` is refactored so `overrides` is typed as `list[Any]` at the call site (no cast needed by mypy or pyright), OR (b) pyright's isinstance narrowing matches mypy 2.0's behavior and removing both the cast and the ignore-comment leaves `make types` green.",
       "fix_sketch": "Option (a): change `node_data: dict[str, Any]` to a TypedDict with `characterStyleOverrides: NotRequired[list[Any]]`, then `overrides = node_data.get(...)` is already `list[Any]` and the isinstance guard suffices for both checkers. Option (b): drop the cast + `# type: ignore[redundant-cast]` line and run `uv run pyright app/design_sync/figma/service.py` to confirm pyright accepts the narrowing."
+    },
+    {
+      "id": "tech-debt-squawk-python-migrations",
+      "phase": "tech-debt-19",
+      "title": "squawk migration-lint job is advisory because squawk 2.x does not parse Python alembic migrations",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-05-10",
+      "introduced_commit": "PENDING",
+      "summary": "The CI Migration safety (squawk) job invokes squawk directly on alembic .py files. squawk 2.51+ is a pure-SQL linter — every op.execute() string literal triggers a syntax error and the job exits 123 with 500+ findings. Demoted to continue-on-error in tech-debt-19. The squawk-ignore: column-type-change comments in normalize_schema_drift.py exist for the day this becomes useful again.",
+      "code_refs": [
+        ".github/workflows/ci.yml (Migration safety squawk job — advisory)",
+        "Makefile (migration-lint target — same brokenness on local)",
+        ".pre-commit-config.yaml:94 (squawk-migrations hook — already || true)",
+        "alembic/versions/normalize_schema_drift.py (squawk-ignore comments awaiting a linter that respects them)"
+      ],
+      "symptom_if_broken": "Future migrations with unsafe DDL (table-rewriting ALTER, missing IF EXISTS, naked DROP COLUMN on populated tables) ship without an automated check. The risky-pattern catch lives only in human review until a Python-aware migration linter (e.g. SQL-string AST extraction + feed to squawk, or a new tool) is wired in.",
+      "closes_when": "A migration linter (Python-aware) reports zero findings on the current alembic/versions/ tree, AND the migration-lint job is promoted back to a hard gate (continue-on-error removed).",
+      "fast_closure_path": "Write a tiny Python preprocessor that AST-walks alembic/versions/*.py, extracts every op.execute(\"...\") + op.create_table/alter_column kwargs as raw SQL, writes to a tempfile, and feeds that to squawk. Replace the direct .py invocation with this preprocessor in CI + Makefile + pre-commit hook.",
+      "notes": "Surfaced when normalize_schema_drift hit the squawk job in PR #133 — first PR with a non-trivial Python migration since the job was added in #101."
     }
   ],
   "tooling_followups": [

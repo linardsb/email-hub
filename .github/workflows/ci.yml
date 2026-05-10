@@ -190,14 +190,10 @@ jobs:
       - name: alembic upgrade head
         run: uv run alembic upgrade head
 
-      - name: alembic check (model ↔ schema parity, advisory)
-        # Demoted to warning-only: env.py now imports all model modules so
-        # `removed_table` findings are gone, but ~20 long-standing cosmetic
-        # drifts remain (TIMESTAMP→DateTime(timezone=True), nullable
-        # annotations, PK index normalization, comment changes). Promoting
-        # to a hard gate would require a separate sweep across model files;
-        # tracked in docs/migration-debt.md under "alembic check drift".
-        continue-on-error: true
+      - name: alembic check (model ↔ schema parity)
+        # Promoted to a hard gate after `normalize_schema_drift` reconciled
+        # the long-standing TIMESTAMP/NOT NULL/comment drift and env.py
+        # gained the include_object filter for redundant PK indexes.
         run: uv run alembic check
 
   migration-lint:
@@ -215,7 +211,14 @@ jobs:
           chmod +x /usr/local/bin/squawk
           squawk --version
 
-      - name: Lint changed migrations
+      - name: Lint changed migrations (advisory)
+        # squawk only parses raw SQL — it cannot read alembic Python migrations
+        # (every `op.execute("...")` body becomes a syntax error and the job
+        # exits 123). Until a Python-aware migration linter is wired up
+        # (tracked in deferred-items::tech-debt-squawk-python-migrations),
+        # this step runs as advisory: it surfaces issues for SQL-file
+        # migrations but does not block PRs that change Python migrations.
+        continue-on-error: true
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
