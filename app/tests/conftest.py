@@ -33,6 +33,7 @@ schema, not the test data.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
@@ -68,16 +69,20 @@ async def _integration_engine() -> AsyncGenerator[AsyncEngine, None]:
             allow_module_level=True,
         )
 
-    # alembic.command.upgrade is sync; run it inline at session start before
-    # any async work. Driver-suffix (`+asyncpg`) must be stripped for
-    # alembic's sync env.py.
+    # alembic.command.upgrade is sync but `alembic/env.py` internally calls
+    # `asyncio.run(run_async_migrations())`. We're already inside pytest-
+    # asyncio's session event loop, so invoking it inline would raise
+    # `RuntimeError: asyncio.run() cannot be called from a running event
+    # loop`. Push the sync wrapper onto a worker thread (no event loop
+    # there) so env.py can spin up its own loop freely. Driver-suffix
+    # (`+asyncpg`) must be stripped for alembic's sync env.
     from alembic.config import Config as AlembicConfig
 
     from alembic import command
 
     alembic_cfg = AlembicConfig("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", url.replace("+asyncpg", ""))
-    command.upgrade(alembic_cfg, "head")
+    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
 
     engine = create_async_engine(url, future=True)
     try:
