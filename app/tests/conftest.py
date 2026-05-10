@@ -1,11 +1,10 @@
 # pyright: reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnusedFunction=false
 """Integration harness for cross-feature tests under `app/tests/`.
 
-Provides a session-scoped Postgres engine (`_integration_engine`) and a
-per-test `db` fixture (`AsyncSession` with `TRUNCATE ... RESTART IDENTITY
-CASCADE` on entry) so cross-entity regression tests like
-`test_tenant_isolation.py` can run against a real DB without bespoke
-infrastructure in every test module.
+Provides a per-test `db` fixture (`AsyncSession` with `TRUNCATE ...
+RESTART IDENTITY CASCADE` on entry) so cross-entity regression tests
+like `test_tenant_isolation.py` can run against a real DB without
+bespoke infrastructure in every test module.
 
 Activation
 ----------
@@ -21,6 +20,23 @@ Schema comes from `alembic upgrade head` against the test DB, not
 migrations (tracked under `tech-debt-19`) is one of the failure modes this
 harness is meant to surface. Using `metadata.create_all` would mask it.
 
+Fixture topology
+----------------
+Three layers, scoped to dodge two distinct asyncio/SQLAlchemy hazards:
+
+1. `_alembic_upgraded` (sync, session) — runs `alembic upgrade head`
+   exactly once. Sync so it can spin up its own event loop inside
+   `alembic/env.py::run_async_migrations` without colliding with
+   pytest-asyncio's per-test loop. Returns the URL.
+2. `_integration_engine` (async, function) — fresh `AsyncEngine` per
+   test with `NullPool`. Session-scoping the engine causes
+   `RuntimeError: ... Future attached to a different loop`: pytest-
+   asyncio creates a new event loop per test by default, but a
+   long-lived engine caches asyncpg connections bound to the loop that
+   first opened them. Function-scope + NullPool eliminates both.
+3. `db` (async, function) — `AsyncSession` from the per-test engine,
+   TRUNCATEs all model tables before yielding.
+
 Per-test isolation
 ------------------
 TRUNCATE-with-CASCADE on all model tables (in reverse-dependency order)
@@ -33,7 +49,6 @@ schema, not the test data.
 
 from __future__ import annotations
 
-import asyncio
 import os
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
@@ -46,6 +61,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
 from app.core.database import Base
 
@@ -53,13 +69,18 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
 
 
-@pytest_asyncio.fixture(scope="session")
-async def _integration_engine() -> AsyncGenerator[AsyncEngine, None]:
-    """Session-scoped engine pointed at `TEST_DATABASE__URL`.
+@pytest.fixture(scope="session")
+def _alembic_upgraded() -> str:
+    """Sync session fixture: alembic upgrade head, exactly once.
 
-    Runs `alembic upgrade head` once on entry so the harness validates
-    against the same migration-derived schema CI/production sees. Yields
-    the engine for per-test fixtures; disposes on teardown.
+    Sync so it runs outside any pytest-asyncio event loop —
+    `alembic/env.py::run_migrations_online` calls
+    `asyncio.run(run_async_migrations())` internally, which would raise
+    `cannot be called from a running event loop` if invoked from inside
+    pytest-asyncio's session loop. The driver suffix (`+asyncpg`) must
+    be stripped for alembic's sync env.
+
+    Returns the original (async-suffix-bearing) URL for engine creation.
     """
     url = os.environ.get("TEST_DATABASE__URL")
     if not url:
@@ -69,22 +90,29 @@ async def _integration_engine() -> AsyncGenerator[AsyncEngine, None]:
             allow_module_level=True,
         )
 
-    # alembic.command.upgrade is sync but `alembic/env.py` internally calls
-    # `asyncio.run(run_async_migrations())`. We're already inside pytest-
-    # asyncio's session event loop, so invoking it inline would raise
-    # `RuntimeError: asyncio.run() cannot be called from a running event
-    # loop`. Push the sync wrapper onto a worker thread (no event loop
-    # there) so env.py can spin up its own loop freely. Driver-suffix
-    # (`+asyncpg`) must be stripped for alembic's sync env.
     from alembic.config import Config as AlembicConfig
 
     from alembic import command
 
     alembic_cfg = AlembicConfig("alembic.ini")
     alembic_cfg.set_main_option("sqlalchemy.url", url.replace("+asyncpg", ""))
-    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
+    command.upgrade(alembic_cfg, "head")
+    return url
 
-    engine = create_async_engine(url, future=True)
+
+@pytest_asyncio.fixture
+async def _integration_engine(
+    _alembic_upgraded: str,
+) -> AsyncGenerator[AsyncEngine, None]:
+    """Per-test async engine with NullPool.
+
+    Function-scoped on purpose: pytest-asyncio's default test loop scope
+    is `function` (see pyproject.toml `asyncio_default_test_loop_scope`),
+    so a session-scoped engine would cache asyncpg connections bound to
+    the first test's now-dead loop. NullPool avoids any connection reuse
+    inside the test as well; engine create/dispose costs ~10ms.
+    """
+    engine = create_async_engine(_alembic_upgraded, future=True, poolclass=NullPool)
     try:
         yield engine
     finally:
