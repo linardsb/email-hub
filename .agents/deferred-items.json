@@ -163,7 +163,7 @@
       "fast_closure_path": "Run `alembic revision --autogenerate -m 'reconcile model<->schema drift'` against a fresh DB at head, hand-review the generated ops (split into multiple revs if too large), null-backfill the columns that need NOT NULL before applying. Squawk gate (Migration safety squawk job) will catch unsafe ALTER COLUMNs — expect to add `op.execute('SET lock_timeout = ...')` guards.",
       "notes": "The advisory check has been failing-as-non-blocking on every PR for some time. Surfaced as a question on PR #98 (https://github.com/linardsb/merkle-email-hub/pull/98). NOT a regression introduced by recent work. Tracked here so a future PR doesn't autogenerate it as a destructive migration without realizing the scope.",
       "closed": "2026-05-10",
-      "closed_commit": "PENDING"
+      "closed_commit": "d0eb648b"
     },
     {
       "id": "tech-debt-03-tenant-isolation-regression-harness",
@@ -209,7 +209,7 @@
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-05-10",
-      "introduced_commit": "PENDING",
+      "introduced_commit": "d0eb648b",
       "summary": "The CI Migration safety (squawk) job invokes squawk directly on alembic .py files. squawk 2.51+ is a pure-SQL linter — every op.execute() string literal triggers a syntax error and the job exits 123 with 500+ findings. Demoted to continue-on-error in tech-debt-19. The squawk-ignore: column-type-change comments in normalize_schema_drift.py exist for the day this becomes useful again.",
       "code_refs": [
         ".github/workflows/ci.yml (Migration safety squawk job — advisory)",
