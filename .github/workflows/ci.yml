@@ -211,7 +211,14 @@ jobs:
           chmod +x /usr/local/bin/squawk
           squawk --version
 
-      - name: Lint changed migrations
+      - name: Lint changed migrations (advisory)
+        # squawk only parses raw SQL — it cannot read alembic Python migrations
+        # (every `op.execute("...")` body becomes a syntax error and the job
+        # exits 123). Until a Python-aware migration linter is wired up
+        # (tracked in deferred-items::tech-debt-squawk-python-migrations),
+        # this step runs as advisory: it surfaces issues for SQL-file
+        # migrations but does not block PRs that change Python migrations.
+        continue-on-error: true
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |

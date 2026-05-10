@@ -201,6 +201,26 @@
       "symptom_if_broken": "A future genuinely-redundant cast elsewhere in the codebase slips through because reviewers see the existing `# type: ignore[redundant-cast]` precedent and copy it. Less severe but possible: pyright catches up and the suppression silently does nothing — easy to miss without a tracker.",
       "closes_when": "Either (a) `_parse_style_runs` is refactored so `overrides` is typed as `list[Any]` at the call site (no cast needed by mypy or pyright), OR (b) pyright's isinstance narrowing matches mypy 2.0's behavior and removing both the cast and the ignore-comment leaves `make types` green.",
       "fix_sketch": "Option (a): change `node_data: dict[str, Any]` to a TypedDict with `characterStyleOverrides: NotRequired[list[Any]]`, then `overrides = node_data.get(...)` is already `list[Any]` and the isinstance guard suffices for both checkers. Option (b): drop the cast + `# type: ignore[redundant-cast]` line and run `uv run pyright app/design_sync/figma/service.py` to confirm pyright accepts the narrowing."
+    },
+    {
+      "id": "tech-debt-squawk-python-migrations",
+      "phase": "tech-debt-19",
+      "title": "squawk migration-lint job is advisory because squawk 2.x does not parse Python alembic migrations",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-05-10",
+      "introduced_commit": "PENDING",
+      "summary": "The CI Migration safety (squawk) job invokes squawk directly on alembic .py files. squawk 2.51+ is a pure-SQL linter — every op.execute() string literal triggers a syntax error and the job exits 123 with 500+ findings. Demoted to continue-on-error in tech-debt-19. The squawk-ignore: column-type-change comments in normalize_schema_drift.py exist for the day this becomes useful again.",
+      "code_refs": [
+        ".github/workflows/ci.yml (Migration safety squawk job — advisory)",
+        "Makefile (migration-lint target — same brokenness on local)",
+        ".pre-commit-config.yaml:94 (squawk-migrations hook — already || true)",
+        "alembic/versions/normalize_schema_drift.py (squawk-ignore comments awaiting a linter that respects them)"
+      ],
+      "symptom_if_broken": "Future migrations with unsafe DDL (table-rewriting ALTER, missing IF EXISTS, naked DROP COLUMN on populated tables) ship without an automated check. The risky-pattern catch lives only in human review until a Python-aware migration linter (e.g. SQL-string AST extraction + feed to squawk, or a new tool) is wired in.",
+      "closes_when": "A migration linter (Python-aware) reports zero findings on the current alembic/versions/ tree, AND the migration-lint job is promoted back to a hard gate (continue-on-error removed).",
+      "fast_closure_path": "Write a tiny Python preprocessor that AST-walks alembic/versions/*.py, extracts every op.execute(\"...\") + op.create_table/alter_column kwargs as raw SQL, writes to a tempfile, and feeds that to squawk. Replace the direct .py invocation with this preprocessor in CI + Makefile + pre-commit hook.",
+      "notes": "Surfaced when normalize_schema_drift hit the squawk job in PR #133 — first PR with a non-trivial Python migration since the job was added in #101."
     }
   ],
   "tooling_followups": [

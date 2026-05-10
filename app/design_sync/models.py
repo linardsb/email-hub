@@ -26,7 +26,11 @@ class DesignConnection(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="connected")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    config_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    config_json: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Per-connection config: naming convention, section map, button hints",
+    )
     project_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("projects.id"), nullable=True, index=True
     )

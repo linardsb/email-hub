@@ -144,6 +144,23 @@ def upgrade() -> None:
     #    `unique=True, index=True` column is duplicated work.
     op.execute("DROP INDEX IF EXISTS ix_qa_overrides_qa_result_id")
 
+    # 6. design_connections.config_json: JSON -> JSONB + restate comment.
+    #    The original migration a0b1c2d3e4f5 declared the column as JSON with
+    #    a comment; the model now declares JSONB to enable Postgres-native
+    #    JSON operators (@>, ?, #>). The cast is no-op when the column is
+    #    already jsonb (idempotent across envs). The COMMENT ON is also
+    #    idempotent — restating it covers environments where the comment
+    #    was lost via a manual ALTER without ``COMMENT IS …``.
+    # squawk-ignore: column-type-change
+    op.execute(
+        "ALTER TABLE design_connections "
+        "ALTER COLUMN config_json TYPE jsonb USING config_json::jsonb"
+    )
+    op.execute(
+        "COMMENT ON COLUMN design_connections.config_json IS "
+        "'Per-connection config: naming convention, section map, button hints'"
+    )
+
 
 def downgrade() -> None:
     """Forward-only migration — see module docstring."""
