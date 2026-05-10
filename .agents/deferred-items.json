@@ -138,7 +138,7 @@
       "fast_closure_path": "Option (b) bandaid: ~10-line patch per file — replace `_token_cache: ClassVar[dict] = {}` with an instance `LruWithTtl(maxsize=64, default_ttl=3600)` initialized in `__init__`, drop the `hashlib.sha256(...).hexdigest()[:16]` and use the full client_id (prefixed by vendor name). Existing cache-hit/miss tests cover the call sites; only the storage shape changes.",
       "notes": "Discovered while verifying Plan 04 stayed shipped (2026-05-04 sweep). Plan 04's verification commands (`rg '_token_cache: ClassVar' app/connectors/`) returned 0 hits when Plan 04 shipped because sync_provider.py was either added later or the rg was scoped tighter — worth checking git blame before assuming it's a regression vs. a pre-existing miss.",
       "closed": "2026-05-10",
-      "closed_commit": "0c1f9cb7",
+      "closed_commit": "3ef5633f",
       "closure_note": "Closed via Option (b) — surgical bandaid in tech-debt/04-connector-oauth-cache. Replaced `_token_cache: ClassVar[dict]` + SHA-256[:16] cache key with per-instance `LruWithTtl(maxsize=64)` keyed by `f\"{vendor}:{client_id}\"` in app/connectors/{sfmc,adobe}/sync_provider.py. Dropped hashlib + time imports. Added cross-tenant + per-instance regression tests in app/connectors/{sfmc,adobe}/tests/test_sync_provider.py. Option (a) — full migration onto OAuthConnectorService — remains as future work; both files now carry a `# TODO(tech-debt):` marker pointing back to this entry so the next sweep knows the bandaid is intentional."
     },
     {
