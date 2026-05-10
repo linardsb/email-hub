@@ -11,6 +11,7 @@ import asyncio
 import contextlib
 import json
 import os
+import uuid
 from datetime import UTC, datetime
 
 from croniter import croniter
@@ -23,6 +24,17 @@ from app.scheduling.schemas import JOBS_PREFIX, LEADER_KEY, RUNS_PREFIX, JobStat
 
 logger = get_logger(__name__)
 
+# Lua script for atomic compare-and-swap leader-lock release.
+# Returns 1 if the lock was held by us and deleted; 0 if the lock was
+# stolen, expired, or already gone.
+_RELEASE_LUA = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+else
+  return 0
+end
+"""
+
 
 class CronScheduler:
     """Lightweight asyncio cron scheduler with Redis persistence."""
@@ -31,6 +43,8 @@ class CronScheduler:
         self._config = config
         self._task: asyncio.Task[None] | None = None
         self._running = False
+        self._identity = f"{os.getenv('HOSTNAME', 'unknown')}:{uuid.uuid4()}"
+        self._pending_tasks: set[asyncio.Task[None]] = set()
 
     async def start(self) -> None:
         """Start the scheduler background task and sync registry to Redis."""
@@ -45,10 +59,17 @@ class CronScheduler:
         """Stop the scheduler background task."""
         self._running = False
         if self._task:
+            # Drain in-flight jobs before cancelling the loop so already-spawned
+            # work runs to completion under the same leader identity.
+            await self.drain()
             self._task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
             self._task = None
+        # Release leader lock on the way out so another worker can take over
+        # immediately rather than waiting for TTL.
+        with contextlib.suppress(Exception):
+            await self._release_leader()
         logger.info("scheduling.stopped")
 
     # ------------------------------------------------------------------
@@ -60,7 +81,11 @@ class CronScheduler:
         while self._running:
             try:
                 if await self._acquire_leader():
-                    await self._evaluate_jobs()
+                    try:
+                        await self._evaluate_jobs()
+                        await self.drain()
+                    finally:
+                        await self._release_leader()
             except asyncio.CancelledError:
                 break
             except Exception:
@@ -72,16 +97,29 @@ class CronScheduler:
     # ------------------------------------------------------------------
 
     async def _acquire_leader(self) -> bool:
-        """Acquire leader lock via Redis SET NX."""
+        """Acquire leader lock via Redis SET NX, identified by this instance's UUID."""
         try:
             redis = await get_redis()
             leader_ttl = int(self._config.check_interval_seconds * 1.5)
-            identity = str(os.getpid())
-            acquired = await redis.set(LEADER_KEY, identity, nx=True, ex=leader_ttl)
+            acquired = await redis.set(LEADER_KEY, self._identity, nx=True, ex=leader_ttl)
+            if acquired:
+                logger.info("scheduling.leader_acquired", identity=self._identity)
             return bool(acquired)
         except Exception:
             # Redis unavailable — become leader anyway (single-worker fallback)
             return True
+
+    async def _release_leader(self) -> None:
+        """Release leader lock atomically, only if we still own it."""
+        try:
+            redis = await get_redis()
+            released = await redis.eval(_RELEASE_LUA, 1, LEADER_KEY, self._identity)
+            if released:
+                logger.info("scheduling.leader_released", identity=self._identity)
+            else:
+                logger.warning("scheduling.leader_release_no_op", identity=self._identity)
+        except Exception:
+            logger.warning("scheduling.leader_release_redis_error", exc_info=True)
 
     # ------------------------------------------------------------------
     # Job evaluation
@@ -138,7 +176,28 @@ class CronScheduler:
                 next_run = next_run.replace(tzinfo=UTC)
 
             if next_run <= now:
-                await self._execute_job(name, key)
+                if len(self._pending_tasks) >= self._config.max_concurrent_jobs:
+                    logger.warning(
+                        "scheduling.max_concurrent_reached",
+                        limit=self._config.max_concurrent_jobs,
+                        job=name,
+                    )
+                    continue
+                task = asyncio.create_task(
+                    self._execute_job(name, key), name=f"scheduling.job:{name}"
+                )
+                self._pending_tasks.add(task)
+                task.add_done_callback(self._pending_tasks.discard)
+                logger.info("scheduling.job_scheduled", job=name)
+
+    async def drain(self) -> None:
+        """Await every in-flight job task — clean-shutdown helper + test seam."""
+        if not self._pending_tasks:
+            return
+        pending = list(self._pending_tasks)
+        logger.info("scheduling.drain_started", in_flight=len(pending))
+        await asyncio.gather(*pending, return_exceptions=True)
+        logger.info("scheduling.drain_completed")
 
     async def _execute_job(self, name: str, redis_key: str) -> None:
         """Execute a job, recording start/end and result in Redis."""

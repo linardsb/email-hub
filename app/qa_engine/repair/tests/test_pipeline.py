@@ -1,5 +1,7 @@
 """Unit tests for RepairPipeline orchestrator."""
 
+from unittest.mock import patch
+
 from app.qa_engine.repair.pipeline import RepairPipeline, RepairResult
 
 
@@ -25,6 +27,40 @@ class _NoOpStage:
         return RepairResult(html=html)
 
 
+class _RecordingStage:
+    """Test helper: stage that records the html it received and returns it unchanged."""
+
+    def __init__(self, name: str, received: list[str]) -> None:
+        self._name = name
+        self._received = received
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def repair(self, html: str) -> RepairResult:
+        self._received.append(html)
+        return RepairResult(html=html, repairs_applied=[f"{self._name}_noop"])
+
+
+class _CorruptThenRaiseStage:
+    """Test helper: corrupts html via side effect, then raises.
+
+    Used to verify snapshot/restore — even if a future refactor caused stages
+    to mutate shared state before raising, the snapshot must defend against it.
+    """
+
+    @property
+    def name(self) -> str:
+        return "corrupt_then_raise"
+
+    def repair(self, html: str) -> RepairResult:
+        # Build a corrupt result first, then raise (simulates partial mutation).
+        _ = RepairResult(html="<corrupt>")
+        msg = "boom"
+        raise RuntimeError(msg)
+
+
 class TestRepairPipeline:
     def test_runs_default_stages(self) -> None:
         pipeline = RepairPipeline()
@@ -36,7 +72,42 @@ class TestRepairPipeline:
         pipeline = RepairPipeline(stages=[_FailingStage(), _NoOpStage()])
         result = pipeline.run("<html><body>test</body></html>")
         assert result.html == "<html><body>test</body></html>"
-        assert any("failed" in w for w in result.warnings)
+        assert any("rolled back" in w for w in result.warnings)
+
+    def test_stage_failure_does_not_leak_partial_html(self) -> None:
+        """The stage after a failure must receive the snapshot, not corrupted state."""
+        received: list[str] = []
+        pipeline = RepairPipeline(
+            stages=[_CorruptThenRaiseStage(), _RecordingStage("after", received)]
+        )
+        snapshot = "<html><body>original</body></html>"
+        result = pipeline.run(snapshot)
+        assert received == [snapshot]
+        assert result.html == snapshot
+
+    def test_rolled_back_warning_emits_log(self) -> None:
+        """Stage exception emits exactly one structured log event."""
+        pipeline = RepairPipeline(stages=[_FailingStage()])
+        with patch("app.qa_engine.repair.pipeline.logger") as mock_logger:
+            pipeline.run("<html><body>x</body></html>")
+        rolled_back = [
+            c for c in mock_logger.warning.call_args_list if c.args == ("repair.stage_rolled_back",)
+        ]
+        assert len(rolled_back) == 1
+        assert rolled_back[0].kwargs == {"stage": "failing", "error": "boom"}
+
+    def test_repairs_applied_unchanged_on_failure(self) -> None:
+        """A stage that raises does not contribute to repairs_applied; siblings still do."""
+        received: list[str] = []
+        pipeline = RepairPipeline(
+            stages=[
+                _RecordingStage("before", received),
+                _FailingStage(),
+                _RecordingStage("after", received),
+            ]
+        )
+        result = pipeline.run("<html><body>x</body></html>")
+        assert result.repairs_applied == ["before_noop", "after_noop"]
 
     def test_idempotency(self) -> None:
         pipeline = RepairPipeline()
