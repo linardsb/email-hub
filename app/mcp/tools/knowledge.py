@@ -40,11 +40,11 @@ Output: Ranked results with relevance scores and source domain."""
         try:
             from app.core.database import get_db_context
             from app.knowledge.schemas import SearchRequest
-            from app.knowledge.service import KnowledgeService
+            from app.knowledge.services.search import SearchService
 
             request = SearchRequest(query=query, domain=domain, language=None, limit=limit)
             async with get_db_context() as db:
-                service = KnowledgeService(db)
+                service = SearchService(db)
                 if domain:
                     results = await service.search(request)
                 else:

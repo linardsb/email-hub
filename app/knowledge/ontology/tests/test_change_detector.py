@@ -323,7 +323,7 @@ class TestRenderingChangePoller:
                 "app.core.database.get_db_context",
             ) as mock_db_ctx,
             patch(
-                "app.knowledge.service.KnowledgeService",
+                "app.knowledge.services.ingestion.IngestionService",
                 return_value=mock_service,
             ),
         ):

@@ -264,10 +264,10 @@ class TemplateUploadService:
         # Inject knowledge (async, non-blocking on failure)
         if self._settings.auto_knowledge_inject:
             try:
-                from app.knowledge.service import KnowledgeService
+                from app.knowledge.services.ingestion import IngestionService
                 from app.templates.upload.knowledge_injector import KnowledgeInjector
 
-                knowledge_svc = KnowledgeService(self.db)
+                knowledge_svc = IngestionService(self.db)
                 injector = KnowledgeInjector(knowledge_svc)
                 await injector.inject(
                     template_name=template.metadata.name,

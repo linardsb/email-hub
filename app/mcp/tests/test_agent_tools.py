@@ -437,7 +437,7 @@ class TestKnowledgeTool:
         with (
             patch("app.ai.agents.knowledge.service.get_knowledge_agent_service") as mock_get,
             patch("app.core.database.get_db_context", return_value=_mock_db_ctx()),
-            patch("app.knowledge.service.KnowledgeService"),
+            patch("app.knowledge.services.search.SearchService"),
         ):
             svc = AsyncMock()
             svc.process = AsyncMock(

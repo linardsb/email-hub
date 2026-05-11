@@ -454,12 +454,12 @@ Output: Synthesised answer with cited sources, confidence score, relevance score
             from app.ai.agents.knowledge.schemas import KnowledgeRequest
             from app.ai.agents.knowledge.service import get_knowledge_agent_service
             from app.core.database import get_db_context
-            from app.knowledge.service import KnowledgeService
+            from app.knowledge.services.search import SearchService
 
             request = KnowledgeRequest(question=question, domain=domain)
             service = get_knowledge_agent_service()
             async with get_db_context() as db:
-                rag_service = KnowledgeService(db)
+                rag_service = SearchService(db)
                 response = await service.process(request, rag_service=rag_service)
             return _format_agent_result(to_dict(response), "Knowledge")
         except Exception:

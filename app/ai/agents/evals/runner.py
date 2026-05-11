@@ -438,7 +438,7 @@ async def run_knowledge_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.knowledge.schemas import KnowledgeRequest
     from app.ai.agents.knowledge.service import KnowledgeAgentService
     from app.core.database import get_db_context
-    from app.knowledge.service import KnowledgeService as RAGService
+    from app.knowledge.services.search import SearchService as RAGService
 
     service = KnowledgeAgentService()
     question: str = str(case["question"])

@@ -12,7 +12,7 @@ from app.core.logging import get_logger
 from app.templates.upload.analyzer import AnalysisResult
 
 if TYPE_CHECKING:
-    from app.knowledge.service import KnowledgeService
+    from app.knowledge.services.ingestion import IngestionService
 
 logger = get_logger(__name__)
 
@@ -53,7 +53,7 @@ _PATTERN_DETECTORS: list[tuple[str, str, re.Pattern[str]]] = [
 class KnowledgeInjector:
     """Creates knowledge base entries from analyzed template patterns."""
 
-    def __init__(self, knowledge_service: KnowledgeService) -> None:
+    def __init__(self, knowledge_service: IngestionService) -> None:
         self.knowledge = knowledge_service
 
     async def inject(
