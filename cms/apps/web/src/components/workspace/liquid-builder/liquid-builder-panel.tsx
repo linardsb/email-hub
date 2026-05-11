@@ -49,7 +49,7 @@ export function LiquidBuilderPanel({ code, onCodeChange }: LiquidBuilderPanelPro
       isInternalUpdate.current = true;
       onCodeChange(serialized);
     }
-  }, [blocks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [blocks]);
 
   return (
     <div className="flex h-full flex-col">

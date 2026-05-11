@@ -139,7 +139,6 @@ export const EditorPanel = forwardRef<CodeEditorHandle, EditorPanelProps>(functi
     if (isSplit && value) {
       syncCodeChange(value);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on mode change
   }, [isSplit]);
 
   // When sync engine produces new HTML from builder changes, push to parent

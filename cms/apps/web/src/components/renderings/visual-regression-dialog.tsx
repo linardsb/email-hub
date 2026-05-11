@@ -38,7 +38,7 @@ export function VisualRegressionDialog({
       }
     }
     if (!open && dialog.open) dialog.close();
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <dialog
