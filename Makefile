@@ -90,7 +90,12 @@ test-integration: ## Run integration tests (tenant-isolation harness against Pos
 	@echo "Waiting for postgres-tenant-iso to become healthy..."
 	@until docker compose -f docker-compose.test.yml exec -T postgres-tenant-iso \
 		pg_isready -U postgres -d test >/dev/null 2>&1; do sleep 1; done
+	# Both env vars point at the same DB: TEST_DATABASE__URL activates the
+	# harness in app/tests/conftest.py; DATABASE__URL is what alembic/env.py
+	# reads via settings.database.url. Keep them in sync — see ci.yml's
+	# `integration` job for the matching CI-side setup.
 	TEST_DATABASE__URL=postgresql+asyncpg://postgres:postgres@localhost:5433/test \
+	DATABASE__URL=postgresql+asyncpg://postgres:postgres@localhost:5433/test \
 		uv run pytest -m integration -v
 
 bench: ## Run performance benchmark tests

@@ -238,6 +238,23 @@
       "symptom_if_broken": "A repo or route change drops creator-based filtering on briefs; one user in an org reads another user’s briefs and no regression test catches it (only the existing scoped_access fail-loud covers the missing-filter shape — not user-id-scoped leaks within an org).",
       "closes_when": "A test like test_no_cross_user_read_briefs lands under app/tests/, seeds two users in the SAME org, has user1 create a brief, asserts user2 cannot GET it by id and that user2’s list excludes it. Wire it into the integration harness alongside test_no_cross_org_read.",
       "notes": "Out of scope for tech-debt/03-tenant-iso-harness per that plan §“Out of scope”."
+    },
+    {
+      "id": "tech-debt-03-memory-isolation-embedding-stub",
+      "phase": "tech-debt-03",
+      "title": "Memory row in tenant-isolation harness is xfail because POST /memory/ needs an embedding provider",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-05-11",
+      "summary": "When the tenant-isolation harness landed (PR #137, fixed in PR #138), the `memory` row had to be demoted to xfail(strict=False) because `POST /memory/` calls `get_embedding_provider(settings)` and embeds the content before INSERT. The integration CI job has neither `EMBEDDING__API_KEY` nor sentence-transformers, so the OpenAI provider returns 401. Stubbing the provider via `app.dependency_overrides` would close it; that DI plumbing is out of scope for the harness landing.",
+      "code_refs": [
+        "app/tests/test_tenant_isolation.py (memory pytest.param at xfail(strict=False))",
+        "app/memory/routes.py:27 (provider = get_embedding_provider(settings))",
+        "app/knowledge/embedding.py:177 (get_embedding_provider)"
+      ],
+      "symptom_if_broken": "Memory row in the tenant-isolation harness silently passes despite scoping regressions — the xfail(strict=False) means PASS is also acceptable. If the provider stub lands but the scoping is broken, the test would fail loud; if scoping is broken AND the provider is still 401-ing, the failure mode persists as the same xfail and the regression hides.",
+      "closes_when": "A test-scoped embedding-provider override (e.g. via `app.dependency_overrides[get_embedding_provider] = lambda settings: StubProvider()` in `app/tests/conftest.py`, gated on the integration marker) is wired AND the memory pytest.param promotes to plain id=... AND the cross-org read test for memory passes against a real DB.",
+      "notes": "Tracked alongside tech-debt-03-briefs-user-isolation-test (the other deferred follow-up from the harness landing)."
     }
   ],
   "tooling_followups": [
