@@ -380,7 +380,7 @@ class TestVisionFallbackInPayload:
             "app.ai.capability_registry.get_capability_registry",
             return_value=registry,
         ):
-            result = provider._build_messages_payload(messages, "text-only-model")
+            result = provider._format_payload(messages, "text-only-model")
 
         assert len(result) == 1
         content = result[0]["content"]
@@ -406,7 +406,7 @@ class TestVisionFallbackInPayload:
         ]
 
         # Unknown model → assumes vision capable
-        result = provider._build_messages_payload(messages, "gpt-4o")
+        result = provider._format_payload(messages, "gpt-4o")
         content = result[0]["content"]
         assert isinstance(content, list)
         assert content[1]["type"] == "image_url"
@@ -446,7 +446,7 @@ class TestVisionFallbackInPayload:
             "app.ai.capability_registry.get_capability_registry",
             return_value=registry,
         ):
-            _system_parts, chat_msgs, _ = provider._build_messages_payload(
+            _system_parts, chat_msgs, _ = provider._format_payload(
                 messages,
                 "text-only",
             )

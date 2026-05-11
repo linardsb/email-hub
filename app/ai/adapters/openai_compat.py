@@ -19,6 +19,7 @@ from typing import Any
 
 import httpx
 
+from app.ai.adapters.base import BaseLLMProvider
 from app.ai.exceptions import AIConfigurationError, AIExecutionError
 from app.ai.multimodal import (
     AudioBlock,
@@ -44,7 +45,7 @@ _DEFAULT_BASE_URL = "https://api.openai.com/v1"
 _REQUEST_TIMEOUT = 120.0
 
 
-class OpenAICompatProvider:
+class OpenAICompatProvider(BaseLLMProvider):
     """LLM provider for OpenAI-compatible Chat Completions APIs.
 
     Reads settings from `Settings.ai` at instantiation time:
@@ -112,86 +113,16 @@ class OpenAICompatProvider:
             pool=self._pool is not None,
         )
 
-    def _apply_token_budget(
-        self, messages: list[Message], kwargs: dict[str, object]
-    ) -> list[Message]:
-        """Trim messages to fit token budget if enabled."""
-        settings = get_settings()
-        if not settings.ai.token_budget_enabled:
-            return messages
-        from app.ai.token_budget import TokenBudgetManager
+    def _get_settings(self) -> Any:  # noqa: ANN401
+        """Hook for inherited helpers — delegates to this module's `get_settings`.
 
-        model = str(kwargs.get("model_override", self._model))
-        budget_mgr = TokenBudgetManager(
-            model=model,
-            reserve_tokens=settings.ai.token_budget_reserve,
-            max_context_tokens=settings.ai.token_budget_max,
-        )
-        return budget_mgr.trim_to_budget(messages)
+        Lets tests that patch `app.ai.adapters.openai_compat.get_settings` continue
+        to affect the base-class helpers (`_apply_token_budget`, `_check_cost_budget`,
+        `_report_cost`) without 24 test sites needing a second patch on the base module.
+        """
+        return get_settings()
 
-    async def _check_cost_budget(self) -> None:
-        """Check budget before making an API call. Raises BudgetExceededError if over budget."""
-        settings = get_settings()
-        if not settings.ai.cost_governor_enabled:
-            return
-        from app.ai.cost_governor import BudgetStatus, get_cost_governor
-
-        governor = get_cost_governor()
-        status = await governor.check_budget()
-        if status == BudgetStatus.EXCEEDED:
-            from app.ai.exceptions import BudgetExceededError
-
-            raise BudgetExceededError("Monthly AI budget exceeded")
-
-    async def _report_cost(
-        self, model: str, usage: dict[str, int] | None, kwargs: dict[str, object]
-    ) -> None:
-        """Report token usage to cost governor if enabled. Fire-and-forget."""
-        settings = get_settings()
-        if not settings.ai.cost_governor_enabled or usage is None:
-            return
-        try:
-            from app.ai.cost_governor import get_cost_governor
-
-            governor = get_cost_governor()
-            await governor.record(
-                model=model,
-                input_tokens=usage.get("prompt_tokens", 0),
-                output_tokens=usage.get("completion_tokens", 0),
-                agent=str(kwargs.get("agent_name", "")),
-                project_id=str(kwargs.get("project_id", "")),
-            )
-        except Exception:
-            logger.debug("cost_governor.report_failed", model=model)
-
-    @staticmethod
-    def _extract_structured_output(
-        messages: list[Message],
-    ) -> StructuredOutputBlock | None:
-        """Extract StructuredOutputBlock from the last message, if present."""
-        if not messages:
-            return None
-        last = messages[-1]
-        if isinstance(last.content, list):
-            for block in last.content:
-                if isinstance(block, StructuredOutputBlock):
-                    return block
-        return None
-
-    def _check_vision_capability(self, model: str) -> bool:
-        """Check if the model supports vision via capability registry."""
-        try:
-            from app.ai.capability_registry import ModelCapability, get_capability_registry
-
-            registry = get_capability_registry()
-            spec = registry.get(model)
-            if spec is None:
-                return True  # Unknown model — assume capable (fail at API level)
-            return ModelCapability.VISION in spec.capabilities
-        except Exception:
-            return True  # Registry unavailable — don't block
-
-    def _build_messages_payload(
+    def _format_payload(
         self,
         messages: list[Message],
         model: str,
@@ -239,7 +170,7 @@ class OpenAICompatProvider:
 
         payload: dict[str, Any] = {
             "model": model,
-            "messages": self._build_messages_payload(messages, model),
+            "messages": self._format_payload(messages, model),
         }
 
         # Structured output via response_format (Phase 23.2)
@@ -381,7 +312,7 @@ class OpenAICompatProvider:
 
         payload: dict[str, Any] = {
             "model": model,
-            "messages": self._build_messages_payload(messages, model),
+            "messages": self._format_payload(messages, model),
             "stream": True,
         }
 
