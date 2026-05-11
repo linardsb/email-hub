@@ -59,16 +59,21 @@ export default async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Check RBAC
+    // Check RBAC — default-deny on unknown routes or missing role config
     const routeKey = getRouteKey(pathname);
-    if (routeKey) {
-      const allowedRoles = ROLE_PERMISSIONS[routeKey];
-      const userRole: string = session.user.role || "viewer";
-      if (allowedRoles && !allowedRoles.includes(userRole as AppRole)) {
-        return NextResponse.redirect(new URL("/unauthorized", request.url));
-      }
+    const allowedRoles = routeKey === null ? undefined : ROLE_PERMISSIONS[routeKey];
+    if (!allowedRoles) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
-  } catch {
+    const userRole: string = session.user.role || "viewer";
+    if (!allowedRoles.includes(userRole as AppRole)) {
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
+    }
+  } catch (err) {
+    console.warn("middleware.auth_failed", {
+      pathname,
+      err: err instanceof Error ? err.message : String(err),
+    });
     // Auth failed — let the page render (login page handles its own redirect)
   }
 
