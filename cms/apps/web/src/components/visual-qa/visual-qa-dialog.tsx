@@ -63,7 +63,7 @@ export function VisualQADialog({ open, onClose, html, entityType, entityId }: Vi
     if (open && screenshots.length === 0 && html.length > 0) {
       handleCapture();
     }
-  }, [open, handleCapture]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, handleCapture]);
 
   const handleRunDiff = useCallback(
     async (clientName: string) => {
@@ -92,7 +92,7 @@ export function VisualQADialog({ open, onClose, html, entityType, entityId }: Vi
     if (activeTab === "diff" && selectedClient) {
       handleRunDiff(selectedClient);
     }
-  }, [activeTab, selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedClient]);
 
   const handleRunDiffAll = useCallback(async () => {
     if (selectedClient) {

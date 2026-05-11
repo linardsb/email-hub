@@ -153,7 +153,6 @@ function ImportDesignWizard({
     if (hasPreselection && !briefData && !isGenerating) {
       handleGenerateBrief();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleStartConversion = async () => {

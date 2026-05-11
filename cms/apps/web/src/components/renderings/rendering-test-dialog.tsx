@@ -44,7 +44,7 @@ export function RenderingTestDialog({
       setState("error");
       setErrorMessage("Test Failed");
     }
-  }, [polledTest?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [polledTest?.status]);
 
   useEffect(() => {
     const dialog = ref.current;

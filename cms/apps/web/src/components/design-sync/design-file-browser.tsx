@@ -193,7 +193,6 @@ function TreeNode({
               isSelected ? "border-interactive" : "border-card-border hover:border-foreground-muted"
             }`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={thumbnail}
               alt={node.name}

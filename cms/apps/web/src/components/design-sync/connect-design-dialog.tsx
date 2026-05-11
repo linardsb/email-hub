@@ -432,7 +432,6 @@ export function ConnectDesignDialog({ open, onOpenChange }: ConnectDesignDialogP
                             >
                               {file.thumbnail_url ? (
                                 <div className="bg-surface-sunken flex h-24 items-center justify-center overflow-hidden">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={file.thumbnail_url}
                                     alt={file.name}

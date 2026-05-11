@@ -16,7 +16,6 @@ export function ImagePreviewCard({ image, onInsert }: ImagePreviewCardProps) {
 
   return (
     <div className="border-card-border bg-card-bg group overflow-hidden rounded-md border">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={image.url}
         alt={image.prompt}
