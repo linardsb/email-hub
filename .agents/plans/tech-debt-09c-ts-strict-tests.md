@@ -1,24 +1,13 @@
 # Tech Debt 09c — Kill `@ts-nocheck` in Frontend Tests (F043)
 
+**Status:** Closed — F043 shipped on `main` via `53f1a0ad` (2026-05-04, "refactor(cms): kill @ts-nocheck in test suite + trim use-builder (F043 F044)"). The parallel WIP branch `refactor/tech-debt-09c-ts-strict-tests` was superseded and is abandonable. `rg -l "@ts-nocheck" cms/apps/web/src` returns 0 files.
+
 **Source:** Carved out of `tech-debt-09-frontend-cleanup.md` Part C.
-**Sibling plans:** `tech-debt-09a-icons-split.md` (Part A) — independent, can run in parallel.
+**Sibling plans:** `tech-debt-09a-icons-split.md` (Part A) — independent, can run in parallel. F051 + F068 (originally appended here as "Session 16") extracted to `tech-debt-09c-session-16-followups.md` so this plan stays F043-only.
 **Prerequisite:** `tech-debt-09-frontend-cleanup.md` Parts B/D/E/F/G already landed on `refactor/tech-debt-09-frontend`. Branch off `main` after that PR merges, OR off the same branch if working in parallel.
 **Scope:** Remove every `// @ts-nocheck` directive from `cms/apps/web/src/**` test files and replace the underlying mock-typing with `vi.mocked()` patterns.
 **Goal:** Zero `@ts-nocheck` directives in `cms/apps/web/src/` (excluding `**/*.gen.*`). `pnpm --filter web type-check` green. All 774 existing tests still pass.
 **Estimated effort:** Full session (12 files, 5,095 LOC of test code, real type bugs likely surfaced).
-
-## Execution structure
-
-Session 16 — Frontend test types + middleware default-deny
-- Findings: F051, F068
-- Effort: M
-- Plan: extend tech-debt-09c-ts-strict-tests.md (F051 + F068 sections appended below; F043 stays as the existing plan body and is verify-only at Session 16 time)
-- Branch: refactor/tech-debt-09c-fe-test-types
-- Scope:
-  - F051: cms/apps/web/middleware.ts:7-21,53-72 — default-deny for routes not in ROLE_PERMISSIONS; log the catch
-  - F068: split cms/apps/web/src/hooks/__tests__/use-data-hooks{,-2,-3}.test.ts (615+715+990 LOC numbered split) → co-locate per-hook (use-projects.test.ts etc.) with shared __tests__/setup.ts
-
-F043 (the existing plan body) runs as its own session on `refactor/tech-debt-09c-ts-strict-tests` (26 commits already staged); Session 16 verifies its closure via `grep -rl "@ts-nocheck" cms/apps/web/src` returning zero before merging F051/F068.
 
 ## Risk warning (from parent plan)
 
