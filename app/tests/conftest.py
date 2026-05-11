@@ -168,6 +168,13 @@ async def db(_integration_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, N
         )
         tables = [row[0] for row in result.all()]
         if tables:
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            # `table_list` is built from `pg_tables WHERE schemaname='public'`
+            # — names live in the DB catalog, never user input. SQLAlchemy
+            # has no parameter binding for DDL identifiers (TRUNCATE table
+            # names) so f-string interpolation is the only path. Test-only
+            # code; matches the `.claude/rules/security.md` triage decision
+            # tree (no user-input reach + intended functionality).
             table_list = ", ".join(f'"{t}"' for t in tables)
             await session.execute(text(f"TRUNCATE {table_list} RESTART IDENTITY CASCADE"))
             await session.commit()
