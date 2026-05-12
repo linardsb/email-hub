@@ -6,6 +6,8 @@
 **Estimated effort:** Full session (heavy).
 **Prerequisite:** None.
 
+> **Session 17 rescope (2026-05-12):** Parts A and B already shipped (custom_checks package + RuleEngineCheck factory + 10 boilerplate classes deleted; verify: `ls app/qa_engine/custom_checks/` and `cat app/qa_engine/checks/__init__.py`). **Only Part C remains — F067 test split is the entire Session 17 scope on this plan.** Branch: `test/tech-debt-17-connector-qa-coverage`.
+
 ## Findings addressed
 
 F018 (`custom_checks.py` 3738 LOC, 125 funcs, 11 `_param` copies) — Critical
@@ -264,20 +266,104 @@ Keep:
 
 Per-call cache clears are useless — they invalidate before each run, defeating any caching benefit. Preserve current behavior; address in a follow-up that removes caches entirely.
 
-## Part C — Test split (F067)
+## Part C — Test split (F067) — **Session 17 scope**
 
-### C1. Per-check test files
+### C0. State on disk (verified 2026-05-12)
 
-Split `app/qa_engine/tests/test_checks.py` (1944 LOC) into:
-- `test_html_validation.py`
-- `test_dark_mode.py`
-- ... one per check (10 RuleEngine + bespoke imports inline).
+- `app/qa_engine/tests/test_checks.py` — 1935 LOC, 13 `Test*` classes (see table below). Imports already use `get_check(...)` for the 10 factory checks + `CssSupportCheck` direct (line 6).
+- `_valid_html` helper at `test_checks.py:11–36` — used 48× across the file.
+- Pyright pragma at line 1: `# pyright: reportUnknownParameterType=false, reportMissingParameterType=false, reportUnknownArgumentType=false` — relaxes types for the whole file.
+- Pre-existing files in `app/qa_engine/tests/` that **must not collide** with split outputs:
+  - `test_liquid_syntax.py` (127 LOC) — bespoke kept; **already exists**.
+  - `test_css_audit.py` — bespoke kept; **already exists**.
+  - `test_resilience_check.py` — bespoke kept; direct `RenderingResilienceCheck` import preserved.
+  - Analyzer/parser tests with confusable names — **do not merge**: `test_dark_mode_parser.py`, `test_link_parser.py`, `test_file_size_analyzer.py`, `test_image_analyzer.py`, `test_brand_analyzer.py`, `test_personalisation_validator.py`. These test the underlying parsers; the new `test_<check>.py` files test the check classes.
 
-Each new file imports the check via `get_check(name)` for factory-driven checks and direct class import for bespoke. No shared base class — rule sets are heterogeneous.
+### C1. Per-class → per-file mapping (13 classes → 11 new files)
 
-### C2. Per-check fixtures
+| Source class (`test_checks.py` line) | Target file | Check obj | Import |
+|---|---|---|---|
+| `TestHtmlValidation` (39) | `test_html_validation.py` | `get_check("html_validation")` | factory |
+| `TestCssSupport` (352) | `test_css_support.py` *(NEW)* | `CssSupportCheck()` | direct |
+| `TestCssSupportSyntax` (386) | `test_css_support.py` | `CssSupportCheck()` | direct |
+| `TestFileSize` (541) | `test_file_size.py` | `get_check("file_size")` | factory |
+| `TestLinkValidation` (647) | `test_link_validation.py` | `get_check("link_validation")` | factory |
+| `TestSpamScore` (690) | `test_spam_score.py` | `get_check("spam_score")` | factory |
+| `TestDarkMode` (784) | `test_dark_mode.py` | `get_check("dark_mode")` | factory |
+| `TestAccessibility` (1003) | `test_accessibility.py` | `get_check("accessibility")` | factory |
+| `TestFallback` (1318) | `test_fallback.py` | `get_check("fallback")` | factory |
+| `TestImageOptimization` (1474) | `test_image_optimization.py` | `get_check("image_optimization")` | factory |
+| `TestBrandCompliance` (1647) | `test_brand_compliance.py` | `get_check("brand_compliance")` | factory |
+| `TestLinkValidationCheck` (1768) | `test_link_validation.py` *(merged with `TestLinkValidation`)* | `get_check("link_validation")` | factory |
+| `TestPersonalisationSyntax` (1829) | `test_personalisation_syntax.py` | `get_check("personalisation_syntax")` | factory |
 
-Inline HTML fixtures as docstrings or module-level constants in their per-check test file. Defer extraction into `tests/fixtures/{check_name}/` directories unless the same fixture is reused across files.
+Net: **11 new files**, 1 deletion (`test_checks.py`). Two duplicate `TestLinkValidation` / `TestLinkValidationCheck` classes go into the same `test_link_validation.py` (pytest tolerates multiple `Test*` classes per file — keep both class names to preserve test-id stability for the existing CI baseline; merging into one class would rename test ids).
+
+### C2. Shared `_valid_html` helper relocation
+
+Move the 26-line `_valid_html` factory from `test_checks.py:11–36` to a new module `app/qa_engine/tests/_helpers.py` (free function, NOT a pytest fixture — it takes kwargs and is called inline 48 times). Each new test file imports:
+
+```python
+from app.qa_engine.tests._helpers import valid_html  # drop the leading underscore on export
+```
+
+Rename `_valid_html` → `valid_html` at the export site (the leading underscore was hiding the module-local intent that no longer applies once it's exported). Keep call-sites: `valid_html(doctype=False)` etc. — kwargs unchanged.
+
+`conftest.py` already provides `sample_html_valid` and `sample_html_minimal` fixtures (`app/qa_engine/tests/conftest.py:89,121`) — those remain in conftest, used as fixture args in the new files exactly as today (`async def test_..., sample_html_valid: str`).
+
+### C3. New-file boilerplate template
+
+Each of the 11 new `test_<check>.py` files starts with:
+
+```python
+"""Unit tests for the <check_name> QA check."""
+
+from app.qa_engine.check_config import QACheckConfig
+from app.qa_engine.checks._factory import get_check  # or CssSupportCheck for bespoke
+from app.qa_engine.tests._helpers import valid_html  # only if the file uses it
+
+
+class Test<CheckName>:
+    check = get_check("<check_name>")  # or CssSupportCheck() for css_support
+
+    async def test_<...>(self, sample_html_valid: str) -> None:
+        ...
+```
+
+**Drop the pyright pragma** from `test_checks.py:1`. Each new file fixes types properly:
+- Async test methods: explicit `-> None` return.
+- Fixture parameters: `sample_html_valid: str`, `sample_html_minimal: str`.
+- Local HTML strings: implicit `str`, no annotation needed.
+- `check = get_check(...)` class-level attribute: pyright infers `QACheckProtocol` — no annotation needed.
+
+If pyright still flags a residual `reportUnknownArgumentType`, add a per-line `# pyright: ignore[<code>]` rather than re-introducing the file-wide pragma.
+
+### C4. Deletion of `test_checks.py`
+
+Final commit in the split sequence: `git rm app/qa_engine/tests/test_checks.py`. Verify zero external imports first:
+```bash
+rg "from app.qa_engine.tests.test_checks|from app.qa_engine.tests import test_checks" --type py
+```
+Expected: zero matches (verified during preflight).
+
+### C5. Per-check coverage gate
+
+After the split, each new `test_<check>.py` file is expected to exercise its target module ≥ 80% line coverage. Run:
+```bash
+uv run pytest app/qa_engine/tests/test_<check>.py \
+  --cov=app/qa_engine/checks/<check>.py \
+  --cov-report=term-missing \
+  --cov-fail-under=80
+```
+Factory-driven checks have no per-check module (deleted in Part B); for those, coverage is measured against the factory invocation path in `app/qa_engine/checks/_factory.py` and `app/qa_engine/custom_checks/<domain>.py`. Document the per-file coverage target in each test file's module docstring; do **not** add a CI gate beyond the existing `make check-full` invocation — Session 17 is a test split, not new coverage tooling.
+
+### C6. Execution sequence
+
+1. Create `_helpers.py` with the renamed `valid_html` function; verify imports work via `python -c "from app.qa_engine.tests._helpers import valid_html"`.
+2. Create the 11 new test files one at a time, copying their `Test*` class verbatim plus the boilerplate header from C3.
+3. After each file is created, run `uv run pytest app/qa_engine/tests/test_<check>.py -v` and confirm test count matches the source block (use `grep -c "    async def test_" test_checks.py` against the relevant line range as the expected count).
+4. Once all 11 pass at parity, delete `test_checks.py`.
+5. Run `make check-full` for the full gate (lint + types + tests + security + golden conformance + flag audit).
 
 ## Verification
 
@@ -327,3 +413,15 @@ The factory + registry is reversible per check: revert one file, re-add a per-ch
 - [ ] `make check` green.
 - [ ] PR titled `refactor(qa-engine): split custom_checks + collapse RuleEngine boilerplate (F018 F019)`.
 - [ ] Mark F018, F019, F029, F067 as **RESOLVED**.
+
+## Session 17 — F067 done-when (subset of the full plan above)
+
+Parts A and B already shipped on prior branches. The Session 17 PR scope is **Part C only**.
+
+- [ ] `app/qa_engine/tests/_helpers.py` exists with `valid_html(...)` exported.
+- [ ] 11 new `test_<check>.py` files exist (10 factory + `test_css_support.py`), each with proper type hints and no file-level pyright pragma.
+- [ ] `TestLinkValidation` and `TestLinkValidationCheck` both relocated to `test_link_validation.py` (preserve both class names).
+- [ ] `app/qa_engine/tests/test_checks.py` deleted; `rg "test_checks"` outside `.git/` returns zero matches.
+- [ ] `make check-full` green.
+- [ ] Per-check pytest invocations from C6 all pass at parity with the pre-split test count.
+- [ ] PR titled `test(qa-engine): split test_checks.py per-check (F067)`.
