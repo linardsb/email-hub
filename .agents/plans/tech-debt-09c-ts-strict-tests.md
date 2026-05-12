@@ -1,6 +1,6 @@
 # Tech Debt 09c — Kill `@ts-nocheck` in Frontend Tests (F043)
 
-**Status:** Closed — F043 shipped on `main` via `53f1a0ad` (2026-05-04, "refactor(cms): kill @ts-nocheck in test suite + trim use-builder (F043 F044)"). The parallel WIP branch `refactor/tech-debt-09c-ts-strict-tests` was superseded and is abandonable. `rg -l "@ts-nocheck" cms/apps/web/src` returns 0 files.
+> **Archived 2026-05-12.** F043 shipped on `main` via `53f1a0ad` (2026-05-04, "refactor(cms): kill @ts-nocheck in test suite + trim use-builder (F043 F044)"); `rg -l "@ts-nocheck" cms/apps/web/src` returns 0. Sibling F051 + F068 (originally appended here as "Session 16") were extracted to `tech-debt-09c-session-16-followups.md` and shipped via `db3b1a51` (#142, 2026-05-11). All three rows are RESOLVED in `TECH_DEBT_AUDIT.md`. WIP branches `refactor/tech-debt-09c-ts-strict-tests` and `refactor/tech-debt-09c-fe-test-types` are abandonable.
 
 **Source:** Carved out of `tech-debt-09-frontend-cleanup.md` Part C.
 **Sibling plans:** `tech-debt-09a-icons-split.md` (Part A) — independent, can run in parallel. F051 + F068 (originally appended here as "Session 16") extracted to `tech-debt-09c-session-16-followups.md` so this plan stays F043-only.
