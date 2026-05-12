@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
+from app.design_sync.diagnose.report import load_structure_from_json
 from app.design_sync.figma.physical_card_detector import (
     collect_sibling_radii,
     detect_physical_card_surface,
 )
-from app.design_sync.protocol import DesignNode, DesignNodeType
+from app.design_sync.protocol import DesignFileStructure, DesignNode, DesignNodeType
+
+_LEGO_FIXTURE = Path(__file__).resolve().parents[3] / "data" / "debug" / "7" / "structure.json"
 
 
 def _node(
@@ -248,6 +255,66 @@ class TestPhysicalThreshold:
         assert "logo_on_white_field" in result.signals
         assert "barcode_child" in result.signals
         assert "distinct_corner_radius" in result.signals
+
+
+# ── Real-fixture validation (Phase 50.8) ───────────────────────────────────
+
+
+def _find_membership_card(
+    structure: DesignFileStructure,
+) -> tuple[DesignNode, DesignNode]:
+    """Return (card_node, parent_node) for the LEGO membership card.
+
+    The card is an ``mj-section`` with ``corner_radius=18`` nested inside a
+    top-level ``mj-wrapper``. Walking by attribute keeps the test resilient to
+    Figma frame-order churn.
+    """
+    for page in structure.pages:
+        for root in page.children:
+            for section in root.children:
+                for wrapper in section.children:
+                    if (
+                        wrapper.type == DesignNodeType.FRAME
+                        and wrapper.name == "mj-section"
+                        and wrapper.corner_radius == 18.0
+                    ):
+                        return wrapper, section
+    msg = "LEGO membership card mj-section (radius=18) not found in structure.json"
+    raise AssertionError(msg)
+
+
+class TestLEGORealFixture:
+    """AC #4 closure — detector validated against real LEGO Figma extract.
+
+    The production ``layout_analyzer`` pipeline does NOT currently surface this
+    detection because the card is nested inside a top-level ``mj-wrapper`` and
+    detection runs only on top-level sections (tracked separately as
+    ``phase-50.8-nested-physical-cards`` in ``.agents/deferred-items.json``).
+    """
+
+    def test_lego_membership_card_detected_on_real_fixture(self) -> None:
+        if not _LEGO_FIXTURE.exists():
+            pytest.skip(f"LEGO fixture missing: {_LEGO_FIXTURE}")
+
+        structure = load_structure_from_json(_LEGO_FIXTURE)
+        card, parent = _find_membership_card(structure)
+
+        sibling_radii = collect_sibling_radii(
+            parent.children,
+            exclude_node_id=card.id,
+        )
+
+        detection = detect_physical_card_surface(
+            card,
+            sibling_radii=sibling_radii,
+            min_signals=2,
+        )
+
+        assert detection.is_physical is True, (
+            f"LEGO card not classified as physical; signals={detection.signals}"
+        )
+        assert "barcode_child" in detection.signals
+        assert "distinct_corner_radius" in detection.signals
 
 
 # ── Sibling radii helper ───────────────────────────────────────────────────

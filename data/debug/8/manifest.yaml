@@ -1,0 +1,7 @@
+name: performance-reimagined
+figma_node: "2833-2257"
+description: "Performance Reimagined — 10-section editorial layout (hero, image-text, columns, social)"
+sections:
+  count: 10
+  tolerance: 1
+patterns: []
