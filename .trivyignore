@@ -21,3 +21,8 @@ CVE-2026-25679  # expires:2026-05-26 — go stdlib net/url IPv6 parsing in pg16 
 CVE-2026-32280  # expires:2026-05-26 — go stdlib crypto/tls DoS in pg16 base gobinary
 CVE-2026-32281  # expires:2026-05-26 — go stdlib crypto/x509 DoS in pg16 base gobinary
 CVE-2026-32283  # expires:2026-05-26 — go stdlib crypto/tls key-update DoS in pg16 base gobinary
+CVE-2026-33811  # expires:2026-05-26 — go stdlib net cgo LookupCNAME DoS in pg16 base gobinary
+CVE-2026-33814  # expires:2026-05-26 — go stdlib net/http HTTP/2 SETTINGS infinite loop in pg16 base gobinary
+CVE-2026-39820  # expires:2026-05-26 — go stdlib net/mail ParseAddress DoS in pg16 base gobinary
+CVE-2026-39836  # expires:2026-05-26 — go stdlib net Dial/LookupPort Windows NUL-byte panic in pg16 base gobinary
+CVE-2026-42499  # expires:2026-05-26 — go stdlib net/mail consumePhrase DoS in pg16 base gobinary

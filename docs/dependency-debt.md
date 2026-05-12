@@ -31,6 +31,11 @@ that have no upstream fix; each entry needs an expiration date and re-check trig
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-32280 | HIGH | Go stdlib `crypto/tls` DoS. Same `gobinary`; not on TLS code path. | 2026-05-26 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-32281 | HIGH | Go stdlib `crypto/x509` DoS. Same `gobinary`; not on cert-parse code path. | 2026-05-26 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-32283 | HIGH | Go stdlib `crypto/tls` key-update DoS. Same `gobinary`; not on TLS code path. | 2026-05-26 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-33811 | HIGH | Go stdlib `net` cgo-resolver `LookupCNAME` DoS on overlong CNAME chains. Same `gobinary`; gosu does not run a DNS resolver. | 2026-05-26 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-33814 | HIGH | Go stdlib `net/http` HTTP/2 SETTINGS infinite loop in client transport. Same `gobinary`; gosu does not run an HTTP/2 client or server. | 2026-05-26 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-39820 | HIGH | Go stdlib `net/mail` `ParseAddress`/`ParseAddressList` DoS. Same `gobinary`; gosu does not parse mail addresses. | 2026-05-26 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-39836 | HIGH | Go stdlib `net.Dial`/`LookupPort` NUL-byte panic on Windows. Same `gobinary`; gosu runs on Debian only. | 2026-05-26 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-42499 | HIGH | Go stdlib `net/mail` `consumePhrase` DoS. Same `gobinary`; gosu does not parse mail input. | 2026-05-26 | Linards |
 
 **Re-check trigger:** when pgvector publishes a new `pg16` image (different digest from
 `sha256:7d400e34…`), pull it and re-run Trivy. If the scanner no longer detects the embedded
