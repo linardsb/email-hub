@@ -1,7 +1,7 @@
 """Tests for design sync module."""
 
 from datetime import UTC
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +12,11 @@ from app.design_sync.crypto import decrypt_token, encrypt_token
 from app.design_sync.exceptions import (
     SyncFailedError,
     UnsupportedProviderError,
+)
+from app.design_sync.figma.raw_types import (
+    RawFigmaGradientStop,
+    RawFigmaNode,
+    RawVariablesResponse,
 )
 from app.design_sync.figma.service import (
     FigmaDesignSyncService,
@@ -335,13 +340,16 @@ class TestFigmaFileStructure:
         }
 
     def test_parse_node_basic(self, figma_service: FigmaDesignSyncService) -> None:
-        node_data: dict[str, Any] = {
-            "id": "1:1",
-            "type": "FRAME",
-            "name": "Header",
-            "absoluteBoundingBox": {"x": 0, "y": 0, "width": 600, "height": 100},
-            "children": [],
-        }
+        node_data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "1:1",
+                "type": "FRAME",
+                "name": "Header",
+                "absoluteBoundingBox": {"x": 0, "y": 0, "width": 600, "height": 100},
+                "children": [],
+            },
+        )
         node = figma_service._parse_node(node_data, current_depth=0, max_depth=2)
         assert node.id == "1:1"
         assert node.name == "Header"
@@ -350,19 +358,22 @@ class TestFigmaFileStructure:
         assert node.height == 100
 
     def test_parse_node_depth_limit(self, figma_service: FigmaDesignSyncService) -> None:
-        node_data: dict[str, Any] = {
-            "id": "0:1",
-            "type": "CANVAS",
-            "name": "Page",
-            "children": [
-                {
-                    "id": "1:1",
-                    "type": "FRAME",
-                    "name": "Frame",
-                    "children": [{"id": "2:1", "type": "TEXT", "name": "Deep"}],
-                }
-            ],
-        }
+        node_data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "0:1",
+                "type": "CANVAS",
+                "name": "Page",
+                "children": [
+                    {
+                        "id": "1:1",
+                        "type": "FRAME",
+                        "name": "Frame",
+                        "children": [{"id": "2:1", "type": "TEXT", "name": "Deep"}],
+                    }
+                ],
+            },
+        )
         # depth 1: should include Frame but not Deep
         node = figma_service._parse_node(node_data, current_depth=0, max_depth=1)
         assert len(node.children) == 1
@@ -370,29 +381,35 @@ class TestFigmaFileStructure:
         assert node.children[0].children == []  # cut off at depth
 
     def test_parse_node_unlimited_depth(self, figma_service: FigmaDesignSyncService) -> None:
-        node_data: dict[str, Any] = {
-            "id": "0:1",
-            "type": "CANVAS",
-            "name": "Page",
-            "children": [
-                {
-                    "id": "1:1",
-                    "type": "FRAME",
-                    "name": "Frame",
-                    "children": [{"id": "2:1", "type": "TEXT", "name": "Deep", "children": []}],
-                }
-            ],
-        }
+        node_data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "0:1",
+                "type": "CANVAS",
+                "name": "Page",
+                "children": [
+                    {
+                        "id": "1:1",
+                        "type": "FRAME",
+                        "name": "Frame",
+                        "children": [{"id": "2:1", "type": "TEXT", "name": "Deep", "children": []}],
+                    }
+                ],
+            },
+        )
         node = figma_service._parse_node(node_data, current_depth=0, max_depth=None)
         assert node.children[0].children[0].name == "Deep"
 
     def test_unknown_node_type(self, figma_service: FigmaDesignSyncService) -> None:
-        node_data: dict[str, Any] = {
-            "id": "1:1",
-            "type": "SOME_NEW_TYPE",
-            "name": "New",
-            "children": [],
-        }
+        node_data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "1:1",
+                "type": "SOME_NEW_TYPE",
+                "name": "New",
+                "children": [],
+            },
+        )
         node = figma_service._parse_node(node_data, current_depth=0, max_depth=2)
         assert node.type == DesignNodeType.OTHER
 
@@ -1271,14 +1288,16 @@ class TestOpacityCompositing:
         assert _rgba_to_hex_with_opacity(0, 0, 1, fill_alpha=0.5, bg_hex="#FFF") == "#8080FF"
 
     def test_gradient_midpoint_red_blue(self) -> None:
-        stops = [
-            {"color": {"r": 1, "g": 0, "b": 0, "a": 1}},
-            {"color": {"r": 0, "g": 0, "b": 1, "a": 1}},
+        stops: list[RawFigmaGradientStop] = [
+            cast(RawFigmaGradientStop, {"color": {"r": 1, "g": 0, "b": 0, "a": 1}}),
+            cast(RawFigmaGradientStop, {"color": {"r": 0, "g": 0, "b": 1, "a": 1}}),
         ]
         assert _gradient_midpoint_hex(stops) == "#800080"
 
     def test_gradient_insufficient_stops(self) -> None:
-        stops = [{"color": {"r": 1, "g": 0, "b": 0, "a": 1}}]
+        stops: list[RawFigmaGradientStop] = [
+            cast(RawFigmaGradientStop, {"color": {"r": 1, "g": 0, "b": 0, "a": 1}})
+        ]
         assert _gradient_midpoint_hex(stops) is None
 
 
@@ -1296,16 +1315,19 @@ class TestFigmaVariablesAPI:
         self,
         variables: dict[str, Any] | None = None,
         collections: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        return {
-            "local": {
-                "meta": {
-                    "variableCollections": collections or {},
-                    "variables": variables or {},
-                }
+    ) -> RawVariablesResponse:
+        return cast(
+            RawVariablesResponse,
+            {
+                "local": {
+                    "meta": {
+                        "variableCollections": collections or {},
+                        "variables": variables or {},
+                    }
+                },
+                "published": {},
             },
-            "published": {},
-        }
+        )
 
     def test_parse_color_variable(self, figma_service: FigmaDesignSyncService) -> None:
         raw = self._make_variables_response(

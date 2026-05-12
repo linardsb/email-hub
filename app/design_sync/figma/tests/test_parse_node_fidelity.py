@@ -4,10 +4,11 @@ Covers: opacity falsy trap, visible null handling, COMPONENT/INSTANCE auto-layou
 fill extraction order-dependence, and radial/angular gradient support.
 """
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
+from app.design_sync.figma.raw_types import RawFigmaNode
 from app.design_sync.figma.service import FigmaDesignSyncService
 from app.design_sync.protocol import DesignNodeType
 
@@ -19,7 +20,7 @@ class TestOpacityFidelity:
     def svc(self) -> FigmaDesignSyncService:
         return FigmaDesignSyncService()
 
-    def _make_node(self, **overrides: Any) -> dict[str, Any]:
+    def _make_node(self, **overrides: Any) -> RawFigmaNode:
         base: dict[str, Any] = {
             "id": "1:1",
             "type": "FRAME",
@@ -28,7 +29,7 @@ class TestOpacityFidelity:
             "children": [],
         }
         base.update(overrides)
-        return base
+        return cast(RawFigmaNode, base)
 
     def test_opacity_zero_preserved(self, svc: FigmaDesignSyncService) -> None:
         node = svc._parse_node(self._make_node(opacity=0.0), current_depth=0, max_depth=2)
@@ -56,7 +57,7 @@ class TestVisibleFidelity:
     def svc(self) -> FigmaDesignSyncService:
         return FigmaDesignSyncService()
 
-    def _make_node(self, **overrides: Any) -> dict[str, Any]:
+    def _make_node(self, **overrides: Any) -> RawFigmaNode:
         base: dict[str, Any] = {
             "id": "2:1",
             "type": "RECTANGLE",
@@ -65,7 +66,7 @@ class TestVisibleFidelity:
             "children": [],
         }
         base.update(overrides)
-        return base
+        return cast(RawFigmaNode, base)
 
     def test_visible_null_treated_as_visible(self, svc: FigmaDesignSyncService) -> None:
         node = svc._parse_node(self._make_node(visible=None), current_depth=0, max_depth=2)
@@ -89,21 +90,24 @@ class TestAutoLayoutFidelity:
     def svc(self) -> FigmaDesignSyncService:
         return FigmaDesignSyncService()
 
-    def _make_autolayout_node(self, raw_type: str) -> dict[str, Any]:
-        return {
-            "id": "3:1",
-            "type": raw_type,
-            "name": "AutoLayout",
-            "absoluteBoundingBox": {"x": 0, "y": 0, "width": 300, "height": 200},
-            "layoutMode": "VERTICAL",
-            "paddingTop": 16,
-            "paddingRight": 24,
-            "paddingBottom": 16,
-            "paddingLeft": 24,
-            "itemSpacing": 12,
-            "counterAxisSpacing": 8,
-            "children": [],
-        }
+    def _make_autolayout_node(self, raw_type: str) -> RawFigmaNode:
+        return cast(
+            RawFigmaNode,
+            {
+                "id": "3:1",
+                "type": raw_type,
+                "name": "AutoLayout",
+                "absoluteBoundingBox": {"x": 0, "y": 0, "width": 300, "height": 200},
+                "layoutMode": "VERTICAL",
+                "paddingTop": 16,
+                "paddingRight": 24,
+                "paddingBottom": 16,
+                "paddingLeft": 24,
+                "itemSpacing": 12,
+                "counterAxisSpacing": 8,
+                "children": [],
+            },
+        )
 
     def test_component_autolayout_extracted(self, svc: FigmaDesignSyncService) -> None:
         node = svc._parse_node(
@@ -152,14 +156,17 @@ class TestFillExtractionFidelity:
 
     def test_vector_image_over_solid_extracts_both(self, svc: FigmaDesignSyncService) -> None:
         """VECTOR with [SOLID(bottom), IMAGE(top)] — should get IMAGE type AND fill_color."""
-        data: dict[str, Any] = {
-            "id": "4:1",
-            "type": "RECTANGLE",
-            "name": "Icon",
-            "absoluteBoundingBox": {"x": 0, "y": 0, "width": 24, "height": 24},
-            "fills": [self._solid_fill(1.0, 0.0, 0.0), self._image_fill()],
-            "children": [],
-        }
+        data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "4:1",
+                "type": "RECTANGLE",
+                "name": "Icon",
+                "absoluteBoundingBox": {"x": 0, "y": 0, "width": 24, "height": 24},
+                "fills": [self._solid_fill(1.0, 0.0, 0.0), self._image_fill()],
+                "children": [],
+            },
+        )
         node = svc._parse_node(data, current_depth=0, max_depth=2)
         assert node.type == DesignNodeType.IMAGE
         assert node.fill_color is not None
@@ -167,14 +174,17 @@ class TestFillExtractionFidelity:
 
     def test_vector_solid_over_image_solid_wins(self, svc: FigmaDesignSyncService) -> None:
         """VECTOR with [IMAGE(bottom), SOLID(top)] — topmost SOLID wins, type stays VECTOR."""
-        data: dict[str, Any] = {
-            "id": "4:2",
-            "type": "VECTOR",
-            "name": "Shape",
-            "absoluteBoundingBox": {"x": 0, "y": 0, "width": 24, "height": 24},
-            "fills": [self._image_fill(), self._solid_fill(0.0, 0.0, 1.0)],
-            "children": [],
-        }
+        data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "4:2",
+                "type": "VECTOR",
+                "name": "Shape",
+                "absoluteBoundingBox": {"x": 0, "y": 0, "width": 24, "height": 24},
+                "fills": [self._image_fill(), self._solid_fill(0.0, 0.0, 1.0)],
+                "children": [],
+            },
+        )
         node = svc._parse_node(data, current_depth=0, max_depth=2)
         # Reversed iteration finds SOLID first (topmost) and breaks — correct
         assert node.type == DesignNodeType.VECTOR
@@ -182,14 +192,17 @@ class TestFillExtractionFidelity:
 
     def test_frame_image_fill_extracts_ref(self, svc: FigmaDesignSyncService) -> None:
         """FRAME with IMAGE fill should populate image_ref."""
-        data: dict[str, Any] = {
-            "id": "4:3",
-            "type": "FRAME",
-            "name": "Hero",
-            "absoluteBoundingBox": {"x": 0, "y": 0, "width": 600, "height": 400},
-            "fills": [self._image_fill("hero_bg_ref")],
-            "children": [],
-        }
+        data: RawFigmaNode = cast(
+            RawFigmaNode,
+            {
+                "id": "4:3",
+                "type": "FRAME",
+                "name": "Hero",
+                "absoluteBoundingBox": {"x": 0, "y": 0, "width": 600, "height": 400},
+                "fills": [self._image_fill("hero_bg_ref")],
+                "children": [],
+            },
+        )
         node = svc._parse_node(data, current_depth=0, max_depth=2)
         assert node.image_ref == "hero_bg_ref"
 
@@ -266,7 +279,7 @@ class TestFieldEnrichment:
     def svc(self) -> FigmaDesignSyncService:
         return FigmaDesignSyncService()
 
-    def _make_node(self, **overrides: Any) -> dict[str, Any]:
+    def _make_node(self, **overrides: Any) -> RawFigmaNode:
         base: dict[str, Any] = {
             "id": "39:1",
             "type": "FRAME",
@@ -275,9 +288,9 @@ class TestFieldEnrichment:
             "children": [],
         }
         base.update(overrides)
-        return base
+        return cast(RawFigmaNode, base)
 
-    def _make_text_node(self, **overrides: Any) -> dict[str, Any]:
+    def _make_text_node(self, **overrides: Any) -> RawFigmaNode:
         base: dict[str, Any] = {
             "id": "39:2",
             "type": "TEXT",
@@ -289,7 +302,7 @@ class TestFieldEnrichment:
             "children": [],
         }
         base.update(overrides)
-        return base
+        return cast(RawFigmaNode, base)
 
     # ── Hyperlink tests ──
 

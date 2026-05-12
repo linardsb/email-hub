@@ -3,6 +3,9 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+from app.design_sync.figma.raw_types import RawFigmaGradientHandle, RawFigmaGradientStop
 from app.design_sync.figma.service import (
     _compute_gradient_angle,
     _gradient_midpoint_hex,
@@ -58,34 +61,42 @@ class TestGradientHelpers:
 
     def test_gradient_midpoint_two_stops(self) -> None:
         """Average of red and blue → purple midpoint."""
-        stops = [
-            {"color": {"r": 1.0, "g": 0.0, "b": 0.0}},
-            {"color": {"r": 0.0, "g": 0.0, "b": 1.0}},
+        stops: list[RawFigmaGradientStop] = [
+            cast(RawFigmaGradientStop, {"color": {"r": 1.0, "g": 0.0, "b": 0.0}}),
+            cast(RawFigmaGradientStop, {"color": {"r": 0.0, "g": 0.0, "b": 1.0}}),
         ]
         result = _gradient_midpoint_hex(stops)
         assert result == "#800080"
 
     def test_gradient_midpoint_single_stop(self) -> None:
         """< 2 stops → None."""
-        result = _gradient_midpoint_hex([{"color": {"r": 1.0, "g": 0.0, "b": 0.0}}])
+        result = _gradient_midpoint_hex(
+            [cast(RawFigmaGradientStop, {"color": {"r": 1.0, "g": 0.0, "b": 0.0}})]
+        )
         assert result is None
 
     def test_compute_gradient_angle_top_to_bottom(self) -> None:
         """Handles from top (0,0) to bottom (0,1) → 180 degrees."""
-        handles = [{"x": 0, "y": 0}, {"x": 0, "y": 1}]
+        handles: list[RawFigmaGradientHandle] = [
+            cast(RawFigmaGradientHandle, {"x": 0, "y": 0}),
+            cast(RawFigmaGradientHandle, {"x": 0, "y": 1}),
+        ]
         angle = _compute_gradient_angle(handles)
         assert angle == 180.0
 
     def test_compute_gradient_angle_left_to_right(self) -> None:
         """Handles from left (0,0) to right (1,0) → 90 degrees."""
-        handles = [{"x": 0, "y": 0}, {"x": 1, "y": 0}]
+        handles: list[RawFigmaGradientHandle] = [
+            cast(RawFigmaGradientHandle, {"x": 0, "y": 0}),
+            cast(RawFigmaGradientHandle, {"x": 1, "y": 0}),
+        ]
         angle = _compute_gradient_angle(handles)
         assert angle == 90.0
 
     def test_compute_gradient_angle_default(self) -> None:
         """< 2 handles → default 180."""
         assert _compute_gradient_angle([]) == 180.0
-        assert _compute_gradient_angle([{"x": 0, "y": 0}]) == 180.0
+        assert _compute_gradient_angle([cast(RawFigmaGradientHandle, {"x": 0, "y": 0})]) == 180.0
 
     def test_parse_gradient_stops(self) -> None:
         """Gradient stops parsed into (hex, position) tuples."""
