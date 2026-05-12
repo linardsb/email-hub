@@ -226,7 +226,7 @@ class TestConfirmIntegration:
                 "app.ai.agents.evals.template_eval_generator.UPLOADED_GOLDEN_DIR",
                 tmp_path,
             ),
-            patch("app.knowledge.service.KnowledgeService"),
+            patch("app.knowledge.services.ingestion.IngestionService"),
             patch("app.templates.upload.knowledge_injector.KnowledgeInjector") as mock_inj_cls,
         ):
             mock_reg.return_value = MagicMock()
@@ -275,7 +275,7 @@ class TestConfirmIntegration:
                 tmp_path,
             ),
             patch(
-                "app.knowledge.service.KnowledgeService",
+                "app.knowledge.services.ingestion.IngestionService",
                 side_effect=RuntimeError("DB down"),
             ),
         ):

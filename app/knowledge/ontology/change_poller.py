@@ -75,10 +75,10 @@ class RenderingChangePoller(DataPoller):
         """Store detected changes as knowledge base documents."""
         try:
             from app.core.database import get_db_context
-            from app.knowledge.service import KnowledgeService
+            from app.knowledge.services.ingestion import IngestionService
 
             async with get_db_context() as db:
-                service = KnowledgeService(db)
+                service = IngestionService(db)
                 for change in changes:
                     title = (
                         f"Rendering change: {change.property_id} in "

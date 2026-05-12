@@ -249,11 +249,11 @@ class TestSearchRouted:
     async def test_disabled_router_delegates_to_search(self) -> None:
         """When router_enabled=False, search_routed() == search()."""
         from app.knowledge.schemas import SearchResponse
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
-        with patch("app.knowledge.service.get_settings") as mock_settings:
+        with patch("app.knowledge.services.search.get_settings") as mock_settings:
             mock_settings.return_value.knowledge.router_enabled = False
-            service = KnowledgeService(db=AsyncMock())
+            service = SearchService(db=AsyncMock())
             service.search = AsyncMock(  # type: ignore[method-assign]
                 return_value=SearchResponse(
                     results=[],
@@ -274,11 +274,11 @@ class TestSearchRouted:
     async def test_enabled_router_sets_intent(self) -> None:
         """When router_enabled=True, response includes intent."""
         from app.knowledge.schemas import SearchRequest, SearchResponse
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
-        with patch("app.knowledge.service.get_settings") as mock_settings:
+        with patch("app.knowledge.services.search.get_settings") as mock_settings:
             mock_settings.return_value.knowledge.router_enabled = True
-            service = KnowledgeService(db=AsyncMock())
+            service = SearchService(db=AsyncMock())
             service.search = AsyncMock(  # type: ignore[method-assign]
                 return_value=SearchResponse(
                     results=[],
@@ -296,11 +296,11 @@ class TestSearchRouted:
     async def test_compatibility_structured_answer(self) -> None:
         """Compatibility intent with resolvable entities returns structured answer."""
         from app.knowledge.schemas import SearchRequest, SearchResponse
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
-        with patch("app.knowledge.service.get_settings") as mock_settings:
+        with patch("app.knowledge.services.search.get_settings") as mock_settings:
             mock_settings.return_value.knowledge.router_enabled = True
-            service = KnowledgeService(db=AsyncMock())
+            service = SearchService(db=AsyncMock())
             # Mock search() — should NOT be called when structured answer found
             service.search = AsyncMock(  # type: ignore[method-assign]
                 return_value=SearchResponse(
@@ -333,11 +333,11 @@ class TestSearchRouted:
     async def test_compatibility_fallback_to_vector(self) -> None:
         """Compatibility intent without resolvable entities falls back to vector search."""
         from app.knowledge.schemas import SearchRequest, SearchResponse
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
-        with patch("app.knowledge.service.get_settings") as mock_settings:
+        with patch("app.knowledge.services.search.get_settings") as mock_settings:
             mock_settings.return_value.knowledge.router_enabled = True
-            service = KnowledgeService(db=AsyncMock())
+            service = SearchService(db=AsyncMock())
             service.search = AsyncMock(  # type: ignore[method-assign]
                 return_value=SearchResponse(
                     results=[],

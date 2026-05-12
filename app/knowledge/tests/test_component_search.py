@@ -180,10 +180,10 @@ class TestSearchComponentsRouting:
 
     @pytest.mark.anyio
     async def test_search_components_merges_with_knowledge(self) -> None:
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
         mock_db = AsyncMock()
-        service = KnowledgeService(mock_db)
+        service = SearchService(mock_db)
         classified = self._make_classified()
 
         comp_results = [
@@ -238,10 +238,10 @@ class TestSearchComponentsRouting:
 
     @pytest.mark.anyio
     async def test_search_components_extracts_client_entities(self) -> None:
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
         mock_db = AsyncMock()
-        service = KnowledgeService(mock_db)
+        service = SearchService(mock_db)
         classified = self._make_classified(
             entities=[("client", "Outlook 2019", "outlook_2019_win")]
         )
@@ -272,10 +272,10 @@ class TestSearchComponentsRouting:
 
     @pytest.mark.anyio
     async def test_search_components_extracts_category_entities(self) -> None:
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
         mock_db = AsyncMock()
-        service = KnowledgeService(mock_db)
+        service = SearchService(mock_db)
         classified = self._make_classified(entities=[("category", "cta", "cta")])
 
         with (
@@ -302,10 +302,10 @@ class TestSearchComponentsRouting:
 
     @pytest.mark.anyio
     async def test_search_components_no_components_falls_back_to_knowledge(self) -> None:
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
         mock_db = AsyncMock()
-        service = KnowledgeService(mock_db)
+        service = SearchService(mock_db)
         classified = self._make_classified()
 
         knowledge_results = [
@@ -347,10 +347,10 @@ class TestSearchComponentsRouting:
 
     @pytest.mark.anyio
     async def test_search_components_no_knowledge_returns_components_only(self) -> None:
-        from app.knowledge.service import KnowledgeService
+        from app.knowledge.services.search import SearchService
 
         mock_db = AsyncMock()
-        service = KnowledgeService(mock_db)
+        service = SearchService(mock_db)
         classified = self._make_classified()
 
         comp_results = [

@@ -22,20 +22,21 @@ from app.core.database import get_db_context
 from app.core.logging import get_logger
 from app.knowledge.data.seed_manifest import SEED_MANIFEST, SeedEntry
 from app.knowledge.schemas import DocumentTagRequest, DocumentUpload
-from app.knowledge.service import KnowledgeService
+from app.knowledge.services.ingestion import IngestionService
+from app.knowledge.services.tags import TagService
 
 SEED_DIR = Path(__file__).parent / "data" / "seeds"
 
 logger = get_logger(__name__)
 
 
-async def _get_existing_filenames(service: KnowledgeService) -> set[str]:
+async def _get_existing_filenames(ingestion: IngestionService) -> set[str]:
     """Collect all filenames already in the knowledge base."""
     filenames: set[str] = set()
     offset = 0
     batch_size = 100
     while True:
-        docs = await service.repository.list_documents(offset=offset, limit=batch_size)
+        docs = await ingestion.repository.list_documents(offset=offset, limit=batch_size)
         if not docs:
             break
         for doc in docs:
@@ -46,7 +47,7 @@ async def _get_existing_filenames(service: KnowledgeService) -> set[str]:
     return filenames
 
 
-async def _ensure_tags(service: KnowledgeService) -> dict[str, int]:
+async def _ensure_tags(ingestion: IngestionService) -> dict[str, int]:
     """Pre-create all tags from the manifest and return name->id mapping."""
     all_tags: set[str] = set()
     for entry in SEED_MANIFEST:
@@ -54,13 +55,14 @@ async def _ensure_tags(service: KnowledgeService) -> dict[str, int]:
 
     tag_map: dict[str, int] = {}
     for tag_name in sorted(all_tags):
-        tag = await service.repository.get_or_create_tag(tag_name)
+        tag = await ingestion.repository.get_or_create_tag(tag_name)
         tag_map[tag_name] = tag.id
     return tag_map
 
 
 async def _ingest_entry(
-    service: KnowledgeService,
+    ingestion: IngestionService,
+    tags: TagService,
     entry: SeedEntry,
     tag_map: dict[str, int],
 ) -> int:
@@ -73,7 +75,7 @@ async def _ingest_entry(
         description=entry.description,
         metadata_json=None,
     )
-    doc = await service.ingest_document(
+    doc = await ingestion.ingest_document(
         file_path=str(file_path),
         upload=upload,
         filename=file_path.name,
@@ -81,10 +83,9 @@ async def _ingest_entry(
         file_size=file_path.stat().st_size,
     )
 
-    # Tag the document
     tag_ids = [tag_map[t] for t in entry.tags]
     if tag_ids:
-        await service.add_tags_to_document(doc.id, DocumentTagRequest(tag_ids=tag_ids))
+        await tags.add_tags_to_document(doc.id, DocumentTagRequest(tag_ids=tag_ids))
 
     return doc.chunk_count
 
@@ -235,13 +236,14 @@ async def seed_knowledge_base(*, force: bool = False, skip_graph: bool = False) 
     logger.info(f"  Force: {force}")
 
     async with get_db_context() as db:
-        service = KnowledgeService(db)
+        ingestion = IngestionService(db)
+        tags = TagService(db)
 
         # Check existing documents for idempotency
-        existing = await _get_existing_filenames(service) if not force else set[str]()
+        existing = await _get_existing_filenames(ingestion) if not force else set[str]()
 
         # Pre-create tags
-        tag_map = await _ensure_tags(service)
+        tag_map = await _ensure_tags(ingestion)
         logger.info(f"  Tags ready: {len(tag_map)}")
 
         seeded = 0
@@ -265,7 +267,7 @@ async def seed_knowledge_base(*, force: bool = False, skip_graph: bool = False) 
                 continue
 
             try:
-                chunks = await _ingest_entry(service, entry, tag_map)
+                chunks = await _ingest_entry(ingestion, tags, entry, tag_map)
                 total_chunks += chunks
                 seeded += 1
                 logger.info(f"  OK   {entry.filename} -> {chunks} chunks")

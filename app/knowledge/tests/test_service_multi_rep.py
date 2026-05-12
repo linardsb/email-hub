@@ -15,7 +15,7 @@ _NOW = datetime(2026, 1, 1, tzinfo=UTC)
 @pytest.fixture
 def _mock_settings_multi_rep_enabled():
     """Settings with multi_rep_enabled=True."""
-    with patch("app.knowledge.service.get_settings") as mock:
+    with patch("app.knowledge.services.ingestion.get_settings") as mock:
         settings = mock.return_value
         settings.knowledge.html_chunking_enabled = True
         settings.knowledge.html_chunk_size = 1024
@@ -29,7 +29,7 @@ def _mock_settings_multi_rep_enabled():
 @pytest.fixture
 def _mock_settings_multi_rep_disabled():
     """Settings with multi_rep_enabled=False."""
-    with patch("app.knowledge.service.get_settings") as mock:
+    with patch("app.knowledge.services.ingestion.get_settings") as mock:
         settings = mock.return_value
         settings.knowledge.html_chunking_enabled = True
         settings.knowledge.html_chunk_size = 1024
@@ -79,24 +79,29 @@ class TestIngestHtmlMultiRepEnabled:
         mock_embed = AsyncMock(return_value=[[0.1, 0.2], [0.3, 0.4]])
 
         with (
-            patch("app.knowledge.service.chunking_html.is_html_content", return_value=True),
-            patch("app.knowledge.service.chunking_html.chunk_html", return_value=html_results),
             patch(
-                "app.knowledge.service.processing.extract_text",
+                "app.knowledge.services.ingestion.chunking_html.is_html_content", return_value=True
+            ),
+            patch(
+                "app.knowledge.services.ingestion.chunking_html.chunk_html",
+                return_value=html_results,
+            ),
+            patch(
+                "app.knowledge.services.ingestion.processing.extract_text",
                 new_callable=AsyncMock,
                 return_value=("<html>test</html>", False),
             ),
-            patch("app.knowledge.service._get_embedding") as mock_get_embed,
+            patch("app.knowledge._providers._get_embedding") as mock_get_embed,
             patch("app.knowledge.summarizer.ChunkSummarizer", return_value=mock_summarizer),
             patch("pathlib.Path.mkdir"),
             patch("shutil.copy2"),
         ):
             mock_get_embed.return_value.embed = mock_embed
 
-            from app.knowledge.service import KnowledgeService
+            from app.knowledge.services.ingestion import IngestionService
 
             db = AsyncMock()
-            service = KnowledgeService(db)
+            service = IngestionService(db)
             service.repository = AsyncMock()
             service.repository.get_tags_for_document.return_value = []
             service.repository.create_document.return_value = MagicMock(id=1)
@@ -162,23 +167,28 @@ class TestIngestHtmlMultiRepDisabled:
         mock_embed = AsyncMock(return_value=[[0.1, 0.2]])
 
         with (
-            patch("app.knowledge.service.chunking_html.is_html_content", return_value=True),
-            patch("app.knowledge.service.chunking_html.chunk_html", return_value=html_results),
             patch(
-                "app.knowledge.service.processing.extract_text",
+                "app.knowledge.services.ingestion.chunking_html.is_html_content", return_value=True
+            ),
+            patch(
+                "app.knowledge.services.ingestion.chunking_html.chunk_html",
+                return_value=html_results,
+            ),
+            patch(
+                "app.knowledge.services.ingestion.processing.extract_text",
                 new_callable=AsyncMock,
                 return_value=("<html>test</html>", False),
             ),
-            patch("app.knowledge.service._get_embedding") as mock_get_embed,
+            patch("app.knowledge._providers._get_embedding") as mock_get_embed,
             patch("pathlib.Path.mkdir"),
             patch("shutil.copy2"),
         ):
             mock_get_embed.return_value.embed = mock_embed
 
-            from app.knowledge.service import KnowledgeService
+            from app.knowledge.services.ingestion import IngestionService
 
             db = AsyncMock()
-            service = KnowledgeService(db)
+            service = IngestionService(db)
             service.repository = AsyncMock()
             service.repository.get_tags_for_document.return_value = []
             service.repository.create_document.return_value = MagicMock(id=1)
@@ -226,14 +236,16 @@ class TestIngestTextMultiRepEnabled:
         mock_embed = AsyncMock(return_value=[[0.1, 0.2]])
 
         with (
-            patch("app.knowledge.service.chunking_html.is_html_content", return_value=False),
-            patch("app.knowledge.service.chunking.chunk_text") as mock_chunk,
             patch(
-                "app.knowledge.service.processing.extract_text",
+                "app.knowledge.services.ingestion.chunking_html.is_html_content", return_value=False
+            ),
+            patch("app.knowledge.services.ingestion.chunking.chunk_text") as mock_chunk,
+            patch(
+                "app.knowledge.services.ingestion.processing.extract_text",
                 new_callable=AsyncMock,
                 return_value=("Just plain text content.", False),
             ),
-            patch("app.knowledge.service._get_embedding") as mock_get_embed,
+            patch("app.knowledge._providers._get_embedding") as mock_get_embed,
             patch("pathlib.Path.mkdir"),
             patch("shutil.copy2"),
         ):
@@ -243,10 +255,10 @@ class TestIngestTextMultiRepEnabled:
             mock_chunk_result.chunk_index = 0
             mock_chunk.return_value = [mock_chunk_result]
 
-            from app.knowledge.service import KnowledgeService
+            from app.knowledge.services.ingestion import IngestionService
 
             db = AsyncMock()
-            service = KnowledgeService(db)
+            service = IngestionService(db)
             service.repository = AsyncMock()
             service.repository.get_tags_for_document.return_value = []
             service.repository.create_document.return_value = MagicMock(id=1)

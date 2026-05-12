@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.knowledge.models import Document
-from app.knowledge.service import KnowledgeService
+from app.knowledge.services.ingestion import IngestionService
 from app.qa_engine.schemas import ChaosFailure
 
 logger = get_logger(__name__)
@@ -45,7 +45,7 @@ class ChaosKnowledgeWriter:
 
     def __init__(self, db: AsyncSession) -> None:
         self._db = db
-        self._service = KnowledgeService(db)
+        self._service = IngestionService(db)
 
     async def write_failure_documents(
         self,

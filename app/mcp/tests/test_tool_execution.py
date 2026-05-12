@@ -227,7 +227,7 @@ class TestKnowledgeToolExecution:
 
         with (
             patch("app.core.database.get_db_context", return_value=_mock_db_ctx()),
-            patch("app.knowledge.service.KnowledgeService") as MockKS,
+            patch("app.knowledge.services.search.SearchService") as MockKS,
         ):
             MockKS.return_value.search_routed = AsyncMock(return_value=mock_results)
 
@@ -246,7 +246,7 @@ class TestKnowledgeToolExecution:
 
         with (
             patch("app.core.database.get_db_context", return_value=_mock_db_ctx()),
-            patch("app.knowledge.service.KnowledgeService") as MockKS,
+            patch("app.knowledge.services.search.SearchService") as MockKS,
         ):
             MockKS.return_value.search_routed = AsyncMock(return_value=mock_results)
 

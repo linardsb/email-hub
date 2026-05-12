@@ -40,16 +40,29 @@ from app.knowledge.schemas import (
     TagListResponse,
     TagResponse,
 )
-from app.knowledge.service import KnowledgeService
+from app.knowledge.services.graph import GraphSearchService
+from app.knowledge.services.ingestion import IngestionService
+from app.knowledge.services.search import SearchService
+from app.knowledge.services.tags import TagService
 from app.shared.schemas import PaginatedResponse, PaginationParams
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
 router.include_router(proactive_qa_router)
 
 
-def get_service(db: AsyncSession = Depends(get_scoped_db)) -> KnowledgeService:
-    """Dependency to create KnowledgeService with request-scoped session."""
-    return KnowledgeService(db)
+def get_ingestion_service(db: AsyncSession = Depends(get_scoped_db)) -> IngestionService:
+    """Dependency: build an IngestionService for the request-scoped session."""
+    return IngestionService(db)
+
+
+def get_search_service(db: AsyncSession = Depends(get_scoped_db)) -> SearchService:
+    """Dependency: build a SearchService for the request-scoped session."""
+    return SearchService(db)
+
+
+def get_tag_service(db: AsyncSession = Depends(get_scoped_db)) -> TagService:
+    """Dependency: build a TagService for the request-scoped session."""
+    return TagService(db)
 
 
 _CONTENT_TYPE_MAP: dict[str, str] = {
@@ -93,7 +106,7 @@ async def upload_document(
     metadata_json: str | None = Form(default=None),
     title: str | None = Form(default=None),
     description: str | None = Form(default=None),
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> DocumentResponse:
     """Upload and ingest a document into the knowledge base."""
@@ -152,7 +165,7 @@ async def list_documents(
     domain: str | None = Query(None, max_length=50),
     document_status: str | None = Query(None, alias="status", max_length=20),
     tag: str | None = Query(None, max_length=100),
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(get_current_user),
 ) -> PaginatedResponse[DocumentResponse]:
     """List documents with pagination and optional filtering."""
@@ -165,7 +178,7 @@ async def list_documents(
 async def get_document(
     request: Request,
     document_id: int,
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(get_current_user),
 ) -> DocumentResponse:
     """Get a document by its database ID."""
@@ -179,7 +192,7 @@ async def update_document(
     request: Request,
     document_id: int,
     body: DocumentUpdate,
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> DocumentResponse:
     """Update document metadata (title, description, domain, language)."""
@@ -192,7 +205,7 @@ async def update_document(
 async def download_document(
     request: Request,
     document_id: int,
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(get_current_user),
 ) -> FileResponse:
     """Download the original uploaded file."""
@@ -218,7 +231,7 @@ async def download_document(
 async def get_document_content(
     request: Request,
     document_id: int,
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(get_current_user),
 ) -> DocumentContentResponse:
     """Get extracted text chunks for a document."""
@@ -231,7 +244,7 @@ async def get_document_content(
 async def delete_document(
     request: Request,
     document_id: int,
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> None:
     """Delete a document and its chunks."""
@@ -243,7 +256,7 @@ async def delete_document(
 @limiter.limit("30/minute")
 async def list_domains(
     request: Request,
-    service: KnowledgeService = Depends(get_service),
+    service: IngestionService = Depends(get_ingestion_service),
     _current_user: User = Depends(get_current_user),
 ) -> DomainListResponse:
     """List all unique document domains."""
@@ -260,7 +273,7 @@ async def list_domains(
 @limiter.limit("30/minute")
 async def list_tags(
     request: Request,
-    service: KnowledgeService = Depends(get_service),
+    service: TagService = Depends(get_tag_service),
     _current_user: User = Depends(get_current_user),
 ) -> TagListResponse:
     """List all tags."""
@@ -273,7 +286,7 @@ async def list_tags(
 async def create_tag(
     request: Request,
     body: TagCreate,
-    service: KnowledgeService = Depends(get_service),
+    service: TagService = Depends(get_tag_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> TagResponse:
     """Create a new tag."""
@@ -289,7 +302,7 @@ async def create_tag(
 async def delete_tag(
     request: Request,
     tag_id: int,
-    service: KnowledgeService = Depends(get_service),
+    service: TagService = Depends(get_tag_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> None:
     """Delete a tag (CASCADE removes document associations)."""
@@ -306,7 +319,7 @@ async def add_tags_to_document(
     request: Request,
     document_id: int,
     body: DocumentTagRequest,
-    service: KnowledgeService = Depends(get_service),
+    service: TagService = Depends(get_tag_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> DocumentResponse:
     """Add tags to a document."""
@@ -323,7 +336,7 @@ async def remove_tag_from_document(
     request: Request,
     document_id: int,
     tag_id: int,
-    service: KnowledgeService = Depends(get_service),
+    service: TagService = Depends(get_tag_service),
     _current_user: User = Depends(require_role("admin", "developer")),
 ) -> DocumentResponse:
     """Remove a tag from a document."""
@@ -341,7 +354,7 @@ async def remove_tag_from_document(
 async def search_knowledge(
     request: Request,
     body: SearchRequest,
-    service: KnowledgeService = Depends(get_service),
+    service: SearchService = Depends(get_search_service),
     _current_user: User = Depends(get_current_user),
 ) -> SearchResponse:
     """Search the knowledge base with hybrid vector + fulltext search."""
@@ -354,7 +367,7 @@ async def search_knowledge(
 async def search_knowledge_routed(
     request: Request,
     body: SearchRequest,
-    service: KnowledgeService = Depends(get_service),
+    service: SearchService = Depends(get_search_service),
     _current_user: User = Depends(get_current_user),
 ) -> SearchResponse:
     """Search with intent-based query routing."""
@@ -390,7 +403,7 @@ async def search_graph(
     """Search the knowledge graph for entity-relationship results."""
     _ = request
     graph_provider = _get_graph_provider()
-    service = KnowledgeService(db=db, graph_provider=graph_provider)
+    service = GraphSearchService(db=db, graph_provider=graph_provider)
 
     if body.mode == "completion":
         answer = await service.search_graph_completion(

@@ -17,7 +17,7 @@ from app.core.config import get_settings
 from app.core.exceptions import ServiceUnavailableError
 from app.core.logging import get_logger
 from app.knowledge.schemas import SearchRequest, SearchResponse
-from app.knowledge.service import KnowledgeService as RAGService
+from app.knowledge.services.search import SearchService as RAGService
 
 logger = get_logger(__name__)
 
