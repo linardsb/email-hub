@@ -1,5 +1,7 @@
 # Tech Debt 09c — Session 16 Follow-ups (F051 + F068)
 
+> **Archived 2026-05-12.** F051 + F068 shipped via `db3b1a51` (#142, 2026-05-11). Implementation commits: `83424536` (F051 — middleware default-deny on unknown route + missing-role guard + structured `console.warn` + `cms/apps/web/src/middleware.test.ts` covering 6 cases) and `0a07a6d6` (F068 — `cms/apps/web/src/hooks/__tests__/setup.ts` with `mockSWR`/`mockSWRMutation`/`mockAuthFetch`/`okResponse<T>`/`seedSWRDefaults`; 3 numbered `use-data-hooks*.test.ts` files deleted; 46 per-hook test files in place). Both rows are RESOLVED in `TECH_DEBT_AUDIT.md`. Branch `refactor/tech-debt-09c-fe-test-types` is merged.
+
 **Source:** Carved out of `tech-debt-09c-ts-strict-tests.md` (the F043 plan body) after F043 was closed by `53f1a0ad` on main (2026-05-04). F043 verification is no longer the gate — `rg -l "@ts-nocheck" cms/apps/web/src` is already 0 on main.
 **Prerequisite:** None — branch off current `main`.
 **Branch:** `refactor/tech-debt-09c-fe-test-types` (per original Session 16 spec).
