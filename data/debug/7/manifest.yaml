@@ -1,0 +1,7 @@
+name: lego-insiders-halloween
+figma_node: "2833-1869"
+description: "LEGO Insiders Halloween — physical-card membership pattern (8-section campaign)"
+sections:
+  count: 8
+  tolerance: 1
+patterns: []
