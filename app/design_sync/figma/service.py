@@ -7,13 +7,21 @@ import contextlib
 import math
 import re
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
 import httpx
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.design_sync.exceptions import SyncFailedError
+from app.design_sync.figma.raw_types import (
+    RawFigmaGradientHandle,
+    RawFigmaGradientStop,
+    RawFigmaNode,
+    RawFigmaTextStyle,
+    RawFigmaVariable,
+    RawVariablesResponse,
+)
 from app.design_sync.protocol import (
     DesignComponent,
     DesignFile,
@@ -44,13 +52,13 @@ _MAX_PARSE_DEPTH = 30  # Hard ceiling for _parse_node recursion (Figma rarely ex
 _MAX_ALIAS_DEPTH = 10
 
 
-def _find_subtree(document: dict[str, Any], node_id: str) -> dict[str, Any] | None:
+def _find_subtree(document: RawFigmaNode, node_id: str) -> RawFigmaNode | None:
     """Find a node by ID in the Figma document tree, returning the full subtree."""
     if str(document.get("id", "")) == node_id:
         return document
     for child in document.get("children", []):
         if isinstance(child, dict):
-            result = _find_subtree(cast("dict[str, Any]", child), node_id)
+            result = _find_subtree(cast(RawFigmaNode, child), node_id)
             if result is not None:
                 return result
     return None
@@ -115,13 +123,11 @@ def _validate_hyperlink(raw: Any) -> str | None:
 
 
 def _extract_stroke(
-    node_data: dict[str, Any], node_opacity: float
+    node_data: RawFigmaNode, node_opacity: float
 ) -> tuple[str | None, float | None]:
     """Extract first SOLID stroke color and weight from a Figma node."""
     raw_strokes = node_data.get("strokes", [])
-    if not isinstance(raw_strokes, list):
-        return None, None
-    for stroke in cast(list[Any], raw_strokes):  # type: ignore[redundant-cast]
+    for stroke in raw_strokes:
         if not isinstance(stroke, dict):
             continue
         s_d = cast(dict[str, Any], stroke)
@@ -145,11 +151,11 @@ def _extract_stroke(
     return None, None
 
 
-def _parse_style_runs(node_data: dict[str, Any]) -> tuple[StyleRun, ...]:
+def _parse_style_runs(node_data: RawFigmaNode) -> tuple[StyleRun, ...]:
     """Parse Figma characterStyleOverrides + styleOverrideTable into StyleRun tuple."""
-    overrides = node_data.get("characterStyleOverrides", [])
-    table = node_data.get("styleOverrideTable", {})
-    if not overrides or not table or not isinstance(overrides, list) or not isinstance(table, dict):
+    overrides_list = node_data.get("characterStyleOverrides", [])
+    table_d = node_data.get("styleOverrideTable", {})
+    if not overrides_list or not table_d:
         return ()
 
     characters = node_data.get("characters", "")
@@ -158,10 +164,6 @@ def _parse_style_runs(node_data: dict[str, Any]) -> tuple[StyleRun, ...]:
 
     # Group contiguous runs by override ID
     runs: list[StyleRun] = []
-    # mypy 2.0's isinstance narrowing makes this cast redundant for mypy,
-    # but pyright still narrows to list[Unknown] and needs the cast.
-    overrides_list = cast("list[Any]", overrides)  # type: ignore[redundant-cast]
-    table_d = cast(dict[str, Any], table)
     i = 0
     while i < len(overrides_list):
         override_id: int = int(overrides_list[i])
@@ -177,7 +179,7 @@ def _parse_style_runs(node_data: dict[str, Any]) -> tuple[StyleRun, ...]:
         style_data = table_d.get(style_key)
         if not isinstance(style_data, dict):
             continue
-        sd = cast(dict[str, Any], style_data)
+        sd = cast(RawFigmaTextStyle, style_data)
 
         fw = sd.get("fontWeight")
         is_bold = isinstance(fw, (int, float)) and int(fw) >= 700
@@ -186,21 +188,20 @@ def _parse_style_runs(node_data: dict[str, Any]) -> tuple[StyleRun, ...]:
 
         color_hex: str | None = None
         fills_raw = sd.get("fills", [])
-        if isinstance(fills_raw, list):
-            for fill in cast(list[Any], fills_raw):  # type: ignore[redundant-cast]
-                if not isinstance(fill, dict):
-                    continue
-                f_d = cast(dict[str, Any], fill)
-                if f_d.get("type") == "SOLID":
-                    c = f_d.get("color")
-                    if isinstance(c, dict):
-                        c_d = cast(dict[str, Any], c)
-                        color_hex = _rgba_to_hex(
-                            float(c_d.get("r", 0)),
-                            float(c_d.get("g", 0)),
-                            float(c_d.get("b", 0)),
-                        )
-                    break
+        for fill in fills_raw:
+            if not isinstance(fill, dict):
+                continue
+            f_d = cast(dict[str, Any], fill)
+            if f_d.get("type") == "SOLID":
+                c = f_d.get("color")
+                if isinstance(c, dict):
+                    c_d = cast(dict[str, Any], c)
+                    color_hex = _rgba_to_hex(
+                        float(c_d.get("r", 0)),
+                        float(c_d.get("g", 0)),
+                        float(c_d.get("b", 0)),
+                    )
+                break
 
         link_url: str | None = None
         raw_link = sd.get("hyperlink")
@@ -226,9 +227,9 @@ def _parse_style_runs(node_data: dict[str, Any]) -> tuple[StyleRun, ...]:
     return tuple(runs)
 
 
-def _parse_letter_spacing(style_dict: dict[str, Any], font_size: float) -> float | None:
+def _parse_letter_spacing(style_dict: RawFigmaTextStyle, font_size: float) -> float | None:
     """Parse Figma letterSpacing to px value."""
-    raw = style_dict.get("letterSpacing", {})
+    raw: Any = style_dict.get("letterSpacing", {})
     if isinstance(raw, dict):
         raw_dict = cast(dict[str, Any], raw)
         if raw_dict.get("unit") == "PIXELS":
@@ -290,7 +291,7 @@ def _rgba_to_hex_with_opacity(
     return _rgba_to_hex(final_r, final_g, final_b)
 
 
-def _gradient_midpoint_hex(gradient_stops: list[dict[str, Any]]) -> str | None:
+def _gradient_midpoint_hex(gradient_stops: list[RawFigmaGradientStop]) -> str | None:
     """Average RGB of first and last gradient stop. Returns None if < 2 stops."""
     if len(gradient_stops) < 2:
         return None
@@ -311,7 +312,7 @@ def _float_or_none(val: Any) -> float | None:
     return float(val) if isinstance(val, (int, float)) else None
 
 
-def _compute_gradient_angle(handles: list[dict[str, Any]]) -> float:
+def _compute_gradient_angle(handles: list[RawFigmaGradientHandle]) -> float:
     """Compute CSS gradient angle from Figma handle positions."""
     if len(handles) < 2:
         return 180.0  # default top-to-bottom
@@ -346,6 +347,286 @@ def _parse_gradient_stops(
             )
             result.append((hex_val, round(pos, 3)))
     return result
+
+
+# ── _parse_node extraction helpers (Phase 4) ──
+#
+# `_parse_node` historically owned every Figma-node-to-DesignNode concern in
+# one 200+ LOC function. The three helpers below slice it into layout, text,
+# and visual concerns so each can be unit-tested in isolation. Each one is
+# module-level (no ``self``), takes a typed ``RawFigmaNode``, and returns a
+# NamedTuple. Helper bodies are line-equivalent to the original; the only
+# behaviour change is the IMAGE-fill reclassification, which is now returned
+# in ``_VisualProps.resolved_node_type`` instead of mutating ``node_type``.
+
+
+class _LayoutProps(NamedTuple):
+    width: float | None
+    height: float | None
+    x: float | None
+    y: float | None
+    padding_top: float | None
+    padding_right: float | None
+    padding_bottom: float | None
+    padding_left: float | None
+    item_spacing: float | None
+    counter_axis_spacing: float | None
+    layout_mode: str | None
+    primary_axis_align: str | None
+    counter_axis_align: str | None
+    corner_radius: float | None
+    corner_radii: tuple[float, ...] | None
+
+
+def _parse_layout_props(node_data: RawFigmaNode, raw_type: str) -> _LayoutProps:
+    """Extract dimensions, auto-layout, axis alignment, and corner radius."""
+    # Dimensions from absoluteBoundingBox
+    bbox = node_data.get("absoluteBoundingBox")
+    width: float | None = None
+    height: float | None = None
+    x: float | None = None
+    y: float | None = None
+    if isinstance(bbox, dict):
+        bbox_d = cast(dict[str, Any], bbox)
+        raw_w, raw_h = bbox_d.get("width"), bbox_d.get("height")
+        raw_x, raw_y = bbox_d.get("x"), bbox_d.get("y")
+        width = float(raw_w) if isinstance(raw_w, (int, float)) else None
+        height = float(raw_h) if isinstance(raw_h, (int, float)) else None
+        x = float(raw_x) if isinstance(raw_x, (int, float)) else None
+        y = float(raw_y) if isinstance(raw_y, (int, float)) else None
+
+    # Auto-layout (FRAME-like only, and only when layoutMode is set/non-NONE)
+    padding_top: float | None = None
+    padding_right: float | None = None
+    padding_bottom: float | None = None
+    padding_left: float | None = None
+    item_spacing: float | None = None
+    counter_axis_spacing: float | None = None
+    layout_mode_str: str | None = None
+    if raw_type in ("FRAME", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
+        layout_mode_str = node_data.get("layoutMode")
+        if layout_mode_str and layout_mode_str != "NONE":
+            padding_top = _float_or_none(node_data.get("paddingTop"))
+            padding_right = _float_or_none(node_data.get("paddingRight"))
+            padding_bottom = _float_or_none(node_data.get("paddingBottom"))
+            padding_left = _float_or_none(node_data.get("paddingLeft"))
+            item_spacing = _float_or_none(node_data.get("itemSpacing"))
+            counter_axis_spacing = _float_or_none(node_data.get("counterAxisSpacing"))
+
+    # Axis alignment (FRAME-like)
+    primary_axis_align: str | None = None
+    counter_axis_align: str | None = None
+    if raw_type in ("FRAME", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
+        primary_axis_align = _AXIS_ALIGN_MAP.get(str(node_data.get("primaryAxisAlignItems", "")))
+        counter_axis_align = _AXIS_ALIGN_MAP.get(str(node_data.get("counterAxisAlignItems", "")))
+
+    # Corner radius (FRAME-like + RECTANGLE)
+    corner_radius: float | None = None
+    corner_radii: tuple[float, ...] | None = None
+    if raw_type in ("FRAME", "RECTANGLE", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
+        corner_radius = _float_or_none(node_data.get("cornerRadius"))
+        raw_rcr = node_data.get("rectangleCornerRadii", [])
+        if len(raw_rcr) >= 4:
+            with contextlib.suppress(TypeError, ValueError):
+                corner_radii = tuple(float(v) for v in raw_rcr[:4])
+
+    return _LayoutProps(
+        width=width,
+        height=height,
+        x=x,
+        y=y,
+        padding_top=padding_top,
+        padding_right=padding_right,
+        padding_bottom=padding_bottom,
+        padding_left=padding_left,
+        item_spacing=item_spacing,
+        counter_axis_spacing=counter_axis_spacing,
+        layout_mode=layout_mode_str,
+        primary_axis_align=primary_axis_align,
+        counter_axis_align=counter_axis_align,
+        corner_radius=corner_radius,
+        corner_radii=corner_radii,
+    )
+
+
+class _TextProps(NamedTuple):
+    text_content: str | None
+    font_family: str | None
+    font_size: float | None
+    font_weight: int | None
+    line_height_px: float | None
+    letter_spacing_px: float | None
+    text_transform: str | None
+    text_decoration: str | None
+    text_align: str | None
+    style_runs: tuple[StyleRun, ...]
+
+
+def _parse_text_props(node_data: RawFigmaNode, node_type: DesignNodeType) -> _TextProps:
+    """Extract text content + typography + alignment + rich-text overrides.
+
+    All fields are ``None``/``()`` for non-TEXT nodes. Hyperlink is **not**
+    here — it lives in ``_parse_visual_props`` because Figma allows hyperlinks
+    on FRAME nodes too, not just TEXT.
+    """
+    if node_type != DesignNodeType.TEXT:
+        return _TextProps(
+            text_content=None,
+            font_family=None,
+            font_size=None,
+            font_weight=None,
+            line_height_px=None,
+            letter_spacing_px=None,
+            text_transform=None,
+            text_decoration=None,
+            text_align=None,
+            style_runs=(),
+        )
+
+    # Text content
+    text_content: str | None = None
+    raw_chars = node_data.get("characters")
+    if isinstance(raw_chars, str) and raw_chars.strip():
+        text_content = raw_chars.strip()
+
+    # Typography from style dict
+    font_family: str | None = None
+    font_size: float | None = None
+    font_weight: int | None = None
+    line_height_px: float | None = None
+    letter_spacing_px: float | None = None
+    text_transform: str | None = None
+    text_decoration: str | None = None
+    style_raw: Any = node_data.get("style", {})
+    if isinstance(style_raw, dict):
+        style = cast(RawFigmaTextStyle, style_raw)
+        raw_ff = style.get("fontFamily")
+        font_family = str(raw_ff) if isinstance(raw_ff, str) else None
+        raw_fs = style.get("fontSize")
+        font_size = float(raw_fs) if isinstance(raw_fs, (int, float)) else None
+        raw_fw = style.get("fontWeight")
+        font_weight = int(raw_fw) if isinstance(raw_fw, (int, float)) else None
+        raw_lh = style.get("lineHeightPx")
+        line_height_px = float(raw_lh) if isinstance(raw_lh, (int, float)) else None
+        letter_spacing_px = _parse_letter_spacing(
+            style, font_size if font_size is not None else 16.0
+        )
+        text_transform = _TEXT_CASE_MAP.get(str(style.get("textCase", "")))
+        text_decoration = _TEXT_DEC_MAP.get(str(style.get("textDecoration", "")))
+
+    # Text alignment (read style a second time, mirroring the original
+    # _parse_node — both reads return the same dict; the duplication is
+    # preserved for byte-identical behaviour).
+    text_align: str | None = None
+    style_for_align: Any = node_data.get("style", {})
+    if isinstance(style_for_align, dict):
+        sa_d = cast(dict[str, Any], style_for_align)
+        text_align = _TEXT_ALIGN_MAP.get(str(sa_d.get("textAlignHorizontal", "")))
+
+    # Style runs (rich text overrides)
+    style_runs = _parse_style_runs(node_data)
+
+    return _TextProps(
+        text_content=text_content,
+        font_family=font_family,
+        font_size=font_size,
+        font_weight=font_weight,
+        line_height_px=line_height_px,
+        letter_spacing_px=letter_spacing_px,
+        text_transform=text_transform,
+        text_decoration=text_decoration,
+        text_align=text_align,
+        style_runs=style_runs,
+    )
+
+
+class _VisualProps(NamedTuple):
+    fill_color: str | None
+    text_color: str | None
+    image_ref: str | None
+    stroke_color: str | None
+    stroke_weight: float | None
+    hyperlink: str | None
+    # Possibly-reclassified node type (IMAGE fills on VECTOR/RECTANGLE).
+    resolved_node_type: DesignNodeType
+
+
+def _parse_visual_props(
+    node_data: RawFigmaNode,
+    node_type: DesignNodeType,
+    node_opacity: float,
+) -> _VisualProps:
+    """Extract fills (color/image), strokes, and hyperlink decoration.
+
+    May reclassify ``node_type`` to ``IMAGE`` if a VECTOR/RECTANGLE node
+    carries an IMAGE fill. The resolved type comes back in
+    ``resolved_node_type`` so the caller can rebind. The color-routing branch
+    uses the *original* ``node_type`` (text_color vs fill_color), matching
+    the original ``_parse_node`` ordering — see the executor note in
+    ``.agents/plans/tech-debt-15-figma-typed-boundaries.md``.
+    """
+    # Hyperlink (TEXT and FRAME nodes — node_type agnostic)
+    hyperlink: str | None = None
+    raw_hyperlink = node_data.get("hyperlink")
+    if raw_hyperlink:
+        hyperlink = _validate_hyperlink(raw_hyperlink)
+
+    # Fills (image_ref + fill_color/text_color + possible reclassification)
+    fill_color: str | None = None
+    text_color: str | None = None
+    image_ref: str | None = None
+    resolved_node_type = node_type
+    raw_fills = node_data.get("fills", [])
+    for fill_item in reversed(raw_fills):
+        if not isinstance(fill_item, dict):
+            continue
+        fi_d = cast(dict[str, Any], fill_item)
+        if fi_d.get("visible") is False:
+            continue
+        fill_type = fi_d.get("type")
+        # Reclassify VECTOR/RECTANGLE with IMAGE fill as IMAGE
+        if fill_type == "IMAGE" and resolved_node_type in (
+            DesignNodeType.VECTOR,
+            DesignNodeType.IMAGE,
+        ):
+            resolved_node_type = DesignNodeType.IMAGE
+            continue
+        # Extract IMAGE fill reference on FRAME nodes (hero/section backgrounds)
+        if fill_type == "IMAGE" and resolved_node_type == DesignNodeType.FRAME:
+            raw_ref = fi_d.get("imageRef")
+            if isinstance(raw_ref, str) and raw_ref:
+                image_ref = raw_ref
+            continue
+        if fill_type != "SOLID":
+            continue
+        c = fi_d.get("color", {})
+        if isinstance(c, dict):
+            c_d = cast(dict[str, Any], c)
+            hex_val = _rgba_to_hex_with_opacity(
+                float(c_d.get("r", 0)),
+                float(c_d.get("g", 0)),
+                float(c_d.get("b", 0)),
+                fill_alpha=float(c_d.get("a", 1.0)),
+                node_opacity=node_opacity,
+            )
+            if resolved_node_type == DesignNodeType.TEXT:
+                text_color = hex_val
+            else:
+                fill_color = hex_val
+            break
+
+    # Strokes
+    stroke_color, stroke_weight = _extract_stroke(node_data, node_opacity)
+
+    return _VisualProps(
+        fill_color=fill_color,
+        text_color=text_color,
+        image_ref=image_ref,
+        stroke_color=stroke_color,
+        stroke_weight=stroke_weight,
+        hyperlink=hyperlink,
+        resolved_node_type=resolved_node_type,
+    )
 
 
 class FigmaDesignSyncService:
@@ -561,9 +842,7 @@ class FigmaDesignSyncService:
         for page_data in document.get("children", []):
             if isinstance(page_data, dict):
                 pages.append(
-                    self._parse_node(
-                        cast(dict[str, Any], page_data), current_depth=0, max_depth=None
-                    )
+                    self._parse_node(cast(RawFigmaNode, page_data), current_depth=0, max_depth=None)
                 )
 
         # Full-design PNG fetch (Phase 50.1) — only when a target frame is selected
@@ -620,7 +899,9 @@ class FigmaDesignSyncService:
         )
         return document, tokens, token_warnings, structure
 
-    async def _fetch_variables(self, file_ref: str, access_token: str) -> dict[str, Any] | None:
+    async def _fetch_variables(
+        self, file_ref: str, access_token: str
+    ) -> RawVariablesResponse | None:
         """Fetch local and published variables from the Figma Variables API."""
         headers = {"X-Figma-Token": access_token}
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -655,12 +936,12 @@ class FigmaDesignSyncService:
 
         local_json: dict[str, Any] = local_resp.json()
         pub_json: dict[str, Any] = pub_resp.json() if pub_resp.status_code == 200 else {}
-        return {"local": local_json, "published": pub_json}
+        return cast(RawVariablesResponse, {"local": local_json, "published": pub_json})
 
     def _resolve_variable_alias(
         self,
         value: Any,
-        variables_by_id: dict[str, dict[str, Any]],
+        variables_by_id: dict[str, RawFigmaVariable],
         mode_id: str,
         depth: int = 0,
     ) -> Any:
@@ -689,7 +970,7 @@ class FigmaDesignSyncService:
         return self._resolve_variable_alias(resolved, variables_by_id, mode_id, depth + 1)
 
     def _parse_variables(
-        self, raw: dict[str, Any], bg_hex: str = "#FFFFFF"
+        self, raw: RawVariablesResponse, bg_hex: str = "#FFFFFF"
     ) -> tuple[
         list[ExtractedColor],
         list[ExtractedTypography],
@@ -703,13 +984,10 @@ class FigmaDesignSyncService:
         variables: list[ExtractedVariable] = []
         global_modes: dict[str, str] = {}
 
-        local_raw = raw.get("local", {})
-        local_meta: dict[str, Any] = (
-            cast(dict[str, Any], cast(dict[str, Any], local_raw).get("meta", {}))
-            if isinstance(local_raw, dict)
-            else {}
+        local_raw: Any = raw.get("local", {})
+        meta_d: dict[str, Any] = (
+            cast(dict[str, Any], local_raw).get("meta", {}) if isinstance(local_raw, dict) else {}
         )
-        meta_d = cast(dict[str, Any], local_meta) if isinstance(local_meta, dict) else {}  # type: ignore[redundant-cast]
         collections: dict[str, Any] = cast(dict[str, Any], meta_d.get("variableCollections", {}))
         all_variables: dict[str, Any] = cast(dict[str, Any], meta_d.get("variables", {}))
 
@@ -936,7 +1214,7 @@ class FigmaDesignSyncService:
                 name = str(style_meta_d.get("name", f"Type-{style_id}"))
                 type_props = self._find_type_style_for_style(file_data, str(style_id))
                 if type_props and isinstance(type_props, dict):
-                    tp = cast(dict[str, Any], type_props)
+                    tp = cast(RawFigmaTextStyle, type_props)
                     family = str(tp.get("fontFamily", "Unknown"))
                     weight = str(tp.get("fontWeight", "400"))
                     size = float(tp.get("fontSize", 16))
@@ -1000,7 +1278,7 @@ class FigmaDesignSyncService:
         """Recursively extract fill/stroke colors from every node."""
         if depth >= _MAX_WALK_DEPTH or not isinstance(node, dict):
             return
-        node_d = cast(dict[str, Any], node)
+        node_d = cast(RawFigmaNode, node)
         node_opacity = float(node_d.get("opacity", 1.0))
         node_name = str(node_d.get("name", ""))
 
@@ -1010,9 +1288,8 @@ class FigmaDesignSyncService:
             seen_stroke_hex = set()
 
         # Fills — extract all gradient midpoints, then topmost visible solid
-        raw_fills = node_d.get("fills")
-        if isinstance(raw_fills, list):
-            fills_list = cast(list[Any], raw_fills)  # type: ignore[redundant-cast]
+        fills_list = node_d.get("fills", [])
+        if fills_list:
             # Pass 1: gradient midpoints (all of them)
             for fill_item in fills_list:
                 if not isinstance(fill_item, dict):
@@ -1029,7 +1306,7 @@ class FigmaDesignSyncService:
                 ):
                     stops: list[Any] = fill_d.get("gradientStops", [])
                     if len(stops) >= 2:
-                        midpoint = _gradient_midpoint_hex(cast(list[dict[str, Any]], stops))
+                        midpoint = _gradient_midpoint_hex(cast(list[RawFigmaGradientStop], stops))
                         if midpoint and midpoint not in seen_hex:
                             seen_hex.add(midpoint)
                             gname = f"{node_name} (gradient midpoint)" if node_name else midpoint
@@ -1085,32 +1362,31 @@ class FigmaDesignSyncService:
                 break  # Topmost visible solid only
 
         # Strokes — separate list
-        raw_strokes = node_d.get("strokes")
-        if isinstance(raw_strokes, list):
-            for stroke_item in cast(list[Any], raw_strokes):  # type: ignore[redundant-cast]
-                if not isinstance(stroke_item, dict):
-                    continue
-                stroke_d = cast(dict[str, Any], stroke_item)
-                if stroke_d.get("type") != "SOLID":
-                    continue
-                color_raw = stroke_d.get("color")
-                if not isinstance(color_raw, dict):
-                    continue
-                c = cast(dict[str, Any], color_raw)
-                alpha = float(c.get("a", 1.0))
-                if alpha < 0.01:
-                    continue
-                hex_val = _rgba_to_hex_with_opacity(
-                    float(c.get("r", 0)),
-                    float(c.get("g", 0)),
-                    float(c.get("b", 0)),
-                    fill_alpha=alpha,
-                    node_opacity=node_opacity,
-                    bg_hex=bg_hex,
-                )
-                if hex_val not in seen_stroke_hex:
-                    seen_stroke_hex.add(hex_val)
-                    stroke_colors.append(ExtractedColor(name=hex_val, hex=hex_val, opacity=alpha))
+        raw_strokes = node_d.get("strokes", [])
+        for stroke_item in raw_strokes:
+            if not isinstance(stroke_item, dict):
+                continue
+            stroke_d = cast(dict[str, Any], stroke_item)
+            if stroke_d.get("type") != "SOLID":
+                continue
+            color_raw = stroke_d.get("color")
+            if not isinstance(color_raw, dict):
+                continue
+            c = cast(dict[str, Any], color_raw)
+            alpha = float(c.get("a", 1.0))
+            if alpha < 0.01:
+                continue
+            hex_val = _rgba_to_hex_with_opacity(
+                float(c.get("r", 0)),
+                float(c.get("g", 0)),
+                float(c.get("b", 0)),
+                fill_alpha=alpha,
+                node_opacity=node_opacity,
+                bg_hex=bg_hex,
+            )
+            if hex_val not in seen_stroke_hex:
+                seen_stroke_hex.add(hex_val)
+                stroke_colors.append(ExtractedColor(name=hex_val, hex=hex_val, opacity=alpha))
 
         for child in node_d.get("children", []):
             self._walk_for_colors(
@@ -1139,7 +1415,7 @@ class FigmaDesignSyncService:
         if str(node_d.get("type", "")) == "TEXT":
             style = node_d.get("style")
             if isinstance(style, dict):
-                s = cast(dict[str, Any], style)
+                s = cast(RawFigmaTextStyle, style)
                 family = str(s.get("fontFamily", ""))
                 weight = str(s.get("fontWeight", "400"))
                 size = float(s.get("fontSize", 0))
@@ -1232,7 +1508,7 @@ class FigmaDesignSyncService:
             if isinstance(page_data, dict):
                 pages.append(
                     self._parse_node(
-                        cast(dict[str, Any], page_data), current_depth=0, max_depth=max_depth
+                        cast(RawFigmaNode, page_data), current_depth=0, max_depth=max_depth
                     )
                 )
 
@@ -1246,177 +1522,28 @@ class FigmaDesignSyncService:
 
     def _parse_node(
         self,
-        node_data: dict[str, Any],
+        node_data: RawFigmaNode,
         current_depth: int,
         max_depth: int | None,
     ) -> DesignNode:
         """Recursively parse a Figma node into a DesignNode."""
         raw_type = str(node_data.get("type", "UNKNOWN"))
         node_type = _FIGMA_NODE_TYPE_MAP.get(raw_type, DesignNodeType.OTHER)
-
-        # Extract dimensions and position from absoluteBoundingBox if present
-        bbox = node_data.get("absoluteBoundingBox")
-        width: float | None = None
-        height: float | None = None
-        x: float | None = None
-        y: float | None = None
-        if isinstance(bbox, dict):
-            bbox_d = cast(dict[str, Any], bbox)
-            raw_w, raw_h = bbox_d.get("width"), bbox_d.get("height")
-            raw_x, raw_y = bbox_d.get("x"), bbox_d.get("y")
-            width = float(raw_w) if isinstance(raw_w, (int, float)) else None
-            height = float(raw_h) if isinstance(raw_h, (int, float)) else None
-            x = float(raw_x) if isinstance(raw_x, (int, float)) else None
-            y = float(raw_y) if isinstance(raw_y, (int, float)) else None
-
-        # Extract text content from TEXT nodes
-        text_content: str | None = None
-        if node_type == DesignNodeType.TEXT:
-            raw_chars = node_data.get("characters")
-            if isinstance(raw_chars, str) and raw_chars.strip():
-                text_content = raw_chars.strip()
-
-        # Auto-layout properties (frames with auto-layout)
-        padding_top: float | None = None
-        padding_right: float | None = None
-        padding_bottom: float | None = None
-        padding_left: float | None = None
-        item_spacing: float | None = None
-        counter_axis_spacing: float | None = None
-        layout_mode_str: str | None = None
-        if raw_type in ("FRAME", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
-            layout_mode_str = node_data.get("layoutMode")
-            if layout_mode_str and layout_mode_str != "NONE":
-                padding_top = _float_or_none(node_data.get("paddingTop"))
-                padding_right = _float_or_none(node_data.get("paddingRight"))
-                padding_bottom = _float_or_none(node_data.get("paddingBottom"))
-                padding_left = _float_or_none(node_data.get("paddingLeft"))
-                item_spacing = _float_or_none(node_data.get("itemSpacing"))
-                counter_axis_spacing = _float_or_none(node_data.get("counterAxisSpacing"))
-
-        # TEXT node typography
-        dn_font_family: str | None = None
-        dn_font_size: float | None = None
-        dn_font_weight: int | None = None
-        dn_line_height_px: float | None = None
-        dn_letter_spacing_px: float | None = None
-        dn_text_transform: str | None = None
-        dn_text_decoration: str | None = None
-        if node_type == DesignNodeType.TEXT:
-            style_raw = node_data.get("style", {})
-            if isinstance(style_raw, dict):
-                style = cast(dict[str, Any], style_raw)
-                raw_ff = style.get("fontFamily")
-                dn_font_family = str(raw_ff) if isinstance(raw_ff, str) else None
-                raw_fs = style.get("fontSize")
-                dn_font_size = float(raw_fs) if isinstance(raw_fs, (int, float)) else None
-                raw_fw = style.get("fontWeight")
-                dn_font_weight = int(raw_fw) if isinstance(raw_fw, (int, float)) else None
-                raw_lh = style.get("lineHeightPx")
-                dn_line_height_px = float(raw_lh) if isinstance(raw_lh, (int, float)) else None
-                dn_letter_spacing_px = _parse_letter_spacing(
-                    style, dn_font_size if dn_font_size is not None else 16.0
-                )
-                dn_text_transform = _TEXT_CASE_MAP.get(str(style.get("textCase", "")))
-                dn_text_decoration = _TEXT_DEC_MAP.get(str(style.get("textDecoration", "")))
-
-        # Hyperlink (TEXT and FRAME nodes)
-        dn_hyperlink: str | None = None
-        raw_hyperlink = node_data.get("hyperlink")
-        if raw_hyperlink:
-            dn_hyperlink = _validate_hyperlink(raw_hyperlink)
-
-        # Text alignment (TEXT nodes)
-        dn_text_align: str | None = None
-        if node_type == DesignNodeType.TEXT:
-            style_for_align = node_data.get("style", {})
-            if isinstance(style_for_align, dict):
-                sa_d = cast(dict[str, Any], style_for_align)
-                dn_text_align = _TEXT_ALIGN_MAP.get(str(sa_d.get("textAlignHorizontal", "")))
-
-        # Axis alignment (FRAME/COMPONENT/INSTANCE)
-        dn_primary_axis_align: str | None = None
-        dn_counter_axis_align: str | None = None
-        if raw_type in ("FRAME", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
-            dn_primary_axis_align = _AXIS_ALIGN_MAP.get(
-                str(node_data.get("primaryAxisAlignItems", ""))
-            )
-            dn_counter_axis_align = _AXIS_ALIGN_MAP.get(
-                str(node_data.get("counterAxisAlignItems", ""))
-            )
-
-        # Corner radius (FRAME/RECTANGLE/COMPONENT/INSTANCE)
-        dn_corner_radius: float | None = None
-        dn_corner_radii: tuple[float, ...] | None = None
-        if raw_type in ("FRAME", "RECTANGLE", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
-            dn_corner_radius = _float_or_none(node_data.get("cornerRadius"))
-            raw_rcr: list[Any] = node_data.get("rectangleCornerRadii", [])
-            if len(raw_rcr) >= 4:
-                with contextlib.suppress(TypeError, ValueError):
-                    dn_corner_radii = tuple(float(v) for v in cast(list[Any], raw_rcr)[:4])  # type: ignore[redundant-cast]
-
-        # Style runs (TEXT nodes — rich text overrides)
-        dn_style_runs: tuple[StyleRun, ...] = ()
-        if node_type == DesignNodeType.TEXT:
-            dn_style_runs = _parse_style_runs(node_data)
-
-        # Extract fill colors for the converter pipeline
-        fill_color: str | None = None
-        text_color_hex: str | None = None
-        image_ref: str | None = None
         node_opacity = float(node_data["opacity"]) if "opacity" in node_data else 1.0
-        raw_fills = node_data.get("fills", [])
-        if isinstance(raw_fills, list):
-            for fill_item in reversed(cast(list[Any], raw_fills)):  # type: ignore[redundant-cast]
-                if not isinstance(fill_item, dict):
-                    continue
-                fi_d = cast(dict[str, Any], fill_item)
-                if fi_d.get("visible") is False:
-                    continue
-                fill_type = fi_d.get("type")
-                # Reclassify VECTOR/RECTANGLE nodes with image fills as IMAGE
-                if fill_type == "IMAGE" and node_type in (
-                    DesignNodeType.VECTOR,
-                    DesignNodeType.IMAGE,
-                ):
-                    node_type = DesignNodeType.IMAGE
-                    continue
-                # Extract IMAGE fill reference on FRAME nodes (hero/section backgrounds)
-                if fill_type == "IMAGE" and node_type == DesignNodeType.FRAME:
-                    raw_ref = fi_d.get("imageRef")
-                    if isinstance(raw_ref, str) and raw_ref:
-                        image_ref = raw_ref
-                    continue
-                if fill_type != "SOLID":
-                    continue
-                c = fi_d.get("color", {})
-                if isinstance(c, dict):
-                    c_d = cast(dict[str, Any], c)
-                    hex_val = _rgba_to_hex_with_opacity(
-                        float(c_d.get("r", 0)),
-                        float(c_d.get("g", 0)),
-                        float(c_d.get("b", 0)),
-                        fill_alpha=float(c_d.get("a", 1.0)),
-                        node_opacity=node_opacity,
-                    )
-                    if node_type == DesignNodeType.TEXT:
-                        text_color_hex = hex_val
-                    else:
-                        fill_color = hex_val
-                    break
 
-        # Strokes/borders
-        dn_stroke_color, dn_stroke_weight = _extract_stroke(node_data, node_opacity)
+        layout = _parse_layout_props(node_data, raw_type)
+        text = _parse_text_props(node_data, node_type)
+        visual = _parse_visual_props(node_data, node_type, node_opacity)
+        node_type = visual.resolved_node_type  # apply IMAGE reclassification
 
         children: list[DesignNode] = []
-        # Only recurse if we haven't hit the depth limit
         effective_max = max_depth if max_depth is not None else _MAX_PARSE_DEPTH
         if current_depth < effective_max:
             for child_data in node_data.get("children", []):
                 if isinstance(child_data, dict):
                     children.append(
                         self._parse_node(
-                            cast(dict[str, Any], child_data), current_depth + 1, max_depth
+                            cast(RawFigmaNode, child_data), current_depth + 1, max_depth
                         )
                     )
 
@@ -1425,39 +1552,39 @@ class FigmaDesignSyncService:
             name=str(node_data.get("name", "")),
             type=node_type,
             children=children,
-            width=width,
-            height=height,
-            x=x,
-            y=y,
-            text_content=text_content,
-            fill_color=fill_color,
-            text_color=text_color_hex,
-            padding_top=padding_top,
-            padding_right=padding_right,
-            padding_bottom=padding_bottom,
-            padding_left=padding_left,
-            item_spacing=item_spacing,
-            counter_axis_spacing=counter_axis_spacing,
-            layout_mode=layout_mode_str,
-            font_family=dn_font_family,
-            font_size=dn_font_size,
-            font_weight=dn_font_weight,
-            line_height_px=dn_line_height_px,
-            letter_spacing_px=dn_letter_spacing_px,
-            text_transform=dn_text_transform,
-            text_decoration=dn_text_decoration,
-            image_ref=image_ref,
-            hyperlink=dn_hyperlink,
-            corner_radius=dn_corner_radius,
-            corner_radii=dn_corner_radii,
-            text_align=dn_text_align,
-            primary_axis_align=dn_primary_axis_align,
-            counter_axis_align=dn_counter_axis_align,
-            stroke_weight=dn_stroke_weight,
-            stroke_color=dn_stroke_color,
-            style_runs=dn_style_runs,
+            width=layout.width,
+            height=layout.height,
+            x=layout.x,
+            y=layout.y,
+            text_content=text.text_content,
+            fill_color=visual.fill_color,
+            text_color=visual.text_color,
+            padding_top=layout.padding_top,
+            padding_right=layout.padding_right,
+            padding_bottom=layout.padding_bottom,
+            padding_left=layout.padding_left,
+            item_spacing=layout.item_spacing,
+            counter_axis_spacing=layout.counter_axis_spacing,
+            layout_mode=layout.layout_mode,
+            font_family=text.font_family,
+            font_size=text.font_size,
+            font_weight=text.font_weight,
+            line_height_px=text.line_height_px,
+            letter_spacing_px=text.letter_spacing_px,
+            text_transform=text.text_transform,
+            text_decoration=text.text_decoration,
+            image_ref=visual.image_ref,
+            hyperlink=visual.hyperlink,
+            corner_radius=layout.corner_radius,
+            corner_radii=layout.corner_radii,
+            text_align=text.text_align,
+            primary_axis_align=layout.primary_axis_align,
+            counter_axis_align=layout.counter_axis_align,
+            stroke_weight=visual.stroke_weight,
+            stroke_color=visual.stroke_color,
+            style_runs=text.style_runs,
             visible=node_data.get("visible") is not False,
-            opacity=float(node_data["opacity"]) if "opacity" in node_data else 1.0,
+            opacity=node_opacity,
         )
 
     async def list_components(self, file_ref: str, access_token: str) -> list[DesignComponent]:

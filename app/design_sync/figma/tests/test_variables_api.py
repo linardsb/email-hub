@@ -3,11 +3,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.design_sync.figma.raw_types import RawVariablesResponse
 from app.design_sync.figma.service import FigmaDesignSyncService
 
 
@@ -15,7 +16,7 @@ def _make_variables_response(
     *,
     colors: dict[str, dict[str, Any]] | None = None,
     collections: dict[str, dict[str, Any]] | None = None,
-) -> dict[str, Any]:
+) -> RawVariablesResponse:
     """Build a minimal Figma Variables API response structure."""
     if collections is None:
         collections = {
@@ -26,15 +27,18 @@ def _make_variables_response(
         }
     if colors is None:
         colors = {}
-    return {
-        "local": {
-            "meta": {
-                "variableCollections": collections,
-                "variables": colors,
+    return cast(
+        RawVariablesResponse,
+        {
+            "local": {
+                "meta": {
+                    "variableCollections": collections,
+                    "variables": colors,
+                },
             },
+            "published": {},
         },
-        "published": {},
-    }
+    )
 
 
 def _make_color_variable(

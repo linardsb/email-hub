@@ -6,11 +6,12 @@ scope to the target frame's subtree when a node_id is provided.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.design_sync.figma.raw_types import RawFigmaNode
 from app.design_sync.figma.service import FigmaDesignSyncService, _find_subtree
 
 # ── Test Data Factories ──
@@ -114,28 +115,36 @@ def _make_single_email_file_data() -> dict[str, Any]:
 
 class TestFindSubtree:
     def test_find_root_node(self) -> None:
-        doc: dict[str, Any] = {"id": "0:0", "children": [{"id": "1:1", "children": []}]}
+        doc: RawFigmaNode = cast(
+            RawFigmaNode, {"id": "0:0", "children": [{"id": "1:1", "children": []}]}
+        )
         result = _find_subtree(doc, "0:0")
         assert result is doc
 
     def test_find_nested_node(self) -> None:
+        target_children: list[dict[str, Any]] = [{"id": "3:1", "children": []}]
         target: dict[str, Any] = {
             "id": "2:1",
             "type": "FRAME",
-            "children": [{"id": "3:1", "children": []}],
+            "children": target_children,
         }
-        doc: dict[str, Any] = {"id": "0:0", "children": [{"id": "1:1", "children": [target]}]}
+        doc: RawFigmaNode = cast(
+            RawFigmaNode,
+            {"id": "0:0", "children": [{"id": "1:1", "children": [target]}]},
+        )
         result = _find_subtree(doc, "2:1")
         assert result is target
         # Children intact
-        assert len(target["children"]) == 1
+        assert len(target_children) == 1
 
     def test_not_found(self) -> None:
-        doc: dict[str, Any] = {"id": "0:0", "children": [{"id": "1:1", "children": []}]}
+        doc: RawFigmaNode = cast(
+            RawFigmaNode, {"id": "0:0", "children": [{"id": "1:1", "children": []}]}
+        )
         assert _find_subtree(doc, "999:999") is None
 
     def test_empty_document(self) -> None:
-        assert _find_subtree({}, "0:0") is None
+        assert _find_subtree(cast(RawFigmaNode, {}), "0:0") is None
 
 
 # ── Scoped Token Extraction Tests ──
