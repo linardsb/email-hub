@@ -10,6 +10,7 @@ from app.design_sync.diagnose.report import load_structure_from_json
 from app.design_sync.figma.physical_card_detector import (
     collect_sibling_radii,
     detect_physical_card_surface,
+    find_physical_card_in_subtree,
 )
 from app.design_sync.protocol import DesignFileStructure, DesignNode, DesignNodeType
 
@@ -255,6 +256,96 @@ class TestPhysicalThreshold:
         assert "logo_on_white_field" in result.signals
         assert "barcode_child" in result.signals
         assert "distinct_corner_radius" in result.signals
+
+
+# ── Subtree walker (Phase 50.8) ────────────────────────────────────────────
+
+
+def _two_signal_card(
+    *,
+    node_id: str = "card",
+    corner_radius: float | None = 24.0,
+) -> DesignNode:
+    """Card with barcode_child + (when radius set) distinct_corner_radius."""
+    return _node(
+        node_id=node_id,
+        width=600,
+        height=378,  # also matches ID-1 aspect ratio
+        corner_radius=corner_radius,
+        children=[_image(node_id=f"{node_id}_bar", width=440, height=90)],
+    )
+
+
+def _wrap_in_layers(card: DesignNode, depth: int) -> DesignNode:
+    """Wrap ``card`` inside ``depth`` plain FRAME layers, returning the outer."""
+    current = card
+    for layer in range(depth):
+        current = _node(
+            node_id=f"layer_{depth - layer}",
+            children=[current],
+        )
+    return current
+
+
+class TestSubtreeWalker:
+    def test_card_at_depth_one_detected(self) -> None:
+        root = _wrap_in_layers(_two_signal_card(), depth=1)
+        result = find_physical_card_in_subtree(root)
+        assert result is not None
+        assert result.is_physical is True
+
+    def test_card_at_depth_four_detected(self) -> None:
+        root = _wrap_in_layers(_two_signal_card(), depth=4)
+        result = find_physical_card_in_subtree(root)
+        assert result is not None
+
+    def test_card_at_depth_five_not_reached(self) -> None:
+        root = _wrap_in_layers(_two_signal_card(), depth=5)
+        assert find_physical_card_in_subtree(root) is None
+
+    def test_corner_radius_precondition_rejects_no_radius(self) -> None:
+        # 2 signals would fire (aspect_ratio_id_1 + barcode_child) but no radius
+        # — walker must skip to avoid the hero false-positive class (a 600x67
+        # banner strip image inside a 600x467 hero wrapper).
+        root = _wrap_in_layers(_two_signal_card(corner_radius=None), depth=1)
+        assert find_physical_card_in_subtree(root) is None
+
+    def test_corner_radius_below_threshold_rejected(self) -> None:
+        # radius=8 < _CARD_MIN_RADIUS (16) — walker keeps walking past it.
+        root = _wrap_in_layers(_two_signal_card(corner_radius=8.0), depth=1)
+        assert find_physical_card_in_subtree(root) is None
+
+    def test_empty_subtree_returns_none(self) -> None:
+        empty = _node(node_id="empty")
+        assert find_physical_card_in_subtree(empty) is None
+
+    def test_min_signals_parameter_forwarded(self) -> None:
+        # Build a card with exactly 2 signals (no aspect ratio match): width
+        # 500 / height 400 = 1.25 — outside all aspect targets. barcode_child +
+        # distinct_corner_radius fire; min_signals=3 must reject.
+        card = _node(
+            node_id="card",
+            width=500,
+            height=400,
+            corner_radius=24.0,
+            children=[_image(node_id="bar", width=440, height=90)],
+        )
+        root = _node(node_id="root", children=[card])
+        assert find_physical_card_in_subtree(root, min_signals=3) is None
+        # Sanity: with default min_signals=2 it IS detected.
+        assert find_physical_card_in_subtree(root) is not None
+
+    def test_sibling_radii_computed_per_candidate(self) -> None:
+        # Card radius matches its immediate sibling — distinct_corner_radius
+        # signal MUST be suppressed by per-candidate sibling lookup. Without
+        # the second signal (barcode_child) it would still pass, but the
+        # signal set should not include distinct_corner_radius.
+        card = _two_signal_card(node_id="card", corner_radius=24.0)
+        sibling = _node(node_id="sibling", corner_radius=24.0)
+        parent = _node(node_id="wrap", children=[card, sibling])
+        result = find_physical_card_in_subtree(parent)
+        assert result is not None
+        assert "distinct_corner_radius" not in result.signals
 
 
 # ── Real-fixture validation (Phase 50.8) ───────────────────────────────────
