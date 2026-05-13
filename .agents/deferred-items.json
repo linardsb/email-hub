@@ -78,7 +78,7 @@
       "id": "phase-deps-pyright-asynccontextmanager-deprecation",
       "phase": "deps (cross-cutting)",
       "title": "pyright reportDeprecated demoted to warning to absorb @asynccontextmanager false-positive in 1.1.409",
-      "status": "deferred",
+      "status": "closed",
       "severity": "speculative",
       "introduced": "2026-05-04",
       "introduced_commit": "0907e059",
@@ -93,7 +93,10 @@
       ],
       "symptom_if_broken": "A genuinely deprecated API (e.g. a Pydantic v3 / SQLAlchemy 2.x removal) lands in a future bump and pyright now logs it as a warning instead of failing `make types` \u2014 the regression slips through CI. Less severe but possible: another false-positive deprecation upstream goes unnoticed because the project-wide demote masks it.",
       "closes_when": "The 5 cited @asynccontextmanager / @contextmanager call sites annotate their return types as `AsyncGenerator[Foo]` / `Generator[Foo]` (or upstream typeshed reverts the deprecation marker), AND `reportDeprecated` returns to its strict-mode default (`error`).",
-      "fix_sketch": "For each cited site, change `async def lifespan(app):` -> `async def lifespan(app) -> AsyncGenerator[None]:` and `def fixture():` -> `def fixture() -> Generator[Foo]:`. Then drop `reportDeprecated = 'warning'` from pyproject.toml:324 and re-run `make types` to confirm green under the strict default."
+      "fix_sketch": "For each cited site, change `async def lifespan(app):` -> `async def lifespan(app) -> AsyncGenerator[None]:` and `def fixture():` -> `def fixture() -> Generator[Foo]:`. Then drop `reportDeprecated = 'warning'` from pyproject.toml:324 and re-run `make types` to confirm green under the strict default.",
+      "closed_at": "2026-05-13",
+      "closed_commit": "tech-debt/pyright-restore-deprecated",
+      "closure_note": "Migrated 5 @(async)contextmanager call sites to (Async)Generator[..., None]; reportDeprecated restored to strict-mode error."
     },
     {
       "id": "phase-50-stranded-templates",
