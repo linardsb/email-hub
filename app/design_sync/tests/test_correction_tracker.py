@@ -185,7 +185,7 @@ class TestRecordCorrection:
     async def test_records_single_correction(self, tmp_path: Path) -> None:
         """A padding change is recorded to JSONL."""
         tracker = CorrectionTracker(data_dir=tmp_path)
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10_000
             count = await tracker.record_correction(
                 agent="outlook_fixer",
@@ -207,7 +207,7 @@ class TestRecordCorrection:
         """Identical HTML records nothing."""
         tracker = CorrectionTracker(data_dir=tmp_path)
         html = _make_html_shorthand_padding()
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10_000
             count = await tracker.record_correction(
                 agent="outlook_fixer",
@@ -222,7 +222,7 @@ class TestRecordCorrection:
     async def test_appends_to_existing_log(self, tmp_path: Path) -> None:
         """Multiple corrections append to the same JSONL file."""
         tracker = CorrectionTracker(data_dir=tmp_path)
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10_000
             await tracker.record_correction(
                 "outlook_fixer",
@@ -363,7 +363,7 @@ class TestLogRotation:
         _seed_log(tmp_path, "outlook_fixer", 15)
         tracker = CorrectionTracker(data_dir=tmp_path)
 
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10
             await tracker.record_correction(
                 "dark_mode",
@@ -472,7 +472,7 @@ class TestBlueprintIntegration:
     async def test_engine_records_correction_on_html_change(self, tmp_path: Path) -> None:
         """When correction_tracker is enabled and HTML changes, correction is recorded."""
         tracker = CorrectionTracker(data_dir=tmp_path)
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10_000
             count = await tracker.record_correction(
                 agent="outlook_fixer",
@@ -489,7 +489,7 @@ class TestBlueprintIntegration:
     async def test_tracker_error_does_not_propagate(self) -> None:
         """Tracker errors are caught — never crash the pipeline."""
         tracker = CorrectionTracker(data_dir=Path("/nonexistent/path"))
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10_000
             # record_correction may raise due to invalid path; we test the engine's
             # try/except pattern by verifying the tracker raises but can be caught
@@ -507,7 +507,7 @@ class TestBlueprintIntegration:
         """When original == corrected, nothing is recorded."""
         tracker = CorrectionTracker(data_dir=tmp_path)
         html = _make_html_shorthand_padding()
-        with patch("app.design_sync.correction_tracker.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.correction.get_settings") as mock_settings:
             mock_settings.return_value.correction_tracker.max_log_entries = 10_000
             count = await tracker.record_correction("dark_mode", html, html)
         assert count == 0
