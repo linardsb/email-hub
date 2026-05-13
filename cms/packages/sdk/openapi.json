@@ -14432,6 +14432,66 @@
       },
       "ContentRequest": {
         "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "blueprint_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blueprint Run Id"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "effective_tier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "complex",
+                  "standard",
+                  "lightweight"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Tier"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
           "operation": {
             "type": "string",
             "enum": [
@@ -14812,6 +14872,66 @@
       },
       "DarkModeRequest": {
         "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "blueprint_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blueprint Run Id"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "effective_tier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "complex",
+                  "standard",
+                  "lightweight"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Tier"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
           "html": {
             "type": "string",
             "maxLength": 200000,
@@ -21331,6 +21451,66 @@
       },
       "ScaffolderRequest": {
         "properties": {
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "blueprint_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blueprint Run Id"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "effective_tier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "complex",
+                  "standard",
+                  "lightweight"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Tier"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
           "brief": {
             "type": "string",
             "maxLength": 4000,

@@ -5,10 +5,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.ai.agents.schemas.dark_mode_decisions import DarkModeDecisions
+from app.ai.agents.types import BaseAgentRequest
 from app.qa_engine.schemas import QACheckResult
 
 
-class DarkModeRequest(BaseModel):
+class DarkModeRequest(BaseAgentRequest):
     """Request body for the dark mode process endpoint.
 
     Attributes:

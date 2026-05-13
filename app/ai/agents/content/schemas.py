@@ -5,9 +5,10 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.ai.agents.schemas.content_decisions import ContentDecisions
+from app.ai.agents.types import BaseAgentRequest
 
 
-class ContentRequest(BaseModel):
+class ContentRequest(BaseAgentRequest):
     """Request body for the content generate endpoint.
 
     Attributes:

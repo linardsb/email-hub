@@ -1,5 +1,6 @@
 """Database configuration and session management."""
 
+import logging as stdlib_logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -11,8 +12,36 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 
 settings = get_settings()
+
+
+class _StructlogBridgeHandler(stdlib_logging.Handler):
+    """Bridge stdlib `logging` records to structlog so redaction applies."""
+
+    def emit(self, record: stdlib_logging.LogRecord) -> None:
+        get_logger("sqlalchemy.engine").info(
+            "sqlalchemy.engine.echo",
+            message=record.getMessage(),
+            level=record.levelname,
+        )
+
+
+def _route_sqlalchemy_to_structlog() -> None:
+    """Re-emit `sqlalchemy.engine` logs via structlog so `redact_event_dict` runs.
+
+    SQLAlchemy `echo=True` writes raw SQL (with bound parameter values that may
+    contain PII) through stdlib `logging`, which bypasses the structlog
+    processor chain. This routes those records back through structlog.
+    """
+    sa_logger = stdlib_logging.getLogger("sqlalchemy.engine")
+    if any(isinstance(h, _StructlogBridgeHandler) for h in sa_logger.handlers):
+        return
+    sa_logger.handlers.clear()
+    sa_logger.addHandler(_StructlogBridgeHandler())
+    sa_logger.propagate = False
+
 
 # Create async engine with connection pooling
 engine = create_async_engine(
@@ -23,6 +52,9 @@ engine = create_async_engine(
     pool_recycle=settings.database.pool_recycle,
     echo=settings.database.echo,
 )
+
+if settings.database.echo:
+    _route_sqlalchemy_to_structlog()
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(

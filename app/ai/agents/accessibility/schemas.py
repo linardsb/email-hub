@@ -5,10 +5,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.ai.agents.schemas.accessibility_decisions import AccessibilityDecisions
+from app.ai.agents.types import BaseAgentRequest
 from app.qa_engine.schemas import QACheckResult
 
 
-class AccessibilityRequest(BaseModel):
+class AccessibilityRequest(BaseAgentRequest):
     """Request body for the Accessibility Auditor process endpoint.
 
     Attributes:

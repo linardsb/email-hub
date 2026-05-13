@@ -10,9 +10,9 @@ class DatabaseConfig(BaseModel):
     pool_size: int = Field(default=20, ge=1)
     pool_max_overflow: int = Field(default=20, ge=0)
     pool_recycle: int = 1800
-    # SQLAlchemy SQL echo emits through the stdlib `sqlalchemy.engine` logger,
-    # which bypasses structlog's redact_event_dict. Keep off in shared logs;
-    # opt-in only for local debugging where exposure is acceptable.
+    # When True, SQLAlchemy SQL logs are routed through structlog so
+    # `redact_event_dict` still applies (see `_route_sqlalchemy_to_structlog`
+    # in `app/core/database.py`). Default off to minimise log volume.
     echo: bool = False
 
 

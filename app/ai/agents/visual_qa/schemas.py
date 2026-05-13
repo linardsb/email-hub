@@ -3,8 +3,10 @@
 
 from pydantic import BaseModel, Field
 
+from app.ai.agents.types import BaseAgentRequest
 
-class VisualQARequest(BaseModel):
+
+class VisualQARequest(BaseAgentRequest):
     """Request body for the visual QA analysis endpoint."""
 
     screenshots: dict[str, str] = Field(

@@ -2,8 +2,10 @@
 
 from pydantic import BaseModel, Field
 
+from app.ai.agents.types import BaseAgentRequest
 
-class InnovationRequest(BaseModel):
+
+class InnovationRequest(BaseAgentRequest):
     """Request to the Innovation agent."""
 
     technique: str = Field(..., min_length=5, max_length=2000)
