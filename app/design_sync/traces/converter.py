@@ -135,8 +135,9 @@ def extract_conversion_insights(
     Groups nearby low-confidence sections by section type (from layout)
     to avoid insight flooding.
     """
-    settings = get_settings()
-    threshold = settings.design_sync.low_match_confidence_threshold
+    from app.design_sync.tuning import LOW_MATCH_CONFIDENCE_THRESHOLD
+
+    threshold = LOW_MATCH_CONFIDENCE_THRESHOLD
 
     low_sections = sorted(
         (idx, conf) for idx, conf in result.match_confidences.items() if conf < threshold

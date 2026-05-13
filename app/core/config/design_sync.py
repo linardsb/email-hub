@@ -15,14 +15,11 @@ class DesignSyncConfig(BaseModel):
     penpot_request_timeout: float = 30.0
     converter_enabled: bool = True  # DESIGN_SYNC__CONVERTER_ENABLED (provider-agnostic)
     figma_variables_enabled: bool = True  # DESIGN_SYNC__FIGMA_VARIABLES_ENABLED
-    opacity_composite_bg: str = "#FFFFFF"  # Background hex for alpha compositing
     ai_layout_enabled: bool = True  # DESIGN_SYNC__AI_LAYOUT_ENABLED
     # Visual fidelity scoring (SSIM comparison of Figma frames vs rendered HTML)
     fidelity_enabled: bool = False  # DESIGN_SYNC__FIDELITY_ENABLED
     fidelity_ssim_window: int = 7  # SSIM Gaussian window (odd, ≤ min image dim)
     fidelity_blur_sigma: float = 1.0  # Gaussian blur before SSIM (anti-aliasing tolerance)
-    fidelity_critical_threshold: float = 0.70  # SSIM < 0.70 = critical
-    fidelity_warning_threshold: float = 0.85  # SSIM < 0.85 = warning
     fidelity_figma_scale: float = 2.0  # Figma export scale factor
     # Figma webhooks (live preview sync)
     figma_webhook_enabled: bool = False  # DESIGN_SYNC__FIGMA_WEBHOOK_ENABLED
@@ -44,7 +41,6 @@ class DesignSyncConfig(BaseModel):
     conversion_traces_path: str = (
         "traces/converter_traces.jsonl"  # DESIGN_SYNC__CONVERSION_TRACES_PATH
     )
-    low_match_confidence_threshold: float = 0.6  # DESIGN_SYNC__LOW_MATCH_CONFIDENCE_THRESHOLD
     # Adjacent-section background color propagation (Phase 41.2)
     bgcolor_propagation_enabled: bool = True  # DESIGN_SYNC__BGCOLOR_PROPAGATION_ENABLED
     # VLM-assisted section classification fallback (Phase 41.5)

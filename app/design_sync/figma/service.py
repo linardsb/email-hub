@@ -743,8 +743,10 @@ class FigmaDesignSyncService:
         file_data: dict[str, Any] = file_resp.json()
         styles_data: dict[str, Any] = styles_resp.json() if styles_resp.status_code == 200 else {}
 
+        from app.design_sync.tuning import OPACITY_COMPOSITE_BG
+
         settings = get_settings()
-        bg_hex = settings.design_sync.opacity_composite_bg
+        bg_hex = OPACITY_COMPOSITE_BG
 
         # Scope token extraction to target frame subtree (Phase 49.6)
         token_scoping = settings.design_sync.token_scoping_enabled and target_node_id is not None

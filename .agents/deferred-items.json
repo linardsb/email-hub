@@ -301,6 +301,26 @@
       "blocks": [
         "phase-52.7-dark-mode-rule-9"
       ]
+    },
+    {
+      "id": "tech-debt-19-design-sync-flag-cull-deeper",
+      "phase": "tech-debt-19",
+      "title": "DESIGN_SYNC__* flag cull — deeper retirement (62 -> <=30)",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-05-13",
+      "introduced_commit": "(this PR)",
+      "summary": "Session 19 PR-C cut 4 fields from app/core/config/design_sync.py (66 -> 62: dropped 2 zero-ref fidelity_* fields, promoted opacity_composite_bg + low_match_confidence_threshold to module constants in app/design_sync/tuning.py). The plan target of <=30 requires deeper feature retirement — deleting test-only-gated features (custom_component_*, wrapper_unwrap, vlm_verify_* tuning knobs, sibling_* parameterized tests, regression_strict, vlm_low_confidence_threshold, vlm_verify_client) along with the tests that exercise their gating. Surgical-changes scope on the sweep PR forbade that breadth.",
+      "code_refs": [
+        "app/core/config/design_sync.py (62 fields remaining)",
+        "app/design_sync/tuning.py (target home for further threshold-knob promotions)",
+        "app/design_sync/tests/test_custom_component_generator.py (test-only gating coverage)",
+        "app/design_sync/tests/test_wrapper_unwrap.py (test-only gating coverage)"
+      ],
+      "symptom_if_broken": "If future field additions outpace cuts, DESIGN_SYNC__* count climbs back up and the original 'op surface too wide' motivation re-emerges. Indicator: grep -cE '^\\s+[a-z_0-9]+:' app/core/config/design_sync.py > 65.",
+      "closes_when": "A dedicated cull PR retires the underlying features (custom_component, wrapper_unwrap, and the VLM verify tuning surface), deletes their test files, and lands a unit test in app/core/tests/test_config_design_sync.py asserting len(DesignSyncConfig.model_fields) <= 30.",
+      "fast_closure_path": "Per-feature decision: (a) ship the feature with sensible defaults baked in (constant-ize) and delete the gating tests, (b) delete the feature code, gating tests, and the field together. Pair each cut with a flag-audit.py run.",
+      "notes": "Production env scan during preflight confirmed zero infra/ops/k8s/deploy/helm overrides. Removing fields is safe at the deployment layer; the risk is only at the test layer."
     }
   ],
   "tooling_followups": [
