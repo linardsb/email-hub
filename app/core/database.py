@@ -1,6 +1,6 @@
 """Database configuration and session management."""
 
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
@@ -39,7 +39,7 @@ class Base(DeclarativeBase):
 
 
 @asynccontextmanager
-async def get_db_context() -> AsyncIterator[AsyncSession]:
+async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
     """Create a standalone async session for use outside FastAPI request lifecycle.
 
     Used by background tasks, agent tools, or CLI scripts that need DB access

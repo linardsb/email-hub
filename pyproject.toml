@@ -320,6 +320,3 @@ reportUnusedFunction = "warning"
 reportPrivateUsage = "warning"
 reportMissingTypeStubs = "none"
 reportUnknownLambdaType = "none"
-# pyright 1.1.409 typeshed flags @asynccontextmanager / @contextmanager as deprecated;
-# false positive in Python 3.12. Demote to warning until upstream typeshed fixes.
-reportDeprecated = "warning"

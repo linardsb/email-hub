@@ -18,7 +18,7 @@ Routes that genuinely need cross-tenant access without a user (login flow,
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Annotated
@@ -128,7 +128,7 @@ _SYSTEM_ACCESS = TenantAccess(project_ids=None, org_ids=None, role="system")
 
 
 @asynccontextmanager
-async def get_scoped_db_context(user: User) -> AsyncIterator[AsyncSession]:
+async def get_scoped_db_context(user: User) -> AsyncGenerator[AsyncSession, None]:
     """Standalone session for background tasks spawned by an authenticated request.
 
     Stamps the user's `TenantAccess` so repos that call :func:`scoped_access`
@@ -150,7 +150,7 @@ async def get_scoped_db_context(user: User) -> AsyncIterator[AsyncSession]:
 
 
 @asynccontextmanager
-async def get_system_db_context() -> AsyncIterator[AsyncSession]:
+async def get_system_db_context() -> AsyncGenerator[AsyncSession, None]:
     """Standalone session for background jobs (no request user).
 
     Stamps a "system" `TenantAccess` whose `None` sentinels disable repo

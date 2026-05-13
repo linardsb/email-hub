@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -34,7 +34,7 @@ def _mock_seed_dir() -> MagicMock:
 
 
 @contextmanager
-def _fake_cognee_module(mock_provider: AsyncMock) -> Iterator[None]:
+def _fake_cognee_module(mock_provider: AsyncMock) -> Generator[None, None, None]:
     """Patch the cognee_provider module so _seed_graph uses our mock provider."""
     mock_module = MagicMock()
     mock_module.CogneeGraphProvider = MagicMock(return_value=mock_provider)
