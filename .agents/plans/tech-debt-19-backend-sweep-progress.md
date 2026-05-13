@@ -1,80 +1,55 @@
-# Tech-debt-19 Backend Sweep — Progress Note
+# Tech-debt-19 Backend Sweep — Status: COMPLETE on `chore/tech-debt-19-backend-sweep`
 
-**Paused:** 2026-05-13 — switched away from `chore/tech-debt-19-backend-sweep` to land the pyright restore PR first.
+All 7 plan items shipped across 4 commits. `make check-full` green on the final tip. Branch is ready for PR/review.
 
-## Where things stand
+## Commits on the branch
 
-- **Branch:** `chore/tech-debt-19-backend-sweep` (exists locally; not pushed)
-- **Stash:** `stash@{0}: On chore/tech-debt-19-backend-sweep: WIP chore/tech-debt-19-backend-sweep — paused for pyright restore PR`
-  - Captures **all PR-A work** including untracked files (verified via `git stash show -u`)
-  - 20 files, 571 insertions, 36 deletions
-
-## What's already done (in stash@{0})
-
-### F033 — closure note
-- No code change needed. `TECH_DEBT_AUDIT.md:75` already states "RESOLVED". The CI gate (`make check-env-drift` at Makefile L28, CI step `.env.example drift gate` at `.github/workflows/ci.yml:43`) is live.
-
-### F059 — structlog routing
-- `app/core/exceptions.py:111` — `logger.error(..., exc_info=True)` → `logger.exception(...)`
-- `app/core/database.py` — added `_StructlogBridgeHandler` (stdlib LogRecord → structlog) and `_route_sqlalchemy_to_structlog()`. Invoked at module-load when `settings.database.echo` is True.
-- `app/core/config/database.py:13-15` — comment updated to reflect new routing
-- `app/core/tests/test_database_echo_routes_via_structlog.py` — 3 tests, all passing:
-  - bridge handler attaches and sets `propagate=False`
-  - re-invocation is idempotent
-  - emit() routes through `get_logger("sqlalchemy.engine").info(...)`
-
-### F070 — `BaseAgentRequest`
-- `app/ai/agents/types.py` (new) — declares `BaseAgentRequest(BaseModel)` with 5 orchestrator-injected fields:
-  - `user_id: str | None = None`
-  - `blueprint_run_id: str | None = None`
-  - `prompt_version: str | None = None`
-  - `effective_tier: TaskTier | None = None` (Literal["complex", "standard", "lightweight"])
-  - `client_id: str | None = None`
-- 11 concrete request schemas migrated to inherit from `BaseAgentRequest`: scaffolder, dark_mode, content, accessibility, code_reviewer, personalisation, outlook_fixer, knowledge, innovation, visual_qa. (NOT migrated: `VariantRequest` — not a `BaseAgentService.process()` consumer; `import_annotator` schemas — dataclass-based, not Pydantic.)
-- `app/ai/agents/base.py`:
-  - 6 `getattr(request, ...)` orchestrator-field calls replaced with direct attribute access
-  - `process` and `stream_process` signatures: `request: Any` → `request: BaseAgentRequest`
-  - 3 `getattr` calls preserved: `output_mode` and `run_qa` (agent-specific fields, not on base) and the dynamic `_user_input_fields` loop at line 261 (fundamentally dynamic field name)
-- `app/ai/agents/tests/test_agent_request_protocol.py` — 12 tests, all passing
-- Pyright: 0 errors, 1 pre-existing warning on `_crag_validate_and_correct` (baseline)
-
-### F049 — `--live` OpenAPI fetch
-- `scripts/export-openapi.py` — added `--live` flag that boots uvicorn on an ephemeral 127.0.0.1 port, polls `GET /openapi.json` until 200, returns parsed JSON. Tear-down via `proc.terminate()` with 5s `kill()` fallback.
-- `cms/packages/sdk/openapi.json` and `cms/packages/sdk/src/client/types.gen.ts` regenerated — captures the new 5 orchestrator fields per request schema (180 lines openapi diff, 60 lines types diff).
-- **Not yet done:** Makefile `sdk-snapshot` target update + CI `sdk-check` job update to use `--live`. Stayed static-mode for the snapshot regen because `--live` needs verification against the lifespan side-effects under CI's container environment.
-
-## What's NOT done
-
-- **F049 CI wiring:** Need to either update `Makefile` `sdk-snapshot` to call `--live` OR add CI env (`AI__PROMPT_STORE_ENABLED=false`, `COLLAB_WS__ENABLED=false`) to the CI step. Static-mode snapshot is regenerated and in-stash.
-- **PR-B (F060):** Trace module consolidation. Untouched.
-- **PR-C (F035):** DESIGN_SYNC flag cull. Untouched.
-- **F057 runbook:** Untouched.
-
-## Resume sequence (when pyright PR ships)
-
-```bash
-# 1. Verify pyright branch shipped + merged
-git fetch origin
-git log origin/main --oneline | head -3
-
-# 2. Switch back to tech-debt-19 branch
-git checkout chore/tech-debt-19-backend-sweep
-
-# 3. Pop the stash (PR-A work restored)
-git stash pop stash@{0}
-
-# 4. Verify state
-git status  # should show ~20 modified/new files
-uv run pytest app/core/tests/test_database_echo_routes_via_structlog.py app/ai/agents/tests/test_agent_request_protocol.py -v
-uv run pyright app/ai/agents/base.py app/ai/agents/types.py app/core/database.py app/core/exceptions.py
-
-# 5. Continue with F049 CI wiring + PR-A gate (make check-full)
-# 6. Open PR-A
-# 7. Move to PR-B (F060) and PR-C (F035) per .agents/plans/tech-debt-19-backend-sweep.md
+```
+0bbf7947  docs(migrations): tech-debt-19 F057 — db-squash runbook + dry-run script
+e6ede878  refactor(config): tech-debt-19 PR-C — start design_sync flag cull (F035, 66->62)
+30def8f2  refactor(design-sync): tech-debt-19 PR-B — consolidate trace modules into app/design_sync/traces/ (F060)
+4d902fc9  refactor(backend): tech-debt-19 PR-A — F059 structlog + F070 AgentRequest + F049 live OpenAPI
 ```
 
-## Open questions to revisit on resume
+## Per-feature summary
 
-- Does `make check-full` pass with PR-A delta? (Not run during the paused execute.)
-- Does `--live` mode actually work in the CI environment, or do we keep static-mode and document the trade-off?
-- The F035 production env scan was clean (no `infra/`/`ops/`/`k8s/`/`deploy/`/`helm/` dirs exist) — safe to cull aggressively.
+| Feature | Status | Where |
+|---------|--------|-------|
+| **F033** — `.env.example` CI parity | Already shipped pre-sweep. `make check-env-drift` (Makefile L28) gates parity; CI step `.env.example drift gate` (ci.yml L43). No code change. | n/a |
+| **F049** — Live-fetch OpenAPI for SDK gate | `--live` flag added to `scripts/export-openapi.py`. CI `sdk-check` job uses it with `AI__PROMPT_STORE_ENABLED=false` + `COLLAB_WS__ENABLED=false`. Local `make sdk-snapshot` stays static. SDK regenerated. | PR-A |
+| **F057** — Migration squash | Runbook + dry-run script. Destructive op not performed. | F057 commit |
+| **F059** — Route exception logging through structlog | `logger.error(…, exc_info=True)` → `logger.exception(…)`. SQLAlchemy echo bridged through structlog so `redact_event_dict` applies. 3 tests added. | PR-A |
+| **F060** — Unify trace modules | 5 legacy modules merged into `app/design_sync/traces/` with `TraceWriter`, `converter`, `regression`, `correction` submodules. Legacy file paths kept as thin re-export shims so the 19 existing import sites compile untouched. Test patches retargeted to new locations. 2013 design_sync tests passing. | PR-B |
+| **F061** — color helpers | Already shipped (`app/shared/color.py`). No-op. | n/a |
+| **F070** — `AgentRequest(Protocol)` / typed access | `BaseAgentRequest(BaseModel)` parent declares 5 orchestrator-injected fields. 10 concrete request schemas migrated. 6 `getattr(request, …)` calls in `base.py` replaced with typed access. `process`/`stream_process` signatures `Any` → `BaseAgentRequest`. 12 tests added. | PR-A |
+| **F035** — `DESIGN_SYNC__*` flag cull | First pass: 66 → 62 fields. Dropped 2 zero-ref fidelity_* fields; promoted `opacity_composite_bg` + `low_match_confidence_threshold` to `app/design_sync/tuning.py` as `Final` constants. Deeper retirement deferred via new entry `tech-debt-19-design-sync-flag-cull-deeper`. | PR-C |
+
+## What changed vs the original plan
+
+- **F033 / F061 collapsed to no-ops** — preflight discovered both were already shipped.
+- **F049 CI wiring landed in PR-A**, not deferred — turned out the lifespan tolerates missing DB once `prompt_store_enabled=false` and `collab_ws.enabled=false`.
+- **F070 expanded** to introduce `BaseAgentRequest` parent (per preflight finding that no schema uses `extra="forbid"` but structural typing still needed declared fields).
+- **F035 scope reduced** — the 30-field target needs feature retirement (deleting test-only-gated features and their tests), which exceeded surgical-changes scope. Deferred entry added with concrete closure plan.
+
+## Verification
+
+- `make check-full` green at the branch tip.
+- 8052 backend tests pass, 780 frontend tests pass.
+- Pyright clean on all modified files (baseline 1 pre-existing warning).
+- `make flag-audit`: 88 flags registered, pass.
+- `make check-env-drift`: `.env.example` matches Settings.
+- SDK drift gate green after regenerating `cms/packages/sdk/openapi.json` + `types.gen.ts`.
+
+## What still needs human attention
+
+1. **F035 — finish the cull.** New deferred entry `tech-debt-19-design-sync-flag-cull-deeper` tracks the work. Path: retire test-only-gated features (`custom_component_*`, `wrapper_unwrap`, `vlm_verify_*` tuning, etc.) along with their tests. Each cut needs a per-feature decision.
+2. **F057 — schedule the maintenance window.** Runbook is ready. Pre-conditions (schema-drift entry closed) are met. Squash itself is a human-supervised op.
+3. **F049 — `--live` mode on first CI run.** First CI run with `scripts/export-openapi.py --live` may surface boot-time issues not visible locally; if so, fall back to `static` and document.
+
+## Ship checklist
+
+- [ ] Open PR on `chore/tech-debt-19-backend-sweep` against `main`
+- [ ] Apply labels (e.g. `tech-debt`, `backend`)
+- [ ] Link to `TECH_DEBT_AUDIT.md` F033/F049/F057/F059/F060/F070
+- [ ] Note the new deferred entry in the PR body
+- [ ] After merge: contributors with open branches should rebase on `main` (no destructive ops, but `app/design_sync/traces/` is new code that diff-conflicts with anything touching the old converter_traces.py et al.)
