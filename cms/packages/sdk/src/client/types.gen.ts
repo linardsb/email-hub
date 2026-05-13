@@ -2320,6 +2320,26 @@ export type ConnectionUpdateTokenRequest = {
  */
 export type ContentRequest = {
     /**
+     * User Id
+     */
+    user_id?: string | null;
+    /**
+     * Blueprint Run Id
+     */
+    blueprint_run_id?: string | null;
+    /**
+     * Prompt Version
+     */
+    prompt_version?: string | null;
+    /**
+     * Effective Tier
+     */
+    effective_tier?: 'complex' | 'standard' | 'lightweight' | null;
+    /**
+     * Client Id
+     */
+    client_id?: string | null;
+    /**
      * Operation
      */
     operation: 'subject_line' | 'preheader' | 'cta' | 'body_copy' | 'rewrite' | 'shorten' | 'expand' | 'tone_adjust';
@@ -2592,6 +2612,26 @@ export type CustomSection = {
  * run_qa: Whether to run the 10-point QA gate on the enhanced HTML.
  */
 export type DarkModeRequest = {
+    /**
+     * User Id
+     */
+    user_id?: string | null;
+    /**
+     * Blueprint Run Id
+     */
+    blueprint_run_id?: string | null;
+    /**
+     * Prompt Version
+     */
+    prompt_version?: string | null;
+    /**
+     * Effective Tier
+     */
+    effective_tier?: 'complex' | 'standard' | 'lightweight' | null;
+    /**
+     * Client Id
+     */
+    client_id?: string | null;
     /**
      * Html
      *
@@ -6930,6 +6970,26 @@ export type SandboxTestResponse = {
  * output_mode: "html" for raw LLM HTML, "structured" for template-first pipeline.
  */
 export type ScaffolderRequest = {
+    /**
+     * User Id
+     */
+    user_id?: string | null;
+    /**
+     * Blueprint Run Id
+     */
+    blueprint_run_id?: string | null;
+    /**
+     * Prompt Version
+     */
+    prompt_version?: string | null;
+    /**
+     * Effective Tier
+     */
+    effective_tier?: 'complex' | 'standard' | 'lightweight' | null;
+    /**
+     * Client Id
+     */
+    client_id?: string | null;
     /**
      * Brief
      *

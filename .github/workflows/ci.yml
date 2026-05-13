@@ -93,13 +93,21 @@ jobs:
       - name: Install Python deps
         run: uv sync --frozen
 
-      - name: Export OpenAPI spec
-        # Match the .env feature flags that the committed SDK was generated with.
-        # Conditionally-mounted routers (e.g. credentials/health for the
-        # ecosystem dashboard) must be enabled here so the snapshot is complete.
+      - name: Export OpenAPI spec (live fetch)
+        # --live boots uvicorn and fetches /openapi.json over HTTP so the
+        # snapshot reflects middleware/lifespan-injected schema state, not
+        # just app.openapi() on the in-process app object.
+        #
+        # Feature flags align with the committed SDK's generation context:
+        # - CREDENTIALS__ENABLED: mounts the credentials/health routers
+        # - AI__PROMPT_STORE_ENABLED=false: skips the prompt-store DB preload
+        #   that the lifespan would otherwise attempt (no Postgres in this job)
+        # - COLLAB_WS__ENABLED=false: skips the Redis-bound collab manager
         env:
           CREDENTIALS__ENABLED: "true"
-        run: uv run python scripts/export-openapi.py
+          AI__PROMPT_STORE_ENABLED: "false"
+          COLLAB_WS__ENABLED: "false"
+        run: uv run python scripts/export-openapi.py --live
 
       - uses: actions/setup-node@v6
         with:

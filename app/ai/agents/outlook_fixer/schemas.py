@@ -5,10 +5,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.ai.agents.schemas.outlook_diagnostic import OutlookDiagnostic
+from app.ai.agents.types import BaseAgentRequest
 from app.qa_engine.schemas import QACheckResult
 
 
-class OutlookFixerRequest(BaseModel):
+class OutlookFixerRequest(BaseAgentRequest):
     """Request body for the Outlook Fixer process endpoint.
 
     Attributes:

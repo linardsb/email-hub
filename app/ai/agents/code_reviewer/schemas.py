@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.ai.agents.schemas.code_review_decisions import CodeReviewDecisions
+from app.ai.agents.types import BaseAgentRequest
 from app.qa_engine.schemas import QACheckResult
 
 ReviewFocus = Literal[
@@ -52,7 +53,7 @@ class CodeReviewIssue(BaseModel):
     )
 
 
-class CodeReviewRequest(BaseModel):
+class CodeReviewRequest(BaseAgentRequest):
     """Request body for the Code Reviewer process endpoint."""
 
     html: str = Field(min_length=50, max_length=200_000, description="Email HTML to review")

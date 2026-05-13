@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from app.ai.multimodal import ContentBlock, ImageBlock, TextBlock
 
 from app.ai.agents.audit import hash_input, log_agent_decision
+from app.ai.agents.types import BaseAgentRequest
 from app.ai.blueprints.protocols import AgentHandoff, HandoffStatus
 from app.ai.exceptions import AIExecutionError
 from app.ai.fallback import call_with_fallback
@@ -75,9 +76,16 @@ class BaseAgentService:
 
     # ── Output mode ──
 
-    def _get_output_mode(self, request: Any) -> str:
-        """Extract output_mode from request, with fallback to class default."""
-        return str(getattr(request, "output_mode", self.output_mode_default))
+    def _get_output_mode(self, request: BaseAgentRequest) -> str:
+        """Extract output_mode from request, with fallback to class default.
+
+        Agent-specific request schemas declare ``output_mode`` themselves
+        (Scaffolder, DarkMode, Content, etc.) — ``BaseAgentRequest`` only
+        carries orchestrator-injected fields, so dynamic lookup remains the
+        safe access pattern for the per-agent field.
+        """
+        value = getattr(request, "output_mode", self.output_mode_default)
+        return str(value)
 
     # ── Subclass hooks ──
 
@@ -161,13 +169,15 @@ class BaseAgentService:
         """
         return self.model_tier
 
-    def _should_run_qa(self, request: Any) -> bool:
+    def _should_run_qa(self, request: BaseAgentRequest) -> bool:
         """Whether to run QA checks for this request.
 
         Override to suppress QA in the base pipeline (e.g., code_reviewer
-        runs QA on input HTML, not output).
+        runs QA on input HTML, not output). Like ``output_mode``, ``run_qa``
+        is agent-specific so we still read it dynamically.
         """
-        return bool(getattr(request, "run_qa", self.run_qa_default))
+        value = getattr(request, "run_qa", self.run_qa_default)
+        return bool(value)
 
     # ── Multimodal helpers ──
 
@@ -310,7 +320,7 @@ class BaseAgentService:
 
     async def process(
         self,
-        request: Any,
+        request: BaseAgentRequest,
         context_blocks: list[ContentBlock] | None = None,
     ) -> Any:
         """Execute the full agent pipeline (non-streaming).
@@ -325,10 +335,10 @@ class BaseAgentService:
 
         telemetry: dict[str, Any] = {
             "agent": self.agent_name,
-            "user_id": getattr(request, "user_id", None),
-            "blueprint_run_id": getattr(request, "blueprint_run_id", None),
+            "user_id": request.user_id,
+            "blueprint_run_id": request.blueprint_run_id,
             "model": "",
-            "prompt_version": getattr(request, "prompt_version", None),
+            "prompt_version": request.prompt_version,
             "input_hash": "",
             "output_summary": "",
             "tokens_in": 0,
@@ -369,7 +379,7 @@ class BaseAgentService:
 
     async def _process_impl(
         self,
-        request: Any,
+        request: BaseAgentRequest,
         context_blocks: list[ContentBlock] | None,
         telemetry: dict[str, Any],
     ) -> Any:
@@ -402,16 +412,15 @@ class BaseAgentService:
         settings = get_settings()
         provider_name = settings.ai.provider
         base_tier = self._get_model_tier(request)
-        effective_tier = getattr(request, "effective_tier", None) or base_tier
+        effective_tier = request.effective_tier or base_tier
         model = resolve_model(effective_tier)
         model_id = f"{provider_name}:{model}"
         telemetry["model"] = model_id
 
         # Progressive disclosure — load only relevant skill files
         relevant_skills = self._detect_skills_from_request(request)
-        client_id: str | None = getattr(request, "client_id", None)
         system_prompt = self.build_system_prompt(
-            relevant_skills, output_mode=output_mode, client_id=client_id
+            relevant_skills, output_mode=output_mode, client_id=request.client_id
         )
         system_prompt += CONFIDENCE_INSTRUCTION
 
@@ -523,7 +532,7 @@ class BaseAgentService:
 
     async def stream_process(
         self,
-        request: Any,
+        request: BaseAgentRequest,
         context_blocks: list[ContentBlock] | None = None,
     ) -> AsyncIterator[str]:
         """Stream agent output as SSE-formatted chunks.
@@ -550,9 +559,8 @@ class BaseAgentService:
 
         relevant_skills = self._detect_skills_from_request(request)
         output_mode = self._get_output_mode(request)
-        stream_client_id: str | None = getattr(request, "client_id", None)
         system_prompt = self.build_system_prompt(
-            relevant_skills, output_mode=output_mode, client_id=stream_client_id
+            relevant_skills, output_mode=output_mode, client_id=request.client_id
         )
         system_prompt += CONFIDENCE_INSTRUCTION
 

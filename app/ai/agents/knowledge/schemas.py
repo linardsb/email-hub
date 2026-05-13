@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from app.ai.agents.types import BaseAgentRequest
+
 
 class KnowledgeSource(BaseModel):
     """A cited source from the knowledge base."""
@@ -13,7 +15,7 @@ class KnowledgeSource(BaseModel):
     relevance_score: float
 
 
-class KnowledgeRequest(BaseModel):
+class KnowledgeRequest(BaseAgentRequest):
     """Request to the Knowledge agent."""
 
     question: str = Field(..., min_length=5, max_length=2000)

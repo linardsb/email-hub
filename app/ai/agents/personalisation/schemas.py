@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.ai.agents.schemas.personalisation_decisions import PersonalisationDecisions
+from app.ai.agents.types import BaseAgentRequest
 from app.qa_engine.schemas import QACheckResult
 
 ESPPlatform = Literal[
@@ -18,7 +19,7 @@ ESPPlatform = Literal[
 ]
 
 
-class PersonalisationRequest(BaseModel):
+class PersonalisationRequest(BaseAgentRequest):
     """Request body for the Personalisation process endpoint.
 
     Attributes:

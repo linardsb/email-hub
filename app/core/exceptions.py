@@ -108,13 +108,12 @@ def _is_sync_error(exc: AppError) -> bool:
 
 async def app_exception_handler(request: Request, exc: AppError) -> JSONResponse:
     """Handle application exceptions globally."""
-    logger.error(
+    logger.exception(
         "app.error",
         error_type=type(exc).__name__,
         error_message=str(exc),
         path=request.url.path,
         method=request.method,
-        exc_info=True,
     )
 
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
