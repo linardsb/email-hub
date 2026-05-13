@@ -41,16 +41,16 @@
 |---|---|---|
 | F035 | OPEN — count refreshed | Audit refresh records the actual count (currently 67 `DESIGN_SYNC__*` entries in `.env.example`, up from the 47 stated in the audit). Cull session is out of scope here; goal: ≤30 active flags. |
 | F043 | OPEN — PARTIAL (corrected from user-table claim) | 2026-05-04 verification: `grep -rl '@ts-nocheck' cms/apps/web/src` returns 10 files (down from the audit's 12). Closes when count reaches 0; tracked by Session 16 (`tech-debt-09c-ts-strict-tests.md`). |
-| F063 | OPEN — partial | `.gitignore` covers `*.zip`, `=2.0`, `e2e-screenshots/`, and per-output `data/debug/*/{actual.html,rendered.png,raw_figma.json,structure.json,tokens.json,report.json,...}`. Curated committed fixtures: `expected.html`, `manifest.yaml`, `vlm_classifications.json`, `actual-tree-with-fixes.html`, `actual-with-fixes.html`. Closes when EITHER (a) flip to blanket-ignore + `!` exceptions for the 5 curated types; OR (b) update line-113 comment to declare current pattern the final design and F063 closes as-designed. **Session 0 deferred the .gitignore flip** — it conflicts with a deliberate maintainer comment and warrants a discrete decision. |
+| F063 | CLOSED (Session 20) | Approach (a): `.gitignore` flipped to blanket `data/debug/*/*` + 5 `!` exceptions for curated fixture types; stray `=2.0` file deleted; `docs/TODO-completed.md` rotated (phases 0-39 → archive); 25 phase-≤49 plans moved to `.agents/plans/_archive/`. `design.png` + `design_meta.json` surfaced as untracked during preflight but confirmed regenerable during execute and excluded. |
 
 ### Findings that stay OPEN
 
-F001, F002, F003, F010, F011, F013, F014, F025, F026, F027, F028, F029, F030, F031, F036, F037, F038, F039, F040, F042, F043, F045, F046, F047, F049, F050, F051, F052, F053, F054, F055, F056, F057, F058, F059, F060, F061, F062, F065, F066, F067, F068, F070.
+F001, F002, F003, F010, F011, F013, F014, F025, F026, F027, F028, F029, F030, F031, F036, F037, F038, F039, F040, F042, F043, F045, F046, F047, F049, F051, F052, F053, F054, F055, F056, F057, F058, F059, F060, F061, F062, F065, F066, F067, F068, F070.
 
 ### Sections to refresh
 
 - **Top 5 — Fix These First:** items 3 (Phase 48) and 5 (dead code) drop out — shipped. Replace with F010/F011 (converter god funcs) and F052/F053 (Knowledge split).
-- **Quick Wins checkboxes:** tick F050, F064; mark F063 as partial.
+- **Quick Wins checkboxes:** tick F050, F063, F064.
 - **Open Questions:** Q2 → "RESOLVED — Phase 48 parked under `prototypes/ai-pipeline/`, see Plan 05B"; Q3 → "RESOLVED — `app/example/` deleted, `eddcd1ac`"; Q4 → "RESOLVED — `/ws/stream` deleted, `eddcd1ac`". Q1 collapses after Session 2 lands.
 - **"Things That Look Bad But Are Actually Fine":** stale paths — `app/core/config.py` → now a package; `app/qa_engine/custom_checks.py` → now a package. Sweep refresh, no logic changes.
 
@@ -115,7 +115,7 @@ Six-way backend parallelism is safe. Track 16 + 17 add 2 more frontend/test cont
 | # | Title | Findings | Plan ref |
 |---|---|---|---|
 | 19 | Backend sweep | F049 (SDK CI gate), F056, F057, F058, F059, F060, F061, F062, F070 | `tech-debt-19-backend-sweep.md` (lazy) |
-| 20 | Frontend / repo sweep | F050, F063 closure | `tech-debt-20-frontend-sweep.md` (lazy) |
+| 20 ✅ | Frontend / repo sweep | F050, F063 closure | `tech-debt-20-frontend-sweep.md` |
 
 ## Verification snapshot — 2026-05-08
 
@@ -461,4 +461,4 @@ Lazy. New sub-plans (sessions 11, 12, 13, 14, 15, 19, 20) are written one sessio
 
 ## Hand-off
 
-**Next session: 1** (Multi-tenant repo scoping). Session 0 ran on 2026-05-04: `TECH_DEBT_AUDIT.md` doc refresh landed; `.gitignore` flip for F063 closure deferred to a future micro-session pending maintainer affirmation of approach (a) vs. (b).
+**Next session: 1** (Multi-tenant repo scoping). Session 0 ran on 2026-05-04: `TECH_DEBT_AUDIT.md` doc refresh landed; `.gitignore` flip for F063 closure deferred to a future micro-session pending maintainer affirmation of approach (a) vs. (b). Session 20 ran on 2026-05-13 with maintainer affirmation of approach (a): blanket `data/debug/*/*` ignore + 5 `!` exceptions for curated types. Untracked `design.png` + `design_meta.json` files surfaced during preflight and were initially folded into the exception list as a presumed 6th/7th type; during execute, grep confirmed they are regenerable Figma exports (`service.py:229`, `diagnose/extract.py:146/316`) and were dropped — they stay IGNORED via the blanket pattern. F050 + F063 closed fully.
