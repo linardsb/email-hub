@@ -118,7 +118,7 @@ class TestPersistConversionQuality:
         )
         mock_service = AsyncMock()
 
-        with patch("app.design_sync.converter_memory.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.conversion_memory_enabled = True
             await persist_conversion_quality(result, None, None)  # type: ignore[arg-type]
 
@@ -134,7 +134,7 @@ class TestPersistConversionQuality:
         mock_service = AsyncMock()
 
         with (
-            patch("app.design_sync.converter_memory.get_settings") as mock_settings,
+            patch("app.design_sync.traces.converter.get_settings") as mock_settings,
             patch("app.core.database.get_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider") as mock_embed,
             patch("app.memory.service.MemoryService", return_value=mock_service),
@@ -160,7 +160,7 @@ class TestPersistConversionQuality:
         result = _FakeConversionResult(quality_warnings=[_make_warning()])
 
         with (
-            patch("app.design_sync.converter_memory.get_settings") as mock_settings,
+            patch("app.design_sync.traces.converter.get_settings") as mock_settings,
             patch("app.core.database.get_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider") as mock_embed,
             patch(
@@ -180,7 +180,7 @@ class TestPersistConversionQuality:
     async def test_respects_config_gate(self) -> None:
         result = _FakeConversionResult(quality_warnings=[_make_warning()])
 
-        with patch("app.design_sync.converter_memory.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.conversion_memory_enabled = False
             # Should return early, no DB interaction
             await persist_conversion_quality(result, None, None)  # type: ignore[arg-type]

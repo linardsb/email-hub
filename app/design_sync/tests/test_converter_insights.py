@@ -47,7 +47,7 @@ class _FakeConversionResult:
 class TestExtractConversionInsights:
     def test_no_insights_high_confidence(self) -> None:
         result = _FakeConversionResult(match_confidences={0: 0.9, 1: 0.85, 2: 0.7})
-        with patch("app.design_sync.converter_insights.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.low_match_confidence_threshold = 0.6
             insights = extract_conversion_insights(result)  # type: ignore[arg-type]
         assert insights == []
@@ -62,7 +62,7 @@ class TestExtractConversionInsights:
                 ]
             ),
         )
-        with patch("app.design_sync.converter_insights.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.low_match_confidence_threshold = 0.6
             insights = extract_conversion_insights(result)  # type: ignore[arg-type]
         assert len(insights) == 1
@@ -81,7 +81,7 @@ class TestExtractConversionInsights:
                 ]
             ),
         )
-        with patch("app.design_sync.converter_insights.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.low_match_confidence_threshold = 0.6
             insights = extract_conversion_insights(result)  # type: ignore[arg-type]
         assert len(insights) == 1
@@ -90,14 +90,14 @@ class TestExtractConversionInsights:
 
     def test_insight_targets_scaffolder(self) -> None:
         result = _FakeConversionResult(match_confidences={0: 0.2})
-        with patch("app.design_sync.converter_insights.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.low_match_confidence_threshold = 0.6
             insights = extract_conversion_insights(result)  # type: ignore[arg-type]
         assert insights[0].target_agents == ("scaffolder",)
 
     def test_insight_category_is_conversion(self) -> None:
         result = _FakeConversionResult(match_confidences={0: 0.2})
-        with patch("app.design_sync.converter_insights.get_settings") as mock_settings:
+        with patch("app.design_sync.traces.converter.get_settings") as mock_settings:
             mock_settings.return_value.design_sync.low_match_confidence_threshold = 0.6
             insights = extract_conversion_insights(result)  # type: ignore[arg-type]
         assert insights[0].category == "conversion"
@@ -109,9 +109,9 @@ class TestPersistConversionInsights:
         result = _FakeConversionResult(match_confidences={0: 0.2})
 
         with (
-            patch("app.design_sync.converter_insights.get_settings") as mock_settings,
+            patch("app.design_sync.traces.converter.get_settings") as mock_settings,
             patch(
-                "app.design_sync.converter_insights.persist_insights",
+                "app.design_sync.traces.converter.persist_insights",
                 new_callable=AsyncMock,
                 side_effect=RuntimeError("DB down"),
             ),
