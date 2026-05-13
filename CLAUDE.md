@@ -110,13 +110,13 @@ For full architecture details see `.claude/docs/architecture-deep-dive.md`. For 
 | Deferred-items ledger (acceptance carry-forwards) | `.claude/rules/deferred-items.md` + `.agents/deferred-items.json` |
 | Full architecture deep-dive | `.claude/docs/architecture-deep-dive.md` |
 | Active backlog | `TODO.md` — 95KB, query via `search_sections` |
-| Per-subtask phase history | `docs/TODO-completed.md` — 664KB, query via `search_sections` |
+| Per-subtask phase history | `docs/TODO-completed.md` (~150KB, phases 40+) + `docs/TODO-completed-archive-2025-h2.md` (~615KB, phases 0–39), query via `search_sections` |
 | Product requirements | `PRD.md` — 27KB, query via `search_sections` |
 | Tech-debt audit | `TECH_DEBT_AUDIT.md` |
 
 ## Roadmap
 
-**Phases 0–49 complete.** Per-subtask history lives in `docs/TODO-completed.md` — query it via jDocMunch `search_sections`, never `Read` (it's 664KB).
+**Phases 0–49 complete.** Per-subtask history: phases 40+ live in `docs/TODO-completed.md` (~150KB), phases 0–39 in `docs/TODO-completed-archive-2025-h2.md` (~615KB). Query via jDocMunch `search_sections` — never `Read` the archive directly.
 
 Recent themes:
 - **P47 — VLM visual verification loop + component library expansion (89→150 components).** Render→compare→correct iteration with deterministic correction applicator. Fidelity ladder: ~85% (P40) → ~93% (P41) → ~97% (P47 verify loop) → ~99% (P47 component expansion).
