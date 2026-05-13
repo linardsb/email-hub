@@ -14,6 +14,7 @@ from app.core.logging import get_logger
 from app.design_sync.figma.physical_card_detector import (
     collect_sibling_radii,
     detect_physical_card_surface,
+    find_physical_card_in_subtree,
 )
 from app.design_sync.frame_rules import (
     CornerRadiusSpec,
@@ -394,24 +395,36 @@ def analyze_layout(
             if card_spec is not None:
                 inner_card_fixed_width = card_spec.fixed_width_px
 
-        # Physical-card identity exception (Phase 50.7) — runs only on sections
-        # that already carry a card surface (inner_bg). Rule 9 (Phase 52.7)
-        # reads ``is_physical_card_surface`` to skip the dark-mode flip.
+        # Physical-card identity exception (Phase 50.7) — runs on sections that
+        # already carry a card surface (inner_bg). Phase 50.8 adds a bounded
+        # subtree-walk fallback for nested cards (e.g. LEGO ``mj-wrapper`` →
+        # ``mj-section``) where ``_detect_inner_bg`` cannot reach the card.
+        # Rule 9 (Phase 52.7) reads ``is_physical_card_surface`` to skip the
+        # dark-mode flip.
         is_physical_card_surface = False
         physical_card_signals: tuple[str, ...] = ()
         ds_cfg = get_settings().design_sync
-        if inner_bg is not None and ds_cfg.physical_card_detection_enabled:
-            sibling_radii = collect_sibling_radii(
-                [n for n, _, _ in candidates],
-                exclude_node_id=node.id,
-            )
-            detection = detect_physical_card_surface(
-                node,
-                sibling_radii=sibling_radii,
-                min_signals=ds_cfg.physical_card_min_signals,
-            )
-            is_physical_card_surface = detection.is_physical
-            physical_card_signals = detection.signals
+        if ds_cfg.physical_card_detection_enabled:
+            if inner_bg is not None:
+                sibling_radii = collect_sibling_radii(
+                    [n for n, _, _ in candidates],
+                    exclude_node_id=node.id,
+                )
+                detection = detect_physical_card_surface(
+                    node,
+                    sibling_radii=sibling_radii,
+                    min_signals=ds_cfg.physical_card_min_signals,
+                )
+                is_physical_card_surface = detection.is_physical
+                physical_card_signals = detection.signals
+            else:
+                nested = find_physical_card_in_subtree(
+                    node,
+                    min_signals=ds_cfg.physical_card_min_signals,
+                )
+                if nested is not None:
+                    is_physical_card_surface = True
+                    physical_card_signals = ("nested_card", *nested.signals)
 
         sections.append(
             EmailSection(

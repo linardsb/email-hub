@@ -232,6 +232,8 @@ def _mock_layout_settings() -> Any:
             "vlm_classification_timeout": 15.0,
             "nested_card_detection_enabled": False,
             "nested_card_perceptual_threshold": 30,
+            "physical_card_detection_enabled": False,
+            "physical_card_min_signals": 2,
         },
     )()
     mock_s = type("S", (), {"design_sync": mock_ds})()

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from app.design_sync.brief_generator import generate_brief
+from app.design_sync.diagnose.report import load_structure_from_json
 from app.design_sync.figma.layout_analyzer import (
     ColumnLayout,
     DesignLayoutDescription,
@@ -1714,3 +1719,34 @@ class TestCTAClassificationFixes:
         layout = analyze_layout(structure)
         section_1 = next(s for s in layout.sections if s.node_id == "s1")
         assert section_1.section_type != EmailSectionType.CTA
+
+
+_LEGO_FIXTURE = Path(__file__).resolve().parents[3] / "data" / "debug" / "7" / "structure.json"
+
+
+class TestNestedPhysicalCardDetection:
+    """Phase 50.8 — analyze_layout surfaces nested cards via subtree fallback.
+
+    When ``_detect_inner_bg`` cannot reach the card (LEGO's mj-wrapper →
+    mj-section → mj-section chain), the fallback walker in
+    ``find_physical_card_in_subtree`` runs and flips
+    ``is_physical_card_surface`` on the enclosing top-level section.
+    """
+
+    def test_lego_membership_card_surfaced_on_section_seven(self) -> None:
+        if not _LEGO_FIXTURE.exists():
+            pytest.skip(f"LEGO fixture missing: {_LEGO_FIXTURE}")
+
+        structure = load_structure_from_json(_LEGO_FIXTURE)
+        layout = analyze_layout(structure)
+
+        flagged = [s for s in layout.sections if s.is_physical_card_surface]
+        assert len(flagged) == 1, (
+            f"expected exactly one physical-card section, got "
+            f"{[(layout.sections.index(s), s.physical_card_signals) for s in flagged]}"
+        )
+
+        card_section = flagged[0]
+        assert layout.sections.index(card_section) == 7
+        assert "nested_card" in card_section.physical_card_signals
+        assert "distinct_corner_radius" in card_section.physical_card_signals

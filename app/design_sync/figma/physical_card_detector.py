@@ -52,6 +52,10 @@ class PhysicalCardDetection:
     signals: tuple[str, ...]
 
 
+# Subtree-walk depth — bounded to keep traversal cheap on deep wrappers.
+_SUBTREE_MAX_DEPTH = 4
+
+
 def detect_physical_card_surface(
     card_frame: DesignNode,
     *,
@@ -93,6 +97,50 @@ def detect_physical_card_surface(
         is_physical=len(signals) >= min_signals,
         signals=tuple(signals),
     )
+
+
+def find_physical_card_in_subtree(
+    root: DesignNode,
+    *,
+    max_depth: int = _SUBTREE_MAX_DEPTH,
+    min_signals: int = _MIN_SIGNALS,
+) -> PhysicalCardDetection | None:
+    """Search ``root``'s descendants for a physical-card surface.
+
+    Used as a fallback when ``analyze_layout`` cannot detect an ``inner_bg``
+    on the top-level section but the card lives nested inside a wrapper
+    (e.g. LEGO's ``mj-wrapper`` → ``mj-section`` chain). Walks bounded by
+    ``max_depth`` (root itself is depth 0, root's direct children depth 1)
+    and returns the first descendant whose detection passes ``min_signals``.
+
+    A nested candidate must additionally carry a corner radius ``>= 16`` —
+    aspect_ratio + barcode_child can both fire coincidentally on plain hero
+    sections (wide container + a banner strip image), so the visual hallmark
+    of a card (rounded corners) is required when running the fallback.
+
+    Sibling radii are computed per-candidate from the candidate's immediate
+    parent so that ``distinct_corner_radius`` reflects local structure
+    rather than the top-level section's siblings.
+    """
+    queue: list[tuple[DesignNode, DesignNode, int]] = [(root, child, 1) for child in root.children]
+    while queue:
+        parent, node, depth = queue.pop(0)
+        radius = _resolve_corner_radius(node)
+        if radius is not None and radius >= _CARD_MIN_RADIUS:
+            sibling_radii = collect_sibling_radii(
+                parent.children,
+                exclude_node_id=node.id,
+            )
+            detection = detect_physical_card_surface(
+                node,
+                sibling_radii=sibling_radii,
+                min_signals=min_signals,
+            )
+            if detection.is_physical:
+                return detection
+        if depth < max_depth:
+            queue.extend((node, child, depth + 1) for child in node.children)
+    return None
 
 
 # ── Signal predicates ──────────────────────────────────────────────────────
