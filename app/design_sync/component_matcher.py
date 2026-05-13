@@ -139,11 +139,12 @@ async def match_section_with_vlm_fallback(
         ComponentMatch — either the original heuristic match or a VLM-improved one.
     """
     from app.core.config import get_settings
+    from app.design_sync.tuning import LOW_MATCH_CONFIDENCE_THRESHOLD
 
     match = match_section(section, idx, container_width=container_width, image_urls=image_urls)
 
+    threshold = LOW_MATCH_CONFIDENCE_THRESHOLD
     settings = get_settings()
-    threshold = settings.design_sync.low_match_confidence_threshold
 
     if (
         match.confidence >= threshold
