@@ -98,9 +98,7 @@ class DesignSyncConfig(BaseModel):
     # Wrapper unwrap pre-pass (Phase 50.3, Gap 1) — expand coloured mj-wrappers
     # with ≥2 section children into per-child sections so heading + cards
     # don't collapse into one component. Gated to MJML naming convention.
-    # Default off for one release after merge per master plan risks table;
-    # flip on once the 4 regression cases re-validate in production.
-    wrapper_unwrap_enabled: bool = False  # DESIGN_SYNC__WRAPPER_UNWRAP_ENABLED
+    wrapper_unwrap_enabled: bool = True  # DESIGN_SYNC__WRAPPER_UNWRAP_ENABLED
     # Nested-card background detection (Phase 50.4, Gap 10) — detect when a
     # section sits on a coloured wrapper but has its own card surface
     # (e.g. white card on lime wrapper). Renderer wraps content in a ``_inner``
