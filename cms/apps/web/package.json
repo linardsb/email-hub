@@ -45,7 +45,7 @@
     "react-resizable-panels": "^4.11.0",
     "sonner": "^2.0.0",
     "swr": "^2.3.0",
-    "tailwind-merge": "^3.0.0",
+    "tailwind-merge": "^3.6.0",
     "y-monaco": "^0.1.6",
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
