@@ -22,7 +22,7 @@ RUN uv sync --locked --no-editable --no-dev
 RUN find /app/.venv/bin -type f -exec sed -i '1s|^#!.*python.*$|#!/app/.venv/bin/python|' {} + 2>/dev/null || true
 
 # Stage 2: Runtime - Minimal production image
-FROM python:3.12-slim-bookworm@sha256:58525e1a8dada8e72d6f8a11a0ddff8d981fd888549108db52455d577f927f77
+FROM python:3.12-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d
 
 # SECURITY: Create non-root user
 RUN groupadd --gid 1001 appuser && \
