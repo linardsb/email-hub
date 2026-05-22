@@ -24,6 +24,13 @@ RUN find /app/.venv/bin -type f -exec sed -i '1s|^#!.*python.*$|#!/app/.venv/bin
 # Stage 2: Runtime - Minimal production image
 FROM python:3.12-slim-bookworm@sha256:93ab4b7fa528b25124c97bcc755415e60eb671a86b4dbe0328df2fe2d1c1193d
 
+# SECURITY: Apply pending Debian security updates not yet rolled into the
+# upstream base image (e.g. libgnutls30 deb12u7).
+RUN apt-get update && \
+    apt-get upgrade -y --no-install-recommends && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # SECURITY: Create non-root user
 RUN groupadd --gid 1001 appuser && \
     useradd --uid 1001 --gid appuser --shell /bin/false --create-home appuser
