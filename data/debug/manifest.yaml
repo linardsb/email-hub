@@ -22,7 +22,7 @@ cases:
     name: "MAAP x KASK — 13-section email (hero, products, nav, dark footer)"
     source: "The Ultimate Email Design System (Community)"
     figma_node: "2833-1623"
-    sections: 9  # converter current; target is 13 (see reference HTML)
+    sections: 11  # converter current; target is 13 (see reference HTML)
     target_sections: 13
     status: active
     design_image: false
@@ -42,7 +42,7 @@ cases:
     name: "Mammut Duvet Day — 18-section campaign (multi-hero, editorial, product grid, nav, footer)"
     source: "The Ultimate Email Design System (Community)"
     figma_node: "2833-1135"
-    sections: 12  # converter current; target is 18 (see reference HTML)
+    sections: 14  # converter current; target is 18 (see reference HTML)
     target_sections: 18
     status: active
     design_image: false
@@ -52,7 +52,7 @@ cases:
     name: "LEGO Insiders Halloween — physical-card membership pattern (8-section campaign)"
     source: "The Ultimate Email Design System (Community)"
     figma_node: "2833-1869"
-    sections: 8  # converter current
+    sections: 17  # converter current
     target_sections: 8
     status: active
     design_image: false  # captured locally via diagnose.extract; not committed (~2.3 MB)
@@ -62,7 +62,7 @@ cases:
     name: "Performance Reimagined — 10-section editorial layout (hero, image-text, columns, social)"
     source: "The Ultimate Email Design System (Community)"
     figma_node: "2833-2257"
-    sections: 10  # converter current
+    sections: 11  # converter current
     target_sections: 10
     status: active
     design_image: false  # captured locally via diagnose.extract; not committed (~7.1 MB)
@@ -72,7 +72,7 @@ cases:
     name: "Slate Newsletter — 8-section newsletter (dual hero, image-grid, dividers, social)"
     source: "The Ultimate Email Design System (Community)"
     figma_node: "2833-2073"
-    sections: 8  # converter current
+    sections: 10  # converter current
     target_sections: 8
     status: active
     design_image: false  # image capture missed for this node

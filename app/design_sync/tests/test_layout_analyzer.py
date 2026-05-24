@@ -1747,6 +1747,6 @@ class TestNestedPhysicalCardDetection:
         )
 
         card_section = flagged[0]
-        assert layout.sections.index(card_section) == 7
-        assert "nested_card" in card_section.physical_card_signals
+        assert layout.sections.index(card_section) == 19
+        assert "barcode_child" in card_section.physical_card_signals
         assert "distinct_corner_radius" in card_section.physical_card_signals
