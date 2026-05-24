@@ -45,7 +45,7 @@
 
 ### Findings that stay OPEN
 
-F001, F002, F003, F010, F011, F013, F014, F025, F026, F027, F028, F029, F030, F031, F036, F037, F038, F039, F040, F042, F043, F045, F046, F047, F049, F051, F052, F053, F054, F055, F056, F057, F058, F059, F060, F061, F062, F065, F066, F067, F068, F070.
+F025 (open, queued for 50.2), F042 (PARTIAL, 50.3), F057 (PARTIAL, 50.5), F066 (PARTIAL, 50.4). _(Refreshed 2026-05-24 in Phase 50.1: 38 prior entries are now `RESOLVED` in `TECH_DEBT_AUDIT.md`; see commit citations there.)_
 
 ### Sections to refresh
 
