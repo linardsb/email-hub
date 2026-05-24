@@ -2,6 +2,6 @@ name: mammut-duvet-day
 figma_node: "2833-1135"
 description: "Mammut Duvet Day — 18-section campaign"
 sections:
-  count: 12
+  count: 14
   tolerance: 1
 patterns: []

@@ -17,9 +17,11 @@ import argparse
 import asyncio
 import json
 import time
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from app.ai.agents.evals.synthetic_data_accessibility import ACCESSIBILITY_TEST_CASES
 from app.ai.agents.evals.synthetic_data_code_reviewer import CODE_REVIEWER_TEST_CASES
@@ -37,53 +39,108 @@ from app.core.redaction import redact_value
 logger = get_logger(__name__)
 
 
+AgentName = Literal[
+    "scaffolder",
+    "dark_mode",
+    "content",
+    "outlook_fixer",
+    "accessibility",
+    "personalisation",
+    "code_reviewer",
+    "knowledge",
+    "innovation",
+]
+
+AGENT_NAMES: tuple[AgentName, ...] = (
+    "scaffolder",
+    "dark_mode",
+    "content",
+    "outlook_fixer",
+    "accessibility",
+    "personalisation",
+    "code_reviewer",
+    "knowledge",
+    "innovation",
+)
+
+
+@dataclass(frozen=True)
+class AgentSpec:
+    """Eval-runner registration for one agent.
+
+    ``cases_loader`` accepts ``include_uploaded: bool`` and returns the case list.
+    ``case_runner`` is the per-case adapter that wraps ``_run_case``.
+    """
+
+    cases_loader: Callable[..., list[dict[str, Any]]]
+    case_runner: Callable[[dict[str, Any]], Awaitable[dict[str, Any]]]
+
+
+async def _run_case(
+    agent: AgentName,
+    case: dict[str, Any],
+    *,
+    invoke: Callable[[dict[str, Any]], Awaitable[Any]],
+    input_serializer: Callable[[dict[str, Any]], dict[str, Any]],
+    output_serializer: Callable[[Any], dict[str, Any]],
+) -> dict[str, Any]:
+    """Shared timing + error capture + canonical trace dict assembly.
+
+    The trace field order (``id, agent, dimensions, input, output,
+    expected_challenges, elapsed_seconds, error, timestamp``) is the on-disk
+    JSONL contract consumed by ``analysis.py``, ``failure_warnings.py``,
+    ``improvement_tracker.py``, ``production_sampler.py``, and
+    ``judge_runner.py``. Do not reorder.
+    """
+    start = time.monotonic()
+    output_value: dict[str, Any] | None
+    error_value: str | None
+    try:
+        response = await invoke(case)
+        output_value = output_serializer(response)
+        error_value = None
+    except Exception as e:
+        output_value = None
+        error_value = f"{type(e).__name__}: {e}"
+    elapsed = time.monotonic() - start
+    trace: dict[str, Any] = {
+        "id": case["id"],
+        "agent": agent,
+        "dimensions": case["dimensions"],
+        "input": input_serializer(case),
+        "output": output_value,
+        "expected_challenges": case.get("expected_challenges"),
+        "elapsed_seconds": round(elapsed, 2),
+        "error": error_value,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+    if case.get("design_context"):
+        trace["design_context"] = case["design_context"]
+    return trace
+
+
 async def run_scaffolder_case(case: dict[str, Any]) -> dict[str, Any]:
     """Run a single scaffolder test case and return the trace."""
     from app.ai.agents.scaffolder.schemas import ScaffolderRequest
     from app.ai.agents.scaffolder.service import ScaffolderService
 
-    service = ScaffolderService()
-    request = ScaffolderRequest(brief=case["brief"], stream=False, run_qa=True)
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = ScaffolderService()
+        request = ScaffolderRequest(brief=c["brief"], stream=False, run_qa=True)
+        return await service.generate(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.generate(request)
-        elapsed = time.monotonic() - start
-        trace: dict[str, Any] = {
-            "id": case["id"],
-            "agent": "scaffolder",
-            "dimensions": case["dimensions"],
-            "input": {"brief": case["brief"]},
-            "output": {
-                "html": response.html,
-                "qa_results": [r.model_dump() for r in (response.qa_results or [])],
-                "qa_passed": response.qa_passed,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-        if case.get("design_context"):
-            trace["design_context"] = case["design_context"]
-        return trace
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        trace = {
-            "id": case["id"],
-            "agent": "scaffolder",
-            "dimensions": case["dimensions"],
-            "input": {"brief": case["brief"]},
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-        if case.get("design_context"):
-            trace["design_context"] = case["design_context"]
-        return trace
+    return await _run_case(
+        "scaffolder",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {"brief": c["brief"]},
+        output_serializer=lambda r: {
+            "html": r.html,
+            "qa_results": [x.model_dump() for x in (r.qa_results or [])],
+            "qa_passed": r.qa_passed,
+            "model": r.model,
+        },
+    )
 
 
 async def run_dark_mode_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -91,58 +148,34 @@ async def run_dark_mode_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.dark_mode.schemas import DarkModeRequest
     from app.ai.agents.dark_mode.service import DarkModeService
 
-    service = DarkModeService()
-    request = DarkModeRequest(
-        html=case["html_input"],
-        color_overrides=case.get("color_overrides"),
-        preserve_colors=case.get("preserve_colors"),
-        stream=False,
-        run_qa=True,
-    )
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = DarkModeService()
+        request = DarkModeRequest(
+            html=c["html_input"],
+            color_overrides=c.get("color_overrides"),
+            preserve_colors=c.get("preserve_colors"),
+            stream=False,
+            run_qa=True,
+        )
+        return await service.process(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.process(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "dark_mode",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": case["html_input"][:5000],
-                "html_length": len(case["html_input"]),
-                "color_overrides": case.get("color_overrides"),
-                "preserve_colors": case.get("preserve_colors"),
-            },
-            "output": {
-                "html": response.html,
-                "qa_results": [r.model_dump() for r in (response.qa_results or [])],
-                "qa_passed": response.qa_passed,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "dark_mode",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": case["html_input"][:5000],
-                "html_length": len(case["html_input"]),
-                "color_overrides": case.get("color_overrides"),
-                "preserve_colors": case.get("preserve_colors"),
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "dark_mode",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "html_input": c["html_input"][:5000],
+            "html_length": len(c["html_input"]),
+            "color_overrides": c.get("color_overrides"),
+            "preserve_colors": c.get("preserve_colors"),
+        },
+        output_serializer=lambda r: {
+            "html": r.html,
+            "qa_results": [x.model_dump() for x in (r.qa_results or [])],
+            "qa_passed": r.qa_passed,
+            "model": r.model,
+        },
+    )
 
 
 async def run_content_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -150,50 +183,31 @@ async def run_content_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.content.schemas import ContentRequest
     from app.ai.agents.content.service import ContentService
 
-    service = ContentService()
-    inp = case["input"]
-    request = ContentRequest(
-        operation=inp["operation"],
-        text=inp["text"],
-        tone=inp.get("tone"),
-        brand_voice=inp.get("brand_voice"),
-        num_alternatives=inp.get("num_alternatives", 1),
-        stream=False,
-    )
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = ContentService()
+        inp = c["input"]
+        request = ContentRequest(
+            operation=inp["operation"],
+            text=inp["text"],
+            tone=inp.get("tone"),
+            brand_voice=inp.get("brand_voice"),
+            num_alternatives=inp.get("num_alternatives", 1),
+            stream=False,
+        )
+        return await service.generate(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.generate(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "content",
-            "dimensions": case["dimensions"],
-            "input": inp,
-            "output": {
-                "content": response.content,
-                "operation": response.operation,
-                "spam_warnings": [w.model_dump() for w in response.spam_warnings],
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "content",
-            "dimensions": case["dimensions"],
-            "input": inp,
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "content",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: c["input"],
+        output_serializer=lambda r: {
+            "content": r.content,
+            "operation": r.operation,
+            "spam_warnings": [w.model_dump() for w in r.spam_warnings],
+            "model": r.model,
+        },
+    )
 
 
 async def run_outlook_fixer_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -201,55 +215,32 @@ async def run_outlook_fixer_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.outlook_fixer.schemas import OutlookFixerRequest
     from app.ai.agents.outlook_fixer.service import OutlookFixerService
 
-    service = OutlookFixerService()
-    html_input: str = str(case["html_input"])
-    request = OutlookFixerRequest(
-        html=html_input,
-        issues=None,
-        stream=False,
-        run_qa=True,
-    )
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = OutlookFixerService()
+        request = OutlookFixerRequest(
+            html=str(c["html_input"]),
+            issues=None,
+            stream=False,
+            run_qa=True,
+        )
+        return await service.process(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.process(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "outlook_fixer",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-            },
-            "output": {
-                "html": response.html,
-                "fixes_applied": response.fixes_applied,
-                "qa_results": [r.model_dump() for r in (response.qa_results or [])],
-                "qa_passed": response.qa_passed,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "outlook_fixer",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "outlook_fixer",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "html_input": str(c["html_input"]),
+            "html_length": len(str(c["html_input"])),
+        },
+        output_serializer=lambda r: {
+            "html": r.html,
+            "fixes_applied": r.fixes_applied,
+            "qa_results": [x.model_dump() for x in (r.qa_results or [])],
+            "qa_passed": r.qa_passed,
+            "model": r.model,
+        },
+    )
 
 
 async def run_accessibility_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -257,55 +248,32 @@ async def run_accessibility_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.accessibility.schemas import AccessibilityRequest
     from app.ai.agents.accessibility.service import AccessibilityService
 
-    service = AccessibilityService()
-    html_input: str = str(case["html_input"])
-    request = AccessibilityRequest(
-        html=html_input,
-        focus_areas=None,
-        stream=False,
-        run_qa=True,
-    )
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = AccessibilityService()
+        request = AccessibilityRequest(
+            html=str(c["html_input"]),
+            focus_areas=None,
+            stream=False,
+            run_qa=True,
+        )
+        return await service.process(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.process(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "accessibility",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-            },
-            "output": {
-                "html": response.html,
-                "skills_loaded": response.skills_loaded,
-                "qa_results": [r.model_dump() for r in (response.qa_results or [])],
-                "qa_passed": response.qa_passed,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "accessibility",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "accessibility",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "html_input": str(c["html_input"]),
+            "html_length": len(str(c["html_input"])),
+        },
+        output_serializer=lambda r: {
+            "html": r.html,
+            "skills_loaded": r.skills_loaded,
+            "qa_results": [x.model_dump() for x in (r.qa_results or [])],
+            "qa_passed": r.qa_passed,
+            "model": r.model,
+        },
+    )
 
 
 async def run_personalisation_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -313,63 +281,36 @@ async def run_personalisation_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.personalisation.schemas import PersonalisationRequest
     from app.ai.agents.personalisation.service import PersonalisationService
 
-    service = PersonalisationService()
-    html_input: str = str(case["html_input"])
-    platform: str = str(case["platform"])
-    requirements: str = str(case["requirements"])
-    request = PersonalisationRequest(
-        html=html_input,
-        platform=platform,  # pyright: ignore[reportArgumentType]
-        requirements=requirements,
-        stream=False,
-        run_qa=True,
-    )
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = PersonalisationService()
+        request = PersonalisationRequest(
+            html=str(c["html_input"]),
+            platform=str(c["platform"]),  # pyright: ignore[reportArgumentType]
+            requirements=str(c["requirements"]),
+            stream=False,
+            run_qa=True,
+        )
+        return await service.process(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.process(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "personalisation",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-                "platform": platform,
-                "requirements": requirements,
-            },
-            "output": {
-                "html": response.html,
-                "platform": response.platform,
-                "tags_injected": response.tags_injected,
-                "qa_results": [r.model_dump() for r in (response.qa_results or [])],
-                "qa_passed": response.qa_passed,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "personalisation",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-                "platform": platform,
-                "requirements": requirements,
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "personalisation",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "html_input": str(c["html_input"]),
+            "html_length": len(str(c["html_input"])),
+            "platform": str(c["platform"]),
+            "requirements": str(c["requirements"]),
+        },
+        output_serializer=lambda r: {
+            "html": r.html,
+            "platform": r.platform,
+            "tags_injected": r.tags_injected,
+            "qa_results": [x.model_dump() for x in (r.qa_results or [])],
+            "qa_passed": r.qa_passed,
+            "model": r.model,
+        },
+    )
 
 
 async def run_code_reviewer_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -377,60 +318,35 @@ async def run_code_reviewer_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.code_reviewer.schemas import CodeReviewRequest
     from app.ai.agents.code_reviewer.service import CodeReviewService
 
-    service = CodeReviewService()
-    html_input: str = str(case["html_input"])
-    focus: str = str(case.get("focus", "all"))
-    request = CodeReviewRequest(
-        html=html_input,
-        focus=focus,  # pyright: ignore[reportArgumentType]
-        stream=False,
-        run_qa=True,
-    )
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = CodeReviewService()
+        request = CodeReviewRequest(
+            html=str(c["html_input"]),
+            focus=str(c.get("focus", "all")),  # pyright: ignore[reportArgumentType]
+            stream=False,
+            run_qa=True,
+        )
+        return await service.process(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.process(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "code_reviewer",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-                "focus": focus,
-            },
-            "output": {
-                "html": response.html,
-                "issues": [i.model_dump() for i in response.issues],
-                "summary": response.summary,
-                "skills_loaded": response.skills_loaded,
-                "qa_results": [r.model_dump() for r in (response.qa_results or [])],
-                "qa_passed": response.qa_passed,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "code_reviewer",
-            "dimensions": case["dimensions"],
-            "input": {
-                "html_input": html_input,
-                "html_length": len(html_input),
-                "focus": focus,
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "code_reviewer",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "html_input": str(c["html_input"]),
+            "html_length": len(str(c["html_input"])),
+            "focus": str(c.get("focus", "all")),
+        },
+        output_serializer=lambda r: {
+            "html": r.html,
+            "issues": [i.model_dump() for i in r.issues],
+            "summary": r.summary,
+            "skills_loaded": r.skills_loaded,
+            "qa_results": [x.model_dump() for x in (r.qa_results or [])],
+            "qa_passed": r.qa_passed,
+            "model": r.model,
+        },
+    )
 
 
 async def run_knowledge_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -440,53 +356,32 @@ async def run_knowledge_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.core.database import get_db_context
     from app.knowledge.services.search import SearchService as RAGService
 
-    service = KnowledgeAgentService()
-    question: str = str(case["question"])
-    domain: str | None = case.get("domain")
-    request = KnowledgeRequest(question=question, domain=domain)
-
-    start = time.monotonic()
-    try:
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = KnowledgeAgentService()
+        request = KnowledgeRequest(
+            question=str(c["question"]),
+            domain=c.get("domain"),
+        )
         async with get_db_context() as db:
             rag_service = RAGService(db)
-            response = await service.process(request, rag_service)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "knowledge",
-            "dimensions": case["dimensions"],
-            "input": {
-                "question": question,
-                "domain": domain,
-            },
-            "output": {
-                "answer": response.answer,
-                "sources": [s.model_dump() for s in response.sources],
-                "confidence": response.confidence,
-                "skills_loaded": response.skills_loaded,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "knowledge",
-            "dimensions": case["dimensions"],
-            "input": {
-                "question": question,
-                "domain": domain,
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+            return await service.process(request, rag_service)
+
+    return await _run_case(
+        "knowledge",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "question": str(c["question"]),
+            "domain": c.get("domain"),
+        },
+        output_serializer=lambda r: {
+            "answer": r.answer,
+            "sources": [s.model_dump() for s in r.sources],
+            "confidence": r.confidence,
+            "skills_loaded": r.skills_loaded,
+            "model": r.model,
+        },
+    )
 
 
 async def run_innovation_case(case: dict[str, Any]) -> dict[str, Any]:
@@ -494,55 +389,72 @@ async def run_innovation_case(case: dict[str, Any]) -> dict[str, Any]:
     from app.ai.agents.innovation.schemas import InnovationRequest
     from app.ai.agents.innovation.service import InnovationService
 
-    service = InnovationService()
-    technique: str = str(case["technique"])
-    category: str | None = case.get("category")
-    request = InnovationRequest(technique=technique, category=category)
+    async def _invoke(c: dict[str, Any]) -> Any:  # noqa: ANN401
+        service = InnovationService()
+        request = InnovationRequest(
+            technique=str(c["technique"]),
+            category=c.get("category"),
+        )
+        return await service.process(request)
 
-    start = time.monotonic()
-    try:
-        response = await service.process(request)
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "innovation",
-            "dimensions": case["dimensions"],
-            "input": {
-                "technique": technique,
-                "category": category,
-            },
-            "output": {
-                "prototype": response.prototype,
-                "feasibility": response.feasibility,
-                "client_coverage": response.client_coverage,
-                "risk_level": response.risk_level,
-                "recommendation": response.recommendation,
-                "fallback_html": response.fallback_html,
-                "confidence": response.confidence,
-                "skills_loaded": response.skills_loaded,
-                "model": response.model,
-            },
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": None,
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
-    except Exception as e:
-        elapsed = time.monotonic() - start
-        return {
-            "id": case["id"],
-            "agent": "innovation",
-            "dimensions": case["dimensions"],
-            "input": {
-                "technique": technique,
-                "category": category,
-            },
-            "output": None,
-            "expected_challenges": case.get("expected_challenges"),
-            "elapsed_seconds": round(elapsed, 2),
-            "error": f"{type(e).__name__}: {e}",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
+    return await _run_case(
+        "innovation",
+        case,
+        invoke=_invoke,
+        input_serializer=lambda c: {
+            "technique": str(c["technique"]),
+            "category": c.get("category"),
+        },
+        output_serializer=lambda r: {
+            "prototype": r.prototype,
+            "feasibility": r.feasibility,
+            "client_coverage": r.client_coverage,
+            "risk_level": r.risk_level,
+            "recommendation": r.recommendation,
+            "fallback_html": r.fallback_html,
+            "confidence": r.confidence,
+            "skills_loaded": r.skills_loaded,
+            "model": r.model,
+        },
+    )
+
+
+def _scaffolder_cases(*, include_uploaded: bool = False) -> list[dict[str, Any]]:
+    """Scaffolder cases, optionally folding in uploaded-template selection cases."""
+    cases: list[dict[str, Any]] = list(SCAFFOLDER_TEST_CASES)
+    if include_uploaded:
+        gen = TemplateEvalGenerator()
+        for tmpl_cases in gen.load_all().values():
+            for c in tmpl_cases:
+                if c.get("case_type") in ("selection_positive", "selection_negative"):
+                    cases.append(c)
+    return cases
+
+
+def _static_cases(
+    constant: list[dict[str, Any]],
+) -> Callable[..., list[dict[str, Any]]]:
+    """Build a cases_loader that returns a copy of a static case list, ignoring kwargs."""
+
+    def _load(**_: object) -> list[dict[str, Any]]:
+        return list(constant)
+
+    return _load
+
+
+AGENT_REGISTRY: dict[AgentName, AgentSpec] = {
+    "scaffolder": AgentSpec(_scaffolder_cases, run_scaffolder_case),
+    "dark_mode": AgentSpec(_static_cases(DARK_MODE_TEST_CASES), run_dark_mode_case),
+    "content": AgentSpec(_static_cases(CONTENT_TEST_CASES), run_content_case),
+    "outlook_fixer": AgentSpec(_static_cases(OUTLOOK_FIXER_TEST_CASES), run_outlook_fixer_case),
+    "accessibility": AgentSpec(_static_cases(ACCESSIBILITY_TEST_CASES), run_accessibility_case),
+    "personalisation": AgentSpec(
+        _static_cases(PERSONALISATION_TEST_CASES), run_personalisation_case
+    ),
+    "code_reviewer": AgentSpec(_static_cases(CODE_REVIEWER_TEST_CASES), run_code_reviewer_case),
+    "knowledge": AgentSpec(_static_cases(KNOWLEDGE_TEST_CASES), run_knowledge_case),
+    "innovation": AgentSpec(_static_cases(INNOVATION_TEST_CASES), run_innovation_case),
+}
 
 
 async def run_agent(
@@ -559,46 +471,11 @@ async def run_agent(
     """Run all test cases for an agent and write traces to JSONL."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    cases: list[dict[str, Any]]
-    runner: Any
-    if agent == "scaffolder":
-        cases = list(SCAFFOLDER_TEST_CASES)
-        if include_uploaded:
-            gen = TemplateEvalGenerator()
-            for tmpl_cases in gen.load_all().values():
-                for c in tmpl_cases:
-                    if c.get("case_type") in (
-                        "selection_positive",
-                        "selection_negative",
-                    ):
-                        cases.append(c)
-        runner = run_scaffolder_case
-    elif agent == "dark_mode":
-        cases = DARK_MODE_TEST_CASES
-        runner = run_dark_mode_case
-    elif agent == "content":
-        cases = CONTENT_TEST_CASES
-        runner = run_content_case
-    elif agent == "outlook_fixer":
-        cases = OUTLOOK_FIXER_TEST_CASES
-        runner = run_outlook_fixer_case
-    elif agent == "accessibility":
-        cases = ACCESSIBILITY_TEST_CASES
-        runner = run_accessibility_case
-    elif agent == "personalisation":
-        cases = PERSONALISATION_TEST_CASES
-        runner = run_personalisation_case
-    elif agent == "code_reviewer":
-        cases = CODE_REVIEWER_TEST_CASES
-        runner = run_code_reviewer_case
-    elif agent == "knowledge":
-        cases = KNOWLEDGE_TEST_CASES
-        runner = run_knowledge_case
-    elif agent == "innovation":
-        cases = INNOVATION_TEST_CASES
-        runner = run_innovation_case
-    else:
+    if agent not in AGENT_REGISTRY:
         raise ValueError(f"Unknown agent: {agent}")
+    spec = AGENT_REGISTRY[agent]
+    cases = spec.cases_loader(include_uploaded=include_uploaded)
+    runner = spec.case_runner
 
     output_file = output_dir / f"{agent}_traces.jsonl"
     mode_label = " (dry-run)" if dry_run else ""
@@ -710,18 +587,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description="Run agent evals")
     parser.add_argument(
         "--agent",
-        choices=[
-            "scaffolder",
-            "dark_mode",
-            "content",
-            "outlook_fixer",
-            "accessibility",
-            "personalisation",
-            "code_reviewer",
-            "knowledge",
-            "innovation",
-            "all",
-        ],
+        choices=[*AGENT_NAMES, "all"],
         required=True,
     )
     parser.add_argument("--output", type=Path, default=Path("traces"))
@@ -749,21 +615,7 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    agents = (
-        [
-            "scaffolder",
-            "dark_mode",
-            "content",
-            "outlook_fixer",
-            "accessibility",
-            "personalisation",
-            "code_reviewer",
-            "knowledge",
-            "innovation",
-        ]
-        if args.agent == "all"
-        else [args.agent]
-    )
+    agents = list(AGENT_NAMES) if args.agent == "all" else [args.agent]
 
     for agent in agents:
         await run_agent(

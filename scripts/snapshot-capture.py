@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.design_sync.converter_service import DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
+from app.design_sync.email_design_document import EmailDesignDocument
 
 
 def main() -> None:
@@ -69,8 +70,9 @@ def main() -> None:
     print(f"  Colors: {len(tokens.colors)}, Typography: {len(tokens.typography)}")
 
     print("Running converter...")
+    document = EmailDesignDocument.from_legacy(structure, tokens)
     converter = DesignConverterService()
-    result = converter.convert(structure, tokens)
+    result = converter.convert_document(document)
 
     print(f"  Sections: {result.sections_count}")
     print(f"  Warnings: {len(result.warnings)}")
