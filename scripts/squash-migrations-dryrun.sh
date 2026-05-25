@@ -23,7 +23,7 @@ info() { echo -e "${GREEN}✓${NC} $1"; }
 fail() { echo -e "${RED}✗${NC} $1"; exit 1; }
 
 CONTAINER="squash-dryrun-pg-$$"
-PORT=55555
+PORT="${PORT:-55555}"
 DB_URL="postgresql://postgres:postgres@localhost:${PORT}/email_hub"
 
 cleanup() {
@@ -64,8 +64,8 @@ DATABASE__URL="postgresql+asyncpg://postgres:postgres@localhost:${PORT}/email_hu
 # Snapshot the pre-squash schema for comparison
 mkdir -p .squash-dryrun-tmp
 info "Capturing pre-squash schema dump..."
-PGPASSWORD=postgres pg_dump \
-    -h localhost -p "$PORT" -U postgres -d email_hub \
+docker exec -e PGPASSWORD=postgres "$CONTAINER" \
+    pg_dump -U postgres -d email_hub \
     --schema-only --no-owner --no-privileges \
     --exclude-table=alembic_version \
     > .squash-dryrun-tmp/pre-squash.sql
@@ -106,8 +106,8 @@ DATABASE__URL="postgresql+asyncpg://postgres:postgres@localhost:${PORT}/email_hu
 
 # ── 6. Schema parity ────────────────────────────────────────────────────
 info "Comparing pre- vs post-squash schema dumps..."
-PGPASSWORD=postgres pg_dump \
-    -h localhost -p "$PORT" -U postgres -d email_hub \
+docker exec -e PGPASSWORD=postgres "$CONTAINER" \
+    pg_dump -U postgres -d email_hub \
     --schema-only --no-owner --no-privileges \
     --exclude-table=alembic_version \
     > .squash-dryrun-tmp/post-squash.sql
