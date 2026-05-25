@@ -12,9 +12,25 @@
 
 ---
 
-## Phase 50 — Tech Debt Closeout & Audit Reconciliation (0/6 subtasks)
+## Phase 50 — Tech Debt Closeout & Audit Reconciliation (0/8 subtasks)
 
 Final closure of the remaining tech-debt audit items, plus reconciliation of the stale `TECH_DEBT_AUDIT.md` doc against current `main`. Sessions 1–20 closed 53 of 70 findings; the audit table still marks 17 of those false-OPEN because the doc lagged the merges. Of the 17 audit-OPEN findings, 13 are fully shipped in code (flip to RESOLVED), 4 are still real work (F025 not started; F042/F057/F066 partial). Phase 50 closes those 4 + refreshes the doc + drains the deferred-items ledger. Phase 51 (AI security pass) starts after Phase 50 lands so the planning baseline is clean.
+
+### Execution order
+
+The remaining Phase 50 work has a strict prerequisite chain on the F057 thread plus orthogonal cleanup that can parallelise. Run in this order:
+
+| # | Item | Blocks | Can run parallel with | Notes |
+|---|------|--------|------------------------|-------|
+| 0 | **Branch hygiene** (not a phase) | Everything below | — | Current branch `refactor/tech-debt-13b-eval-runner-registry` carries the F025 (§50.2) commit plus 5 commits about F057 docs/blocks. Decide before new phase work lands: (a) split into two PRs — recommended, (b) open as-is with mixed scope, (c) rename branch. Resolves before steps 1+. |
+| 1a | **§50.7 — Squash Multi-DB Redesign** `[Plan Ready]` | §50.5 | 1b | Real F057 unblock. Plan: `.agents/plans/tech-debt-19-squash-multi-db-redesign.md`. ~½d. Closes deferred entry `tech-debt-19-squash-empty-baseline` on merge. |
+| 1b | **§50.6 — Deferred-Items Ledger Cleanup** `[No Plan Needed]` | — | 1a | Orthogonal — 4 small items, different files, different reviewer. ~½d total. |
+| 2 | **§50.5 — Execute Migration Squash** `[BLOCKED — design flaw]` | — | — | Unblocks once §50.7 lands. Human-driven maintenance-window op; pre-conditions in `.agents/plans/tech-debt-19-runbook-db-squash.md` still apply (verified prod `pg_dump`, branches with new migrations merged/rebased, fresh-clone `alembic check` exit 0). |
+| —  | **§50.8 — Squash Defense-in-Depth** `[No Plan Needed]` | — | — | Optional tripwire. Skip if §50.7 ships within ~3 days. Reconsider only if §50.7 slips. If shipped, it reverts as part of §50.7's PR. |
+
+§50.1 (audit refresh), §50.2 (F025 eval runner registry), §50.3 (F042 workspace decomposition), §50.4 (F066 connector tests) are already shipped or merged — see individual phase headers and `git log --oneline` for commit citations.
+
+After Phase 50 drains, Phase 51 (Agentic Security Hardening — 7 `[Plan Ready]` subtasks) opens. Phase 51 is a separate workstream and not blocked by anything in Phase 50.
 
 ### 50.1 Audit Refresh (Session 0) `[Backend, Documentation]` `[No Plan Needed]`
 
