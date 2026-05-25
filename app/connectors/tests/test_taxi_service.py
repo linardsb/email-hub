@@ -73,6 +73,25 @@ class TestTaxiService:
         lease.report_failure.assert_awaited_once_with(429)
 
     @pytest.mark.asyncio()
+    async def test_401_blames_lease_and_does_not_retry(self) -> None:
+        # ApiKey services have no token-refresh path — 401 is terminal,
+        # unlike OAuth services where a 401 evicts the cached token and retries.
+        lease = _lease()
+        service = TaxiConnectorService(pool=_pool(lease))
+        with (
+            patch(
+                "app.connectors._base.api_key.resilient_request",
+                new_callable=AsyncMock,
+                return_value=_resp(401),
+            ) as mock_req,
+            pytest.raises(ExportFailedError, match="Taxi API returned 401"),
+        ):
+            await service.export("<p>x</p>", "Newsletter")
+        assert mock_req.await_count == 1
+        lease.report_failure.assert_awaited_once_with(401)
+        lease.report_success.assert_not_awaited()
+
+    @pytest.mark.asyncio()
     async def test_malformed_json_blames_lease_with_zero(self) -> None:
         lease = _lease()
         service = TaxiConnectorService(pool=_pool(lease))
