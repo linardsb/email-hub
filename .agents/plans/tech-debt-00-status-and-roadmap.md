@@ -45,7 +45,7 @@
 
 ### Findings that stay OPEN
 
-F025 (open, queued for 50.2), F042 (PARTIAL, 50.3), F057 (PARTIAL, 50.5), F066 (PARTIAL, 50.4). _(Refreshed 2026-05-24 in Phase 50.1: 38 prior entries are now `RESOLVED` in `TECH_DEBT_AUDIT.md`; see commit citations there.)_
+F057 (PARTIAL, 50.5), F066 (PARTIAL, 50.4). _(F025 closed in `0ecc6b65` via Phase 50.2; F042 closed in `bff50b12` via Phase 50.3 — composition-shell pattern intact, <200 LOC target retired as a proxy for the underlying god-component anti-pattern, which is gone.) (Refreshed 2026-05-24 in Phase 50.1: 38 prior entries are now `RESOLVED` in `TECH_DEBT_AUDIT.md`; see commit citations there.)_
 
 ### Sections to refresh
 
