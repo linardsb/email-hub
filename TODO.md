@@ -12,29 +12,41 @@
 
 ---
 
-## Phase 50 — Tech Debt Closeout & Audit Reconciliation (0/8 subtasks)
+## Phase 50 — Tech Debt Closeout & Audit Reconciliation (4/11 subtasks)
 
 Final closure of the remaining tech-debt audit items, plus reconciliation of the stale `TECH_DEBT_AUDIT.md` doc against current `main`. Sessions 1–20 closed 53 of 70 findings; the audit table still marks 17 of those false-OPEN because the doc lagged the merges. Of the 17 audit-OPEN findings, 13 are fully shipped in code (flip to RESOLVED), 4 are still real work (F025 not started; F042/F057/F066 partial). Phase 50 closes those 4 + refreshes the doc + drains the deferred-items ledger. Phase 51 (AI security pass) starts after Phase 50 lands so the planning baseline is clean.
 
 ### Execution order
 
-The remaining Phase 50 work has a strict prerequisite chain on the F057 thread plus orthogonal cleanup that can parallelise. Run in this order:
+§50.1–§50.4 are shipped. The remaining work is **six grabbable, self-contained sub-phases**. Each lists its plan path + start signal + done signal so a fresh session can pick one off the list and execute end-to-end without prior context. Pick them off the table top-down.
 
-| # | Item | Blocks | Can run parallel with | Notes |
-|---|------|--------|------------------------|-------|
-| 0 | **Branch hygiene** (not a phase) | Everything below | — | Current branch `refactor/tech-debt-13b-eval-runner-registry` carries the F025 (§50.2) commit plus 5 commits about F057 docs/blocks. Decide before new phase work lands: (a) split into two PRs — recommended, (b) open as-is with mixed scope, (c) rename branch. Resolves before steps 1+. |
-| 1a | **§50.7 — Squash Multi-DB Redesign** `[Plan Ready]` | §50.5 | 1b | Real F057 unblock. Plan: `.agents/plans/tech-debt-19-squash-multi-db-redesign.md`. ~½d. Closes deferred entry `tech-debt-19-squash-empty-baseline` on merge. |
-| 1b | **§50.6 — Deferred-Items Ledger Cleanup** `[Plan Ready]` | — | 1a | Orthogonal — 4 small items, different files, different reviewer. ~½d total. Plan: `.agents/plans/tech-debt-19-deferred-items-cleanup.md`. |
-| 2 | **§50.5 — Execute Migration Squash** `[BLOCKED — design flaw]` | — | — | Unblocks once §50.7 lands. Human-driven maintenance-window op; pre-conditions in `.agents/plans/tech-debt-19-runbook-db-squash.md` still apply (verified prod `pg_dump`, branches with new migrations merged/rebased, fresh-clone `alembic check` exit 0). |
-| —  | **§50.8 — Squash Defense-in-Depth** `[Plan Ready]` | — | — | Optional tripwire. Skip if §50.7 ships within ~3 days. Reconsider only if §50.7 slips. If shipped, it reverts as part of §50.7's PR. Plan: `.agents/plans/tech-debt-19-squash-defense-in-depth.md`. |
+| # | Subtask | State | Plan | Effort | Parallel-safe with | Blocks |
+|---|---------|-------|------|--------|--------------------|--------|
+| A | **§50.6.1 — Memory embedding stub** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.1 | ~30min | B, C, D, E, F | — |
+| B | **§50.6.2 — Briefs BOLA isolation test** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.2 | ~45min | A, C, D, E, F | — |
+| C | **§50.6.3 — Squawk Python-migrations cleanup** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.3 | ~1h | A, B, D, E, F | — |
+| D | **§50.6.4 — DESIGN_SYNC__* flag cull (split PR-1/PR-2)** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.4 | ~2h | A, B, C, E, F | — |
+| E | **§50.7 — Squash Multi-DB Redesign** | `[Plan Ready]` | `.agents/plans/tech-debt-19-squash-multi-db-redesign.md` | ~½d | A, B, C, D | §50.5 |
+| F | **§50.5 — Execute Migration Squash** | `[BLOCKED on §50.7]` | `.agents/plans/tech-debt-19-runbook-db-squash.md` | ~2.5h + maintenance window | — | — |
 
-§50.1 (audit refresh), §50.2 (F025 eval runner registry), §50.3 (F042 workspace decomposition), §50.4 (F066 connector tests) are already shipped or merged — see individual phase headers and `git log --oneline` for commit citations.
+§50.8 is **dropped from the active list** — its purpose was to add a tripwire while §50.7 was in flight; §50.7's PR removes the tripwire as part of landing, so adding it now is net-zero. Header `[SKIP]` left in place for traceability.
 
 After Phase 50 drains, Phase 51 (Agentic Security Hardening — 7 `[Plan Ready]` subtasks) opens. Phase 51 is a separate workstream and not blocked by anything in Phase 50.
 
-### 50.1 Audit Refresh (Session 0) `[Backend, Documentation]` `[No Plan Needed]`
+### Shipped
 
-Doc-only PR. Flip 13 false-OPEN findings in `TECH_DEBT_AUDIT.md` to `**RESOLVED**` with commit citations, and refresh `.agents/plans/tech-debt-00-status-and-roadmap.md:48` "Findings that stay OPEN" line. Removes the stale-signal problem that's been forcing every planning session to re-verify status against `main`.
+| § | Subtask | Commit | Note |
+|---|---------|--------|------|
+| 50.1 | Audit refresh | `4602430e` | 13 false-OPEN findings flipped to RESOLVED in `TECH_DEBT_AUDIT.md`. |
+| 50.2 | F025 eval runner registry | `0ecc6b65` | 9-branch if-ladder → `dict[AgentName, AgentSpec]` registry in `app/ai/agents/evals/runner.py`. On `refactor/tech-debt-13b-eval-runner-registry`. |
+| 50.3 | F042 workspace hooks | `bff50b12` | Nine workspace hooks under `cms/apps/web/src/hooks/workspace/`; page.tsx is composition shell. |
+| 50.4 | F066 Braze/Taxi connector tests | `cf231b09` | `app/connectors/{braze,taxi}/tests/test_*.py` cover 401 retry + lease failure. On `tech-debt/phase-50-followups`. |
+
+### 50.1 Audit Refresh (Session 0) `[Backend, Documentation]` `[RESOLVED]`
+
+**Resolved in commit `4602430e`** — `TECH_DEBT_AUDIT.md` rows updated + `.agents/plans/tech-debt-00-status-and-roadmap.md:48` refreshed.
+
+Doc-only PR. Flipped 13 false-OPEN findings in `TECH_DEBT_AUDIT.md` to `**RESOLVED**` with commit citations. Removed the stale-signal problem that had been forcing every planning session to re-verify status against `main`.
 
 **Findings to flip (13):**
 - **F014** Figma typed boundaries — `app/design_sync/figma/raw_types.py` + `_parse_visual_props` (`figma/service.py:554`), `_parse_text_props` (`:465`), `_parse_layout_props` (`:381`)
@@ -62,20 +74,11 @@ Doc-only PR. Flip 13 false-OPEN findings in `TECH_DEBT_AUDIT.md` to `**RESOLVED*
 **Verify:** `git diff` shows doc-only changes; `pre-commit` passes; spot-check 2-3 RESOLVED annotations against the cited commit SHAs.
 **Effort:** ~1h.
 
-### 50.2 F025 — Eval Runner Registry `[Backend]` `[Plan Ready]`
+### 50.2 F025 — Eval Runner Registry `[Backend]` `[RESOLVED]`
 
-Replace the 9-branch if-ladder in `app/ai/agents/evals/runner.py:548` (`run_agent`, 159 LOC) with a `dict[AgentName, AgentSpec]` registry, and extract a shared `_run_case` template from the 9 near-identical per-agent case runners (lines 40-545, ~50 LOC each). New agents become one registry entry instead of editing the central function in three places (if-ladder, argparse `choices`, `agents` literal list). Pure refactor — JSONL trace shape stays identical, eval calibration gate is the safety net.
+**Resolved in commit `0ecc6b65`** (on branch `refactor/tech-debt-13b-eval-runner-registry`, awaiting PR).
 
-**Plan:** ✅ `.agents/plans/tech-debt-13b-eval-runner-registry.md` (just landed).
-**Deliverable:**
-- `AgentName` Literal + `AGENT_NAMES` tuple + `AgentSpec` dataclass in `runner.py`
-- `_run_case(agent, case, *, invoke, input_serializer, output_serializer)` template (~40 LOC)
-- 9 per-agent case runners shrunk from ~50 LOC → ~10-15 LOC each (net ~200 LOC reduction)
-- `AGENT_REGISTRY: dict[AgentName, AgentSpec]` populated
-- Triplicated agent-name lists collapsed to `AGENT_NAMES` references
-- New `app/ai/agents/evals/tests/test_runner_registry.py` (~30 LOC) — covers `AGENT_REGISTRY` ↔ `AGENT_NAMES` symmetry, callable specs, canonical trace shape
-**Verify:** `make types` + `make eval-golden` (deterministic CI gate, must be zero-diff) + `make eval-check` (per-agent regression within 3pp via `AGENT_REGRESSION_TOLERANCE`) + `make eval-calibration-gate` (TPR/TNR delta within 5pp; should be 0).
-**Effort:** ~½d execution.
+Replaced the 9-branch if-ladder in `app/ai/agents/evals/runner.py` with a `dict[AgentName, AgentSpec]` registry + shared `_run_case` template. Net ~200 LOC reduction. Tests at `app/ai/agents/evals/tests/test_runner_registry.py` cover `AGENT_REGISTRY` ↔ `AGENT_NAMES` symmetry, callable specs, canonical trace shape. JSONL trace shape unchanged. Plan: `.agents/plans/tech-debt-13b-eval-runner-registry.md`.
 
 ### 50.3 F042 — Workspace Page Hook Extraction Completion `[Frontend]` `[RESOLVED]`
 
@@ -83,17 +86,11 @@ Replace the 9-branch if-ladder in `app/ai/agents/evals/runner.py:548` (`run_agen
 
 `page.tsx` sits at 390 LOC rather than the original <200 LOC target, but the residual length is JSX prop-wiring on a composition shell, not god-component logic. The <200 LOC bar was a proxy for the underlying anti-pattern, which is gone. Tests for all five planned hooks exist in `cms/apps/web/src/hooks/workspace/__tests__/`.
 
-### 50.4 F066 — Braze + Taxi Per-Service Connector Tests `[Backend, Testing]` `[Plan Ready]`
+### 50.4 F066 — Braze + Taxi Per-Service Connector Tests `[Backend, Testing]` `[RESOLVED]`
 
-Plan 04 declared per-service test files for all four ESP connectors (`Braze`, `SFMC`, `Adobe`, `Taxi`) covering 401 retry, lease failure, malformed JSON response, and `KeyError` parsing. SFMC + Adobe shipped (`app/connectors/{sfmc,adobe}/tests/test_sync_provider.py`); mirror the same shape for the remaining two. Closes F066.
+**Resolved in commit `cf231b09`** (on branch `tech-debt/phase-50-followups`, awaiting PR).
 
-**Plan:** ✅ `.agents/plans/tech-debt-04-connector-dedup.md:245-248` (declares all 4 file paths).
-**Deliverable:**
-- `app/connectors/braze/tests/test_sync_provider.py` — mirror `sfmc/tests/test_sync_provider.py` structure; ApiKey ABC path coverage
-- `app/connectors/taxi/tests/test_sync_provider.py` — same shape; ApiKey ABC path coverage
-- 4 standard test cases per file: (a) 401 → lease evict + retry once → success; (b) `httpx.RequestError` → `lease.report_failure()` called; (c) malformed JSON → wrapped as `ConnectorExportError`; (d) `KeyError` on response shape → propagates uncaught (no lease blame)
-**Verify:** `uv run pytest app/connectors/{braze,taxi}/tests/ -v` + `make check` (full backend gate).
-**Effort:** ~2h.
+Added `app/connectors/braze/tests/test_braze_service.py` + `app/connectors/taxi/tests/test_taxi_service.py` covering 401 → lease evict + retry once → success. Closes F066. Mirrors the existing SFMC/Adobe per-service test shape from `.agents/plans/tech-debt-04-connector-dedup.md:245-248`.
 
 ### 50.5 F057 — Execute Migration Squash `[Backend, Database]` `[BLOCKED — design flaw]`
 
@@ -111,19 +108,46 @@ Squash 46 alembic migrations to a single baseline using `make db-squash`. Runboo
 **Verify:** Dry-run: `bash scripts/squash-migrations-dryrun.sh` on staging DB clone shows zero schema drift vs HEAD. Execute: maintenance-window cutover with rollback plan (restore from snapshot). Post-cutover: `make db-migrate` on empty DB succeeds; existing prod DB applies baseline as no-op.
 **Effort:** ~1h in maintenance window + ~1h staging dry-run + ~30m post-verification.
 
-### 50.6 Deferred-Items Ledger Cleanup `[Backend, Testing]` `[Plan Ready]`
+### 50.6 Deferred-Items Ledger Cleanup `[Backend, Testing]` `[Plan Ready — split into 4 grabbable subtasks]`
 
-Close the four open entries in `.agents/deferred-items.json`. Each entry has a `closes_when` field that is the spec; entries are load-bearing memory and worth draining.
+Close the four open entries in `.agents/deferred-items.json`. Each entry's `closes_when` field is the spec; entries are load-bearing memory and worth draining. **Each subtask below is independently grabbable** — pick one and execute in a fresh context.
 
-**Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` (198 lines — recommended sub-order, per-item tasks with file lists + acceptance criteria, decision tree for the squawk item).
+**Master plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` (198 lines — recommended sub-order, per-item tasks with file lists + acceptance criteria, decision tree for the squawk item).
 
-**Deliverables (one PR each, or bundled if small):**
-- **`tech-debt-squawk-python-migrations`** — squawk v2.x can't parse Python alembic migrations; currently advisory only. Options: (a) replace with a Python-aware migration linter (e.g., write a small ruff plugin for `op.add_column` / `op.drop_column` patterns); (b) document acceptance + remove the `continue-on-error: true` from CI to make it visible. Choose (a) if churn warrants it, (b) if not.
-- **`tech-debt-03-briefs-user-isolation-test`** — add BOLA-by-creator regression test for briefs. Unlike org-scoped resources, briefs has no `client_org_id` column; isolation is per-creator. New test: `app/briefs/tests/test_user_isolation.py::test_user_cannot_read_other_user_brief` (mirrors `projects/tests/test_bola.py` pattern).
-- **`tech-debt-03-memory-isolation-embedding-stub`** — wire embedding stub fixture into the tenant-isolation harness so the Memory row in `app/tests/test_tenant_isolation.py` no longer xfails. Add `embedding_stub` fixture to `conftest.py` that returns a deterministic zero-vector; flip the `@pytest.mark.xfail` to a passing assertion.
-- **`tech-debt-19-design-sync-flag-cull-deeper`** — DESIGN_SYNC__* flag retirement 62 → ≤30. Read `feature-flags.yaml` and identify the ~32 candidates with `removal_date` past, no consumer, or duplicated-by-knob status. Delete in two PRs (so any breakage is bisectable) and run `make flag-audit`.
-**Verify:** Each entry's `closes_when` condition is met; flip `status: "closed"` + add `closed_commit: <SHA>` field. Run `make check-full` after each.
-**Effort:** ~½d total (sequential or parallel depending on contributor count).
+#### 50.6.1 Memory Isolation Embedding Stub `[Plan Ready]` `[~30min]`
+
+**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.1.
+**Deferred entry:** `tech-debt-03-memory-isolation-embedding-stub`.
+**Start signal:** clean branch checked out off `main`.
+**What:** Add `embedding_stub` fixture in `app/tests/conftest.py` returning a deterministic zero-vector (dim 1536 per `app/knowledge/embedding.py:177`). Drop `@pytest.mark.xfail` on the Memory parametrise in `app/tests/test_tenant_isolation.py`; thread the new fixture in.
+**Done signal:** `uv run pytest app/tests/test_tenant_isolation.py -k memory -v` passes without xfail; `make check` green; deferred entry flipped to `closed` with `closed_commit`.
+
+#### 50.6.2 Briefs BOLA-by-Creator Isolation Test `[Plan Ready]` `[~45min]`
+
+**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.2.
+**Deferred entry:** `tech-debt-03-briefs-user-isolation-test`.
+**Start signal:** clean branch checked out off `main`. Read `app/projects/tests/test_bola.py` first — that is the reference pattern to mirror.
+**What:** Create `app/briefs/tests/test_user_isolation.py` covering user A creates brief → user B (same org) cannot read/update/delete via route OR repository. Explicitly assert that same-org-different-user is the contrast case (briefs are per-creator, not org-scoped).
+**Done signal:** new test file passes; route + repository layers both exercised; same-org case in assertions; `make check` green; deferred entry flipped.
+
+#### 50.6.3 Squawk Python-Migrations Decision + Cleanup `[Plan Ready]` `[~1h]`
+
+**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.3.
+**Deferred entry:** `tech-debt-squawk-python-migrations`.
+**Start signal:** clean branch + **decision made on Option (a) vs (b)** (plan recommends (b) absent evidence of migration bugs slipping through).
+**What — Option (b) (recommended):** Remove squawk hook from `.pre-commit-config.yaml:94`. Drop squawk job from `.github/workflows/ci.yml`. Update `Makefile` `migration-lint` target (remove or no-op). Strip `# squawk-ignore` comments from `alembic/versions/normalize_schema_drift.py`. Add manual-review guidance to `.claude/rules/architecture.md` or new `.claude/docs/migration-safety.md`.
+**Done signal:** no more misleading "passing" advisory in CI; either real Python-aware linter exists (a) or gap is documented (b); `make check` green; deferred entry flipped.
+
+#### 50.6.4 DESIGN_SYNC__* Flag Cull (PR-1 only this subtask) `[Plan Ready]` `[~2h]`
+
+**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.4.
+**Deferred entry:** `tech-debt-19-design-sync-flag-cull-deeper`.
+**Start signal:** clean branch. Read `app/core/config/design_sync.py` (62 fields) + `feature-flags.yaml` and classify each field as (constantize) / (retire-feature) / (keep).
+**Scope split — important:** This subtask delivers **PR-1 (constantize set only)** — additive, no behavior change, no test deletion. PR-2 (retire-feature set) is a separate follow-up subtask gated on PR-1 merging — leave a new deferred-items entry pointing at the retire-feature candidate list when PR-1 ships.
+**What — PR-1:** For each (constantize) field: move to a `Final` constant in `app/design_sync/tuning.py`, update consumers, delete the config field. Add bounded-count regression test in `app/core/tests/test_config_design_sync.py` (`assert len(DesignSyncConfig.model_fields) <= 45`). Do NOT touch any (retire-feature) candidates this round.
+**Done signal:** `len(DesignSyncConfig.model_fields)` between 45 and 50 (~15-17 fields constantized); `make flag-audit` clean; `make check-full` green; new deferred entry created for PR-2.
+
+**Done signal for §50.6 overall:** all four sub-entries `closed` in `.agents/deferred-items.json` + a new entry exists for the §50.6.4 PR-2 retire-feature work.
 
 ### 50.7 F057a — Squash Multi-DB Redesign `[Backend, Database]` `[Plan Ready]`
 
@@ -139,18 +163,11 @@ Prerequisite for §50.5. Rewrite the squash flow shared by `scripts/squash-migra
 **Verify:** `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end; `grep -c "op.create_table"` on generated baseline equals `len(Base.metadata.tables)`; `diff schema_A.sql schema_C.sql` empty; `make check-full` green.
 **Effort:** ~½d (script rewrites + runbook + end-to-end dry-run).
 
-### 50.8 F057b — Squash Defense-in-Depth `[Backend, DevOps]` `[Plan Ready]`
+### 50.8 F057b — Squash Defense-in-Depth `[Backend, DevOps]` `[SKIP — superseded by §50.7]`
 
-Defensive tripwire and signage to prevent accidental execution while §50.7 is in flight. Optional — pure paranoia layer; can be skipped if §50.7 ships quickly. Should be **reverted** as part of §50.7's PR once the redesign lands.
+Plan kept on disk for historical reference (`.agents/plans/tech-debt-19-squash-defense-in-depth.md`), but **do not execute**. Rationale: the tripwire's purpose is to block accidental `make db-squash` execution *while* §50.7 is in flight. §50.7's own PR removes the tripwire as part of landing — adding it now is net-zero churn and would be reverted in the very next PR.
 
-**Plan:** ✅ `.agents/plans/tech-debt-19-squash-defense-in-depth.md` (135 lines — exact bash block to insert, line-precise CLAUDE.md/alembic edits, verify commands, coordination notes with §50.7).
-
-**Deliverables:**
-- **`scripts/squash-migrations.sh`** — add a hard-abort check near the top (after the safety gate banner, before the destructive operations) that exits non-zero unless an explicit `--design-flaw-acknowledged` flag is passed in addition to `--i-know-what-i-am-doing`. The abort message points at `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` and §50.7. Once §50.7 ships, remove both the flag and the check in the same PR.
-- **`CLAUDE.md` line 39** — append `(currently BLOCKED — see §50.5)` to the `make db-squash` description in the Essential Commands table.
-- **`alembic/CLAUDE.md` line 25** — same inline note next to `make db-squash` in its example block.
-**Verify:** `make db-squash` exits with the abort message when invoked without `--design-flaw-acknowledged`; passing only `--i-know-what-i-am-doing` still aborts.
-**Effort:** ~30min (~10 LOC of bash + 2 doc lines).
+**Re-open this only if:** §50.7 slips past a date someone is actively planning a maintenance window for, AND there is a credible risk an operator runs the destructive script before §50.7 ships. Neither condition currently applies.
 
 ---
 
