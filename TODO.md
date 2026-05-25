@@ -85,7 +85,8 @@ Plan 04 declared per-service test files for all four ESP connectors (`Braze`, `S
 
 Squash 46 alembic migrations to a single baseline using `make db-squash`. Runbook + dry-run script shipped in `8aa83103`. Requires production maintenance window — coordinate with deployment cadence. Drop the `alembic/versions/2eb1d5b05ad3_merge_heads.py` merge artifact in the same operation.
 
-**Plan:** ⚠️ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh` — design-broken (see warning above); needs redesign before execution.
+**Prerequisite:** §50.7 (F057a — Squash Multi-DB Redesign) must ship and close `tech-debt-19-squash-empty-baseline` before this phase can be unblocked.
+**Plan:** ⚠️ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh` — design-broken (see warning above); needs redesign per §50.7 before execution.
 **Deliverable:**
 - New consolidated baseline migration in `alembic/versions/` (single `down_revision = None` file)
 - 46 historical migrations deleted (or archived per runbook)
@@ -105,6 +106,31 @@ Close the four open entries in `.agents/deferred-items.json`. Each entry has a `
 - **`tech-debt-19-design-sync-flag-cull-deeper`** — DESIGN_SYNC__* flag retirement 62 → ≤30. Read `feature-flags.yaml` and identify the ~32 candidates with `removal_date` past, no consumer, or duplicated-by-knob status. Delete in two PRs (so any breakage is bisectable) and run `make flag-audit`.
 **Verify:** Each entry's `closes_when` condition is met; flip `status: "closed"` + add `closed_commit: <SHA>` field. Run `make check-full` after each.
 **Effort:** ~½d total (sequential or parallel depending on contributor count).
+
+### 50.7 F057a — Squash Multi-DB Redesign `[Backend, Database]` `[Plan Ready]`
+
+Prerequisite for §50.5. Rewrite the squash flow shared by `scripts/squash-migrations.sh`, `scripts/squash-migrations-dryrun.sh`, and the runbook to separate the "schema source" DB from the "autogenerate target" DB so the generated baseline contains `CreateTable` for every model (currently empty `pass`). Closes deferred entry `tech-debt-19-squash-empty-baseline`.
+
+**Plan:** ✅ `.agents/plans/tech-debt-19-squash-multi-db-redesign.md` (146 lines — three-DB design, file-by-file change list, acceptance criteria, risks).
+**Deliverable:**
+- `scripts/squash-migrations-dryrun.sh` rewritten to use three throwaway containers (reference, autogenerate target, validation) + inline `op.create_table` count assertion + end-to-end `pg_dump` parity check.
+- `scripts/squash-migrations.sh` (destructive sibling) rewritten to autogenerate against an ephemeral empty container instead of production. Production stays untouched until the final stamp.
+- `.agents/plans/tech-debt-19-runbook-db-squash.md` procedure step 5 updated; ⚠️ BLOCKED callout removed.
+- `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` flipped to `closed`.
+- `TECH_DEBT_AUDIT.md` F057 row updated from `BLOCKED` to `READY`.
+**Verify:** `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end; `grep -c "op.create_table"` on generated baseline equals `len(Base.metadata.tables)`; `diff schema_A.sql schema_C.sql` empty; `make check-full` green.
+**Effort:** ~½d (script rewrites + runbook + end-to-end dry-run).
+
+### 50.8 F057b — Squash Defense-in-Depth `[Backend, DevOps]` `[No Plan Needed]`
+
+Defensive tripwire and signage to prevent accidental execution while §50.7 is in flight. Optional — pure paranoia layer; can be skipped if §50.7 ships quickly. Should be **reverted** as part of §50.7's PR once the redesign lands.
+
+**Deliverables:**
+- **`scripts/squash-migrations.sh`** — add a hard-abort check near the top (after the safety gate banner, before the destructive operations) that exits non-zero unless an explicit `--design-flaw-acknowledged` flag is passed in addition to `--i-know-what-i-am-doing`. The abort message points at `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` and §50.7. Once §50.7 ships, remove both the flag and the check in the same PR.
+- **`CLAUDE.md` line 39** — append `(currently BLOCKED — see §50.5)` to the `make db-squash` description in the Essential Commands table.
+- **`alembic/CLAUDE.md` line 25** — same inline note next to `make db-squash` in its example block.
+**Verify:** `make db-squash` exits with the abort message when invoked without `--design-flaw-acknowledged`; passing only `--i-know-what-i-am-doing` still aborts.
+**Effort:** ~30min (~10 LOC of bash + 2 doc lines).
 
 ---
 
