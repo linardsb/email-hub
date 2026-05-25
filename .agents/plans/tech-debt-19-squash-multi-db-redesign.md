@@ -2,6 +2,29 @@
 
 **Status:** Plan Ready. Prerequisite for §50.5 (F057 — Execute Migration Squash). Closes deferred entry `tech-debt-19-squash-empty-baseline`.
 
+## Execution Order Context
+
+| | |
+|---|---|
+| **TODO.md ref** | §50.7 |
+| **Step in Phase 50** | **Step 1a** — first thing to actually code in Phase 50's remaining work |
+| **Prerequisites** | Step 0 (branch hygiene) decided. No code prerequisites — this plan is self-contained. |
+| **Parallel with** | §50.6 (Deferred-Items Cleanup, step 1b) — different files, different reviewer, no shared scope |
+| **Blocks downstream** | §50.5 (Execute Migration Squash) cannot proceed until this merges |
+| **Effort estimate** | ~½ dev-day |
+
+### Start signal
+Branch hygiene is resolved (current branch's mixed-scope commits split, renamed, or accepted as-is) and a clean branch is checked out for this work.
+
+### Done signal
+1. `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end against three throwaway containers.
+2. Generated baseline's `op.create_table` count equals `len(Base.metadata.tables)` (inline assertion in the script).
+3. `diff schema_A.sql schema_C.sql` is empty (the script's parity check).
+4. `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline.status = "closed"` with populated `closed_commit`.
+5. `.agents/plans/tech-debt-19-runbook-db-squash.md` no longer carries the ⚠️ BLOCKED callout (§50.5 is unblocked).
+6. `TECH_DEBT_AUDIT.md` F057 row reads `READY` (or equivalent) instead of `BLOCKED — design flaw`.
+7. `make check-full` green.
+
 ## Why
 
 The current squash flow shared by `scripts/squash-migrations.sh`, `scripts/squash-migrations-dryrun.sh`, and the runbook (`.agents/plans/tech-debt-19-runbook-db-squash.md` procedure step 5) runs `alembic revision --autogenerate` against the same DB that has just had all migrations applied. Autogenerate diffs `target_metadata` (Python models) against the live DB schema; when they match — which they always do at this point in the flow, by construction — the generated baseline is empty (`def upgrade(): pass`, zero `op.create_table`).

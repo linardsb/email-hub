@@ -24,9 +24,9 @@ The remaining Phase 50 work has a strict prerequisite chain on the F057 thread p
 |---|------|--------|------------------------|-------|
 | 0 | **Branch hygiene** (not a phase) | Everything below | — | Current branch `refactor/tech-debt-13b-eval-runner-registry` carries the F025 (§50.2) commit plus 5 commits about F057 docs/blocks. Decide before new phase work lands: (a) split into two PRs — recommended, (b) open as-is with mixed scope, (c) rename branch. Resolves before steps 1+. |
 | 1a | **§50.7 — Squash Multi-DB Redesign** `[Plan Ready]` | §50.5 | 1b | Real F057 unblock. Plan: `.agents/plans/tech-debt-19-squash-multi-db-redesign.md`. ~½d. Closes deferred entry `tech-debt-19-squash-empty-baseline` on merge. |
-| 1b | **§50.6 — Deferred-Items Ledger Cleanup** `[No Plan Needed]` | — | 1a | Orthogonal — 4 small items, different files, different reviewer. ~½d total. |
+| 1b | **§50.6 — Deferred-Items Ledger Cleanup** `[Plan Ready]` | — | 1a | Orthogonal — 4 small items, different files, different reviewer. ~½d total. Plan: `.agents/plans/tech-debt-19-deferred-items-cleanup.md`. |
 | 2 | **§50.5 — Execute Migration Squash** `[BLOCKED — design flaw]` | — | — | Unblocks once §50.7 lands. Human-driven maintenance-window op; pre-conditions in `.agents/plans/tech-debt-19-runbook-db-squash.md` still apply (verified prod `pg_dump`, branches with new migrations merged/rebased, fresh-clone `alembic check` exit 0). |
-| —  | **§50.8 — Squash Defense-in-Depth** `[No Plan Needed]` | — | — | Optional tripwire. Skip if §50.7 ships within ~3 days. Reconsider only if §50.7 slips. If shipped, it reverts as part of §50.7's PR. |
+| —  | **§50.8 — Squash Defense-in-Depth** `[Plan Ready]` | — | — | Optional tripwire. Skip if §50.7 ships within ~3 days. Reconsider only if §50.7 slips. If shipped, it reverts as part of §50.7's PR. Plan: `.agents/plans/tech-debt-19-squash-defense-in-depth.md`. |
 
 §50.1 (audit refresh), §50.2 (F025 eval runner registry), §50.3 (F042 workspace decomposition), §50.4 (F066 connector tests) are already shipped or merged — see individual phase headers and `git log --oneline` for commit citations.
 
@@ -111,9 +111,11 @@ Squash 46 alembic migrations to a single baseline using `make db-squash`. Runboo
 **Verify:** Dry-run: `bash scripts/squash-migrations-dryrun.sh` on staging DB clone shows zero schema drift vs HEAD. Execute: maintenance-window cutover with rollback plan (restore from snapshot). Post-cutover: `make db-migrate` on empty DB succeeds; existing prod DB applies baseline as no-op.
 **Effort:** ~1h in maintenance window + ~1h staging dry-run + ~30m post-verification.
 
-### 50.6 Deferred-Items Ledger Cleanup `[Backend, Testing]` `[No Plan Needed]`
+### 50.6 Deferred-Items Ledger Cleanup `[Backend, Testing]` `[Plan Ready]`
 
 Close the four open entries in `.agents/deferred-items.json`. Each entry has a `closes_when` field that is the spec; entries are load-bearing memory and worth draining.
+
+**Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` (198 lines — recommended sub-order, per-item tasks with file lists + acceptance criteria, decision tree for the squawk item).
 
 **Deliverables (one PR each, or bundled if small):**
 - **`tech-debt-squawk-python-migrations`** — squawk v2.x can't parse Python alembic migrations; currently advisory only. Options: (a) replace with a Python-aware migration linter (e.g., write a small ruff plugin for `op.add_column` / `op.drop_column` patterns); (b) document acceptance + remove the `continue-on-error: true` from CI to make it visible. Choose (a) if churn warrants it, (b) if not.
@@ -137,9 +139,11 @@ Prerequisite for §50.5. Rewrite the squash flow shared by `scripts/squash-migra
 **Verify:** `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end; `grep -c "op.create_table"` on generated baseline equals `len(Base.metadata.tables)`; `diff schema_A.sql schema_C.sql` empty; `make check-full` green.
 **Effort:** ~½d (script rewrites + runbook + end-to-end dry-run).
 
-### 50.8 F057b — Squash Defense-in-Depth `[Backend, DevOps]` `[No Plan Needed]`
+### 50.8 F057b — Squash Defense-in-Depth `[Backend, DevOps]` `[Plan Ready]`
 
 Defensive tripwire and signage to prevent accidental execution while §50.7 is in flight. Optional — pure paranoia layer; can be skipped if §50.7 ships quickly. Should be **reverted** as part of §50.7's PR once the redesign lands.
+
+**Plan:** ✅ `.agents/plans/tech-debt-19-squash-defense-in-depth.md` (135 lines — exact bash block to insert, line-precise CLAUDE.md/alembic edits, verify commands, coordination notes with §50.7).
 
 **Deliverables:**
 - **`scripts/squash-migrations.sh`** — add a hard-abort check near the top (after the safety gate banner, before the destructive operations) that exits non-zero unless an explicit `--design-flaw-acknowledged` flag is passed in addition to `--i-know-what-i-am-doing`. The abort message points at `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` and §50.7. Once §50.7 ships, remove both the flag and the check in the same PR.

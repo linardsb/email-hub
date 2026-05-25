@@ -2,6 +2,28 @@
 
 > ⚠️ **BLOCKED — DO NOT EXECUTE.** The procedure below is design-broken: step 5 runs `alembic revision --autogenerate` against the same DB that has all migrations applied, so the generated baseline's `upgrade()` body is empty (`pass`, zero `op.create_table`). Production cutover would succeed deceptively (step 6's `alembic check` still passes because schema matches models), but any subsequent fresh-DB bootstrap creates no schema. See `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` for the empirical reproduction and the multi-DB fix sketch. **Redesign the squash flow before scheduling a maintenance window.**
 
+## Execution Order Context
+
+| | |
+|---|---|
+| **TODO.md ref** | §50.5 (F057 — Execute Migration Squash) |
+| **Step in Phase 50** | **Step 2** — terminal in the F057 thread |
+| **Prerequisites** | §50.7 (Squash Multi-DB Redesign) must merge AND close `tech-debt-19-squash-empty-baseline` |
+| **Parallel with** | nothing — runs alone, in a maintenance window |
+| **Blocks downstream** | nothing in Phase 50 |
+| **Status gate** | the ⚠️ BLOCKED callout above is removed by §50.7's PR; if you see it, §50.7 hasn't landed yet |
+
+### When you reach this phase
+
+Before opening this runbook to execute it, confirm in order:
+
+1. `git log --oneline main` shows a commit whose message contains `tech-debt-19-squash-empty-baseline closed` (or equivalent — the §50.7 PR merges this work).
+2. `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline.status` is `closed`, with a populated `closed_commit`.
+3. `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end on your machine. Non-zero = §50.7 didn't actually ship the fix; do not proceed.
+4. The runbook's top no longer has a ⚠️ BLOCKED callout. If it does, the procedure below is still wrong; abort.
+
+Only after all four are true is the maintenance window safe to schedule.
+
 **Status:** Maintenance-window only. NOT executed by `/be-execute`. This runbook documents the procedure; the destructive operation runs under human supervision.
 
 ## When to run
