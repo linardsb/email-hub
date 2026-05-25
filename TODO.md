@@ -83,13 +83,13 @@ Plan 04 declared per-service test files for all four ESP connectors (`Braze`, `S
 
 Squash 46 alembic migrations to a single baseline using `make db-squash`. Runbook + dry-run script shipped in `8aa83103`. Requires production maintenance window — coordinate with deployment cadence. Drop the `alembic/versions/2eb1d5b05ad3_merge_heads.py` merge artifact in the same operation.
 
-**Plan:** ✅ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/db-squash-dry-run.sh`.
+**Plan:** ✅ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh`.
 **Deliverable:**
 - New consolidated baseline migration in `alembic/versions/` (single `down_revision = None` file)
 - 46 historical migrations deleted (or archived per runbook)
 - `alembic heads` reports single head; `alembic upgrade head` clean on fresh DB
 - Operator postmortem in `docs/migrations/` noting cutover SHA + restoration procedure
-**Verify:** Dry-run: `bash scripts/db-squash-dry-run.sh` on staging DB clone shows zero schema drift vs HEAD. Execute: maintenance-window cutover with rollback plan (restore from snapshot). Post-cutover: `make db-migrate` on empty DB succeeds; existing prod DB applies baseline as no-op.
+**Verify:** Dry-run: `bash scripts/squash-migrations-dryrun.sh` on staging DB clone shows zero schema drift vs HEAD. Execute: maintenance-window cutover with rollback plan (restore from snapshot). Post-cutover: `make db-migrate` on empty DB succeeds; existing prod DB applies baseline as no-op.
 **Effort:** ~1h in maintenance window + ~1h staging dry-run + ~30m post-verification.
 
 ### 50.6 Deferred-Items Ledger Cleanup `[Backend, Testing]` `[No Plan Needed]`
