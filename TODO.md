@@ -79,11 +79,13 @@ Plan 04 declared per-service test files for all four ESP connectors (`Braze`, `S
 **Verify:** `uv run pytest app/connectors/{braze,taxi}/tests/ -v` + `make check` (full backend gate).
 **Effort:** ~2h.
 
-### 50.5 F057 — Execute Migration Squash `[Backend, Database]` `[Plan Ready]`
+### 50.5 F057 — Execute Migration Squash `[Backend, Database]` `[BLOCKED — design flaw]`
+
+> ⚠️ **DO NOT RUN `make db-squash`.** The squash scripts and the runbook share a latent design flaw: `alembic revision --autogenerate` runs against the populated DB, where `target_metadata` already matches the live schema, so the generated baseline's `upgrade()` body is empty (`pass`). Production DB cutover would succeed deceptively, but the next fresh-DB bootstrap (CI, onboarding, DR restore) creates no schema and the app crashes on first request. See `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` for the empirical reproduction and the multi-DB redesign sketch.
 
 Squash 46 alembic migrations to a single baseline using `make db-squash`. Runbook + dry-run script shipped in `8aa83103`. Requires production maintenance window — coordinate with deployment cadence. Drop the `alembic/versions/2eb1d5b05ad3_merge_heads.py` merge artifact in the same operation.
 
-**Plan:** ✅ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh`.
+**Plan:** ⚠️ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh` — design-broken (see warning above); needs redesign before execution.
 **Deliverable:**
 - New consolidated baseline migration in `alembic/versions/` (single `down_revision = None` file)
 - 46 historical migrations deleted (or archived per runbook)

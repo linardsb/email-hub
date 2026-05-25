@@ -206,7 +206,7 @@
       "title": "mypy 2.0 redundant-cast suppression on Figma style-run cast",
       "status": "closed",
       "closed_commit": "F014 / tech-debt-15-figma-typed-boundaries",
-      "closed_note": "Closed by Option (a) — TypedDict boundary at app/design_sync/figma/raw_types.py types characterStyleOverrides as list[Any]; the redundant cast and # type: ignore[redundant-cast] in _parse_style_runs are gone. All 8 redundant-cast suppressions in service.py removed.",
+      "closed_note": "Closed by Option (a) \u2014 TypedDict boundary at app/design_sync/figma/raw_types.py types characterStyleOverrides as list[Any]; the redundant cast and # type: ignore[redundant-cast] in _parse_style_runs are gone. All 8 redundant-cast suppressions in service.py removed.",
       "severity": "speculative",
       "introduced": "2026-05-09",
       "introduced_commit": "f014ffb6",
@@ -283,7 +283,7 @@
       "introduced_commit": "phase-50.8",
       "closed_date": "2026-05-13",
       "closed_commit": "fix/nested-physical-cards",
-      "closure_note": "layout_analyzer.py now falls back to find_physical_card_in_subtree() (physical_card_detector.py) when _detect_inner_bg returns inner_bg=None. The walker is bounded (max_depth=4), computes sibling radii per-candidate from the candidate's immediate parent, and requires the candidate to carry corner_radius >= 16 — without that precondition aspect_ratio_boarding_pass + barcode_child fire coincidentally on plain hero sections (a 600x67 banner strip image inside a 600x467 hero matches both). Asymmetry vs the top-level path is intentional: top-level detection runs only after _detect_inner_bg gates on a card-coloured surface, so the structural gate is doing the work; the subtree walker has no such gate and must use corner_radius as the visual hallmark. When a nested card is detected the parent section's physical_card_signals are prefixed with 'nested_card' for provenance. Trade-off: is_physical_card_surface remains a binary section-level flag, so any non-card siblings inside the same mixed wrapper inherit the flag; Phase 52.7 Rule 9 inherits this and will need to thread detection down to descendant-node granularity to correct dark-mode flips on non-card content. Validated by app/design_sync/tests/test_layout_analyzer.py::TestNestedPhysicalCardDetection on LEGO data/debug/7 (only sections[7] flagged; cases 5/6/8/9/10 unchanged at zero flagged) and app/design_sync/tests/test_physical_card_detector.py::TestSubtreeWalker (synthetic coverage for depth bound, corner-radius precondition, min_signals plumbing, per-candidate sibling radii — independent of the gitignored fixture).",
+      "closure_note": "layout_analyzer.py now falls back to find_physical_card_in_subtree() (physical_card_detector.py) when _detect_inner_bg returns inner_bg=None. The walker is bounded (max_depth=4), computes sibling radii per-candidate from the candidate's immediate parent, and requires the candidate to carry corner_radius >= 16 \u2014 without that precondition aspect_ratio_boarding_pass + barcode_child fire coincidentally on plain hero sections (a 600x67 banner strip image inside a 600x467 hero matches both). Asymmetry vs the top-level path is intentional: top-level detection runs only after _detect_inner_bg gates on a card-coloured surface, so the structural gate is doing the work; the subtree walker has no such gate and must use corner_radius as the visual hallmark. When a nested card is detected the parent section's physical_card_signals are prefixed with 'nested_card' for provenance. Trade-off: is_physical_card_surface remains a binary section-level flag, so any non-card siblings inside the same mixed wrapper inherit the flag; Phase 52.7 Rule 9 inherits this and will need to thread detection down to descendant-node granularity to correct dark-mode flips on non-card content. Validated by app/design_sync/tests/test_layout_analyzer.py::TestNestedPhysicalCardDetection on LEGO data/debug/7 (only sections[7] flagged; cases 5/6/8/9/10 unchanged at zero flagged) and app/design_sync/tests/test_physical_card_detector.py::TestSubtreeWalker (synthetic coverage for depth bound, corner-radius precondition, min_signals plumbing, per-candidate sibling radii \u2014 independent of the gitignored fixture).",
       "summary": "layout_analyzer.py:397-414 runs detect_physical_card_surface only on top-level section candidates. For real Figma campaigns where the physical-card surface is nested inside an outer mj-wrapper (e.g. LEGO data/debug/7: pages[0].children[0].children[7].children[2] is an mj-section with corner_radius=18 sitting inside a column-layout-4 footer wrapper), the detector is never invoked. detect_physical_card_surface() invoked directly on the card returns is_physical=True with 2 signals \u2014 the detection logic is correct, only the production wiring misses nested cards.",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py:397-414 (detector wiring \u2014 invokes only on top-level section)",
@@ -305,12 +305,12 @@
     {
       "id": "tech-debt-19-design-sync-flag-cull-deeper",
       "phase": "tech-debt-19",
-      "title": "DESIGN_SYNC__* flag cull — deeper retirement (62 -> <=30)",
+      "title": "DESIGN_SYNC__* flag cull \u2014 deeper retirement (62 -> <=30)",
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-05-13",
       "introduced_commit": "(this PR)",
-      "summary": "Session 19 PR-C cut 4 fields from app/core/config/design_sync.py (66 -> 62: dropped 2 zero-ref fidelity_* fields, promoted opacity_composite_bg + low_match_confidence_threshold to module constants in app/design_sync/tuning.py). The plan target of <=30 requires deeper feature retirement — deleting test-only-gated features (custom_component_*, wrapper_unwrap, vlm_verify_* tuning knobs, sibling_* parameterized tests, regression_strict, vlm_low_confidence_threshold, vlm_verify_client) along with the tests that exercise their gating. Surgical-changes scope on the sweep PR forbade that breadth.",
+      "summary": "Session 19 PR-C cut 4 fields from app/core/config/design_sync.py (66 -> 62: dropped 2 zero-ref fidelity_* fields, promoted opacity_composite_bg + low_match_confidence_threshold to module constants in app/design_sync/tuning.py). The plan target of <=30 requires deeper feature retirement \u2014 deleting test-only-gated features (custom_component_*, wrapper_unwrap, vlm_verify_* tuning knobs, sibling_* parameterized tests, regression_strict, vlm_low_confidence_threshold, vlm_verify_client) along with the tests that exercise their gating. Surgical-changes scope on the sweep PR forbade that breadth.",
       "code_refs": [
         "app/core/config/design_sync.py (62 fields remaining)",
         "app/design_sync/tuning.py (target home for further threshold-knob promotions)",
@@ -321,6 +321,27 @@
       "closes_when": "A dedicated cull PR retires the underlying features (custom_component, wrapper_unwrap, and the VLM verify tuning surface), deletes their test files, and lands a unit test in app/core/tests/test_config_design_sync.py asserting len(DesignSyncConfig.model_fields) <= 30.",
       "fast_closure_path": "Per-feature decision: (a) ship the feature with sensible defaults baked in (constant-ize) and delete the gating tests, (b) delete the feature code, gating tests, and the field together. Pair each cut with a flag-audit.py run.",
       "notes": "Production env scan during preflight confirmed zero infra/ops/k8s/deploy/helm overrides. Removing fields is safe at the deployment layer; the risk is only at the test layer."
+    },
+    {
+      "id": "tech-debt-19-squash-empty-baseline",
+      "phase": "tech-debt-19",
+      "title": "Squash scripts produce empty baseline migration (squash design flaw)",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-05-13",
+      "introduced_commit": "8aa83103",
+      "summary": "scripts/squash-migrations.sh and scripts/squash-migrations-dryrun.sh both run alembic revision --autogenerate against the SAME DB that has just had all migrations applied. Autogenerate diffs target_metadata (Python models) against the live DB schema; when they match \u2014 which they always do at this point in the flow, by construction \u2014 the generated baseline migration is empty (def upgrade(): pass, zero op.create_table statements). Stamping head against this empty migration leaves the existing populated DB unchanged, but any future fresh-DB bootstrap will run an empty upgrade() and produce no schema. The runbooks (.agents/plans/tech-debt-19-runbook-db-squash.md procedure step 5) inherit the same flaw \u2014 alembic check after step 5 still passes deceptively (schema matches models regardless of whether the baseline contains anything).",
+      "code_refs": [
+        "scripts/squash-migrations.sh:102-114 (mv versions/ then autogenerate then stamp \u2014 same-DB autogenerate)",
+        "scripts/squash-migrations-dryrun.sh:81-95 (same flaw)",
+        ".agents/plans/tech-debt-19-runbook-db-squash.md:99-106 (procedure step 5 directs the same flow)",
+        "Makefile:269-270 (db-squash target shells out to squash-migrations.sh)",
+        "TODO.md (\u00a750.5 currently tagged [Plan Ready] \u2014 the plan is design-broken)"
+      ],
+      "symptom_if_broken": "After make db-squash cutover, alembic_version points at a baseline_squash_YYYYMMDD revision whose upgrade() body is `pass`. Production DB is unaffected (schema already exists). Symptom appears on the next fresh-DB deploy \u2014 CI staging spin-up, contributor onboarding, disaster-recovery restore \u2014 when `alembic upgrade head` against an empty DB runs the empty migration to completion with no tables created. First request that touches the DB raises psycopg/asyncpg UndefinedTable / relation does not exist.",
+      "closes_when": "Both squash scripts (destructive + dry-run) generate the baseline via autogenerate against an EMPTY throwaway DB (not the populated one). Verified by inline assertion: grep -c \"op.create_table\" on the generated baseline file must equal the number of tables in target_metadata. The dry-run additionally applies that baseline to a third empty DB, captures pg_dump, and diffs it against the all-migrations-applied dump from the first DB \u2014 the diff must be empty.",
+      "fix_sketch": "Three-DB flow. DB-A: docker run pgvector \u2192 alembic upgrade head \u2192 pg_dump schema_A. DB-B: docker run pgvector (empty) \u2192 alembic revision --autogenerate (compares models vs empty DB \u2192 baseline contains every CreateTable). DB-C: docker run pgvector (empty) \u2192 apply only the new baseline \u2192 pg_dump schema_C. Assert diff schema_A vs schema_C is empty (modulo alembic_version table). The current single-DB design conflates the source-of-schema and the autogenerate-target \u2014 they must be separated.",
+      "notes": "Discovered 2026-05-25 by direct test: applied all 47 migrations to a throwaway pgvector container, truncated alembic_version, ran alembic revision --autogenerate against a temp tree with empty versions/. Generated file contained `def upgrade(): pass` with zero op.create_table statements. The destructive scripts/squash-migrations.sh has the same defect AND its operator-facing alembic check in step 6 of the runbook still passes (because schema matches models regardless of baseline content), so the runbook gives no warning. F057 (TODO.md \u00a750.5) currently tagged [Plan Ready] \u2014 re-tag and do not execute make db-squash until this is closed. Two unrelated bugs in squash-migrations-dryrun.sh were fixed in the same investigation (hardcoded port 55555, host pg_dump major-version mismatch) \u2014 see follow-up commit."
     }
   ],
   "tooling_followups": [
