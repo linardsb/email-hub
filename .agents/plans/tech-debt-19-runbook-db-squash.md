@@ -1,5 +1,7 @@
 # Runbook: Migration Squash (F057)
 
+> ⚠️ **BLOCKED — DO NOT EXECUTE.** The procedure below is design-broken: step 5 runs `alembic revision --autogenerate` against the same DB that has all migrations applied, so the generated baseline's `upgrade()` body is empty (`pass`, zero `op.create_table`). Production cutover would succeed deceptively (step 6's `alembic check` still passes because schema matches models), but any subsequent fresh-DB bootstrap creates no schema. See `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` for the empirical reproduction and the multi-DB fix sketch. **Redesign the squash flow before scheduling a maintenance window.**
+
 **Status:** Maintenance-window only. NOT executed by `/be-execute`. This runbook documents the procedure; the destructive operation runs under human supervision.
 
 ## When to run

@@ -17,7 +17,7 @@ e6ede878  refactor(config): tech-debt-19 PR-C — start design_sync flag cull (F
 |---------|--------|-------|
 | **F033** — `.env.example` CI parity | Already shipped pre-sweep. `make check-env-drift` (Makefile L28) gates parity; CI step `.env.example drift gate` (ci.yml L43). No code change. | n/a |
 | **F049** — Live-fetch OpenAPI for SDK gate | `--live` flag added to `scripts/export-openapi.py`. CI `sdk-check` job uses it with `AI__PROMPT_STORE_ENABLED=false` + `COLLAB_WS__ENABLED=false`. Local `make sdk-snapshot` stays static. SDK regenerated. | PR-A |
-| **F057** — Migration squash | Runbook + dry-run script. Destructive op not performed. | F057 commit |
+| **F057** — Migration squash | Runbook + dry-run script shipped, **but BLOCKED** — autogenerate-against-populated-DB produces empty baseline. See `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline`. Needs multi-DB redesign before any execution. | F057 commit |
 | **F059** — Route exception logging through structlog | `logger.error(…, exc_info=True)` → `logger.exception(…)`. SQLAlchemy echo bridged through structlog so `redact_event_dict` applies. 3 tests added. | PR-A |
 | **F060** — Unify trace modules | 5 legacy modules merged into `app/design_sync/traces/` with `TraceWriter`, `converter`, `regression`, `correction` submodules. Legacy file paths kept as thin re-export shims so the 19 existing import sites compile untouched. Test patches retargeted to new locations. 2013 design_sync tests passing. | PR-B |
 | **F061** — color helpers | Already shipped (`app/shared/color.py`). No-op. | n/a |
@@ -43,7 +43,7 @@ e6ede878  refactor(config): tech-debt-19 PR-C — start design_sync flag cull (F
 ## What still needs human attention
 
 1. **F035 — finish the cull.** New deferred entry `tech-debt-19-design-sync-flag-cull-deeper` tracks the work. Path: retire test-only-gated features (`custom_component_*`, `wrapper_unwrap`, `vlm_verify_*` tuning, etc.) along with their tests. Each cut needs a per-feature decision.
-2. **F057 — schedule the maintenance window.** Runbook is ready. Pre-conditions (schema-drift entry closed) are met. Squash itself is a human-supervised op.
+2. **F057 — redesign the squash flow.** Runbook + both scripts are design-broken (autogenerate runs against the populated DB, producing an empty baseline; cutover passes deceptively, fresh-DB bootstrap then creates no schema). See `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` for the three-DB fix sketch. Maintenance window cannot be scheduled until this is closed.
 3. **F049 — `--live` mode on first CI run.** First CI run with `scripts/export-openapi.py --live` may surface boot-time issues not visible locally; if so, fall back to `static` and document.
 
 ## Ship checklist
