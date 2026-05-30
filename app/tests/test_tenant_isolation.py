@@ -131,13 +131,12 @@ ENTITY_FIXTURES: dict[str, EntitySpec] = {
     ),
     "memory": EntitySpec(
         # POST /memory/ instantiates `get_embedding_provider(settings)` and
-        # calls it to compute an embedding before INSERT. Default provider
-        # is OpenAI, which requires EMBEDDING__API_KEY/AI__API_KEY — not
-        # available in the integration CI job. The `local` provider needs
-        # sentence-transformers (a heavy ML dep) which is also outside the
-        # job's installed surface. Stubbing the provider is its own DI
-        # exercise; for now this row stays xfail(strict=False) with a
-        # follow-up tracked in deferred-items.
+        # calls it to compute an embedding before INSERT. The integration job
+        # has neither EMBEDDING__API_KEY/AI__API_KEY (OpenAI provider) nor
+        # sentence-transformers (local provider), so the `embedding_stub`
+        # fixture (conftest.py) monkeypatches the route's provider lookup with
+        # a 1024-dim zero-vector stub — letting this row exercise scoping
+        # without a live embedding backend.
         create_path=lambda _u, _c: "/memory/",
         get_path_template="/memory/{id}",
         list_path=None,  # no GET-list route — only POST /search
@@ -183,17 +182,7 @@ async def client() -> AsyncClient:
     [
         pytest.param("projects", id="projects"),
         pytest.param("templates", id="templates"),
-        pytest.param(
-            "memory",
-            id="memory",
-            marks=pytest.mark.xfail(
-                strict=False,
-                reason="POST /memory/ requires an embedding provider; the "
-                "integration CI job has neither an OpenAI API key nor "
-                "sentence-transformers. Promote once dependency-override "
-                "or a stub provider is wired.",
-            ),
-        ),
+        pytest.param("memory", id="memory"),
         pytest.param("qa_results", id="qa_results"),
         pytest.param(
             "briefs",
@@ -212,6 +201,7 @@ async def test_no_cross_org_read(
     client: AsyncClient,
     two_orgs: tuple[SeededUser, SeededUser],
     entity: str,
+    embedding_stub: None,
 ) -> None:
     """user2 must not see entities user1 created in a different org."""
     user1, user2 = two_orgs
