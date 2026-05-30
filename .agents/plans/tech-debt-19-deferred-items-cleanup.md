@@ -38,27 +38,50 @@ Items are independent — you can do them in any order or assign in parallel. Re
 `app/tests/test_tenant_isolation.py` parametrises Memory rows alongside other entities for a cross-entity tenant-isolation regression, but the Memory branch is xfail (`@pytest.mark.xfail(strict=False)`) because `POST /memory/` calls `get_embedding_provider(settings)` and there's no test-time stub. Real embedding calls in CI would be expensive and flaky.
 
 ### Concrete tasks
-1. **Add an `embedding_stub` fixture** in `app/tests/conftest.py` (or the nearest applicable conftest — verify by reading existing fixture imports in `test_tenant_isolation.py`):
+
+> ⚠️ The original sketch had **three bugs**, all verified against source in preflight (2026-05-30): wrong stub signature, wrong monkeypatch target, wrong vector dim. Use the corrected version below verbatim.
+
+1. **Add an `embedding_stub` fixture** in `app/tests/conftest.py` (the conftest that already backs this file's `db` fixture). Model it on the existing reusable mock at `app/memory/tests/test_service.py:50` (`embed → [[…]*1024]`).
    ```python
    @pytest.fixture
-   def embedding_stub(monkeypatch):
-       """Deterministic zero-vector embedding for tenant-isolation tests."""
-       from app.knowledge import embedding
-       def _stub_provider(settings):
-           class _Stub:
-               async def embed(self, text: str) -> list[float]:
-                   return [0.0] * 1536  # match the production dim
-           return _Stub()
-       monkeypatch.setattr(embedding, "get_embedding_provider", _stub_provider)
+   def embedding_stub(monkeypatch: pytest.MonkeyPatch) -> None:
+       """Deterministic zero-vector embedding provider for tenant-isolation tests."""
+
+       class _StubProvider:
+           # Signature MUST match the EmbeddingProvider protocol
+           # (app/knowledge/embedding.py:26): embed(texts: list[str]) ->
+           # list[list[float]]. MemoryService.store calls
+           # `await self.embedding.embed([data.content])` (service.py:49)
+           # and reads embeddings[0] (service.py:50) — a flat list would
+           # store the scalar 0.0, not a vector.
+           async def embed(self, texts: list[str]) -> list[list[float]]:
+               return [[0.0] * 1024 for _ in texts]
+
+       # Patch the name in the ROUTE module, not the source module.
+       # app/memory/routes.py:12 does `from app.knowledge.embedding import
+       # get_embedding_provider`, binding the symbol into app.memory.routes
+       # at import time; _get_service (routes.py:27) calls that route-local
+       # name. Patching app.knowledge.embedding would not rebind it.
+       monkeypatch.setattr(
+           "app.memory.routes.get_embedding_provider",
+           lambda _settings: _StubProvider(),
+       )
    ```
-   (Confirm the embedding dimension by reading `app/knowledge/embedding.py:177` — the deferred entry references this line.)
-2. **Flip the xfail to a passing assertion** in the Memory branch of the tenant-isolation parametrise. Pass the new fixture into the test signature.
-3. **Run** `uv run pytest app/tests/test_tenant_isolation.py -k memory -v` — must pass without xfail.
-4. **Update the deferred entry**: `status: "closed"`, `closed_commit: <SHA>`, `closed_note: "Embedding stub fixture added; Memory row in tenant-isolation harness now asserts isolation positively. No production code touched."`
+   - **Dim = 1024, not 1536.** The memory column is `Vector(1024)` (`app/memory/models.py:30`) and pgvector rejects a dimension mismatch on INSERT. `1536` is `ai.dimension` (OpenAI default) — the wrong knob; memory uses `knowledge.embedding_dimension = 1024`. (`embedding.py:177` is the *factory*, not the memory dim — ignore that pointer.)
+   - **Do not** override the `_get_service` FastAPI dependency instead: it wraps `get_scoped_db` (`routes.py:25`), which is the exact scoping under test — replacing it would make the test vacuous. The deferred entry's `closes_when` sketch (`dependency_overrides[get_embedding_provider]`) is likewise wrong: `get_embedding_provider` is not a `Depends()` target.
+2. **Flip the xfail to a passing assertion**: drop `marks=pytest.mark.xfail(...)` from the `memory` `pytest.param` (`test_tenant_isolation.py:186-196`) → plain `pytest.param("memory", id="memory")`. Add `embedding_stub` to the `test_no_cross_org_read` signature (harmless for the other rows — the patch only touches the memory route's provider lookup).
+3. **Run under the integration harness** — this file module-skips without a live DB (`app/tests/conftest.py:101-116`):
+   ```bash
+   make test-integration   # sets TEST_DATABASE__URL + DATABASE__URL against live Postgres
+   # scoped: TEST_DATABASE__URL=… DATABASE__URL=… uv run pytest \
+   #   app/tests/test_tenant_isolation.py -k memory -v
+   ```
+   The memory row must **PASS** (not skip, not xpass). `make check` / a bare `-k memory` without those env vars collect-skips and proves nothing. The `GET /memory/{memory_id}` route exists and is scoped (`routes.py:68` → `_get_service` → `get_scoped_db`), so the `403/404` assertion is genuine — not a universal-404.
+4. **Update the deferred entry** `tech-debt-03-memory-isolation-embedding-stub`: `status: "closed"`, `closed_commit: <SHA>`, `closed_note: "embedding_stub fixture monkeypatches app.memory.routes.get_embedding_provider with a 1024-dim stub; memory row promoted from xfail and asserts org-isolation positively under make test-integration. No production code touched."`
 
 ### Acceptance
-- xfail removed; test passes deterministically.
-- `make check` green.
+- xfail removed; memory row **passes** (not skips, not xpasses) under `make test-integration`.
+- `make check` green (memory row collect-skips in the unit job — expected).
 - No production code changed (test-only PR).
 
 ### Files touched

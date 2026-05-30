@@ -12,6 +12,45 @@
 
 ---
 
+## Active Execution Order (Phases 50 → 53)
+
+Single cross-phase sequence of every remaining task, in exact execution order. **Disc.** = discipline. **Plan** = `Ready` (a written plan exists) / `Needs plan` (detailed plan produced later, at the cited gate). Per-subtask detail is in each phase's section below. Phases are independent workstreams — the only *mandatory* ordering is within each phase + the dependency arrows noted. Phase 51 (security) and Phase 52/53 (converter) can be reordered relative to each other.
+
+| # | Task | Title | Disc. | Plan | Effort |
+|---|------|-------|-------|------|--------|
+| — | 50.1–50.4 | *(shipped — audit refresh, eval registry, workspace hooks, connector tests)* | — | ✅ done | — |
+| 1 | **50.6.1** | Memory embedding stub | Backend | Ready | ~30min |
+| 2 | **50.6.2** | Briefs BOLA isolation test | Backend, Testing | Ready | ~45min |
+| 3 | **50.6.3** | Squawk Python-migrations cleanup | Backend, DB | Ready | ~1h |
+| 4 | **50.6.4** | `DESIGN_SYNC__*` flag cull *(partly landed)* | Backend | Ready | ~2h |
+| 5 | **50.7** | Squash multi-DB redesign → blocks 50.5 | Backend, DB | Ready | ~½d |
+| 6 | **50.5** | Execute migration squash *(blocked on 50.7)* | Backend, DB | Ready | ~2.5h + window |
+| 7 | **51.1** | Credential revocation on kill | Backend, Security | Ready | ½d |
+| 8 | **51.2** | Safe compaction (pinned safety) | Backend, Security | Ready | 1–2d |
+| 9 | **51.3** | Tool-call cap + planning telemetry | Backend, Security | Ready | 1d |
+| 10 | **51.4** | Tamper-evident append-only audit → blocks 51.7 | Backend, Security | Ready | 1–2d |
+| 11 | **51.5** | Toxic-combination policy DSL | Backend, Security | Ready | 2–3d |
+| 12 | **51.6** | HITL cryptographic signatures | Backend, Frontend, Security | Ready | 1–2d |
+| 13 | **51.7** | Infra-level kill + sandboxed tools *(blocked on 51.4)* | Backend, DevOps, Security | Ready | 3–5d |
+| 14 | **52.1** | Repair & activate the fidelity metric | Backend | Ready | 3–4d |
+| 15 | **52.2** | Serializer bridge Tier-1 (RC-A/RC-B core) | Backend | Ready | ½d |
+| 16 | **52.3** | Serializer bridge Tier-2 + JSON schema | Backend | Ready | 2–3d |
+| 17 | **52.4** | Widen override allowlist (typography) | Backend | Ready | 2–3d |
+| 18 | **52.5** | Ingest correctness *(∥ after 52.1)* | Backend | Ready | 2–3d |
+| 19 | **52.6** | Fix `_fix_text_contrast` *(∥ after 52.1)* | Backend | Ready | ½–1d |
+| 20 | **52.7** | Measurement-truth + regression + supersede | Backend, Docs | Ready | 1–2d |
+| 21 | **53.1** | Strategy-fork decision + spike **← GATE** | Backend | Ready (outline) | 3–5d |
+| 22 | **53.2** | Renderer / engine implementation (per fork) | Backend | Needs plan @ 53.1 | TBD |
+| 23 | **53.3** | Never-parsed ingest render | Backend | Needs plan @ 53.1 | TBD |
+| 24 | **53.4** | Revive or retire the VLM loop | Backend | Needs plan @ 53.1 | 2–4d / ½d |
+| 25 | **53.5** | Decorative VECTOR recovery | Backend | Needs plan @ 53.1 | 1–2d |
+| 26 | **53.6** | Promote surviving rules / composite slots | Backend | Needs plan @ 53.1 | TBD |
+| 27 | **53.7** | Honest per-client ceiling doc | Docs | Needs plan @ 53.1 | ½–1d |
+
+> Within-phase rules: 50.7→50.5; Phase 51 strictly serial (51.4 before 51.7); Phase 52 — 52.1 first, 52.3 before 52.4, 52.5/52.6 parallel-safe after 52.1; **all of Phase 52 before Phase 53**; 53.1 is a gate, 53.2–53.7 fork on it.
+
+---
+
 ## Phase 50 — Tech Debt Closeout & Audit Reconciliation (4/11 subtasks)
 
 Final closure of the remaining tech-debt audit items, plus reconciliation of the stale `TECH_DEBT_AUDIT.md` doc against current `main`. Sessions 1–20 closed 53 of 70 findings; the audit table still marks 17 of those false-OPEN because the doc lagged the merges. Of the 17 audit-OPEN findings, 13 are fully shipped in code (flip to RESOLVED), 4 are still real work (F025 not started; F042/F057/F066 partial). Phase 50 closes those 4 + refreshes the doc + drains the deferred-items ledger. Phase 51 (AI security pass) starts after Phase 50 lands so the planning baseline is clean.
@@ -291,3 +330,217 @@ Move agent MCP tool execution into a separate sidecar process (`services/tool-ru
 **Verify:** `services/tool-runner/tests/` integration tests + `app/mcp/tests/test_sandbox_dispatch.py`. Manual kill drill: start agent, trigger kill mid-tool-call, verify sidecar process terminates within 1s + audit chain entry recorded.
 **Reduces:** Power — toxic combinations enforced at the OS boundary, not in-process.
 **Effort:** 3–5d.
+
+---
+
+## Phase 52 — Design→HTML Converter Foundation: Measure + Un-Inert (0/7 subtasks)
+
+Close the real reason Figma→email fidelity has not moved in months. A re-verification of `docs/fidelity-gap-audit-findings.md` (11-finder + adversarial workflow `wf_fa48d17b-6ea`, every root cause confirmed at `file:line`) found that the shipped Phase 49/50 fidelity logic is **built, enabled-by-default, and inert**: the serializer bridge `EmailDesignDocument.to_email_section` silently nulls the very fields the overrides consume (RC-A: `text_color` is *always* `None` because the reader does `getattr(t,"text_color",None)` on a field named `color`; RC-B: it also drops `text_align`/`url`/`border_radius`/`corner_radius_spec`/stroke on every path). And the only fidelity metric that can be turned on is **color-blind, blurred, gmail-only, mean-aggregated, dimensionally mis-registered (2× Figma vs 1× HTML), off by default, and never actually runs** — so the system can neither apply its corrections nor measure them. Phase 52 is **foundation-first and fork-independent**: make the failure measurable, then stop the self-inflicted losses. The engine question (fixed-seed vs. restore-recursive-renderer vs. rasterize) is deferred to **Phase 53**, sequenced *after* 52 so it is finally driven by a real fidelity signal. Target is an **honest measured ceiling** per email client, not "99.9% everywhere" (physically capped: Outlook ~95%; shadows/gradients/SVG/blend/rotation/overlap not reproducible in table email).
+
+**Plan:** ✅ `.agents/plans/52-converter-foundation.md` (verified root-cause map, three-way loss taxonomy, per-subtask step-by-step, files-affected, risks).
+**Order:** 52.1 first (measurement is the lowest-regret unblock). 52.2 → 52.3 (bridge tiers, ordered). 52.4 depends on 52.3 (fields must survive the bridge). 52.5 / 52.6 parallel-safe. 52.7 last (truth + supersede).
+**Rollout:** New behavior behind `DESIGN_SYNC__*` flags; the color-aware metric lands **advisory** before any ship-gate threshold.
+**Non-negotiables:**
+- `make converter-data-regression` stays green (or baselines regenerated with reviewed structural diff per the master-plan risk note).
+- `make check-full` after each subtask; `make migration-lint` on the 52.3 schema change.
+- No new parallel HTML-generation path (`TemplateAssembler` remains the single generation point per CLAUDE.md).
+- The metric must **execute in CI** by end of 52.1 (commit one real fixture; today fixtures are gitignored and `fidelity_enabled=False`).
+**Supersedes:** the orphaned 50–53 labels in `.agents/plans/50-converter-fidelity-master.md` + the 23 `deferred/` stubs (reconciled in 52.7). Those numbers never entered TODO.md; this is the operative numbering.
+**Effort:** ~12–17 dev-days total.
+
+### 52.1 Repair & Activate the Fidelity Instrument `[Backend]` `[Plan Ready]`
+
+The metric is not merely lenient — it is dimensionally invalid and never runs. Make it color-aware, multi-client, min-aggregated, correctly registered, and actually executed in CI. This is the lowest-*regret* first move: you cannot pick the Phase 53 engine fork or prove any fix without a metric that runs and can see color.
+
+**Plan:** §52.1 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- Replace grayscale SSIM with a color-aware metric (CIEDE2000/ΔE in LAB, or the existing ODiff path); remove `.convert("L")` at `app/design_sync/visual_scorer.py:54`
+- Remove the σ=1.0 Gaussian blur (`visual_scorer.py:77-79, 139`) that smooths the exact spacing errors the converter introduces
+- Fix registration/scale: render HTML at `device_scale_factor=2` to match `fidelity_figma_scale=2.0` (`config/design_sync.py:23`) OR resample (not white-pad) in `_pad_to_match` (`visual_scorer.py:58`); fix the gap-omitting composite scale (`fidelity_service.py:151-157` vs `visual_scorer.py:147-159`)
+- Score across the multi-client profile set incl. Outlook (not hardcoded `gmail_web` at `fidelity_service.py:33,168`); aggregate per-section by **MIN not MEAN** (`visual_scorer.py:181`) and min-across-clients
+- Commit ≥1 real fixture + `design.png` into `data/debug/` (un-gitignore that one case); flip `fidelity_enabled=True` (`config/design_sync.py:20`) for the test path so the metric runs in CI; land **advisory** (stored via `update_import_fidelity`), no ship-gate yet
+**Verify:** new `app/design_sync/tests/test_visual_scorer_color.py` — a wrong-brand-color-at-matching-luminance fixture scores LOW (proves color-awareness); a 1-section-broken fixture drags MIN down (proves aggregation). `make converter-data-regression` runs the metric on the committed fixture.
+**Reduces:** The "can't measure 99%" trust collapse — unblocks proving every later fix.
+**Effort:** 3–4d.
+
+### 52.2 Serializer Bridge Tier-1 (RC-A + RC-B core) `[Backend]` `[Plan Ready]`
+
+The cheapest real fidelity fix in the whole program — ~6 lines, two call sites — provable via 52.1. These fields already round-trip JSON; only the reader bridge drops them, which is why the shipped Phase 49/50 color/align/CTA overrides have been inert.
+
+**Plan:** §52.2 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- `app/design_sync/email_design_document.py:695` and `:743` — `text_color=getattr(t,"text_color",None)` → `text_color=t.color` (RC-A; the DocumentText attr is `color` at `:414`, never `text_color`)
+- Same two `TextBlock(...)` sites — add `text_align=t.text_align` (DocumentText carries it at `:415`, written but never read back)
+- `ButtonElement(...)` at `:709-718` and `:757-765` — add `url=b.url`, `border_radius=b.border_radius` (DocumentButton round-trips both at `:492-493`)
+- Regression fixture in `data/debug/` whose heading is non-default color + right-aligned + CTA with real href/radius
+**Verify:** assert the shipped HTML carries the color/alignment/href/radius; assert the 52.1 score rises vs the pre-fix baseline. Added to `make converter-data-regression`.
+**Reduces:** Restores text color, alignment, CTA targets, and corner rounding to the shipped path.
+**Effort:** ½d.
+
+### 52.3 Serializer Bridge Tier-2 + JSON Schema `[Backend]` `[Plan Ready]`
+
+Un-inert the rest of the already-shipped Phase 49/50 machinery (Rules 8/10/11, CTA stroke, nested-card/boundary classification) at zero new-feature cost, and add a property test so fields can never be silently re-dropped.
+
+**Plan:** §52.3 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- Widen `DocumentText`/`DocumentImage`/`DocumentButton`/`DocumentSection` + `to_json`/`from_json` to carry `corner_radius_spec`, `stroke` (color/weight), `text_transform`, `text_decoration`, `style_runs`, `layout_align`, `role_hint`, and the Phase-50 section fields (`inner_bg`/`inner_radius`/`container_bg`/`boundary_above|below`/`child_content_groups`/physical-card signals)
+- Carry all of the above through BOTH bridge halves: reader `to_email_section` (`email_design_document.py:685-766`) and writer `from_email_section` (`:793-892`)
+- Update `data/schemas/email-design-document-v1.json` to add the new fields AND fix the `additionalProperties:false` inconsistency (it currently forbids `text_align` on the text def and `url`/`border_radius`/`fill_color` on the button def that `to_json` already emits — `:273-311`)
+- Round-trip property test: `write → to_json → from_json → to_email_section` asserts field equality
+**Verify:** property test green; the Phase-50 nested-card/Rule-10 fixtures now show their overrides in output (previously fed `None`). `make check-full` (schema/migration lint).
+**Reduces:** Converts default-on dead logic into live fidelity; prevents silent re-drop.
+**Effort:** 2–3d.
+
+### 52.4 Widen the Override Allowlist + Renderer Dispatch (RC-D) `[Backend]` `[Plan Ready]`
+
+The typography trio + transform/decoration are already on `TextBlock` from the Figma API (`layout_analyzer.py:1097-1099`) — only the emission and a renderer dispatch arm are missing, so seeds' hardcoded `font-weight:bold` / `line-height:1.3` always win. Cheapest wins once 52.3 keeps the fields.
+
+**Plan:** §52.4 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- `app/design_sync/component_matcher.py::_build_token_overrides` (`~1422-1545`) — emit `font-weight`, `line-height`, `letter-spacing`, `text-transform`, `text-decoration` for `_heading` and `_body`
+- Remove the break-after-first-heading/body (`:1485-1515`) so every text run is styled (restores intra-section hierarchy)
+- Replace the all-or-nothing 4-side padding gate with per-side longhand; replace the `<br><br>` body merge with per-paragraph styled blocks
+- `app/design_sync/component_renderer.py` (`~587-663`) — add dispatch arms for each new CSS property, mirroring the existing `font-size` path
+**Verify:** fixture with bold/light contrast + custom line-height/letter-spacing + uppercase label renders them (not seed defaults); 52.1 score rises; `make rendering-baselines` regenerated + structural diff reviewed.
+**Reduces:** The bulk of the audit's typography fidelity gap (Findings 1–2).
+**Effort:** 2–3d.
+
+### 52.5 Ingest Correctness — Lossless Capture + Value Fixes (RC-E, fork-independent) `[Backend]` `[Plan Ready]`
+
+Wrong-value and lossless-capture fixes that are correct under any Phase 53 engine. Rendering of the captured data lands in 53.3, but capturing it now stops irreversible loss and unblocks the fork.
+
+**Plan:** §52.5 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- `app/design_sync/figma/service.py:265-291` `_rgba_to_hex_with_opacity` — composite alpha against the real backdrop (thread parent/section bg) instead of hard-coded `#FFFFFF` (`bg_hex` default at `:271`)
+- `app/design_sync/protocol.py:54-62` — add `node_id` to `ExtractedGradient` (+ `DocumentGradient`) so a per-section gradient can be reattached later
+- Capture non-button strokes onto `DocumentSection`/`DocumentImage` (already read at `figma/service.py:619` via `_extract_stroke`; no field holds them)
+- Capture AUTO/% line-height (`figma/service.py:509-510` reads only `lineHeightPx`): when absent, read `lineHeightPercent`/`lineHeightPercentFontSize` → relative value
+**Verify:** unit tests — translucent-over-color fixture yields composited-against-real-bg hex; gradient carries `node_id`; bordered card keeps its stroke field. (Render assertions in 53.3.)
+**Reduces:** The dominant upstream capture loss; unblocks the fork's renderer.
+**Effort:** 2–3d.
+
+### 52.6 Fix `_fix_text_contrast` Mis-Scoping `[Backend]` `[Plan Ready]`
+
+Runs on every shipped artifact (`import_service.py:842-891` via `_sanitize_email_html` at `:402`) and can force nested light-cell text to invisible white because the dark-range scan uses `find(close_tag)` (first close, not the matching close) and recolors to literal `#ffffff` instead of the design's intended on-dark tint.
+
+**Plan:** §52.6 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- Depth-tracked matching-close-tag scan over nested tables (replace the first-`find(close_tag)` scope at `import_service.py:842-891`)
+- Scope the recolor to genuinely WCAG-failing text; use the design's intended on-dark tint, not literal `#ffffff`
+**Verify:** nested-table fixture (dark wrapper containing a light cell with `#333` text) keeps the light cell readable; 52.1 confirms no spurious recolor.
+**Reduces:** A silent shipped-artifact corruption that even a color-aware metric only catches after this fix.
+**Effort:** ½–1d.
+
+### 52.7 Measurement-Truth, Regression De-Vacuum & Roadmap Reconciliation `[Backend, Documentation]` `[Plan Ready]`
+
+Make the regression suite assert real fidelity, correct the audit doc, and collapse the dual numbering scheme so there is one operative roadmap.
+
+**Plan:** §52.7 of `.agents/plans/52-converter-foundation.md`.
+**Deliverable:**
+- Replace vacuous substring assertions with real color/binding assertions against the 52.1 fixture (`test_converter_data_regression.py:274,291`); document + commit the one un-gated fixture (CI was passing on gitignored fixtures)
+- Add an ingest-capture-vs-Figma-tree delta check (quantifies the upstream loss the system has never measured)
+- Correct `docs/fidelity-gap-audit-findings.md` per the re-audit (three-way loss taxonomy; add RC-A/RC-B; "built+enabled+inert" not "frozen Phase-49"; metric "dimensionally invalid"; narrow the global-PNG claim; "corrected by re-audit" appendix)
+- Supersede the orphaned numbering: banner on `.agents/plans/50-converter-fidelity-master.md` (50–53 labels stale; relabel inert "shipped ✅" rows; mark the 85→99% ladder unfalsifiable); renumber/mark-superseded the `deferred/` 51.x–53.x stubs under the operative 52/53; update `.agents/deferred-items.json` physical-card / "Rule 9" entries to the new numbering
+**Verify:** `make converter-data-regression` asserts a real color divergence is caught (not a substring); doc review confirms no remaining "frozen Phase-49 / trust the 99%" framing.
+**Reduces:** The measurement-trust gap and the two-numbering-scheme debt.
+**Effort:** 1–2d.
+
+---
+
+## Phase 53 — Design→HTML Converter Engine: Fork + Ingest Render + VLM Loop (0/7 subtasks)
+
+The engine decision Phase 52 deliberately deferred. With a real fidelity signal in hand (52.1), choose how to break the fixed-seed structural ceiling (RC-C) and where the never-parsed ingest losses (RC-E) and the dead VLM verify→correct loop (RC-G) get a home. **53.1 is a decision gate** — the rest of the phase forks on its outcome, which is why per-subtask detail past 53.1 is intentionally thin until the fork is chosen (writing it now would repeat the months of planning against a blind metric). Blocks on Phase 52 (no engine work until the metric runs and the bridge is repaired, so the work is driven by measurement rather than assumption).
+
+**Plan:** `.agents/plans/52-converter-foundation.md` §"Phase 53" (outline) + `.agents/plans/50-converter-fidelity-master.md` (the option-(a) Rules 1–11 / composite-slot detail, to be promoted only if the fork selects it). 53.1 produces the chosen sub-plan.
+**Order:** 53.1 (gate) → branch. 53.3/53.5 (ingest render, vectors) and 53.4 (VLM loop) can proceed once the renderer target is fixed.
+**Blocked by:** Phase 52 (metric + bridge).
+**Effort:** TBD at 53.1 (fork-dependent; (a) ≈ weeks, (b)/(c) ≈ larger).
+
+### 53.1 Strategy-Fork Decision + Spike `[Backend]` `[Decision Gate]`
+
+With the working metric, measure and choose the engine direction. Each option implies a different home for RC-E (ingest render) and RC-G (VLM loop), so this must be decided before downstream engine work.
+
+**Plan:** produces a decision doc + the chosen sub-plan.
+**Deliverable:**
+- Spike each option on the 52.1 committed fixture and report measured ΔE + effort:
+  - **(a) Keep fixed-seed + decorate** — promote surviving Rules 1–11 + composite-slot stubs from `50-converter-fidelity-master.md`. Lowest effort; known structural ceiling (RC-C)
+  - **(b) Restore the recursive renderer** — `git show d9132c7c^:app/design_sync/converter.py` (1625 LOC) + re-plumb ingest to persist the `DesignNode` tree. Buys typography/Auto-Layout/gradient fidelity; NOT effects/geometry/pixel
+  - **(c) Per-frame rasterization** for high-loss subtrees — buys pixel fidelity, destroys editable structure + ESP token/personalisation hooks (mutually exclusive with editability per frame)
+- Decision doc with the measured trade-off and the selected sub-plan
+**Verify:** decision recorded; chosen sub-plan written to `.agents/plans/`; stakeholder sign-off.
+**Reduces:** Determines the ceiling of every subsequent engine investment.
+**Effort:** 3–5d (spike).
+
+### 53.2 Renderer / Engine Implementation (per chosen fork) `[Backend]` `[Blocked on 53.1 · Needs Plan]`
+
+Implement the engine direction selected in 53.1. The concrete shape is fork-dependent, so the detailed plan is authored as part of the 53.1 decision doc.
+
+**Plan:** ⏳ defined by the 53.1 sub-plan (fork-dependent).
+**Deliverable:**
+- **(a) keep-seed:** promote Rules 1–11 + composite-slot stubs onto the seed engine (see 53.6)
+- **(b) restore-recursive:** recover `app/design_sync/converter.py` from `git show d9132c7c^`, rewire its callers, and persist the `DesignNode` tree end-to-end so geometry survives to render time
+- **(c) rasterize:** a frame-rasterization renderer for high-loss subtrees, with editable-structure fallback for the rest
+- Whichever fork: wired through the repaired bridge (52.3) + live override surface (52.4)
+**Verify:** 52.1 metric shows measured ΔE improvement vs the pre-fork baseline on the committed fixture; `make converter-data-regression` green.
+**Reduces:** The fixed-seed structural ceiling (RC-C).
+**Effort:** TBD at 53.1 (fork-dependent; (a) smaller, (b)/(c) larger).
+
+### 53.3 Never-Parsed Ingest Render (RC-E) `[Backend]` `[Blocked on 53.1 · Needs Plan]`
+
+Render the data 52.5 began capturing. Several of these are physically unreproducible in table email and ship as documented flat fallbacks (53.7).
+
+**Plan:** ⏳ §"Phase 53" of `.agents/plans/52-converter-foundation.md`; detail finalized post-fork.
+**Deliverable:**
+- Add holding fields on `DesignNode`/Document for effects/blendMode/rotation; parse them at `figma/service.py`
+- Render effects/blendMode as VML/flat fallback; reattach per-node gradient via the 52.5 `node_id`; honor `scaleMode`/`imageTransform` crop window; rotation + z-order/overlap → `frame_export` for non-reproducible subtrees
+**Verify:** per-feature fixtures (translucent-over-color, gradient section, cropped image, rotated badge, overlapping layers) render within ΔE tolerance OR fall back to a frame export; 52.1 confirms.
+**Reduces:** The dominant upstream ingest losses (RC-E).
+**Effort:** TBD at 53.1 (several features physically capped — flat fallbacks).
+
+### 53.4 Revive or Retire the VLM Verify→Correct Loop (RC-G) `[Backend]` `[Blocked on 53.1 · Needs Plan]`
+
+Today the loop only runs on the non-default mjml path and never receives screenshots (`converter_service.py:286,375,396`). Decide at 53.1 whether to revive it on the html path or retire it honestly — no silent "it lifts fidelity to 0.97" claims either way.
+
+**Plan:** ⏳ revive-vs-retire decided at 53.1.
+**Deliverable:**
+- **Revive:** capture per-section screenshots in `import_service`; route the default html path into `_apply_verification`; flip `vlm_verify_enabled` (`config/design_sync.py:58`)
+- **Retire:** delete the dead `_apply_verification` wiring + remove the master-plan/docs claims that credit it
+**Verify:** if revived — a known-divergent fixture triggers ≥1 correction and the 52.1 score rises; if retired — no dead loop path remains and no doc credits it.
+**Reduces:** RC-G — a corrective loop credited for fidelity it never delivered.
+**Effort:** 2–4d (revive) / ½d (retire).
+
+### 53.5 Decorative VECTOR Recovery `[Backend]` `[Blocked on 53.1 · Needs Plan]`
+
+Standalone VECTOR/LINE nodes (inline icons, dividers, vector logomarks) currently fall through extraction (`layout_analyzer.py:1088-1167`) with no `DocumentVector` class.
+
+**Plan:** ⏳ rasterize-vs-inline decided with 52.1 data.
+**Deliverable:**
+- Detect standalone VECTOR/LINE nodes that are neither TEXT nor IMAGE-fill
+- Add a `DocumentVector` model class OR rasterize vector subtrees via per-frame export / inline encoded PNG
+**Verify:** fixture with an inline icon + a vector divider renders them (not dropped); 52.1 confirms.
+**Reduces:** Silent loss of inline icons / dividers / vector logomarks.
+**Effort:** 1–2d.
+
+### 53.6 Promote Surviving Rules / Composite Slots `[Backend]` `[Blocked on 53.1 · Needs Plan]`
+
+Promote the Rules 1–11 + composite-slot `deferred/` stubs that survive the fork — wired to the live override surface (52.4) and measured by the real 52.1 metric, not the blind SSIM that produced the master plan's unfalsifiable 85→99% ladder.
+
+**Plan:** ⏳ promote from `.agents/plans/deferred/` (51.1–53.7 stubs) + `.agents/plans/50-converter-fidelity-master.md` — only the rules the fork keeps; each stub gets a detailed plan at promotion.
+**Deliverable:**
+- Composite-slot infrastructure (`deferred/51.1`) if the fork needs it
+- Per surviving rule: promote the stub → implement → wire to the override surface (52.4)
+**Verify:** each promoted rule measured by the real 52.1 metric; regression fixtures cover it.
+**Reduces:** The remaining structural/role gaps the override surface alone can't close.
+**Effort:** TBD at 53.1 (rule-by-rule).
+
+### 53.7 Honest Per-Client Ceiling Doc `[Documentation]` `[Blocked on 53.1 · Needs Plan]`
+
+Publish the contractual ceiling once 52.1 produces real per-client numbers.
+
+**Plan:** ⏳ authored after 52.1's first multi-client scoring run.
+**Deliverable:**
+- Contractual ceiling doc: Outlook ~95% floor; the explicit "cannot be reproduced in email" list (shadows/gradients/SVG/blend/rotation/overlap → flat fallbacks); measured per-client fidelity from 52.1
+- Replace all "99.9%" framing in `docs/` + the master plan with measured numbers
+**Verify:** doc reviewed; no "99.9% / aspirational ladder" language remains in `docs/` or `.agents/plans/50-converter-fidelity-master.md`.
+**Reduces:** The expectation/trust gap.
+**Effort:** ½–1d.

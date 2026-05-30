@@ -1,5 +1,9 @@
 # Phase 50–53: Design-to-HTML Converter Fidelity Master Plan
 
+> **⚠️ SUPERSEDED NUMBERING (2026-05-30).** The "Phase 50–53" labels in this plan are **stale** — they predate TODO.md reassigning 50→Tech Debt and 51→Agentic Security. They never entered the operative backlog. The converter-fidelity roadmap now lives in `TODO.md` as **Phase 52 (Foundation)** + **Phase 53 (Engine)**; full plan in `.agents/plans/52-converter-foundation.md`.
+>
+> **⚠️ PREMISE INVALIDATED by re-audit (`wf_fa48d17b-6ea`).** This plan's Rules 1–11 + composite-slot work is **neutered before it can fire**: the `EmailDesignDocument.to_email_section` reader bridge nulls `text_color`/`text_align`/`corner_radius_spec`/CTA-stroke (the inputs these rules consume) on every production path, so Phase 50 is *built + enabled-by-default + inert*. The "Current State ✅" rows below (CTA fidelity, Rule-10 per-corner radii, token overrides) **do not affect shipped output** until the bridge is repaired (Phase 52.2/52.3). The **85→99% Success-Metrics ladder is an unfalsifiable projection** — it is computed by the grayscale/blurred/gmail-only/off-by-default SSIM that the re-audit proves cannot see color, gradient, shadow, or sub-pixel spacing. Promote any rule from here **only via Phase 53.6**, after the bridge is fixed (52) and the metric is real (52.1).
+
 ## Source
 
 `docs/architecture/opus-figma-to-html-process.md` — direct-Opus conversion of LEGO Insiders Halloween (Figma `2833:1869`) vs. the email-hub `design_sync` converter. Documents 12 gaps, 11 detection rules, and a 5-stage repair loop.
