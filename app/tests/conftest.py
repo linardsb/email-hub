@@ -179,3 +179,40 @@ async def db(_integration_engine: AsyncEngine) -> AsyncGenerator[AsyncSession, N
             await session.execute(text(f"TRUNCATE {table_list} RESTART IDENTITY CASCADE"))
             await session.commit()
         yield session
+
+
+@pytest.fixture
+def embedding_stub(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Deterministic zero-vector embedding provider for tenant-isolation tests.
+
+    `POST /memory/` builds its `MemoryService` via `_get_service`, which calls
+    `get_embedding_provider(settings)` (`app/memory/routes.py:27`) and embeds the
+    content before INSERT. The integration job has neither an OpenAI API key nor
+    sentence-transformers, so the real provider 401s. This stub lets the memory
+    row exercise the *scoping* path (the thing under test) without a live
+    embedding backend.
+    """
+
+    class _StubProvider:
+        # Signature MUST match the EmbeddingProvider protocol
+        # (`app/knowledge/embedding.py:26`): embed(texts) -> list[list[float]].
+        # `MemoryService.store` does `await self.embedding.embed([data.content])`
+        # then reads `embeddings[0]` (`service.py:49-50`) — a flat list would
+        # store the scalar 0.0, not a vector. Dim is 1024 to match the
+        # `Vector(1024)` column (`app/memory/models.py:30`); pgvector rejects a
+        # dimension mismatch on INSERT.
+        async def embed(self, texts: list[str]) -> list[list[float]]:
+            return [[0.0] * 1024 for _ in texts]
+
+    def _stub_factory(_settings: object) -> _StubProvider:
+        return _StubProvider()
+
+    # Patch the name in the ROUTE module, not the source module:
+    # `app/memory/routes.py:12` does `from app.knowledge.embedding import
+    # get_embedding_provider`, binding the symbol into `app.memory.routes` at
+    # import time; `_get_service` (`routes.py:27`) calls that route-local name.
+    # Patching `app.knowledge.embedding` would not rebind it. Overriding the
+    # `_get_service` Depends is wrong too — it wraps `get_scoped_db`, the exact
+    # scoping this test asserts. A typed factory (not a lambda) keeps the patched
+    # value fully typed for pyright (`reportUnknownArgumentType`).
+    monkeypatch.setattr("app.memory.routes.get_embedding_provider", _stub_factory)
