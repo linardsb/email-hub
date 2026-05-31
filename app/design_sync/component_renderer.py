@@ -197,6 +197,78 @@ _BODY_CLASS_ALIGN_INSERT_RE = re.compile(
 # though the matcher already constrains the emitted override.
 _ALLOWED_TEXT_ALIGN = frozenset({"left", "center", "right", "justify"})
 
+
+@dataclass(frozen=True)
+class _PropRegexSet:
+    """Replace + inject regex pair for one CSS prop on heading or body targets.
+
+    Phase 52.4 typography helpers. ``slot_replace``/``class_replace`` rewrite an
+    existing declaration; ``slot_insert``/``class_insert`` add one when absent,
+    guarded by a negative lookahead so a cell matched by both ``data-slot`` and
+    ``class`` is never injected twice.
+    """
+
+    slot_replace: re.Pattern[str]
+    class_replace: re.Pattern[str]
+    slot_insert: re.Pattern[str]
+    class_insert: re.Pattern[str]
+
+
+def _prop_regex_set(prop: str, *, slot_alt: str, class_alt: str) -> _PropRegexSet:
+    """Build the replace-or-inject regex set for ``prop`` on one target group.
+
+    Mirrors the hand-written ``text-align`` machinery (slot replace, class
+    replace, slot insert, class insert) so the typography props reuse one
+    parametrised builder instead of four literal regexes each.
+    """
+    p = re.escape(prop)
+    return _PropRegexSet(
+        slot_replace=re.compile(
+            rf'(<td\b[^>]*data-slot="(?:{slot_alt})"[^>]*style="[^"]*?)'
+            rf"{p}:\s*[^;\"]+([;\"\'])"
+        ),
+        class_replace=re.compile(
+            rf'(<(?:td|th|a|span)\b[^>]*class="[^"]*(?:{class_alt})[^"]*"[^>]*style="[^"]*?)'
+            rf"{p}:\s*[^;\"]+([;\"\'])"
+        ),
+        slot_insert=re.compile(
+            rf'(<td\b[^>]*data-slot="(?:{slot_alt})"[^>]*style=")' rf'(?![^"]*{p}:)'
+        ),
+        class_insert=re.compile(
+            rf'(<(?:td|th|a|span)\b[^>]*class="[^"]*(?:{class_alt})[^"]*"[^>]*style=")'
+            rf'(?![^"]*{p}:)'
+        ),
+    )
+
+
+# Typography props applied to heading/body cells (Phase 52.4). Each maps to a
+# replace-or-inject regex set per target group, built once at import time.
+_TYPOGRAPHY_PROPS = (
+    "font-weight",
+    "line-height",
+    "letter-spacing",
+    "text-transform",
+    "text-decoration",
+)
+_HEADING_PROP_RE: dict[str, _PropRegexSet] = {
+    prop: _prop_regex_set(prop, slot_alt=_HEADING_SLOTS, class_alt=_HEADING_CLASS_ALT)
+    for prop in _TYPOGRAPHY_PROPS
+}
+_BODY_PROP_RE: dict[str, _PropRegexSet] = {
+    prop: _prop_regex_set(prop, slot_alt=_BODY_SLOTS, class_alt=_BODY_CLASS_ALT)
+    for prop in _TYPOGRAPHY_PROPS
+}
+
+# Validators for the 52.4 typography props. ``font-weight``/``line-height`` are
+# unsigned; ``letter-spacing`` may be negative (e.g. ``-0.32px`` from tight
+# tracking). Enum props use allowlists. A value failing its check is dropped so
+# malformed design data can never reach rendered CSS.
+_FONT_WEIGHT_VALUE_RE = re.compile(r"^[1-9]\d{0,3}$")
+_LINE_HEIGHT_VALUE_RE = re.compile(r"^\d+(?:\.\d+)?px$")
+_LETTER_SPACING_VALUE_RE = re.compile(r"^-?\d+(?:\.\d+)?px$")
+_ALLOWED_TEXT_TRANSFORM = frozenset({"uppercase", "lowercase", "capitalize", "none"})
+_ALLOWED_TEXT_DECORATION = frozenset({"underline", "line-through", "none", "overline"})
+
 # Background container classes on outer <table>
 _BG_CLASSES = (
     "textblock-bg",
@@ -683,6 +755,8 @@ class ComponentRenderer:
                 result = self._replace_heading_align(result, val)
             elif target == "_body" and prop == "text-align":
                 result = self._replace_body_align(result, val)
+            elif target in ("_heading", "_body") and prop in _TYPOGRAPHY_PROPS:
+                result = self._apply_typography_prop(result, target, prop, val)
             elif target == "_cell":
                 # Replace padding on the first td with padding
                 result = self._replace_first_css_prop(result, prop, val)
@@ -791,6 +865,51 @@ class ComponentRenderer:
         result = _BODY_CLASS_ALIGN_RE.sub(rf"\g<1>text-align:{align}\g<2>", result)
         result = _BODY_SLOT_ALIGN_INSERT_RE.sub(rf"\g<1>text-align:{align};", result)
         return _BODY_CLASS_ALIGN_INSERT_RE.sub(rf"\g<1>text-align:{align};", result)
+
+    @staticmethod
+    def _validate_typography_value(prop: str, value: str) -> str | None:
+        """Sanitise a typography prop value; return ``None`` to drop it.
+
+        Defence-in-depth against CSS injection even though the matcher already
+        constrains emission. ``letter-spacing`` accepts a leading ``-``.
+        """
+        if prop == "font-weight":
+            return value if _FONT_WEIGHT_VALUE_RE.match(value) else None
+        if prop == "line-height":
+            return value if _LINE_HEIGHT_VALUE_RE.match(value) else None
+        if prop == "letter-spacing":
+            return value if _LETTER_SPACING_VALUE_RE.match(value) else None
+        if prop == "text-transform":
+            lowered = value.lower()
+            return lowered if lowered in _ALLOWED_TEXT_TRANSFORM else None
+        if prop == "text-decoration":
+            lowered = value.lower()
+            return lowered if lowered in _ALLOWED_TEXT_DECORATION else None
+        return None
+
+    def _apply_typography_prop(
+        self,
+        html_str: str,
+        target: str,
+        prop: str,
+        value: str,
+    ) -> str:
+        """Replace-or-inject a typography prop on heading/body cells (Phase 52.4).
+
+        Generalises the ``text-align`` four-pass (slot replace, class replace,
+        slot insert, class insert) over the typography prop set. The insert
+        passes carry a negative lookahead so a cell matched by both ``data-slot``
+        and ``class`` is never double-injected. Invalid values are dropped.
+        """
+        safe = self._validate_typography_value(prop, value)
+        if safe is None:
+            return html_str
+        escaped = html.escape(safe, quote=True)
+        regexes = _HEADING_PROP_RE[prop] if target == "_heading" else _BODY_PROP_RE[prop]
+        result = regexes.slot_replace.sub(rf"\g<1>{prop}:{escaped}\g<2>", html_str)
+        result = regexes.class_replace.sub(rf"\g<1>{prop}:{escaped}\g<2>", result)
+        result = regexes.slot_insert.sub(rf"\g<1>{prop}:{escaped};", result)
+        return regexes.class_insert.sub(rf"\g<1>{prop}:{escaped};", result)
 
     def _replace_bg_class_color(self, html_str: str, color: str) -> str:
         """Replace background-color on elements with background container classes."""

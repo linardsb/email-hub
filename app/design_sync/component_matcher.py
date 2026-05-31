@@ -660,6 +660,12 @@ def _is_placeholder(text: str) -> bool:
 
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}){1,2}$")
 
+# Allowlists for typographic enum properties (Phase 52.4). Values outside the
+# set are dropped so a malformed ``text_transform``/``text_decoration`` from the
+# design can never reach the rendered CSS (defence-in-depth against injection).
+_ALLOWED_TEXT_TRANSFORM = frozenset({"uppercase", "lowercase", "capitalize", "none"})
+_ALLOWED_TEXT_DECORATION = frozenset({"underline", "line-through", "none", "overline"})
+
 
 def _safe_color(color: str | None, fallback: str = "#333333") -> str:
     """Validate hex color, returning fallback if malformed."""
@@ -1419,6 +1425,56 @@ def _build_column_fills_from_content_groups(
     return fills
 
 
+def _typography_overrides(
+    texts: list[TextBlock],
+    *,
+    is_heading: bool,
+    target: str,
+) -> list[TokenOverride]:
+    """Emit the typographic overrides from the first heading/body text.
+
+    Covers font-weight / line-height / letter-spacing / text-transform /
+    text-decoration, taken from the first heading- or body-class text that
+    declares each property.
+
+    Each property is sourced independently from the first text carrying it
+    (mirroring the existing font/color blocks). ``letter-spacing: 0`` is the
+    typographic no-op default and is skipped. Numeric values are rounded for
+    readability; enum values are allowlist-validated. ``target`` is the slot the
+    renderer dispatches on (``_heading`` / ``_body``).
+    """
+    overrides: list[TokenOverride] = []
+
+    def _first(predicate: Callable[[TextBlock], bool]) -> TextBlock | None:
+        return next((t for t in texts if t.is_heading == is_heading and predicate(t)), None)
+
+    weight_text = _first(lambda t: t.font_weight is not None)
+    if weight_text is not None and weight_text.font_weight is not None:
+        overrides.append(TokenOverride("font-weight", target, str(weight_text.font_weight)))
+
+    lh_text = _first(lambda t: t.line_height is not None)
+    if lh_text is not None and lh_text.line_height is not None:
+        overrides.append(TokenOverride("line-height", target, f"{round(lh_text.line_height)}px"))
+
+    ls_text = _first(lambda t: t.letter_spacing not in (None, 0.0))
+    if ls_text is not None and ls_text.letter_spacing is not None:
+        overrides.append(TokenOverride("letter-spacing", target, f"{ls_text.letter_spacing:.2f}px"))
+
+    tt_text = _first(lambda t: t.text_transform is not None)
+    if tt_text is not None and tt_text.text_transform is not None:
+        value = tt_text.text_transform.lower()
+        if value in _ALLOWED_TEXT_TRANSFORM:
+            overrides.append(TokenOverride("text-transform", target, value))
+
+    td_text = _first(lambda t: t.text_decoration is not None)
+    if td_text is not None and td_text.text_decoration is not None:
+        value = td_text.text_decoration.lower()
+        if value in _ALLOWED_TEXT_DECORATION:
+            overrides.append(TokenOverride("text-decoration", target, value))
+
+    return overrides
+
+
 def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
     """Extract token overrides from section properties."""
     overrides: list[TokenOverride] = []
@@ -1513,6 +1569,15 @@ def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
         if not text.is_heading and text.text_color and _HEX_COLOR_RE.match(text.text_color):
             overrides.append(TokenOverride("color", "_body", text.text_color))
             break
+
+    # Typography overrides (Phase 52.4) — font-weight / line-height /
+    # letter-spacing from the typography trio, plus text-transform /
+    # text-decoration. First-heading / first-body targeting mirrors the
+    # font/color blocks above; per-run targeting is deferred to 52.4b.
+    # Each value is numerically coerced or allowlist-validated to prevent
+    # CSS injection, matching the ``_HEX_COLOR_RE`` guard on colors.
+    overrides.extend(_typography_overrides(section.texts, is_heading=True, target="_heading"))
+    overrides.extend(_typography_overrides(section.texts, is_heading=False, target="_body"))
 
     # Padding overrides
     padding_parts: list[str] = []
