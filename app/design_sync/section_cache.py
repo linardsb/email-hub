@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 from redis.exceptions import RedisError
 
@@ -36,7 +36,7 @@ class SectionCacheEntry:
         )
 
     @classmethod
-    def from_json(cls, raw: str) -> SectionCacheEntry:
+    def from_json(cls, raw: str | bytes) -> SectionCacheEntry:
         """Deserialize from Redis JSON string.
 
         Raises ValueError on malformed data so callers can handle gracefully.
@@ -282,10 +282,7 @@ class SectionCache:
             pattern = f"{_REDIS_KEY_PREFIX}:{connection_id}:*"
             cursor = 0
             while True:
-                scan_result = cast(
-                    tuple[int, list[str | bytes]],
-                    await redis.scan(cursor=cursor, match=pattern, count=100),  # pyright: ignore[reportUnknownMemberType]
-                )
+                scan_result = await redis.scan(cursor=cursor, match=pattern, count=100)  # pyright: ignore[reportUnknownMemberType]
                 cursor, keys = scan_result
                 if keys:
                     await redis.delete(*keys)

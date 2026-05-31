@@ -42,9 +42,7 @@ async def redis_available() -> bool:
     """Check if Redis is reachable. Returns False on connection failure."""
     try:
         client = await get_redis()
-        ping_result = client.ping()
-        if not isinstance(ping_result, bool):
-            await ping_result
+        await client.ping()
         return True
     except Exception:
         logger.warning(

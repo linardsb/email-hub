@@ -317,7 +317,7 @@ async def export_failure_patterns_to_graph(
                 "source": "failure_pattern_export",
             }
         )
-        await redis.rpush("graph:documents:pending", payload)  # type: ignore[misc]
+        await redis.rpush("graph:documents:pending", payload)
 
         logger.info(
             "failure_patterns.graph_queued",
