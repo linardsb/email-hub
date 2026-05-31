@@ -686,6 +686,78 @@ def _safe_url(url: str | None) -> str:
     return "#"
 
 
+_ALLOWED_TEXT_ALIGN = frozenset({"left", "center", "right", "justify"})
+
+
+def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
+    """Build a column-text ``<tr><td>…</td></tr>`` row from design properties.
+
+    Shared by ``_build_column_fill_html`` (real fixtures) and the round-robin
+    fallback in ``_build_column_fills`` so the two cannot drift. Mirrors the
+    validation in ``_typography_overrides`` byte-for-byte (font-weight ``str``,
+    line-height ``round(px)``, letter-spacing ``{:.2f}px`` skipping ``0.0``,
+    transform/decoration/align ``.lower()`` + allowlist, color ``_safe_color``).
+    ``font-family`` is passed through unvalidated — matching the existing
+    override path (``_build_token_overrides`` line ~1542) which also emits it
+    raw — with only a web-safe fallback appended. Falls back to the pre-52.x
+    hardcoded heading/body defaults when a property is absent.
+    """
+    decls = ["padding:0 0 8px"]
+
+    # font-family — design value with a web-safe fallback appended, else Arial.
+    # Escaped (quote=True) so a font name can't break out of the style attr —
+    # the override path is escaped equivalently by the renderer (_replace_heading_font).
+    if text.font_family:
+        family = html.escape(text.font_family, quote=True)
+        if "," not in family:
+            family = f"{family},sans-serif"
+        decls.append(f"font-family:{family}")
+    else:
+        decls.append("font-family:Arial,sans-serif")
+
+    # font-size — keep the 18/14 heading/body fallback.
+    size = int(text.font_size) if text.font_size else (18 if is_heading else 14)
+    decls.append(f"font-size:{size}px")
+
+    # font-weight — design value, else heading=bold / body=normal.
+    if text.font_weight is not None:
+        decls.append(f"font-weight:{text.font_weight}")
+    elif is_heading:
+        decls.append("font-weight:bold")
+
+    decls.append(f"color:{_safe_color(text.text_color)}")
+
+    # line-height — design value as round(px), else unitless 1.3/1.5 default.
+    if text.line_height is not None:
+        decls.append(f"line-height:{round(text.line_height)}px")
+    else:
+        decls.append(f"line-height:{'1.3' if is_heading else '1.5'}")
+
+    # text-align — only the four valid CSS keywords.
+    align = text.text_align.lower() if text.text_align else None
+    if align in _ALLOWED_TEXT_ALIGN:
+        decls.append(f"text-align:{align}")
+
+    # letter-spacing — skip the 0.0 no-op.
+    if text.letter_spacing not in (None, 0.0):
+        decls.append(f"letter-spacing:{text.letter_spacing:.2f}px")
+
+    # text-transform / text-decoration — allowlist-validated.
+    if text.text_transform is not None:
+        tt = text.text_transform.lower()
+        if tt in _ALLOWED_TEXT_TRANSFORM:
+            decls.append(f"text-transform:{tt}")
+
+    if text.text_decoration is not None:
+        td = text.text_decoration.lower()
+        if td in _ALLOWED_TEXT_DECORATION:
+            decls.append(f"text-decoration:{td}")
+
+    decls.append("mso-line-height-rule:exactly")
+    style = ";".join(decls) + ";"
+    return f'<tr><td style="{style}">{_safe_text(text.content)}</td></tr>'
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -703,20 +775,7 @@ def _build_column_fill_html(
     for text in group.texts:
         if _is_placeholder(text.content):
             continue
-        color = _safe_color(text.text_color)
-        escaped = _safe_text(text.content)
-        if text.is_heading:
-            size = int(text.font_size) if text.font_size else 18
-            parts.append(
-                f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;font-size:{size}px;'
-                f'font-weight:bold;color:{color};line-height:1.3;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-            )
-        else:
-            size = int(text.font_size) if text.font_size else 14
-            parts.append(
-                f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;font-size:{size}px;'
-                f'color:{color};line-height:1.5;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-            )
+        parts.append(_column_text_row(text, is_heading=text.is_heading))
     for btn in group.buttons:
         if _is_placeholder(btn.text):
             continue
@@ -1362,16 +1421,7 @@ def _build_column_fills(
             if (i % col_count) + 1 == col_idx:
                 if _is_placeholder(text.content):
                     continue
-                color = _safe_color(text.text_color)
-                escaped = _safe_text(text.content)
-                if text.is_heading:
-                    col_texts.append(
-                        f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;font-weight:bold;color:{color};line-height:1.3;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-                    )
-                else:
-                    col_texts.append(
-                        f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;color:{color};line-height:1.5;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-                    )
+                col_texts.append(_column_text_row(text, is_heading=text.is_heading))
 
         col_images: list[str] = []
         for i, img in enumerate(section.images):
