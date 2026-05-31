@@ -257,6 +257,62 @@
           "items": { "type": "number" },
           "maxItems": 100,
           "default": []
+        },
+        "child_content_groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/content_group" },
+          "maxItems": 50,
+          "default": []
+        },
+        "boundary_above": { "type": ["string", "null"], "default": null, "maxLength": 50 },
+        "boundary_below": { "type": ["string", "null"], "default": null, "maxLength": 50 },
+        "sampled_top_color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "sampled_bottom_color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "container_bg": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "parent_wrapper_id": { "type": ["string", "null"], "default": null, "maxLength": 200 },
+        "inner_bg": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "inner_radius": { "type": ["number", "null"], "default": null },
+        "inner_card_fixed_width": { "type": ["integer", "null"], "default": null },
+        "is_physical_card_surface": { "type": "boolean", "default": false },
+        "physical_card_signals": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 100 },
+          "maxItems": 50,
+          "default": []
+        },
+        "vlm_classification": { "type": ["string", "null"], "default": null, "maxLength": 50 },
+        "vlm_confidence": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "default": null
+        }
+      }
+    },
+    "content_group": {
+      "type": "object",
+      "required": ["frame_node_id", "frame_name"],
+      "additionalProperties": false,
+      "properties": {
+        "frame_node_id": { "type": "string", "maxLength": 200 },
+        "frame_name": { "type": "string", "maxLength": 200 },
+        "texts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/text" },
+          "maxItems": 50,
+          "default": []
+        },
+        "images": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/image" },
+          "maxItems": 50,
+          "default": []
+        },
+        "buttons": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/button" },
+          "maxItems": 30,
+          "default": []
         }
       }
     },
@@ -268,6 +324,36 @@
         "right": { "type": "number", "minimum": 0, "default": 0 },
         "bottom": { "type": "number", "minimum": 0, "default": 0 },
         "left": { "type": "number", "minimum": 0, "default": 0 }
+      }
+    },
+    "style_run": {
+      "type": "object",
+      "required": ["start", "end"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 },
+        "bold": { "type": "boolean", "default": false },
+        "italic": { "type": "boolean", "default": false },
+        "underline": { "type": "boolean", "default": false },
+        "strikethrough": { "type": "boolean", "default": false },
+        "color_hex": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "font_size": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "link_url": { "type": ["string", "null"], "default": null, "maxLength": 2000 }
+      }
+    },
+    "corner_radius_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scalar": { "type": ["number", "null"], "default": null },
+        "per_corner": {
+          "type": ["array", "null"],
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4,
+          "default": null
+        }
       }
     },
     "text": {
@@ -283,7 +369,19 @@
         "font_weight": { "type": ["integer", "null"], "default": null },
         "line_height": { "type": ["number", "null"], "minimum": 0, "default": null },
         "letter_spacing": { "type": ["number", "null"], "default": null },
-        "color": { "type": ["string", "null"], "default": null, "maxLength": 20 }
+        "color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "text_align": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "text_transform": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "text_decoration": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "hyperlink": { "type": ["string", "null"], "default": null, "maxLength": 2000 },
+        "role_hint": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "layout_align": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "style_runs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/style_run" },
+          "maxItems": 200,
+          "default": []
+        }
       }
     },
     "image": {
@@ -295,7 +393,12 @@
         "node_name": { "type": "string", "maxLength": 200 },
         "width": { "type": ["number", "null"], "default": null },
         "height": { "type": ["number", "null"], "default": null },
-        "is_background": { "type": "boolean", "default": false }
+        "is_background": { "type": "boolean", "default": false },
+        "export_node_id": { "type": ["string", "null"], "default": null, "maxLength": 200 },
+        "corner_radius_spec": {
+          "oneOf": [{ "$ref": "#/$defs/corner_radius_spec" }, { "type": "null" }],
+          "default": null
+        }
       }
     },
     "button": {
@@ -306,7 +409,18 @@
         "node_id": { "type": "string", "maxLength": 200 },
         "text": { "type": "string", "maxLength": 500 },
         "width": { "type": ["number", "null"], "default": null },
-        "height": { "type": ["number", "null"], "default": null }
+        "height": { "type": ["number", "null"], "default": null },
+        "url": { "type": ["string", "null"], "default": null, "maxLength": 2000 },
+        "border_radius": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "fill_color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "text_color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "stroke_color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
+        "stroke_weight": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "icon_node_id": { "type": ["string", "null"], "default": null, "maxLength": 200 },
+        "corner_radius_spec": {
+          "oneOf": [{ "$ref": "#/$defs/corner_radius_spec" }, { "type": "null" }],
+          "default": null
+        }
       }
     },
     "column": {
