@@ -1026,31 +1026,31 @@ class ComponentRenderer:
         safe_val = html.escape(value, quote=True)
         safe_node = re.escape(node_id)
 
-        # Replace existing prop on the matching <img> if present
-        existing = re.compile(
-            rf'(<img\b[^>]*\bdata-node-id="{safe_node}"[^>]*style="[^"]*?){safe_prop}:'
-            rf'\s*[^;"]+(;?)'
-        )
-        result, replaced = existing.subn(
-            rf"\g<1>{prop}:{safe_val}\g<2>",
-            html_str,
-        )
-        if not replaced:
-            # Inject into existing style attr
-            inject = re.compile(
-                rf'(<img\b[^>]*\bdata-node-id="{safe_node}"[^>]*style=")'
-                rf'(?![^"]*{safe_prop}:)'
-            )
-            result, injected = inject.subn(rf"\g<1>{prop}:{safe_val};", result)
-            if not injected:
-                # No style attr — add one before the closing >
-                add = re.compile(
-                    rf'(<img\b[^>]*\bdata-node-id="{safe_node}"(?:(?!style=)[^>])*?)(/?>)'
-                )
-                result = add.sub(
-                    rf'\g<1> style="{prop}:{safe_val};"\g<2>',
-                    result,
-                )
+        # Merge the longhand into the matching <img>'s own style attribute,
+        # regardless of whether ``style=`` precedes or follows ``data-node-id``
+        # (attribute order varies by template). Operating on the whole tag is
+        # what prevents emitting a second ``style=`` attribute — the prior
+        # ``data-node-id"[^>]*style="`` form silently missed when ``style``
+        # came first and fell through to appending a duplicate attribute.
+        img_tag = re.compile(rf'<img\b[^>]*\bdata-node-id="{safe_node}"[^>]*?/?>')
+        style_decl = re.compile(r'(style=")([^"]*)(")')
+        prop_in_style = re.compile(rf'{safe_prop}:\s*[^;"]+;?')
+
+        def _merge_into_img(m: re.Match[str]) -> str:
+            tag = m.group(0)
+            sm = style_decl.search(tag)
+            if sm is None:
+                # No style attr at all — add one before the closing > / />
+                return re.sub(r"(/?>)\Z", rf' style="{prop}:{safe_val};"\g<1>', tag, count=1)
+            body = sm.group(2)
+            if prop_in_style.search(body):
+                new_body = prop_in_style.sub(f"{prop}:{safe_val};", body, count=1)
+            else:
+                sep = "" if (body == "" or body.rstrip().endswith(";")) else ";"
+                new_body = f"{body}{sep}{prop}:{safe_val};"
+            return tag[: sm.start(2)] + new_body + tag[sm.end(2) :]
+
+        result = img_tag.sub(_merge_into_img, html_str)
 
         # Stamp overflow:hidden on the wrapping <td> when missing
         td_pattern = re.compile(
