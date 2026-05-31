@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@email-hub/typescript-config": "workspace:*",
-    "@hey-api/openapi-ts": "^0.97.2",
+    "@hey-api/openapi-ts": "^0.97.3",
     "typescript": "^6.0.3"
   }
 }
