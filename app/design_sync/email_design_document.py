@@ -692,7 +692,8 @@ class DocumentSection:
                     font_weight=t.font_weight,
                     line_height=t.line_height,
                     letter_spacing=t.letter_spacing,
-                    text_color=getattr(t, "text_color", None),
+                    text_color=t.color,
+                    text_align=t.text_align,
                 )
                 for t in self.texts
             ],
@@ -712,7 +713,9 @@ class DocumentSection:
                     text=b.text,
                     width=b.width,
                     height=b.height,
-                    fill_color=getattr(b, "fill_color", None),
+                    fill_color=b.fill_color,
+                    url=b.url,
+                    border_radius=b.border_radius,
                 )
                 for b in self.buttons
             ],
@@ -740,7 +743,8 @@ class DocumentSection:
                             font_weight=t.font_weight,
                             line_height=t.line_height,
                             letter_spacing=t.letter_spacing,
-                            text_color=getattr(t, "text_color", None),
+                            text_color=t.color,
+                            text_align=t.text_align,
                         )
                         for t in c.texts
                     ],
@@ -760,7 +764,9 @@ class DocumentSection:
                             text=b.text,
                             width=b.width,
                             height=b.height,
-                            fill_color=getattr(b, "fill_color", None),
+                            fill_color=b.fill_color,
+                            url=b.url,
+                            border_radius=b.border_radius,
                         )
                         for b in c.buttons
                     ],
