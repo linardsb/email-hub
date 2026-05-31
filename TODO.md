@@ -32,12 +32,12 @@ Single cross-phase sequence of every remaining task, in exact execution order. *
 | 11 | **51.5** | Toxic-combination policy DSL | Backend, Security | Ready | 2–3d |
 | 12 | **51.6** | HITL cryptographic signatures | Backend, Frontend, Security | Ready | 1–2d |
 | 13 | **51.7** | Infra-level kill + sandboxed tools *(blocked on 51.4)* | Backend, DevOps, Security | Ready | 3–5d |
-| 14 | **52.1** | Repair & activate the fidelity metric | Backend | Ready | 3–4d |
-| 15 | **52.2** | Serializer bridge Tier-1 (RC-A/RC-B core) | Backend | Ready | ½d |
-| 16 | **52.3** | Serializer bridge Tier-2 + JSON schema | Backend | Ready | 2–3d |
-| 17 | **52.4** | Widen override allowlist (typography) | Backend | Ready | 2–3d |
+| 14 | **52.1** | Repair & activate the fidelity metric | Backend | ⏳ **Partial** (metric correct; wiring remains) | 3–4d |
+| 15 | **52.2** | Serializer bridge Tier-1 (RC-A/RC-B core) | Backend | ✅ **Done** `d6d1854d` | ½d |
+| 16 | **52.3** | Serializer bridge Tier-2 + JSON schema | Backend | ✅ **Done** `c4837dd0` | 2–3d |
+| 17 | **52.4** | Widen override allowlist (typography) | Backend | ✅ **Done** `1b3fcbea`+ | 2–3d |
 | 18 | **52.5** | Ingest correctness *(∥ after 52.1)* | Backend | Ready | 2–3d |
-| 19 | **52.6** | Fix `_fix_text_contrast` *(∥ after 52.1)* | Backend | Ready | ½–1d |
+| 19 | **52.6** | Fix `_fix_text_contrast` *(∥ after 52.1)* | Backend | ✅ **Done** `2f28d880` | ½–1d |
 | 20 | **52.7** | Measurement-truth + regression + supersede | Backend, Docs | Ready | 1–2d |
 | 21 | **53.1** | Strategy-fork decision + spike **← GATE** | Backend | Ready (outline) | 3–5d |
 | 22 | **53.2** | Renderer / engine implementation (per fork) | Backend | Needs plan @ 53.1 | TBD |
@@ -333,7 +333,9 @@ Move agent MCP tool execution into a separate sidecar process (`services/tool-ru
 
 ---
 
-## Phase 52 — Design→HTML Converter Foundation: Measure + Un-Inert (0/7 subtasks)
+## Phase 52 — Design→HTML Converter Foundation: Measure + Un-Inert (4/7 done; 52.1 partial)
+
+> **STATUS 2026-05-31** (branch `tech-debt/phase-52-converter-foundation`, 11 commits, not yet merged). The root cause is fixed and **proven on the 6 real fixtures** (`data/debug/5–10`): the bridge dropped 217 colors + 189 text-aligns + 18 CTA radii (424 props) → **now 0**; design color/align/typography/CTA-radius/Rule-10 corner-radius render in final HTML, incl. multi-column. ✅ **Done:** 52.2, 52.3 (+round-trip property test), 52.4 (+ emergent 52.4a text-align renderer arm, 52.4c Rule-10 double-`style=` fix, 52.4d `col_N` multi-column text). ⏳ **Partial:** 52.1 (metric now color-aware/min/no-blur — but UNWIRED; needs image registration). ⬜ **Remaining:** **52.5** ingest, **52.7** truth+docs, **52.1-finish** (registration+CI wiring), **52.4b** per-run typography targeting. Gates green: `make types` 0 err · `make test` 8115 · design_sync 1852 · snapshots 35 · golden 26 · security-check ✓ · migration-lint ✓. Full detail in `HANDOFF.md`. **Logical order for the remainder is in the per-subtask notes below + the bottom of this phase.**
 
 Close the real reason Figma→email fidelity has not moved in months. A re-verification of `docs/fidelity-gap-audit-findings.md` (11-finder + adversarial workflow `wf_fa48d17b-6ea`, every root cause confirmed at `file:line`) found that the shipped Phase 49/50 fidelity logic is **built, enabled-by-default, and inert**: the serializer bridge `EmailDesignDocument.to_email_section` silently nulls the very fields the overrides consume (RC-A: `text_color` is *always* `None` because the reader does `getattr(t,"text_color",None)` on a field named `color`; RC-B: it also drops `text_align`/`url`/`border_radius`/`corner_radius_spec`/stroke on every path). And the only fidelity metric that can be turned on is **color-blind, blurred, gmail-only, mean-aggregated, dimensionally mis-registered (2× Figma vs 1× HTML), off by default, and never actually runs** — so the system can neither apply its corrections nor measure them. Phase 52 is **foundation-first and fork-independent**: make the failure measurable, then stop the self-inflicted losses. The engine question (fixed-seed vs. restore-recursive-renderer vs. rasterize) is deferred to **Phase 53**, sequenced *after* 52 so it is finally driven by a real fidelity signal. Target is an **honest measured ceiling** per email client, not "99.9% everywhere" (physically capped: Outlook ~95%; shadows/gradients/SVG/blend/rotation/overlap not reproducible in table email).
 
@@ -348,7 +350,9 @@ Close the real reason Figma→email fidelity has not moved in months. A re-verif
 **Supersedes:** the orphaned 50–53 labels in `.agents/plans/50-converter-fidelity-master.md` + the 23 `deferred/` stubs (reconciled in 52.7). Those numbers never entered TODO.md; this is the operative numbering.
 **Effort:** ~12–17 dev-days total.
 
-### 52.1 Repair & Activate the Fidelity Instrument `[Backend]` `[Plan Ready]`
+### 52.1 Repair & Activate the Fidelity Instrument `[Backend]` `[⏳ Partial @3099ca82]`
+
+**Status (2026-05-31):** ⏳ **Instrument repaired; NOT wired.** Metric is now color-aware (CIEDE2000 ΔE in CIELAB, was grayscale-blind), blur-free, and MIN-aggregated (`visual_scorer.py`); `test_visual_scorer_color.py` proves a wrong-hue-at-matching-luminance scores 0.45 (was ~perfect) and MIN catches a broken section. **Still to do (52.1-finish):** render HTML via Playwright and compare against `email-templates/training_HTML/for_converter_engine/<tmpl>/visual_design.png` — **blocked on image registration** (the no-blur metric scores 0.0 on a 2px shift, so alignment is now a hard prerequisite); recalibrate `_DELTA_E_MAX`/severity thresholds + prod `fidelity_blur_sigma`; commit one un-gitignored fixture+PNG; flip `fidelity_enabled` for the test path. **So no real fidelity % exists yet** — this session's fixes are proven *structurally* (fields render), not as a pixel score.
 
 The metric is not merely lenient — it is dimensionally invalid and never runs. Make it color-aware, multi-client, min-aggregated, correctly registered, and actually executed in CI. This is the lowest-*regret* first move: you cannot pick the Phase 53 engine fork or prove any fix without a metric that runs and can see color.
 
@@ -363,7 +367,9 @@ The metric is not merely lenient — it is dimensionally invalid and never runs.
 **Reduces:** The "can't measure 99%" trust collapse — unblocks proving every later fix.
 **Effort:** 3–4d.
 
-### 52.2 Serializer Bridge Tier-1 (RC-A + RC-B core) `[Backend]` `[Plan Ready]`
+### 52.2 Serializer Bridge Tier-1 (RC-A + RC-B core) `[Backend]` `[✅ Done @d6d1854d]`
+
+**Status (2026-05-31):** ✅ Shipped. Reader `to_email_section` fixed: `text_color=t.color` (RC-A), +`text_align`, +button `url`/`border_radius` (RC-B), both text + column sites. Corpus probe: 424 dropped props → **0**. Design heading color `#2C2C2C` + CTA `border-radius:25px` now render in final HTML (case 7). converter-data-regression 68/0.
 
 The cheapest real fidelity fix in the whole program — ~6 lines, two call sites — provable via 52.1. These fields already round-trip JSON; only the reader bridge drops them, which is why the shipped Phase 49/50 color/align/CTA overrides have been inert.
 
@@ -377,7 +383,9 @@ The cheapest real fidelity fix in the whole program — ~6 lines, two call sites
 **Reduces:** Restores text color, alignment, CTA targets, and corner rounding to the shipped path.
 **Effort:** ½d.
 
-### 52.3 Serializer Bridge Tier-2 + JSON Schema `[Backend]` `[Plan Ready]`
+### 52.3 Serializer Bridge Tier-2 + JSON Schema `[Backend]` `[✅ Done @c4837dd0]`
+
+**Status (2026-05-31):** ✅ Shipped. Widened `Document*` + `to_json`/`from_json` + both bridge halves + `email-design-document-v1.json` (fixed the `additionalProperties:false` holes) to carry corner_radius_spec, stroke, text_transform/decoration, style_runs, role_hint, layout_align, and all Phase-50 section fields. Extracted single-element converters (the inline duplication is why RC-A/RC-B diverged). **Round-trip property test `test_bridge_roundtrip.py`** (full `==` through all 4 boundaries + Hypothesis 200 + 6 fixtures) makes the drop-class unrepeatable. Residual: `source_frame_id` not bridged (out of scope, documented in test).
 
 Un-inert the rest of the already-shipped Phase 49/50 machinery (Rules 8/10/11, CTA stroke, nested-card/boundary classification) at zero new-feature cost, and add a property test so fields can never be silently re-dropped.
 
@@ -391,7 +399,15 @@ Un-inert the rest of the already-shipped Phase 49/50 machinery (Rules 8/10/11, C
 **Reduces:** Converts default-on dead logic into live fidelity; prevents silent re-drop.
 **Effort:** 2–3d.
 
-### 52.4 Widen the Override Allowlist + Renderer Dispatch (RC-D) `[Backend]` `[Plan Ready]`
+### 52.4 Widen the Override Allowlist + Renderer Dispatch (RC-D) `[Backend]` `[✅ Done @1b3fcbea + 2f119887/114ff108/4fdfc514]`
+
+**Status (2026-05-31):** ✅ Shipped (expanded into 4 commits as latent gaps surfaced):
+- **52.4** `1b3fcbea` — matcher emits + renderer renders font-weight/line-height/letter-spacing/text-transform/text-decoration (`test_typography_override.py`).
+- **52.4a** `2f119887` — the renderer had NO `_heading`/`_body` text-align dispatch arm, so even bridged alignment was a no-op; added replace-or-inject arm (`test_text_align_override.py`).
+- **52.4c** `114ff108` — Rule-10 corner-radius applicator emitted a malformed SECOND `style=` attr (assumed attr order); rewritten order-independent (`test_image_corner_radius.py`). Found by the snapshot diff review.
+- **52.4d** `4fdfc514` — **`col_N` gap**: multi-column text (`_build_column_fill_html`) hardcoded font/weight/line-height + dropped align/letter-spacing; new shared `_column_text_row` helper emits design props (font-family `html.escape`d). case 7 col aligns 5→23, weights 0→18 (`test_column_text_styling.py`).
+- Snapshot baselines regenerated after structural + content audit (`456ec23d`, `23d03a20`).
+- **Deferred → 52.4b:** the break-after-first-heading/body is RETAINED (only first heading + first body styled per non-column section); removing it needs per-node CSS targeting + `style_runs` consumption. **Residual:** column BUTTON-label typography still hardcoded; text-transform/decoration proven synthetically (no fixture populates them).
 
 The typography trio + transform/decoration are already on `TextBlock` from the Figma API (`layout_analyzer.py:1097-1099`) — only the emission and a renderer dispatch arm are missing, so seeds' hardcoded `font-weight:bold` / `line-height:1.3` always win. Cheapest wins once 52.3 keeps the fields.
 
@@ -405,7 +421,9 @@ The typography trio + transform/decoration are already on `TextBlock` from the F
 **Reduces:** The bulk of the audit's typography fidelity gap (Findings 1–2).
 **Effort:** 2–3d.
 
-### 52.5 Ingest Correctness — Lossless Capture + Value Fixes (RC-E, fork-independent) `[Backend]` `[Plan Ready]`
+### 52.5 Ingest Correctness — Lossless Capture + Value Fixes (RC-E, fork-independent) `[Backend]` `[Plan Ready]` ⬅ **NEXT (self-contained, verifiable)**
+
+**Note (2026-05-31):** This session confirmed button **`url` is lost UPSTREAM** — it is `0` at the writer/intermediate (Gate-1) on all 6 fixtures, so 52.2 could not restore it; trace the parser here (it's an ingest gap, not the bridge). The other 52.5 items (opacity-vs-real-bg, gradient `node_id`, non-button strokes, AUTO/% line-height) remain as written.
 
 Wrong-value and lossless-capture fixes that are correct under any Phase 53 engine. Rendering of the captured data lands in 53.3, but capturing it now stops irreversible loss and unblocks the fork.
 
@@ -419,7 +437,9 @@ Wrong-value and lossless-capture fixes that are correct under any Phase 53 engin
 **Reduces:** The dominant upstream capture loss; unblocks the fork's renderer.
 **Effort:** 2–3d.
 
-### 52.6 Fix `_fix_text_contrast` Mis-Scoping `[Backend]` `[Plan Ready]`
+### 52.6 Fix `_fix_text_contrast` Mis-Scoping `[Backend]` `[✅ Done @2f28d880]`
+
+**Status (2026-05-31):** ✅ Shipped. Two root causes (both reproduced on a nested-table fixture): (1) `find(close_tag)` first-close scan over-extended the dark range across an inner light card; (2) `_BG_TAG` missed the `background:` shorthand. Fix: depth-tracked `_matching_close_index` + recolor only when the INNERMOST containing background is dark. `test_import_service.py` +2 (light cell preserved; dark-on-dark still corrected). **Note:** runs only on the full `run_conversion` import pipeline (not `run_case_conversion`), so it's unit-tested, not fixture-proven end-to-end (a real-pipeline test would close this).
 
 Runs on every shipped artifact (`import_service.py:842-891` via `_sanitize_email_html` at `:402`) and can force nested light-cell text to invisible white because the dark-range scan uses `find(close_tag)` (first close, not the matching close) and recolors to literal `#ffffff` instead of the design's intended on-dark tint.
 
@@ -433,6 +453,8 @@ Runs on every shipped artifact (`import_service.py:842-891` via `_sanitize_email
 
 ### 52.7 Measurement-Truth, Regression De-Vacuum & Roadmap Reconciliation `[Backend, Documentation]` `[Plan Ready]`
 
+**Note (2026-05-31):** Add deferred-items entries surfaced this session: the typography schema cap (`tokens.typography maxItems:200` vs ≤234 emitted on LEGO → full-doc `validate()` fails) and the metric-registration prerequisite. The snapshot baselines (cases 5–10) were already regenerated this session after a structural + content audit — note that the audit is structural, not visual (a human should eyeball them in a browser).
+
 Make the regression suite assert real fidelity, correct the audit doc, and collapse the dual numbering scheme so there is one operative roadmap.
 
 **Plan:** §52.7 of `.agents/plans/52-converter-foundation.md`.
@@ -444,6 +466,17 @@ Make the regression suite assert real fidelity, correct the audit doc, and colla
 **Verify:** `make converter-data-regression` asserts a real color divergence is caught (not a substring); doc review confirms no remaining "frozen Phase-49 / trust the 99%" framing.
 **Reduces:** The measurement-trust gap and the two-numbering-scheme debt.
 **Effort:** 1–2d.
+
+### ▶ Remaining Phase 52 work — logical order (as of 2026-05-31)
+
+The un-inert + render work is **done** (52.2/52.3/52.4 incl. 52.4a/c/d, 52.6). What remains, in execution order:
+
+1. **52.5 Ingest correctness** `[Backend]` — fork-independent, self-contained, deterministically verifiable. Do first: composite alpha vs real backdrop; gradient `node_id`; non-button strokes; AUTO/% line-height; **+ trace the upstream button-`url` loss** found this session. *(2–3d)*
+2. **52.4b Per-run typography targeting** `[Backend]` — remove the first-heading/first-body `break` in `_build_token_overrides`; needs per-node CSS targeting (mirror the `_image_<node_id>` pattern) + `style_runs` consumption. Restores intra-section hierarchy. *(1–2d)* — also: column **CTA-label** typography (still hardcoded in `_build_column_fill_html`).
+3. **52.1-finish Wire the metric to real fixtures** `[Backend]` — the hard, uncertain piece. Render HTML via Playwright → **image registration** (hard prerequisite) against `visual_design.png` → recalibrate `_DELTA_E_MAX`/thresholds/prod `fidelity_blur_sigma` → commit one un-gitignored fixture+PNG → flip `fidelity_enabled` for the test path, advisory. **This is the gate for Phase 53.** *(3–4d)*
+4. **52.7 Measurement-truth + docs** `[Backend, Docs]` — real color/binding regression assertions; correct `docs/fidelity-gap-audit-findings.md`; supersede the stale 50–53 numbering; deferred-items entries (typography `maxItems`, registration prerequisite). Do last — closes the books. *(1–2d)*
+
+Then **merge** the branch (run `make check-full` after clearing untracked scratch) and proceed to the **Phase 53** engine-fork gate (53.1), which is blocked on 52.1-finish.
 
 ---
 
