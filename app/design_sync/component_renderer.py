@@ -157,6 +157,46 @@ _BODY_CLASS_SIZE_RE = re.compile(
     r"font-size:\s*[^;\"]+([;\"\'])"
 )
 
+# text-align replace + inject (Gap 11 / Phase 50.6). Seeds rarely declare
+# ``text-align`` on the heading/body cell, so each target needs a two-pass
+# replace-or-inject like the ``_inner`` background helpers.
+_HEADING_SLOT_ALIGN_RE = re.compile(
+    rf'(<td\b[^>]*data-slot="(?:{_HEADING_SLOTS})"[^>]*style="[^"]*?)'
+    r"text-align:\s*[^;\"]+([;\"\'])"
+)
+_BODY_SLOT_ALIGN_RE = re.compile(
+    rf'(<td\b[^>]*data-slot="(?:{_BODY_SLOTS})"[^>]*style="[^"]*?)'
+    r"text-align:\s*[^;\"]+([;\"\'])"
+)
+_HEADING_CLASS_ALIGN_RE = re.compile(
+    rf'(<(?:td|th|a|span)\b[^>]*class="[^"]*(?:{_HEADING_CLASS_ALT})[^"]*"[^>]*style="[^"]*?)'
+    r"text-align:\s*[^;\"]+([;\"\'])"
+)
+_BODY_CLASS_ALIGN_RE = re.compile(
+    rf'(<(?:td|th|a|span)\b[^>]*class="[^"]*(?:{_BODY_CLASS_ALT})[^"]*"[^>]*style="[^"]*?)'
+    r"text-align:\s*[^;\"]+([;\"\'])"
+)
+_HEADING_SLOT_ALIGN_INSERT_RE = re.compile(
+    rf'(<td\b[^>]*data-slot="(?:{_HEADING_SLOTS})"[^>]*style=")'
+    r'(?![^"]*text-align:)'
+)
+_BODY_SLOT_ALIGN_INSERT_RE = re.compile(
+    rf'(<td\b[^>]*data-slot="(?:{_BODY_SLOTS})"[^>]*style=")'
+    r'(?![^"]*text-align:)'
+)
+_HEADING_CLASS_ALIGN_INSERT_RE = re.compile(
+    rf'(<(?:td|th|a|span)\b[^>]*class="[^"]*(?:{_HEADING_CLASS_ALT})[^"]*"[^>]*style=")'
+    r'(?![^"]*text-align:)'
+)
+_BODY_CLASS_ALIGN_INSERT_RE = re.compile(
+    rf'(<(?:td|th|a|span)\b[^>]*class="[^"]*(?:{_BODY_CLASS_ALT})[^"]*"[^>]*style=")'
+    r'(?![^"]*text-align:)'
+)
+
+# Allowed text-align values — defends the renderer against CSS injection even
+# though the matcher already constrains the emitted override.
+_ALLOWED_TEXT_ALIGN = frozenset({"left", "center", "right", "justify"})
+
 # Background container classes on outer <table>
 _BG_CLASSES = (
     "textblock-bg",
@@ -639,6 +679,10 @@ class ComponentRenderer:
                 result = self._replace_heading_size(result, val)
             elif target == "_body" and prop == "font-size":
                 result = self._replace_body_size(result, val)
+            elif target == "_heading" and prop == "text-align":
+                result = self._replace_heading_align(result, val)
+            elif target == "_body" and prop == "text-align":
+                result = self._replace_body_align(result, val)
             elif target == "_cell":
                 # Replace padding on the first td with padding
                 result = self._replace_first_css_prop(result, prop, val)
@@ -714,6 +758,39 @@ class ComponentRenderer:
         repl = rf"\g<1>font-size:{safe}\g<2>"
         result = _BODY_SLOT_SIZE_RE.sub(repl, html_str)
         return _BODY_CLASS_SIZE_RE.sub(repl, result)
+
+    def _replace_heading_align(self, html_str: str, align: str) -> str:
+        """Apply text-align to heading elements (data-slot or semantic class).
+
+        Two-pass per element type: replace an existing inline ``text-align:``
+        when present, otherwise inject one into the ``style=`` attribute. The
+        slot pass runs before the class pass; the insert lookahead skips any
+        element that already carries ``text-align:`` so a cell matched by both
+        ``data-slot`` and ``class`` is not injected twice. Invalid values are
+        rejected (defence-in-depth against CSS injection).
+        """
+        align = align.lower()
+        if align not in _ALLOWED_TEXT_ALIGN:
+            return html_str
+        result = _HEADING_SLOT_ALIGN_RE.sub(rf"\g<1>text-align:{align}\g<2>", html_str)
+        result = _HEADING_CLASS_ALIGN_RE.sub(rf"\g<1>text-align:{align}\g<2>", result)
+        result = _HEADING_SLOT_ALIGN_INSERT_RE.sub(rf"\g<1>text-align:{align};", result)
+        return _HEADING_CLASS_ALIGN_INSERT_RE.sub(rf"\g<1>text-align:{align};", result)
+
+    def _replace_body_align(self, html_str: str, align: str) -> str:
+        """Apply text-align to body elements (data-slot or semantic class).
+
+        Mirrors :meth:`_replace_heading_align` — replace-or-inject across the
+        slot and class element sets, double-inject-safe via the lookahead, with
+        value validation.
+        """
+        align = align.lower()
+        if align not in _ALLOWED_TEXT_ALIGN:
+            return html_str
+        result = _BODY_SLOT_ALIGN_RE.sub(rf"\g<1>text-align:{align}\g<2>", html_str)
+        result = _BODY_CLASS_ALIGN_RE.sub(rf"\g<1>text-align:{align}\g<2>", result)
+        result = _BODY_SLOT_ALIGN_INSERT_RE.sub(rf"\g<1>text-align:{align};", result)
+        return _BODY_CLASS_ALIGN_INSERT_RE.sub(rf"\g<1>text-align:{align};", result)
 
     def _replace_bg_class_color(self, html_str: str, color: str) -> str:
         """Replace background-color on elements with background container classes."""
