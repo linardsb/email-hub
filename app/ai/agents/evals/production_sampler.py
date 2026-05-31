@@ -68,7 +68,7 @@ async def enqueue_for_judging(
 
     try:
         redis = await get_redis()
-        await redis.lpush(  # type: ignore[misc]
+        await redis.lpush(
             settings.eval.production_queue_key,
             json.dumps(trace_payload),
         )
@@ -250,7 +250,7 @@ class ProductionJudgeWorker(DataPoller):
         traces: list[dict[str, Any]] = []
 
         for _ in range(self._batch_size):
-            raw = await redis.rpop(self._queue_key)  # type: ignore[misc]
+            raw = await redis.rpop(self._queue_key)
             if raw is None:
                 break
             traces.append(json.loads(str(raw)))  # pyright: ignore[reportUnknownArgumentType]
