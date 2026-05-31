@@ -12,17 +12,20 @@
 # in network-input handling — the gosu binary doesn't take network input,
 # so reachability is effectively zero for our runtime. Re-evaluate once
 # pgvector publishes an updated image.
-CVE-2025-58183  # expires:2026-05-26 — go stdlib archive/tar DoS in pg16 base gobinary
-CVE-2025-61726  # expires:2026-05-26 — go stdlib net/url DoS in pg16 base gobinary
-CVE-2025-61728  # expires:2026-05-26 — go stdlib archive/zip DoS in pg16 base gobinary
-CVE-2025-61729  # expires:2026-05-26 — go stdlib crypto/x509 DoS in pg16 base gobinary
-CVE-2025-68121  # expires:2026-05-26 — go stdlib crypto/tls cert validation in pg16 base gobinary
-CVE-2026-25679  # expires:2026-05-26 — go stdlib net/url IPv6 parsing in pg16 base gobinary
-CVE-2026-32280  # expires:2026-05-26 — go stdlib crypto/tls DoS in pg16 base gobinary
-CVE-2026-32281  # expires:2026-05-26 — go stdlib crypto/x509 DoS in pg16 base gobinary
-CVE-2026-32283  # expires:2026-05-26 — go stdlib crypto/tls key-update DoS in pg16 base gobinary
-CVE-2026-33811  # expires:2026-05-26 — go stdlib net cgo LookupCNAME DoS in pg16 base gobinary
-CVE-2026-33814  # expires:2026-05-26 — go stdlib net/http HTTP/2 SETTINGS infinite loop in pg16 base gobinary
-CVE-2026-39820  # expires:2026-05-26 — go stdlib net/mail ParseAddress DoS in pg16 base gobinary
-CVE-2026-39836  # expires:2026-05-26 — go stdlib net Dial/LookupPort Windows NUL-byte panic in pg16 base gobinary
-CVE-2026-42499  # expires:2026-05-26 — go stdlib net/mail consumePhrase DoS in pg16 base gobinary
+CVE-2025-58183  # expires:2026-08-31 — go stdlib archive/tar DoS in pg16 base gobinary
+CVE-2025-61726  # expires:2026-08-31 — go stdlib net/url DoS in pg16 base gobinary
+CVE-2025-61728  # expires:2026-08-31 — go stdlib archive/zip DoS in pg16 base gobinary
+CVE-2025-61729  # expires:2026-08-31 — go stdlib crypto/x509 DoS in pg16 base gobinary
+CVE-2025-68121  # expires:2026-08-31 — go stdlib crypto/tls cert validation in pg16 base gobinary
+CVE-2026-25679  # expires:2026-08-31 — go stdlib net/url IPv6 parsing in pg16 base gobinary
+CVE-2026-32280  # expires:2026-08-31 — go stdlib crypto/tls DoS in pg16 base gobinary
+CVE-2026-32281  # expires:2026-08-31 — go stdlib crypto/x509 DoS in pg16 base gobinary
+CVE-2026-32283  # expires:2026-08-31 — go stdlib crypto/tls key-update DoS in pg16 base gobinary
+CVE-2026-33811  # expires:2026-08-31 — go stdlib net cgo LookupCNAME DoS in pg16 base gobinary
+CVE-2026-33814  # expires:2026-08-31 — go stdlib net/http HTTP/2 SETTINGS infinite loop in pg16 base gobinary
+CVE-2026-39820  # expires:2026-08-31 — go stdlib net/mail ParseAddress DoS in pg16 base gobinary
+CVE-2026-39836  # expires:2026-08-31 — go stdlib net Dial/LookupPort Windows NUL-byte panic in pg16 base gobinary
+CVE-2026-42499  # expires:2026-08-31 — go stdlib net/mail consumePhrase DoS in pg16 base gobinary
+CVE-2026-39823  # expires:2026-08-31 — go stdlib html/template <meta> refresh URL escaping in pg16 base gobinary
+CVE-2026-39825  # expires:2026-08-31 — go stdlib net/http/httputil ReverseProxy query-param forwarding in pg16 base gobinary
+CVE-2026-39826  # expires:2026-08-31 — go stdlib html/template <script> type-attr escaping in pg16 base gobinary
