@@ -711,6 +711,9 @@ class DocumentButton:
     stroke_color: str | None = None
     stroke_weight: float | None = None
     icon_node_id: str | None = None
+    font_size: float | None = None
+    font_weight: int | None = None
+    font_family: str | None = None
     corner_radius_spec: DocumentCornerRadiusSpec | None = None
 
     def to_json(self) -> dict[str, Any]:
@@ -733,6 +736,12 @@ class DocumentButton:
             d["stroke_weight"] = self.stroke_weight
         if self.icon_node_id is not None:
             d["icon_node_id"] = self.icon_node_id
+        if self.font_size is not None:
+            d["font_size"] = self.font_size
+        if self.font_weight is not None:
+            d["font_weight"] = self.font_weight
+        if self.font_family is not None:
+            d["font_family"] = self.font_family
         if self.corner_radius_spec is not None:
             d["corner_radius_spec"] = self.corner_radius_spec.to_json()
         return d
@@ -752,6 +761,9 @@ class DocumentButton:
             stroke_color=data.get("stroke_color"),
             stroke_weight=data.get("stroke_weight"),
             icon_node_id=data.get("icon_node_id"),
+            font_size=data.get("font_size"),
+            font_weight=data.get("font_weight"),
+            font_family=data.get("font_family"),
             corner_radius_spec=(
                 DocumentCornerRadiusSpec.from_json(crs) if crs is not None else None
             ),
@@ -771,6 +783,9 @@ class DocumentButton:
             stroke_color=b.stroke_color,
             stroke_weight=b.stroke_weight,
             icon_node_id=b.icon_node_id,
+            font_size=b.font_size,
+            font_weight=b.font_weight,
+            font_family=b.font_family,
             corner_radius_spec=(
                 DocumentCornerRadiusSpec.from_spec(b.corner_radius_spec)
                 if b.corner_radius_spec is not None
@@ -791,6 +806,9 @@ class DocumentButton:
             stroke_color=self.stroke_color,
             stroke_weight=self.stroke_weight,
             icon_node_id=self.icon_node_id,
+            font_size=self.font_size,
+            font_weight=self.font_weight,
+            font_family=self.font_family,
             corner_radius_spec=(
                 self.corner_radius_spec.to_spec() if self.corner_radius_spec is not None else None
             ),

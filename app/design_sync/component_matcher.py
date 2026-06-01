@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from app.core.logging import get_logger
 from app.design_sync.figma.layout_analyzer import (
+    ButtonElement,
     ColumnGroup,
     ColumnLayout,
     ContentGroup,
@@ -758,6 +759,28 @@ def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
     return f'<tr><td style="{style}">{_safe_text(text.content)}</td></tr>'
 
 
+def _cta_label_typography(btn: ButtonElement) -> str:
+    """Build font-family/size/weight CSS for a CTA label from design typography.
+
+    Phase 52.4b — sources the button label's font from its design ``TextBlock``,
+    falling back to the pre-52.4b hardcoded ``14px``/``bold`` when a property is
+    absent. Mirrors ``_column_text_row``'s validation: font-family is
+    ``html.escape``d (quote=True) with a web-safe fallback appended so a font
+    name cannot break out of the style attr; font-size is coerced to ``int``;
+    font-weight is emitted raw.
+    """
+    decls: list[str] = []
+    if btn.font_family:
+        family = html.escape(btn.font_family, quote=True)
+        if "," not in family:
+            family = f"{family},sans-serif"
+        decls.append(f"font-family:{family}")
+    size = int(btn.font_size) if btn.font_size else 14
+    decls.append(f"font-size:{size}px")
+    decls.append(f"font-weight:{btn.font_weight}" if btn.font_weight is not None else "font-weight:bold")
+    return ";".join(decls) + ";"
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -790,7 +813,7 @@ def _build_column_fill_html(
         parts.append(
             f'<a href="{btn_url}" style="display:inline-block;'
             f"padding:10px 24px;background-color:{bg};color:{txt_color};"
-            f"text-decoration:none;font-size:14px;font-weight:bold;"
+            f"text-decoration:none;{_cta_label_typography(btn)}"
             f'border-radius:{radius}px;{border_css}">{_safe_text(btn.text)}</a>'
         )
     return "\n".join(parts)
@@ -983,7 +1006,7 @@ def _fills_text_block(
             cta_html = (
                 f'<a href="{btn_url}" style="display:inline-block;'
                 f"padding:10px 24px;background-color:{bg};color:#ffffff;"
-                f"text-decoration:none;font-size:14px;font-weight:bold;"
+                f"text-decoration:none;{_cta_label_typography(btn)}"
                 f'border-radius:4px;">{_safe_text(btn.text)}</a>'
             )
             # Append to existing body fill or create new one

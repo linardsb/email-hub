@@ -13,8 +13,10 @@ from app.design_sync.component_matcher import (
     _build_column_fill_html,
     _build_column_fills,
     _column_text_row,
+    _cta_label_typography,
 )
 from app.design_sync.figma.layout_analyzer import (
+    ButtonElement,
     ColumnGroup,
     EmailSection,
     EmailSectionType,
@@ -173,3 +175,60 @@ def test_build_column_fills_roundrobin_renders_design() -> None:
     assert "font-size:22px" in fills["col_1"]
     assert "font-weight:700" in fills["col_1"]
     assert "line-height:28px" in fills["col_1"]
+
+
+# ── CTA label typography (Phase 52.4b) ──────────────────────────
+
+
+def _styled_button(**overrides: object) -> ButtonElement:
+    """A ButtonElement whose label carries non-default design typography."""
+    defaults: dict[str, object] = {
+        "node_id": "b1",
+        "text": "Shop now",
+        "fill_color": "#DB291B",
+        "text_color": "#ffffff",
+        "url": "#",
+        "font_size": 18.0,
+        "font_weight": 400,
+        "font_family": "Geist Mono",
+    }
+    defaults.update(overrides)
+    return ButtonElement(**defaults)  # type: ignore[arg-type]
+
+
+def test_cta_label_typography_emits_design() -> None:
+    css = _cta_label_typography(_styled_button())
+    assert "font-family:Geist Mono,sans-serif" in css  # web-safe fallback appended
+    assert "font-size:18px" in css  # coerced to int
+    assert "font-weight:400" in css  # raw design weight, not forced bold
+
+
+def test_cta_label_typography_falls_back_to_legacy_defaults() -> None:
+    css = _cta_label_typography(
+        _styled_button(font_size=None, font_weight=None, font_family=None)
+    )
+    assert "font-family:" not in css  # no font-family when design has none
+    assert "font-size:14px" in css  # pre-52.4b default
+    assert "font-weight:bold" in css  # pre-52.4b default
+
+
+def test_cta_label_typography_escapes_font_family() -> None:
+    """A CTA font name must not break out of the style attribute."""
+    css = _cta_label_typography(_styled_button(font_family='Arial" onmouseover="x'))
+    assert '" onmouseover' not in css
+    assert "&quot;" in css
+
+
+def test_build_column_fill_html_styles_cta_label() -> None:
+    """The column CTA <a> carries the button's design typography (not 14/bold)."""
+    group = ColumnGroup(
+        column_idx=1,
+        node_id="c1",
+        node_name="Column 1",
+        buttons=[_styled_button()],
+    )
+    html = _build_column_fill_html(group)
+    assert "font-family:Geist Mono,sans-serif" in html
+    assert "font-size:18px" in html
+    assert "font-weight:400" in html
+    assert "font-size:14px;font-weight:bold" not in html  # the old hardcode is gone

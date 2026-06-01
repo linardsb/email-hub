@@ -118,6 +118,11 @@ class ButtonElement:
     stroke_color: str | None = None
     stroke_weight: float | None = None
     icon_node_id: str | None = None
+    # Label typography from the button's text child (Phase 52.4b) — lets the
+    # column/text CTA render the designed font instead of a hardcoded 14px/bold.
+    font_size: float | None = None
+    font_weight: int | None = None
+    font_family: str | None = None
     # Rule 8 (Phase 50.5) — per-corner radii on tag/pill non-CTA frames.
     corner_radius_spec: CornerRadiusSpec | None = None
 
@@ -1278,6 +1283,9 @@ def _walk_for_buttons(
                         stroke_color=node.stroke_color,
                         stroke_weight=node.stroke_weight,
                         icon_node_id=icon_node_id,
+                        font_size=text_children[0].font_size,
+                        font_weight=text_children[0].font_weight,
+                        font_family=text_children[0].font_family,
                         corner_radius_spec=_corner_spec_or_none(rule_8_corner_radius(node)),
                     )
                 )

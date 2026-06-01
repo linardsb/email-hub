@@ -417,6 +417,9 @@
         "stroke_color": { "type": ["string", "null"], "default": null, "maxLength": 20 },
         "stroke_weight": { "type": ["number", "null"], "minimum": 0, "default": null },
         "icon_node_id": { "type": ["string", "null"], "default": null, "maxLength": 200 },
+        "font_size": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "font_weight": { "type": ["integer", "null"], "default": null },
+        "font_family": { "type": ["string", "null"], "default": null, "maxLength": 200 },
         "corner_radius_spec": {
           "oneOf": [{ "$ref": "#/$defs/corner_radius_spec" }, { "type": "null" }],
           "default": null
