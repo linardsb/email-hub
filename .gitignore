@@ -106,6 +106,8 @@ htmlcov/
 #   - vlm_classifications.json   VLM label set for AI judge calibration
 #   - actual-tree-with-fixes.html  tree-mode converter durable evidence (V2 plan)
 #   - actual-with-fixes.html       converter durable before/after record (V1 plan)
+#   - structure.json               DesignFileStructure input (Phase 53 A1 ladder substrate)
+#   - tokens.json                  ExtractedTokens input (Phase 53 A1 ladder substrate)
 # design.png and design_meta.json are intentionally IGNORED — they are
 # regenerable Figma exports (app/design_sync/service.py:229,
 # diagnose/extract.py:146/316), not durable curated fixtures.
@@ -115,6 +117,8 @@ data/debug/*/*
 !data/debug/*/vlm_classifications.json
 !data/debug/*/actual-tree-with-fixes.html
 !data/debug/*/actual-with-fixes.html
+!data/debug/*/structure.json
+!data/debug/*/tokens.json
 
 # Top-level debug hygiene (F063)
 *.zip
