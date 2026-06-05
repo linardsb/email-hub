@@ -380,6 +380,26 @@
       ],
       "symptom_if_broken": "Multi-heading / multi-paragraph sections render every text run with the first run's font/size/weight/color — intra-section typographic hierarchy is flattened.",
       "closes_when": "Per-node text <td> anchors + a _text_<node_id> override target land and every text node renders its own design typography (verified on a multi-heading fixture)."
+    },
+    {
+      "id": "phase-53-a2-advisory-section-gate",
+      "phase": "53",
+      "title": "A2 section-count gate is advisory (xfail strict=False) and its target metric is per-block, not band-derived",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-04",
+      "introduced_commit": "f897a0fa",
+      "summary": "A2 un-circulared the section-count gate. TestSectionLadder.test_ladder_no_drift hard-pins the full count ladder (candidates/analyzed/rendered/bands + per-wrapper band descriptor) to data/debug/ladder_snapshot.json (drift gate, green today); test_rendered_matches_target + TestSnapshotSectionCount xfail rendered==target_sections (defect gate). Two concessions: (1) target gate is xfail(strict=False) so it enforces nothing and a converging case becomes a silent XPASS, not a CI signal; (2) the target metric is ConversionResult.sections_count == len(match.matches) (per-BLOCK) compared to a band-count target, so convergence post-fix is not guaranteed if Track C/D groups cards via render_repeating_group at render time instead of reducing the match count (LEGO: sections_count=17 vs analyzed=21 vs target 8 bands). regression_runner.py:113 also still reads the circular manifest.sections.count for advisory collect_metrics (left as-is).",
+      "code_refs": [
+        "app/design_sync/tests/test_converter_data_regression.py (TestSectionLadder — drift gate + target xfail)",
+        "app/design_sync/tests/test_snapshot_regression.py (TestSnapshotSectionCount — target xfail)",
+        "app/design_sync/tests/ladder_harness.py (compute_ladder/band_descriptor/load_ladder_snapshot)",
+        "app/design_sync/converter_service.py:919 (sections_count=len(match.matches) — per-block)",
+        "app/design_sync/tests/regression_runner.py:113 (still reads circular manifest.sections.count, advisory)"
+      ],
+      "symptom_if_broken": "Section-count gates stay green/xfail even when the converter converges to (or regresses from) the design target — no positive CI signal that a Track C/D segmentation fix actually closed the gap; or a forgotten ladder_snapshot.json commit silently drops the drift gate.",
+      "closes_when": "At the 53.1/D fork: the converter converges on the fixtures AND the target gate is tightened (strict=True, or a band-derived metric such as len(section_parts)/band_descriptor) so it positively asserts convergence; the regression_runner advisory metric is re-pinned or removed.",
+      "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). The drift gate is the load-bearing protection today; the target gate is only the headline-gap measure."
     }
   ],
   "tooling_followups": [

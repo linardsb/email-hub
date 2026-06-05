@@ -24,6 +24,8 @@ Run::
 
 from __future__ import annotations
 
+import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -42,6 +44,11 @@ from app.design_sync.tests.regression_runner import run_case_conversion
 
 _DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
 _CASE_IDS = ("5", "6", "7", "8", "9", "10")
+
+# Committed expected-ladder snapshot. The A2 drift gate asserts the converter
+# reproduces this; the target gate (rendered vs target) xfails the gap. Regen
+# after an INTENDED converter change:  python -m app.design_sync.tests.ladder_harness --write
+LADDER_SNAPSHOT_PATH = _DEBUG_DIR / "ladder_snapshot.json"
 
 
 # ── target_sections source ───────────────────────────────────────
@@ -163,6 +170,72 @@ def compute_ladder(case_id: str, targets: dict[str, int]) -> LadderRow | None:
     )
 
 
+# ── snapshot (de)serialization ───────────────────────────────────
+# Structural rows the A2 drift gate compares (band_desc carries the per-wrapper
+# breakdown — "which wrappers exploded, by how much" — the harness's real signal).
+_DRIFT_KEYS = ("candidates", "analyzed", "rendered", "bands", "band_desc")
+
+
+def ladder_to_dict(row: LadderRow) -> dict[str, Any]:
+    """Serialize a ladder row to a JSON-friendly dict (committed snapshot form)."""
+    return {
+        "name": row.name,
+        "target": row.target,
+        "candidates": row.candidates,
+        "analyzed": row.analyzed,
+        "rendered": row.rendered,
+        "bands": row.bands,
+        "band_desc": row.band_desc,
+        "bags": [list(bag) for bag in row.bags],
+    }
+
+
+def drift_view(snap: dict[str, Any]) -> dict[str, Any]:
+    """Structural subset of a ladder dict compared by the drift gate."""
+    return {k: snap[k] for k in _DRIFT_KEYS if k in snap}
+
+
+def compute_all_ladders() -> dict[str, LadderRow]:
+    """Compute the ladder for every fixture case that has inputs on disk."""
+    targets = load_target_sections()
+    rows: dict[str, LadderRow] = {}
+    for case_id in _CASE_IDS:
+        row = compute_ladder(case_id, targets)
+        if row is not None:
+            rows[case_id] = row
+    return rows
+
+
+def discover_ladder_case_ids() -> list[str]:
+    """Case ids that have converter inputs (structure.json + tokens.json) on disk.
+
+    Used to PARAMETRIZE the gate so a present fixture with a *missing* committed
+    snapshot entry fails loudly (vs. parametrizing over the snapshot, which would
+    silently collect zero tests if the snapshot file were forgotten in a commit).
+    """
+    return [
+        cid
+        for cid in _CASE_IDS
+        if (_DEBUG_DIR / cid / "structure.json").exists()
+        and (_DEBUG_DIR / cid / "tokens.json").exists()
+    ]
+
+
+def load_ladder_snapshot() -> dict[str, dict[str, Any]]:
+    """Load the committed expected-ladder snapshot ({} if not yet committed)."""
+    if not LADDER_SNAPSHOT_PATH.exists():
+        return {}
+    data: dict[str, dict[str, Any]] = json.loads(LADDER_SNAPSHOT_PATH.read_text())
+    return data
+
+
+def write_ladder_snapshot() -> dict[str, dict[str, Any]]:
+    """Recompute every case and (re)write the committed snapshot. Returns it."""
+    snapshot = {cid: ladder_to_dict(row) for cid, row in compute_all_ladders().items()}
+    LADDER_SNAPSHOT_PATH.write_text(json.dumps(snapshot, indent=2) + "\n")
+    return snapshot
+
+
 def _fmt_target(target: int | None) -> str:
     return str(target) if target is not None else "?"
 
@@ -192,7 +265,16 @@ def print_ladder(rows: list[LadderRow]) -> None:
 
 
 def main() -> None:
-    """Compute and print the ladder for every fixture case."""
+    """Compute and print the ladder for every fixture case.
+
+    With ``--write``, (re)write the committed ``ladder_snapshot.json`` instead —
+    run this after an INTENDED converter change, then visually re-verify
+    expected.html (same discipline as the snapshot baselines).
+    """
+    if "--write" in sys.argv[1:]:
+        snapshot = write_ladder_snapshot()
+        print(f"Wrote {LADDER_SNAPSHOT_PATH} ({len(snapshot)} cases)")  # noqa: T201
+
     targets = load_target_sections()
     rows: list[LadderRow] = []
     for case_id in _CASE_IDS:
