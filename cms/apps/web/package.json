@@ -54,7 +54,7 @@
   },
   "devDependencies": {
     "@email-hub/typescript-config": "workspace:*",
-    "@next/eslint-plugin-next": "^16.2.6",
+    "@next/eslint-plugin-next": "^16.2.7",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.3.0",
     "@testing-library/jest-dom": "^6.9.1",
