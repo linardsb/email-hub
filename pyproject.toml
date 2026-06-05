@@ -298,12 +298,23 @@ markers = [
 # follow load_config() in mutmut/__main__.py. paths_to_mutate / tests_dir are
 # lists; pytest flags pass through pytest_add_cli_args (not a `runner` key).
 [tool.mutmut]
+# Targets must be small, executable, and well-covered by tests_dir so mutants
+# get killed within budget. css_support / approval_gate are ~97-98% covered.
+# (The earlier html_validation.py was deleted in F019; sync_protocol.py is a
+# Protocol stub whose methods tests never execute -> "no test covers any mutant".)
 paths_to_mutate = [
-    "app/qa_engine/checks/html_validation.py",
-    "app/connectors/sync_protocol.py",
+    "app/qa_engine/checks/css_support.py",
+    "app/connectors/approval_gate.py",
 ]
+# mutmut runs pytest from inside a generated mutants/ sandbox; it copies the
+# mutated source files there but does NOT auto-copy nested test dirs or shared
+# fixtures. Without these, the in-sandbox pytest run reports "file or directory
+# not found" (exit 4 -> BadTestExecutionCommandsException). Copy the whole app
+# package (carries both test dirs + all importable source) plus the root
+# conftest.py (its autouse scoped-access fixture is required by every unit test).
 tests_dir = ["app/qa_engine/tests/", "app/connectors/tests/"]
 pytest_add_cli_args = ["-x", "-q", "-m", "not integration"]
+also_copy = ["app", "conftest.py"]
 
 [tool.pyright]
 include = ["app"]
