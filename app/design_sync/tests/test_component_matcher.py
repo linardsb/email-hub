@@ -1753,7 +1753,17 @@ class TestDeriveImageAlt:
 
     def test_no_derived_alt_trips_g3neg(self) -> None:
         # The G3-neg forbidden set: empty or a lone generic token.
-        forbidden = {"", "image", "photo", "picture", "img", "mj-image", "mj-text", "frame", "banner"}
+        forbidden = {
+            "",
+            "image",
+            "photo",
+            "picture",
+            "img",
+            "mj-image",
+            "mj-text",
+            "frame",
+            "banner",
+        }
         for name in ("mj-image", "(type: logo)", "", "2833:1869", "Gallery image 1"):
             alt = _derive_image_alt(self._img(name))
             assert alt.lower() not in forbidden

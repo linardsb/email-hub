@@ -204,9 +204,7 @@ def test_cta_label_typography_emits_design() -> None:
 
 
 def test_cta_label_typography_falls_back_to_legacy_defaults() -> None:
-    css = _cta_label_typography(
-        _styled_button(font_size=None, font_weight=None, font_family=None)
-    )
+    css = _cta_label_typography(_styled_button(font_size=None, font_weight=None, font_family=None))
     assert "font-family:" not in css  # no font-family when design has none
     assert "font-size:14px" in css  # pre-52.4b default
     assert "font-weight:bold" in css  # pre-52.4b default
