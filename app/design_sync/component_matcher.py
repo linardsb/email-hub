@@ -236,6 +236,10 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         return slug, confidence
 
     if st == EmailSectionType.CTA:
+        # Two or more buttons → dual-CTA seed (primary + secondary slots).
+        # B8: a single button keeps the standalone cta-button seed.
+        if len(section.buttons) >= 2:
+            return "cta-pair", 1.0
         return "cta-button", 1.0
 
     if st == EmailSectionType.FOOTER:
@@ -1223,8 +1227,18 @@ def _fills_cta(
     **_kw: object,
 ) -> list[SlotFill]:
     fills: list[SlotFill] = []
-    if section.buttons:
-        btn = section.buttons[0]
+    buttons = section.buttons
+    if len(buttons) >= 2:
+        # B8: dual-CTA section → cta-pair seed (primary + secondary slots).
+        # Only the first two buttons are emitted; the seed has no slot for a
+        # third (email layout caps a button row at two).
+        primary, secondary = buttons[0], buttons[1]
+        fills.append(SlotFill("primary_text", _safe_text(primary.text)))
+        fills.append(SlotFill("primary_url", _safe_url(primary.url), slot_type="cta"))
+        fills.append(SlotFill("secondary_text", _safe_text(secondary.text)))
+        fills.append(SlotFill("secondary_url", _safe_url(secondary.url), slot_type="cta"))
+    elif buttons:
+        btn = buttons[0]
         fills.append(SlotFill("cta_text", _safe_text(btn.text)))
         fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
     return fills
@@ -1387,7 +1401,9 @@ def _fills_social(
         # with a neutral "#" href. Still better than leaking example.com.
         for img in section.images:
             icon_src = html.escape(_resolve_image_url(img.node_id, image_urls))
-            alt = html.escape(img.node_name if _is_descriptive_alt(img.node_name) else "Social icon")
+            alt = html.escape(
+                img.node_name if _is_descriptive_alt(img.node_name) else "Social icon"
+            )
             cells.append(
                 '<td style="padding: 0 8px;">'
                 '<a href="#" style="text-decoration: none;">'

@@ -373,3 +373,65 @@ class TestMultipleCTAs:
             result = renderer.render_section(match)
             assert f'fillcolor="{color}"' in result.html
             assert f"background-color:{color}" in result.html
+
+
+# ---------------------------------------------------------------------------
+# 16. Dual-CTA sections route to cta-pair (B8)
+# ---------------------------------------------------------------------------
+
+
+class TestDualCTAPair:
+    def _dual(self) -> EmailSection:
+        return _make_section(
+            buttons=[
+                _button("Shop Now", url="https://example.com/shop"),
+                _button("Learn More", url="https://example.com/learn"),
+            ],
+        )
+
+    def test_two_buttons_route_to_cta_pair(self) -> None:
+        m = match_section(self._dual(), 0)
+        assert m.component_slug == "cta-pair"
+
+    def test_single_button_keeps_cta_button(self) -> None:
+        m = match_section(_make_section(buttons=[_button("Shop Now")]), 0)
+        assert m.component_slug == "cta-button"
+        assert "cta_text" in {f.slot_id for f in m.slot_fills}
+
+    def test_cta_pair_emits_primary_and_secondary_fills(self) -> None:
+        m = match_section(self._dual(), 0)
+        by_id = {f.slot_id: f for f in m.slot_fills}
+        assert by_id["primary_text"].value == "Shop Now"
+        assert by_id["primary_url"].value == "https://example.com/shop"
+        assert by_id["secondary_text"].value == "Learn More"
+        assert by_id["secondary_url"].value == "https://example.com/learn"
+        # The legacy single-CTA slots must not coexist with the pair slots.
+        assert "cta_text" not in by_id
+        assert "cta_url" not in by_id
+
+    def test_third_button_dropped(self) -> None:
+        s = _make_section(
+            buttons=[
+                _button("One", url="https://example.com/1"),
+                _button("Two", url="https://example.com/2"),
+                _button("Three", url="https://example.com/3"),
+            ],
+        )
+        m = match_section(s, 0)
+        by_id = {f.slot_id: f for f in m.slot_fills}
+        assert by_id["primary_text"].value == "One"
+        assert by_id["secondary_text"].value == "Two"
+        assert all(f.value != "Three" for f in m.slot_fills)
+
+    def test_cta_pair_renders_both_labels_and_hrefs(self, renderer: ComponentRenderer) -> None:
+        result = renderer.render_section(match_section(self._dual(), 0))
+        html = result.html
+        assert "Shop Now" in html
+        assert "Learn More" in html
+        assert "https://example.com/shop" in html
+        assert "https://example.com/learn" in html
+        # Reverse phantom-slug tripwire: cta-pair has never been emitted, so
+        # confirm no seed placeholder survives into the rendered output.
+        assert "Primary button" not in html
+        assert "Secondary button" not in html
+        assert "example.com/link" not in html
