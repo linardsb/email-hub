@@ -480,6 +480,24 @@
       "symptom_if_broken": "A content/hero/text-block section carrying 2+ buttons renders only the first; case 10 output lacks 'DISCOVER EIGER'. Any non-CTA-typed multi-button design loses buttons silently.",
       "closes_when": "Either the boundary/layout classifier types button-dominant multi-button sections as CTA (so B8's routing catches them), or the segmentation track splits/re-types case 10 sec#1 so both buttons render. Verified by case 10 rendered output containing BOTH 'SHOP THE COLLECTION' and 'DISCOVER EIGER EXTREME 6.0'.",
       "notes": "Discovered during B8 execution (2026-06-06). B8 shipped as CTA-only cta-pair activation by user decision; this entry records that the literal 'emit all section.buttons' intent of B8's cited lines (_fills_hero/_fills_text_block/etc.) is NOT achievable for single-CTA-slot seeds, and the real instances are a classification problem. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-a2-advisory-section-gate."
+    },
+    {
+      "id": "phase-53-b8-fills-cta-slug-desync-vlm",
+      "phase": "53",
+      "title": "_fills_cta keys on button count, not slug — can desync from routing on the VLM fallback path",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-06-06",
+      "introduced_commit": "10e6e1e2",
+      "summary": "B8 made _fills_cta branch on len(section.buttons)>=2 (emit primary_/secondary_ for cta-pair) vs single (cta_text/cta_url for cta-button). The component dispatch maps BOTH slugs to the same _fills_cta (component_matcher.py:515,545), and the filler is NOT told which slug/seed it is filling. On the normal path this is safe because _match_by_type and _fills_cta encode the SAME >=2 condition, so slug and fills always agree. But match_section_with_vlm_fallback (~145/166) sets the slug from the VLM result (vlm_result.component_type) independent of button count, then calls _build_slot_fills(slug, section). If the VLM picked 'cta-button' for a 2-button section, _fills_cta emits primary_/secondary_ into the cta-button seed (slots cta_text/cta_url) → both fills are no-ops → button labels lost + cta-button placeholder leaks. The reverse (VLM 'cta-pair' for 1 button) leaks the 'Primary button'/'Secondary button' seed placeholders. Before B8, _fills_cta always emitted cta_text/cta_url, so a VLM 'cta-button' pick was self-consistent; B8 introduced the desync.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_fills_cta (branches on len(buttons), not slug)",
+        "app/design_sync/component_matcher.py:515,545 (both cta-button and cta-pair dispatch to _fills_cta)",
+        "app/design_sync/component_matcher.py:match_section_with_vlm_fallback ~145/166 (slug from VLM, fills from _build_slot_fills(slug,...))"
+      ],
+      "symptom_if_broken": "With DESIGN_SYNC__VLM_FALLBACK_ENABLED=true and a VLM-wired pipeline: a low-confidence non-CTA section reclassified by the VLM to a cta slug renders with empty/placeholder buttons ('Primary button'/'Secondary button' leak, or dropped labels).",
+      "closes_when": "Either _fills_cta becomes slug-aware (thread the chosen slug into the filler and emit the slot set matching the seed), or the dispatch keeps cta-button/cta-pair on separate fillers. Verified: a section forced to slug 'cta-button' with 2 buttons emits cta_text/cta_url (not primary_/secondary_), and slug 'cta-pair' with 1 button does not leak pair placeholders.",
+      "notes": "Found by adversarial review during B8 execution (2026-06-06). DOUBLY UNREACHABLE today: (1) vlm_fallback_enabled defaults to False (app/core/config/design_sync.py:47), and (2) match_section_with_vlm_fallback has NO non-test callers — it is not wired into the live convert_document pipeline. CTA sections also return confidence 1.0, so even an enabled VLM fallback never fires for them; the only trigger is a low-confidence NON-CTA section the VLM reclassifies to a cta slug. Logged as speculative so it surfaces if/when VLM fallback is wired up. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-b8-non-cta-multibutton-drop."
     }
   ],
   "tooling_followups": [
