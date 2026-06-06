@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "purpose": "Track deferred/incomplete acceptance criteria and known-by-inspection gaps from shipped phases. Reference this file when a converter / agent / pipeline regression surfaces \u2014 the answer may already be cataloged here. Add an entry whenever a phase ships with a soft acceptance criterion or a speculative gap that real-fixture data would close.",
+  "purpose": "Track deferred/incomplete acceptance criteria and known-by-inspection gaps from shipped phases. Reference this file when a converter / agent / pipeline regression surfaces — the answer may already be cataloged here. Add an entry whenever a phase ships with a soft acceptance criterion or a speculative gap that real-fixture data would close.",
   "items": [
     {
       "id": "phase-50.7-ac-4",
@@ -24,14 +24,14 @@
         "manual_reference_html": "email-templates/training_HTML/for_converter_engine/Lego/manual_component_build.html",
         "figma_node": "2833-1869 in file VUlWjZGAEVZr3mK1EawsYR"
       },
-      "fast_closure_path": "Parse the cached raw_figma JSON via app.design_sync.figma.adapter.figma_to_design_node(), pass through analyze_layout(), assert sections[16].is_physical_card_surface is True. ~30-line one-off script \u2014 no live Figma PAT required.",
+      "fast_closure_path": "Parse the cached raw_figma JSON via app.design_sync.figma.adapter.figma_to_design_node(), pass through analyze_layout(), assert sections[16].is_physical_card_surface is True. ~30-line one-off script — no live Figma PAT required.",
       "blocks": [
         "phase-50.7-gap-2",
         "phase-50.7-gap-3"
       ],
       "closed_date": "2026-05-12",
       "closed_commit": "phase-50.8",
-      "closure_note": "Phase 50.8 promoted LEGO into data/debug/7/ (real Figma extract, node 2833-1869). New test app/design_sync/tests/test_physical_card_detector.py::TestLEGORealFixture::test_lego_membership_card_detected_on_real_fixture loads structure.json, finds the membership card mj-section (corner_radius=18), and asserts detect_physical_card_surface() returns is_physical=True with signals=[barcode_child, distinct_corner_radius]. Test passes locally with the fixture present; matches the CI-skip convention for cases 5/6/10 (data/debug/*/structure.json is gitignored \u2014 pytest.skip when absent). Mechanical CI enforcement would require a fixture-hydration step (out of scope for 50.8). Closure path (a) taken."
+      "closure_note": "Phase 50.8 promoted LEGO into data/debug/7/ (real Figma extract, node 2833-1869). New test app/design_sync/tests/test_physical_card_detector.py::TestLEGORealFixture::test_lego_membership_card_detected_on_real_fixture loads structure.json, finds the membership card mj-section (corner_radius=18), and asserts detect_physical_card_surface() returns is_physical=True with signals=[barcode_child, distinct_corner_radius]. Test passes locally with the fixture present; matches the CI-skip convention for cases 5/6/10 (data/debug/*/structure.json is gitignored — pytest.skip when absent). Mechanical CI enforcement would require a fixture-hydration step (out of scope for 50.8). Closure path (a) taken."
     },
     {
       "id": "phase-50.7-gap-2",
@@ -44,7 +44,7 @@
       "summary": "Detector finds a logo image only when nested as 'card -> white-frame -> image' or 'card -> white-frame' (image is the white frame itself). Real Figma exports often add a padding wrapper between the card and the white field, producing 'card -> padding-frame -> white-frame -> image'. Detector misses the logo signal in that shape.",
       "code_refs": [
         "app/design_sync/figma/physical_card_detector.py:122-141 (_has_logo_on_white_field)",
-        "app/design_sync/figma/physical_card_detector.py:177-178 (_iter_self_and_children \u2014 single-level walk)"
+        "app/design_sync/figma/physical_card_detector.py:177-178 (_iter_self_and_children — single-level walk)"
       ],
       "symptom_if_broken": "Physical cards with a wrapped-white logo field score one fewer signal than expected. With only 1 of 4 signals firing, is_physical=False, and Rule 9 incorrectly dark-flips them. Particularly likely on cards with explicit padding tokens applied at multiple nesting depths.",
       "closes_when": "Either (a) AC #4 closure surfaces this empirically and the fix lands as a follow-up, OR (b) someone writes a recursive walker mirroring _walk_image_descendants but bounded by depth (e.g. 4 levels) and adds a regression test with a real fixture.",
@@ -52,7 +52,7 @@
       "blocked_by": "phase-50.7-ac-4",
       "closed_date": "2026-05-12",
       "closed_commit": "phase-50.8",
-      "closure_note": "Speculation refuted by AC #4 closure. On the real LEGO fixture, detector returns is_physical=True via signals=[barcode_child, distinct_corner_radius] \u2014 without needing the logo_on_white_field signal. The single-level walk in _has_logo_on_white_field was not the limiting factor for this case. Recursive walker not required for LEGO; entry can be re-opened if a future fixture demonstrates a wrapped-white logo blocking detection."
+      "closure_note": "Speculation refuted by AC #4 closure. On the real LEGO fixture, detector returns is_physical=True via signals=[barcode_child, distinct_corner_radius] — without needing the logo_on_white_field signal. The single-level walk in _has_logo_on_white_field was not the limiting factor for this case. Recursive walker not required for LEGO; entry can be re-opened if a future fixture demonstrates a wrapped-white logo blocking detection."
     },
     {
       "id": "phase-50.7-gap-3",
@@ -62,17 +62,17 @@
       "severity": "speculative",
       "introduced": "2026-05-03",
       "introduced_commit": "2fe898f4",
-      "summary": "Wiring at layout_analyzer.py:403 only runs detect_physical_card_surface when 50.4's _detect_inner_bg returns a non-None inner_bg. If the LEGO membership card is structured as a top-level section without an outer coloured wrapper (e.g. the card IS the entire footer area, not nested inside a coloured band), inner_bg=None and detection never fires \u2014 regardless of how many signals would have matched.",
+      "summary": "Wiring at layout_analyzer.py:403 only runs detect_physical_card_surface when 50.4's _detect_inner_bg returns a non-None inner_bg. If the LEGO membership card is structured as a top-level section without an outer coloured wrapper (e.g. the card IS the entire footer area, not nested inside a coloured band), inner_bg=None and detection never fires — regardless of how many signals would have matched.",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py:403 (gating condition)",
-        "app/design_sync/figma/layout_analyzer.py:1457-1502 (_detect_inner_bg \u2014 requires container_bg to be set)"
+        "app/design_sync/figma/layout_analyzer.py:1457-1502 (_detect_inner_bg — requires container_bg to be set)"
       ],
       "symptom_if_broken": "Same as Gap 2: is_physical_card_surface=False on real cards even though the detector's signal logic would have classified them correctly if invoked.",
       "closes_when": "AC #4 closure determines whether LEGO's section #16 has inner_bg populated. If not, either (a) relax the gate to fire on any section with corner_radius >= 16 + barcode/QR descendant, OR (b) extend 50.4's _detect_inner_bg to populate inner_bg for top-level cards (section IS the card).",
       "blocked_by": "phase-50.7-ac-4",
       "closed_date": "2026-05-12",
       "closed_commit": "phase-50.8",
-      "closure_note": "Speculation partially confirmed but superseded. On LEGO, analyze_layout() does not pick up is_physical_card_surface=True on any of the 8 top-level sections \u2014 but the root cause is different from what gap-3 captured: the membership card is NESTED (depth=2) inside section[7]'s mj-wrapper, not a top-level card with inner_bg=None. Relaxing the inner_bg gate alone would not surface the LEGO case. The deeper structural issue (layout_analyzer needs subtree-walking for physical-card surfaces) is tracked as phase-50.8-nested-physical-cards."
+      "closure_note": "Speculation partially confirmed but superseded. On LEGO, analyze_layout() does not pick up is_physical_card_surface=True on any of the 8 top-level sections — but the root cause is different from what gap-3 captured: the membership card is NESTED (depth=2) inside section[7]'s mj-wrapper, not a top-level card with inner_bg=None. Relaxing the inner_bg gate alone would not surface the LEGO case. The deeper structural issue (layout_analyzer needs subtree-walking for physical-card surfaces) is tracked as phase-50.8-nested-physical-cards."
     },
     {
       "id": "phase-deps-pyright-asynccontextmanager-deprecation",
@@ -88,10 +88,10 @@
         "app/core/database.py:41 (@asynccontextmanager)",
         "app/core/scoped_db.py:123 (@asynccontextmanager)",
         "app/core/scoped_db.py:145 (@asynccontextmanager)",
-        "app/main.py:71 (@asynccontextmanager \u2014 FastAPI lifespan)",
+        "app/main.py:71 (@asynccontextmanager — FastAPI lifespan)",
         "app/knowledge/graph/tests/test_seed_graph.py:36 (@contextmanager)"
       ],
-      "symptom_if_broken": "A genuinely deprecated API (e.g. a Pydantic v3 / SQLAlchemy 2.x removal) lands in a future bump and pyright now logs it as a warning instead of failing `make types` \u2014 the regression slips through CI. Less severe but possible: another false-positive deprecation upstream goes unnoticed because the project-wide demote masks it.",
+      "symptom_if_broken": "A genuinely deprecated API (e.g. a Pydantic v3 / SQLAlchemy 2.x removal) lands in a future bump and pyright now logs it as a warning instead of failing `make types` — the regression slips through CI. Less severe but possible: another false-positive deprecation upstream goes unnoticed because the project-wide demote masks it.",
       "closes_when": "The 5 cited @asynccontextmanager / @contextmanager call sites annotate their return types as `AsyncGenerator[Foo]` / `Generator[Foo]` (or upstream typeshed reverts the deprecation marker), AND `reportDeprecated` returns to its strict-mode default (`error`).",
       "fix_sketch": "For each cited site, change `async def lifespan(app):` -> `async def lifespan(app) -> AsyncGenerator[None]:` and `def fixture():` -> `def fixture() -> Generator[Foo]:`. Then drop `reportDeprecated = 'warning'` from pyproject.toml:324 and re-run `make types` to confirm green under the strict default.",
       "closed_at": "2026-05-13",
@@ -101,24 +101,24 @@
     {
       "id": "phase-50-stranded-templates",
       "phase": "50 (cross-cutting)",
-      "title": "3 of 7 for_converter_engine templates have no structure.json \u2014 never validated",
+      "title": "3 of 7 for_converter_engine templates have no structure.json — never validated",
       "status": "closed",
       "severity": "soft",
       "introduced": "2026-05-03",
       "introduced_commit": "754625bf",
-      "summary": "email-templates/training_HTML/for_converter_engine/ holds 7 reference templates: Lego, maap, mammut, performance_reimagined, reframe_2025, slate, Starbucks. Phase 50 wired 4 of them into data/debug/ as regression cases (maap=5, Starbucks=6, mammut=10, reframe_2025=reframe). The other 3 \u2014 Lego, performance_reimagined, slate \u2014 have figma_link.txt + visual_design.png but no extracted structure.json, so they validate nothing. Phase 50 cited LEGO heavily as the visual oracle (master plan \u00a76, \u00a7201; 50.4 plan \u00a7208/219; 50.7 AC #4) but the data needed to enforce that oracle was never captured.",
+      "summary": "email-templates/training_HTML/for_converter_engine/ holds 7 reference templates: Lego, maap, mammut, performance_reimagined, reframe_2025, slate, Starbucks. Phase 50 wired 4 of them into data/debug/ as regression cases (maap=5, Starbucks=6, mammut=10, reframe_2025=reframe). The other 3 — Lego, performance_reimagined, slate — have figma_link.txt + visual_design.png but no extracted structure.json, so they validate nothing. Phase 50 cited LEGO heavily as the visual oracle (master plan §6, §201; 50.4 plan §208/219; 50.7 AC #4) but the data needed to enforce that oracle was never captured.",
       "code_refs": [
         "email-templates/training_HTML/for_converter_engine/Lego/ (figma_link.txt -> node 2833-1869)",
-        "email-templates/training_HTML/for_converter_engine/performance_reimagined/ (figma_link.txt only \u2014 no manual_component_build.html)",
+        "email-templates/training_HTML/for_converter_engine/performance_reimagined/ (figma_link.txt only — no manual_component_build.html)",
         "email-templates/training_HTML/for_converter_engine/slate/ (figma_link.txt + manual_component_build.html)",
-        "data/debug/manifest.yaml (4 cases \u2014 missing 3)"
+        "data/debug/manifest.yaml (4 cases — missing 3)"
       ],
       "symptom_if_broken": "Any converter regression that affects LEGO / slate / performance_reimagined patterns ships without being caught. Examples: Phase 51A composite-slot work (51.2/51.3/51.6) targeting LEGO's footer membership card, or any future Rule (52.x) whose canonical example lives in one of the 3 stranded templates.",
-      "closes_when": "Phase 53.6 promotes all 3 into data/debug/ \u2014 OR a slim 51.0 task pulls LEGO forward as a Phase 51A prereq, with performance_reimagined and slate following in 53.6.",
+      "closes_when": "Phase 53.6 promotes all 3 into data/debug/ — OR a slim 51.0 task pulls LEGO forward as a Phase 51A prereq, with performance_reimagined and slate following in 53.6.",
       "available_data": {
-        "Lego": ".agents/figma-cache/node_2833_1869.json (228 KB, captured 2026-04-29) \u2014 parseable via figma_to_design_node()",
-        "performance_reimagined": "no cached extraction \u2014 needs live Figma access",
-        "slate": "no cached extraction \u2014 needs live Figma access"
+        "Lego": ".agents/figma-cache/node_2833_1869.json (228 KB, captured 2026-04-29) — parseable via figma_to_design_node()",
+        "performance_reimagined": "no cached extraction — needs live Figma access",
+        "slate": "no cached extraction — needs live Figma access"
       },
       "fast_closure_path": "For LEGO: ~30-line script using the cached JSON (see phase-50.7-ac-4.fast_closure_path). For perf_reimagined + slate: live Figma extract via `python -m app.design_sync.diagnose.extract --connection-id <N> --node-id <NODE>` then save to data/debug/{slug}/structure.json + tokens.json + manifest.yaml.",
       "blocks": [
@@ -137,7 +137,7 @@
       "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-05-04",
-      "summary": "Plan 04 dedup'd app/connectors/{sfmc,adobe}/service.py into OAuthConnectorService (audit F020/F021/F024/F069 RESOLVED). The sister sync_provider.py files (195 LOC each, byte-equivalent except for service-name swaps) were not in scope and still carry: (1) `_token_cache: ClassVar[dict[str, tuple[str, float]]] = {}` \u2014 process-wide unbounded cache (F024 anti-pattern); (2) `hashlib.sha256(credentials['client_id'].encode()).hexdigest()[:16]` \u2014 truncated cache key with cross-vendor collision risk (F069 anti-pattern); (3) the same OAuth + token-refresh + 401-evict shape that lives in OAuthConnectorService. The audit's RESOLVED claims are accurate for the files cited (service.py:23-158, :30, :62) but the duplication just moved one file over.",
+      "summary": "Plan 04 dedup'd app/connectors/{sfmc,adobe}/service.py into OAuthConnectorService (audit F020/F021/F024/F069 RESOLVED). The sister sync_provider.py files (195 LOC each, byte-equivalent except for service-name swaps) were not in scope and still carry: (1) `_token_cache: ClassVar[dict[str, tuple[str, float]]] = {}` — process-wide unbounded cache (F024 anti-pattern); (2) `hashlib.sha256(credentials['client_id'].encode()).hexdigest()[:16]` — truncated cache key with cross-vendor collision risk (F069 anti-pattern); (3) the same OAuth + token-refresh + 401-evict shape that lives in OAuthConnectorService. The audit's RESOLVED claims are accurate for the files cited (service.py:23-158, :30, :62) but the duplication just moved one file over.",
       "code_refs": [
         "app/connectors/sfmc/sync_provider.py:20 (SFMCSyncProvider)",
         "app/connectors/sfmc/sync_provider.py:29 (_token_cache: ClassVar)",
@@ -145,16 +145,16 @@
         "app/connectors/adobe/sync_provider.py:20 (AdobeSyncProvider)",
         "app/connectors/adobe/sync_provider.py:29 (_token_cache: ClassVar)",
         "app/connectors/adobe/sync_provider.py:37 (truncated SHA-256[:16] cache key)",
-        "app/connectors/_base/oauth.py (OAuthConnectorService \u2014 the existing target ABC)",
-        "app/core/cache.py (LruWithTtl \u2014 the existing replacement for ClassVar caches)"
+        "app/connectors/_base/oauth.py (OAuthConnectorService — the existing target ABC)",
+        "app/core/cache.py (LruWithTtl — the existing replacement for ClassVar caches)"
       ],
-      "symptom_if_broken": "Two SFMC/Adobe customers with `client_id` values that share the same first 16 hex chars of SHA-256 will get each other's access tokens for the lifetime of the cache entry (cross-tenant token reuse). Process-wide cache also grows unbounded under high-tenant-count workloads \u2014 same memory-leak class as F024.",
+      "symptom_if_broken": "Two SFMC/Adobe customers with `client_id` values that share the same first 16 hex chars of SHA-256 will get each other's access tokens for the lifetime of the cache entry (cross-tenant token reuse). Process-wide cache also grows unbounded under high-tenant-count workloads — same memory-leak class as F024.",
       "closes_when": "Either (a) the two SyncProvider classes are migrated onto OAuthConnectorService (delete ~330 LOC, vendor sync providers shrink to ~30 LOC each like service.py did), OR (b) at minimum the local _token_cache is replaced with `LruWithTtl(maxsize=64)` and the cache key drops the [:16] truncation in favour of `f'{vendor}:{client_id}'`. Option (a) closes F020 properly across both code paths; option (b) is the surgical-fix bandaid.",
-      "fast_closure_path": "Option (b) bandaid: ~10-line patch per file \u2014 replace `_token_cache: ClassVar[dict] = {}` with an instance `LruWithTtl(maxsize=64, default_ttl=3600)` initialized in `__init__`, drop the `hashlib.sha256(...).hexdigest()[:16]` and use the full client_id (prefixed by vendor name). Existing cache-hit/miss tests cover the call sites; only the storage shape changes.",
-      "notes": "Discovered while verifying Plan 04 stayed shipped (2026-05-04 sweep). Plan 04's verification commands (`rg '_token_cache: ClassVar' app/connectors/`) returned 0 hits when Plan 04 shipped because sync_provider.py was either added later or the rg was scoped tighter \u2014 worth checking git blame before assuming it's a regression vs. a pre-existing miss.",
+      "fast_closure_path": "Option (b) bandaid: ~10-line patch per file — replace `_token_cache: ClassVar[dict] = {}` with an instance `LruWithTtl(maxsize=64, default_ttl=3600)` initialized in `__init__`, drop the `hashlib.sha256(...).hexdigest()[:16]` and use the full client_id (prefixed by vendor name). Existing cache-hit/miss tests cover the call sites; only the storage shape changes.",
+      "notes": "Discovered while verifying Plan 04 stayed shipped (2026-05-04 sweep). Plan 04's verification commands (`rg '_token_cache: ClassVar' app/connectors/`) returned 0 hits when Plan 04 shipped because sync_provider.py was either added later or the rg was scoped tighter — worth checking git blame before assuming it's a regression vs. a pre-existing miss.",
       "closed": "2026-05-10",
       "closed_commit": "3ef5633f",
-      "closure_note": "Closed via Option (b) \u2014 surgical bandaid in tech-debt/04-connector-oauth-cache. Replaced `_token_cache: ClassVar[dict]` + SHA-256[:16] cache key with per-instance `LruWithTtl(maxsize=64)` keyed by `f\"{vendor}:{client_id}\"` in app/connectors/{sfmc,adobe}/sync_provider.py. Dropped hashlib + time imports. Added cross-tenant + per-instance regression tests in app/connectors/{sfmc,adobe}/tests/test_sync_provider.py. Option (a) \u2014 full migration onto OAuthConnectorService \u2014 remains as future work; both files now carry a `# TODO(tech-debt):` marker pointing back to this entry so the next sweep knows the bandaid is intentional."
+      "closure_note": "Closed via Option (b) — surgical bandaid in tech-debt/04-connector-oauth-cache. Replaced `_token_cache: ClassVar[dict]` + SHA-256[:16] cache key with per-instance `LruWithTtl(maxsize=64)` keyed by `f\"{vendor}:{client_id}\"` in app/connectors/{sfmc,adobe}/sync_provider.py. Dropped hashlib + time imports. Added cross-tenant + per-instance regression tests in app/connectors/{sfmc,adobe}/tests/test_sync_provider.py. Option (a) — full migration onto OAuthConnectorService — remains as future work; both files now carry a `# TODO(tech-debt):` marker pointing back to this entry so the next sweep knows the bandaid is intentional."
     },
     {
       "id": "tech-debt-alembic-schema-drift",
@@ -164,18 +164,18 @@
       "severity": "known-bug",
       "introduced": "2026-05-05",
       "introduced_commit": "737b27be",
-      "summary": "CI step `Migration safety (alembic upgrade + check)` is `continue-on-error: true`. It autogenerates a diff between the live DB (after `alembic upgrade head`) and SQLAlchemy models, and currently emits a 200+-line `New upgrade operations detected` block on every PR. The drift accumulated across multiple shipped phases \u2014 none of it caused by PR #98, all of it visible on main `a6f452bf` and earlier. Confirmed by checking gh run 25339533176 (main, pre-#98) which carries the identical annotation.",
+      "summary": "CI step `Migration safety (alembic upgrade + check)` is `continue-on-error: true`. It autogenerates a diff between the live DB (after `alembic upgrade head`) and SQLAlchemy models, and currently emits a 200+-line `New upgrade operations detected` block on every PR. The drift accumulated across multiple shipped phases — none of it caused by PR #98, all of it visible on main `a6f452bf` and earlier. Confirmed by checking gh run 25339533176 (main, pre-#98) which carries the identical annotation.",
       "code_refs": [
-        ".github/workflows/ci.yml (Migration safety job, alembic check step \u2014 advisory, continue-on-error: true)",
+        ".github/workflows/ci.yml (Migration safety job, alembic check step — advisory, continue-on-error: true)",
         "app/example/ (deleted in eddcd1ac/F007) -- but no migration drops the `items` table",
         "app/shared/models.py (TimestampMixin uses DateTime(timezone=True))",
         "alembic/versions/ (~15 historical migrations declare TIMESTAMP() without tz on created_at/updated_at across blueprint_checkpoints, calibration_records, calibration_summaries, collaborative_documents, component_qa_results, design_connections, design_import_assets, design_imports, design_token_snapshots, esp_connections, rendering_screenshots, rendering_tests, etc.)",
         "alembic/versions/ (NOT NULL drift on rendering_screenshots/rendering_tests/calibration_records/calibration_summaries/component_qa_results created_at+updated_at)",
-        "alembic/versions/ (PK index drift: ix_*_id missing on a dozen tables \u2014 most DBs auto-create, advisory still flags)"
+        "alembic/versions/ (PK index drift: ix_*_id missing on a dozen tables — most DBs auto-create, advisory still flags)"
       ],
-      "symptom_if_broken": "Future `alembic revision --autogenerate` will mass-generate the accumulated drift as a single 200+-op migration if anyone runs it without first reading this entry \u2014 risk of accidentally landing a destructive migration that drops `items`, alters timestamp types in production, and adds NOT NULL constraints that break inserts where the column allows NULL today. Also: model contract (NOT NULL) doesn't match runtime contract (nullable in DB) on 5 tables, so an insert pattern that the model says is invalid may currently succeed in production, and tightening models to match the DB (or vice versa) will surface the inconsistency.",
-      "closes_when": "Single migration rev that (a) drops `items` table + 3 indexes, (b) ALTER COLUMNs the ~30 timestamp columns to `TIMESTAMP WITH TIME ZONE`, (c) adds NOT NULL constraints on the 10 affected created_at/updated_at columns (NULL backfill required first \u2014 verify count of NULL rows pre-migration), (d) reconciles the qa_overrides unique constraint, memory_entries HNSW index, and design_connections/design_token_snapshots column comments. After landing, `alembic check` should exit 0 and the CI annotation goes away. Belongs in Session 19 (backend sweep) alongside F057 migration squash.",
-      "fast_closure_path": "Run `alembic revision --autogenerate -m 'reconcile model<->schema drift'` against a fresh DB at head, hand-review the generated ops (split into multiple revs if too large), null-backfill the columns that need NOT NULL before applying. Squawk gate (Migration safety squawk job) will catch unsafe ALTER COLUMNs \u2014 expect to add `op.execute('SET lock_timeout = ...')` guards.",
+      "symptom_if_broken": "Future `alembic revision --autogenerate` will mass-generate the accumulated drift as a single 200+-op migration if anyone runs it without first reading this entry — risk of accidentally landing a destructive migration that drops `items`, alters timestamp types in production, and adds NOT NULL constraints that break inserts where the column allows NULL today. Also: model contract (NOT NULL) doesn't match runtime contract (nullable in DB) on 5 tables, so an insert pattern that the model says is invalid may currently succeed in production, and tightening models to match the DB (or vice versa) will surface the inconsistency.",
+      "closes_when": "Single migration rev that (a) drops `items` table + 3 indexes, (b) ALTER COLUMNs the ~30 timestamp columns to `TIMESTAMP WITH TIME ZONE`, (c) adds NOT NULL constraints on the 10 affected created_at/updated_at columns (NULL backfill required first — verify count of NULL rows pre-migration), (d) reconciles the qa_overrides unique constraint, memory_entries HNSW index, and design_connections/design_token_snapshots column comments. After landing, `alembic check` should exit 0 and the CI annotation goes away. Belongs in Session 19 (backend sweep) alongside F057 migration squash.",
+      "fast_closure_path": "Run `alembic revision --autogenerate -m 'reconcile model<->schema drift'` against a fresh DB at head, hand-review the generated ops (split into multiple revs if too large), null-backfill the columns that need NOT NULL before applying. Squawk gate (Migration safety squawk job) will catch unsafe ALTER COLUMNs — expect to add `op.execute('SET lock_timeout = ...')` guards.",
       "notes": "The advisory check has been failing-as-non-blocking on every PR for some time. Surfaced as a question on PR #98 (https://github.com/linardsb/merkle-email-hub/pull/98). NOT a regression introduced by recent work. Tracked here so a future PR doesn't autogenerate it as a destructive migration without realizing the scope.",
       "closed": "2026-05-10",
       "closed_commit": "d0eb648b"
@@ -183,21 +183,21 @@
     {
       "id": "tech-debt-03-tenant-isolation-regression-harness",
       "phase": "tech-debt-03",
-      "title": "Cross-entity tenant-isolation regression test self-skips \u2014 no integration DB harness",
+      "title": "Cross-entity tenant-isolation regression test self-skips — no integration DB harness",
       "status": "closed",
       "severity": "soft",
       "introduced": "2026-05-04",
-      "summary": "Plan 03 \u00a7C calls for a load-bearing cross-org regression test (`app/tests/test_tenant_isolation.py`) that spins up two orgs/users via a real Postgres `db: AsyncSession` fixture and asserts no entity (projects, templates, memory, qa_results, approvals) leaks across orgs. The scoping logic itself (F001/F002) is enforced \u2014 every route is on `get_scoped_db`, every repo calls `scoped_access`, and a forgotten swap raises `RuntimeError` (caught by every existing route test). What's missing is the integration harness: there is no project-wide `db: AsyncSession` fixture with table truncation. The test self-skips when `TEST_DATABASE__URL` is unset; once the harness lands the test activates, with `xfail(strict=True)` on templates/memory/qa_results/approvals so they fail-loud and prompt promotion to plain `id=...`.",
+      "summary": "Plan 03 §C calls for a load-bearing cross-org regression test (`app/tests/test_tenant_isolation.py`) that spins up two orgs/users via a real Postgres `db: AsyncSession` fixture and asserts no entity (projects, templates, memory, qa_results, approvals) leaks across orgs. The scoping logic itself (F001/F002) is enforced — every route is on `get_scoped_db`, every repo calls `scoped_access`, and a forgotten swap raises `RuntimeError` (caught by every existing route test). What's missing is the integration harness: there is no project-wide `db: AsyncSession` fixture with table truncation. The test self-skips when `TEST_DATABASE__URL` is unset; once the harness lands the test activates, with `xfail(strict=True)` on templates/memory/qa_results/approvals so they fail-loud and prompt promotion to plain `id=...`.",
       "code_refs": [
         "app/tests/test_tenant_isolation.py:48 (db fixture self-skips on no TEST_DATABASE__URL)",
-        "app/tests/factories.py (seed_org/seed_user/auth_header \u2014 already in place)",
-        "conftest.py:88 (_override_scoped_db autouse opts out on tenant_isolation marker \u2014 harness will drop straight in)",
+        "app/tests/factories.py (seed_org/seed_user/auth_header — already in place)",
+        "conftest.py:88 (_override_scoped_db autouse opts out on tenant_isolation marker — harness will drop straight in)",
         "TECH_DEBT_AUDIT.md:43-44 (F001/F002 entries note skeleton status)"
       ],
-      "symptom_if_broken": "A future repo lands without `scoped_access` filtering and the regression net does not catch it because no integration test ever runs. The fail-loud `RuntimeError` on missing `tenant_access` covers the 'forgot to swap get_db' case but NOT the 'wrote a new repo with no scope filter' case \u2014 that's exactly what this regression test exists to catch.",
+      "symptom_if_broken": "A future repo lands without `scoped_access` filtering and the regression net does not catch it because no integration test ever runs. The fail-loud `RuntimeError` on missing `tenant_access` covers the 'forgot to swap get_db' case but NOT the 'wrote a new repo with no scope filter' case — that's exactly what this regression test exists to catch.",
       "closes_when": "A `db: AsyncSession` fixture lands (likely under `app/tests/conftest.py` or root conftest) that creates an isolated Postgres schema per test (or truncates between tests), AND `app/tests/test_tenant_isolation.py` runs green in CI without `TEST_DATABASE__URL` gating. Promote the four `xfail(strict=True)` entries (templates/memory/qa_results/approvals) to plain `id=...` once each entity's payload schema is wired.",
       "fast_closure_path": "Smallest viable harness: a session-scoped engine pointed at a disposable test DB + a function-scoped `db` fixture that opens an `AsyncSession` and `TRUNCATE`s the relevant tables on teardown. Reuse `seed_org`/`seed_user` from `app/tests/factories.py`. Once the fixture exists, the test activates and the four xfail entities can be wired one at a time.",
-      "notes": "F003 is independently closed by `db953681`'s shipped BOLA test (`app/projects/tests/test_bola.py`) and is unaffected by this gap. Briefs is intentionally `xfail(strict=False)` because it needs a user-isolation variant rather than the org-isolation pattern \u2014 track separately if it warrants its own entry. \u2014 Closed by tech-debt/03-tenant-iso-harness: app/tests/conftest.py provides session-scoped _integration_engine (alembic upgrade head) + per-test db fixture (TRUNCATE RESTART IDENTITY CASCADE); test_tenant_isolation.py wires templates/memory/qa_results/approvals via ENTITY_FIXTURES (EntitySpec dataclass with optional pre_seed for build/template_version dependencies); xfail(strict=True) dropped from those four; briefs stays xfail(strict=False) \u2014 user-isolation variant tracked under a new entry.",
+      "notes": "F003 is independently closed by `db953681`'s shipped BOLA test (`app/projects/tests/test_bola.py`) and is unaffected by this gap. Briefs is intentionally `xfail(strict=False)` because it needs a user-isolation variant rather than the org-isolation pattern — track separately if it warrants its own entry. — Closed by tech-debt/03-tenant-iso-harness: app/tests/conftest.py provides session-scoped _integration_engine (alembic upgrade head) + per-test db fixture (TRUNCATE RESTART IDENTITY CASCADE); test_tenant_isolation.py wires templates/memory/qa_results/approvals via ENTITY_FIXTURES (EntitySpec dataclass with optional pre_seed for build/template_version dependencies); xfail(strict=True) dropped from those four; briefs stays xfail(strict=False) — user-isolation variant tracked under a new entry.",
       "closed_commit": "b16eaea2"
     },
     {
@@ -206,7 +206,7 @@
       "title": "mypy 2.0 redundant-cast suppression on Figma style-run cast",
       "status": "closed",
       "closed_commit": "F014 / tech-debt-15-figma-typed-boundaries",
-      "closed_note": "Closed by Option (a) \u2014 TypedDict boundary at app/design_sync/figma/raw_types.py types characterStyleOverrides as list[Any]; the redundant cast and # type: ignore[redundant-cast] in _parse_style_runs are gone. All 8 redundant-cast suppressions in service.py removed.",
+      "closed_note": "Closed by Option (a) — TypedDict boundary at app/design_sync/figma/raw_types.py types characterStyleOverrides as list[Any]; the redundant cast and # type: ignore[redundant-cast] in _parse_style_runs are gone. All 8 redundant-cast suppressions in service.py removed.",
       "severity": "speculative",
       "introduced": "2026-05-09",
       "introduced_commit": "f014ffb6",
@@ -214,9 +214,9 @@
       "code_refs": [
         "app/design_sync/figma/service.py:160-163 (overrides_list cast + type: ignore[redundant-cast])",
         "app/design_sync/figma/service.py:152 (isinstance guard whose narrowing mypy now trusts but pyright doesn't)",
-        "pyproject.toml:88 (mypy>=2.0.0 \u2014 the bump that introduced the divergence)"
+        "pyproject.toml:88 (mypy>=2.0.0 — the bump that introduced the divergence)"
       ],
-      "symptom_if_broken": "A future genuinely-redundant cast elsewhere in the codebase slips through because reviewers see the existing `# type: ignore[redundant-cast]` precedent and copy it. Less severe but possible: pyright catches up and the suppression silently does nothing \u2014 easy to miss without a tracker.",
+      "symptom_if_broken": "A future genuinely-redundant cast elsewhere in the codebase slips through because reviewers see the existing `# type: ignore[redundant-cast]` precedent and copy it. Less severe but possible: pyright catches up and the suppression silently does nothing — easy to miss without a tracker.",
       "closes_when": "Either (a) `_parse_style_runs` is refactored so `overrides` is typed as `list[Any]` at the call site (no cast needed by mypy or pyright), OR (b) pyright's isinstance narrowing matches mypy 2.0's behavior and removing both the cast and the ignore-comment leaves `make types` green.",
       "fix_sketch": "Option (a): change `node_data: dict[str, Any]` to a TypedDict with `characterStyleOverrides: NotRequired[list[Any]]`, then `overrides = node_data.get(...)` is already `list[Any]` and the isinstance guard suffices for both checkers. Option (b): drop the cast + `# type: ignore[redundant-cast]` line and run `uv run pyright app/design_sync/figma/service.py` to confirm pyright accepts the narrowing."
     },
@@ -228,17 +228,17 @@
       "severity": "soft",
       "introduced": "2026-05-10",
       "introduced_commit": "d0eb648b",
-      "summary": "The CI Migration safety (squawk) job invokes squawk directly on alembic .py files. squawk 2.51+ is a pure-SQL linter \u2014 every op.execute() string literal triggers a syntax error and the job exits 123 with 500+ findings. Demoted to continue-on-error in tech-debt-19. The squawk-ignore: column-type-change comments in normalize_schema_drift.py exist for the day this becomes useful again.",
+      "summary": "The CI Migration safety (squawk) job invokes squawk directly on alembic .py files. squawk 2.51+ is a pure-SQL linter — every op.execute() string literal triggers a syntax error and the job exits 123 with 500+ findings. Demoted to continue-on-error in tech-debt-19. The squawk-ignore: column-type-change comments in normalize_schema_drift.py exist for the day this becomes useful again.",
       "code_refs": [
-        ".github/workflows/ci.yml (Migration safety squawk job \u2014 advisory)",
-        "Makefile (migration-lint target \u2014 same brokenness on local)",
-        ".pre-commit-config.yaml:94 (squawk-migrations hook \u2014 already || true)",
+        ".github/workflows/ci.yml (Migration safety squawk job — advisory)",
+        "Makefile (migration-lint target — same brokenness on local)",
+        ".pre-commit-config.yaml:94 (squawk-migrations hook — already || true)",
         "alembic/versions/normalize_schema_drift.py (squawk-ignore comments awaiting a linter that respects them)"
       ],
       "symptom_if_broken": "Future migrations with unsafe DDL (table-rewriting ALTER, missing IF EXISTS, naked DROP COLUMN on populated tables) ship without an automated check. The risky-pattern catch lives only in human review until a Python-aware migration linter (e.g. SQL-string AST extraction + feed to squawk, or a new tool) is wired in.",
       "closes_when": "A migration linter (Python-aware) reports zero findings on the current alembic/versions/ tree, AND the migration-lint job is promoted back to a hard gate (continue-on-error removed).",
       "fast_closure_path": "Write a tiny Python preprocessor that AST-walks alembic/versions/*.py, extracts every op.execute(\"...\") + op.create_table/alter_column kwargs as raw SQL, writes to a tempfile, and feeds that to squawk. Replace the direct .py invocation with this preprocessor in CI + Makefile + pre-commit hook.",
-      "notes": "Surfaced when normalize_schema_drift hit the squawk job in PR #133 \u2014 first PR with a non-trivial Python migration since the job was added in #101."
+      "notes": "Surfaced when normalize_schema_drift hit the squawk job in PR #133 — first PR with a non-trivial Python migration since the job was added in #101."
     },
     {
       "id": "tech-debt-03-briefs-user-isolation-test",
@@ -247,14 +247,14 @@
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-05-10",
-      "summary": "The cross-entity tenant-isolation harness (closed in tech-debt-03-tenant-isolation-regression-harness) parametrizes briefs as xfail(strict=False) because briefs are scoped by creator (BOLA-by-creator), not by org. The org-isolation pattern in test_no_cross_org_read does not apply: two users in the same org could still leak each other\u2019s briefs. A user-isolation variant \u2014 same org, different creators, GET-by-id and list must filter by user \u2014 is needed for the same fail-loud net the other entities now have.",
+      "summary": "The cross-entity tenant-isolation harness (closed in tech-debt-03-tenant-isolation-regression-harness) parametrizes briefs as xfail(strict=False) because briefs are scoped by creator (BOLA-by-creator), not by org. The org-isolation pattern in test_no_cross_org_read does not apply: two users in the same org could still leak each other’s briefs. A user-isolation variant — same org, different creators, GET-by-id and list must filter by user — is needed for the same fail-loud net the other entities now have.",
       "code_refs": [
         "app/tests/test_tenant_isolation.py (briefs param at xfail(strict=False))",
         "app/briefs/repository.py (BOLA-by-creator filtering)"
       ],
-      "symptom_if_broken": "A repo or route change drops creator-based filtering on briefs; one user in an org reads another user\u2019s briefs and no regression test catches it (only the existing scoped_access fail-loud covers the missing-filter shape \u2014 not user-id-scoped leaks within an org).",
-      "closes_when": "A test like test_no_cross_user_read_briefs lands under app/tests/, seeds two users in the SAME org, has user1 create a brief, asserts user2 cannot GET it by id and that user2\u2019s list excludes it. Wire it into the integration harness alongside test_no_cross_org_read.",
-      "notes": "Out of scope for tech-debt/03-tenant-iso-harness per that plan \u00a7\u201cOut of scope\u201d."
+      "symptom_if_broken": "A repo or route change drops creator-based filtering on briefs; one user in an org reads another user’s briefs and no regression test catches it (only the existing scoped_access fail-loud covers the missing-filter shape — not user-id-scoped leaks within an org).",
+      "closes_when": "A test like test_no_cross_user_read_briefs lands under app/tests/, seeds two users in the SAME org, has user1 create a brief, asserts user2 cannot GET it by id and that user2’s list excludes it. Wire it into the integration harness alongside test_no_cross_org_read.",
+      "notes": "Out of scope for tech-debt/03-tenant-iso-harness per that plan §“Out of scope”."
     },
     {
       "id": "tech-debt-03-memory-isolation-embedding-stub",
@@ -272,7 +272,7 @@
         "app/memory/routes.py:27 (provider = get_embedding_provider(settings))",
         "app/knowledge/embedding.py:177 (get_embedding_provider)"
       ],
-      "symptom_if_broken": "Memory row in the tenant-isolation harness silently passes despite scoping regressions \u2014 the xfail(strict=False) means PASS is also acceptable. If the provider stub lands but the scoping is broken, the test would fail loud; if scoping is broken AND the provider is still 401-ing, the failure mode persists as the same xfail and the regression hides.",
+      "symptom_if_broken": "Memory row in the tenant-isolation harness silently passes despite scoping regressions — the xfail(strict=False) means PASS is also acceptable. If the provider stub lands but the scoping is broken, the test would fail loud; if scoping is broken AND the provider is still 401-ing, the failure mode persists as the same xfail and the regression hides.",
       "closes_when": "A test-scoped embedding-provider override (e.g. via `app.dependency_overrides[get_embedding_provider] = lambda settings: StubProvider()` in `app/tests/conftest.py`, gated on the integration marker) is wired AND the memory pytest.param promotes to plain id=... AND the cross-org read test for memory passes against a real DB.",
       "notes": "Tracked alongside tech-debt-03-briefs-user-isolation-test (the other deferred follow-up from the harness landing)."
     },
@@ -286,12 +286,12 @@
       "introduced_commit": "phase-50.8",
       "closed_date": "2026-05-13",
       "closed_commit": "fix/nested-physical-cards",
-      "closure_note": "layout_analyzer.py now falls back to find_physical_card_in_subtree() (physical_card_detector.py) when _detect_inner_bg returns inner_bg=None. The walker is bounded (max_depth=4), computes sibling radii per-candidate from the candidate's immediate parent, and requires the candidate to carry corner_radius >= 16 \u2014 without that precondition aspect_ratio_boarding_pass + barcode_child fire coincidentally on plain hero sections (a 600x67 banner strip image inside a 600x467 hero matches both). Asymmetry vs the top-level path is intentional: top-level detection runs only after _detect_inner_bg gates on a card-coloured surface, so the structural gate is doing the work; the subtree walker has no such gate and must use corner_radius as the visual hallmark. When a nested card is detected the parent section's physical_card_signals are prefixed with 'nested_card' for provenance. Trade-off: is_physical_card_surface remains a binary section-level flag, so any non-card siblings inside the same mixed wrapper inherit the flag; Phase 52.7 Rule 9 inherits this and will need to thread detection down to descendant-node granularity to correct dark-mode flips on non-card content. Validated by app/design_sync/tests/test_layout_analyzer.py::TestNestedPhysicalCardDetection on LEGO data/debug/7 (only sections[7] flagged; cases 5/6/8/9/10 unchanged at zero flagged) and app/design_sync/tests/test_physical_card_detector.py::TestSubtreeWalker (synthetic coverage for depth bound, corner-radius precondition, min_signals plumbing, per-candidate sibling radii \u2014 independent of the gitignored fixture).",
-      "summary": "layout_analyzer.py:397-414 runs detect_physical_card_surface only on top-level section candidates. For real Figma campaigns where the physical-card surface is nested inside an outer mj-wrapper (e.g. LEGO data/debug/7: pages[0].children[0].children[7].children[2] is an mj-section with corner_radius=18 sitting inside a column-layout-4 footer wrapper), the detector is never invoked. detect_physical_card_surface() invoked directly on the card returns is_physical=True with 2 signals \u2014 the detection logic is correct, only the production wiring misses nested cards.",
+      "closure_note": "layout_analyzer.py now falls back to find_physical_card_in_subtree() (physical_card_detector.py) when _detect_inner_bg returns inner_bg=None. The walker is bounded (max_depth=4), computes sibling radii per-candidate from the candidate's immediate parent, and requires the candidate to carry corner_radius >= 16 — without that precondition aspect_ratio_boarding_pass + barcode_child fire coincidentally on plain hero sections (a 600x67 banner strip image inside a 600x467 hero matches both). Asymmetry vs the top-level path is intentional: top-level detection runs only after _detect_inner_bg gates on a card-coloured surface, so the structural gate is doing the work; the subtree walker has no such gate and must use corner_radius as the visual hallmark. When a nested card is detected the parent section's physical_card_signals are prefixed with 'nested_card' for provenance. Trade-off: is_physical_card_surface remains a binary section-level flag, so any non-card siblings inside the same mixed wrapper inherit the flag; Phase 52.7 Rule 9 inherits this and will need to thread detection down to descendant-node granularity to correct dark-mode flips on non-card content. Validated by app/design_sync/tests/test_layout_analyzer.py::TestNestedPhysicalCardDetection on LEGO data/debug/7 (only sections[7] flagged; cases 5/6/8/9/10 unchanged at zero flagged) and app/design_sync/tests/test_physical_card_detector.py::TestSubtreeWalker (synthetic coverage for depth bound, corner-radius precondition, min_signals plumbing, per-candidate sibling radii — independent of the gitignored fixture).",
+      "summary": "layout_analyzer.py:397-414 runs detect_physical_card_surface only on top-level section candidates. For real Figma campaigns where the physical-card surface is nested inside an outer mj-wrapper (e.g. LEGO data/debug/7: pages[0].children[0].children[7].children[2] is an mj-section with corner_radius=18 sitting inside a column-layout-4 footer wrapper), the detector is never invoked. detect_physical_card_surface() invoked directly on the card returns is_physical=True with 2 signals — the detection logic is correct, only the production wiring misses nested cards.",
       "code_refs": [
-        "app/design_sync/figma/layout_analyzer.py:397-414 (detector wiring \u2014 invokes only on top-level section)",
-        "app/design_sync/figma/layout_analyzer.py:502 (_get_section_candidates \u2014 defines what counts as a top-level section)",
-        "data/debug/7/structure.json (LEGO \u2014 real fixture demonstrating the nested case)",
+        "app/design_sync/figma/layout_analyzer.py:397-414 (detector wiring — invokes only on top-level section)",
+        "app/design_sync/figma/layout_analyzer.py:502 (_get_section_candidates — defines what counts as a top-level section)",
+        "data/debug/7/structure.json (LEGO — real fixture demonstrating the nested case)",
         "app/design_sync/tests/test_physical_card_detector.py::TestLEGORealFixture (passes against the nested node directly)"
       ],
       "symptom_if_broken": "Phase 52.7's Rule 9 dark-mode flip will incorrectly invert the LEGO Insiders membership card (and any other nested physical card) in dark mode, because is_physical_card_surface is False on the parent section even though a descendant of that section IS a physical card.",
@@ -308,12 +308,12 @@
     {
       "id": "tech-debt-19-design-sync-flag-cull-deeper",
       "phase": "tech-debt-19",
-      "title": "DESIGN_SYNC__* flag cull \u2014 deeper retirement (62 -> <=30)",
+      "title": "DESIGN_SYNC__* flag cull — deeper retirement (62 -> <=30)",
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-05-13",
       "introduced_commit": "(this PR)",
-      "summary": "Session 19 PR-C cut 4 fields from app/core/config/design_sync.py (66 -> 62: dropped 2 zero-ref fidelity_* fields, promoted opacity_composite_bg + low_match_confidence_threshold to module constants in app/design_sync/tuning.py). The plan target of <=30 requires deeper feature retirement \u2014 deleting test-only-gated features (custom_component_*, wrapper_unwrap, vlm_verify_* tuning knobs, sibling_* parameterized tests, regression_strict, vlm_low_confidence_threshold, vlm_verify_client) along with the tests that exercise their gating. Surgical-changes scope on the sweep PR forbade that breadth.",
+      "summary": "Session 19 PR-C cut 4 fields from app/core/config/design_sync.py (66 -> 62: dropped 2 zero-ref fidelity_* fields, promoted opacity_composite_bg + low_match_confidence_threshold to module constants in app/design_sync/tuning.py). The plan target of <=30 requires deeper feature retirement — deleting test-only-gated features (custom_component_*, wrapper_unwrap, vlm_verify_* tuning knobs, sibling_* parameterized tests, regression_strict, vlm_low_confidence_threshold, vlm_verify_client) along with the tests that exercise their gating. Surgical-changes scope on the sweep PR forbade that breadth.",
       "code_refs": [
         "app/core/config/design_sync.py (62 fields remaining)",
         "app/design_sync/tuning.py (target home for further threshold-knob promotions)",
@@ -333,18 +333,171 @@
       "severity": "known-bug",
       "introduced": "2026-05-13",
       "introduced_commit": "8aa83103",
-      "summary": "scripts/squash-migrations.sh and scripts/squash-migrations-dryrun.sh both run alembic revision --autogenerate against the SAME DB that has just had all migrations applied. Autogenerate diffs target_metadata (Python models) against the live DB schema; when they match \u2014 which they always do at this point in the flow, by construction \u2014 the generated baseline migration is empty (def upgrade(): pass, zero op.create_table statements). Stamping head against this empty migration leaves the existing populated DB unchanged, but any future fresh-DB bootstrap will run an empty upgrade() and produce no schema. The runbooks (.agents/plans/tech-debt-19-runbook-db-squash.md procedure step 5) inherit the same flaw \u2014 alembic check after step 5 still passes deceptively (schema matches models regardless of whether the baseline contains anything).",
+      "summary": "scripts/squash-migrations.sh and scripts/squash-migrations-dryrun.sh both run alembic revision --autogenerate against the SAME DB that has just had all migrations applied. Autogenerate diffs target_metadata (Python models) against the live DB schema; when they match — which they always do at this point in the flow, by construction — the generated baseline migration is empty (def upgrade(): pass, zero op.create_table statements). Stamping head against this empty migration leaves the existing populated DB unchanged, but any future fresh-DB bootstrap will run an empty upgrade() and produce no schema. The runbooks (.agents/plans/tech-debt-19-runbook-db-squash.md procedure step 5) inherit the same flaw — alembic check after step 5 still passes deceptively (schema matches models regardless of whether the baseline contains anything).",
       "code_refs": [
-        "scripts/squash-migrations.sh:102-114 (mv versions/ then autogenerate then stamp \u2014 same-DB autogenerate)",
+        "scripts/squash-migrations.sh:102-114 (mv versions/ then autogenerate then stamp — same-DB autogenerate)",
         "scripts/squash-migrations-dryrun.sh:81-95 (same flaw)",
         ".agents/plans/tech-debt-19-runbook-db-squash.md:99-106 (procedure step 5 directs the same flow)",
         "Makefile:269-270 (db-squash target shells out to squash-migrations.sh)",
-        "TODO.md (\u00a750.5 currently tagged [Plan Ready] \u2014 the plan is design-broken)"
+        "TODO.md (§50.5 currently tagged [Plan Ready] — the plan is design-broken)"
       ],
-      "symptom_if_broken": "After make db-squash cutover, alembic_version points at a baseline_squash_YYYYMMDD revision whose upgrade() body is `pass`. Production DB is unaffected (schema already exists). Symptom appears on the next fresh-DB deploy \u2014 CI staging spin-up, contributor onboarding, disaster-recovery restore \u2014 when `alembic upgrade head` against an empty DB runs the empty migration to completion with no tables created. First request that touches the DB raises psycopg/asyncpg UndefinedTable / relation does not exist.",
-      "closes_when": "Both squash scripts (destructive + dry-run) generate the baseline via autogenerate against an EMPTY throwaway DB (not the populated one). Verified by inline assertion: grep -c \"op.create_table\" on the generated baseline file must equal the number of tables in target_metadata. The dry-run additionally applies that baseline to a third empty DB, captures pg_dump, and diffs it against the all-migrations-applied dump from the first DB \u2014 the diff must be empty.",
-      "fix_sketch": "Three-DB flow. DB-A: docker run pgvector \u2192 alembic upgrade head \u2192 pg_dump schema_A. DB-B: docker run pgvector (empty) \u2192 alembic revision --autogenerate (compares models vs empty DB \u2192 baseline contains every CreateTable). DB-C: docker run pgvector (empty) \u2192 apply only the new baseline \u2192 pg_dump schema_C. Assert diff schema_A vs schema_C is empty (modulo alembic_version table). The current single-DB design conflates the source-of-schema and the autogenerate-target \u2014 they must be separated.",
-      "notes": "Discovered 2026-05-25 by direct test: applied all 47 migrations to a throwaway pgvector container, truncated alembic_version, ran alembic revision --autogenerate against a temp tree with empty versions/. Generated file contained `def upgrade(): pass` with zero op.create_table statements. The destructive scripts/squash-migrations.sh has the same defect AND its operator-facing alembic check in step 6 of the runbook still passes (because schema matches models regardless of baseline content), so the runbook gives no warning. F057 (TODO.md \u00a750.5) currently tagged [Plan Ready] \u2014 re-tag and do not execute make db-squash until this is closed. Two unrelated bugs in squash-migrations-dryrun.sh were fixed in the same investigation (hardcoded port 55555, host pg_dump major-version mismatch) \u2014 see follow-up commit."
+      "symptom_if_broken": "After make db-squash cutover, alembic_version points at a baseline_squash_YYYYMMDD revision whose upgrade() body is `pass`. Production DB is unaffected (schema already exists). Symptom appears on the next fresh-DB deploy — CI staging spin-up, contributor onboarding, disaster-recovery restore — when `alembic upgrade head` against an empty DB runs the empty migration to completion with no tables created. First request that touches the DB raises psycopg/asyncpg UndefinedTable / relation does not exist.",
+      "closes_when": "Both squash scripts (destructive + dry-run) generate the baseline via autogenerate against an EMPTY throwaway DB (not the populated one). Verified by inline assertion: grep -c \"op.create_table\" on the generated baseline file must equal the number of tables in target_metadata. The dry-run additionally applies that baseline to a third empty DB, captures pg_dump, and diffs it against the all-migrations-applied dump from the first DB — the diff must be empty.",
+      "fix_sketch": "Three-DB flow. DB-A: docker run pgvector → alembic upgrade head → pg_dump schema_A. DB-B: docker run pgvector (empty) → alembic revision --autogenerate (compares models vs empty DB → baseline contains every CreateTable). DB-C: docker run pgvector (empty) → apply only the new baseline → pg_dump schema_C. Assert diff schema_A vs schema_C is empty (modulo alembic_version table). The current single-DB design conflates the source-of-schema and the autogenerate-target — they must be separated.",
+      "notes": "Discovered 2026-05-25 by direct test: applied all 47 migrations to a throwaway pgvector container, truncated alembic_version, ran alembic revision --autogenerate against a temp tree with empty versions/. Generated file contained `def upgrade(): pass` with zero op.create_table statements. The destructive scripts/squash-migrations.sh has the same defect AND its operator-facing alembic check in step 6 of the runbook still passes (because schema matches models regardless of baseline content), so the runbook gives no warning. F057 (TODO.md §50.5) currently tagged [Plan Ready] — re-tag and do not execute make db-squash until this is closed. Two unrelated bugs in squash-migrations-dryrun.sh were fixed in the same investigation (hardcoded port 55555, host pg_dump major-version mismatch) — see follow-up commit."
+    },
+    {
+      "id": "phase-52.5a-button-url-not-a-bug",
+      "phase": "52.5",
+      "title": "Button URL 'lost upstream' is NOT a bug — fixtures carry no CTA link",
+      "status": "closed",
+      "severity": "speculative",
+      "introduced": "2026-06-01",
+      "introduced_commit": "144aba27",
+      "summary": "The HANDOFF/TODO 52.5 item 'button url is lost UPSTREAM (0 at Gate-1), trace the parser' was a misdiagnosis. The 6 real fixtures' CTA frames carry NO hyperlink in the Figma source: node-level hyperlink is always null, and the per-character style_run.link_url values (8 in case 7) sit on footer/content text, not button labels. Ground truth: case 7 actual.html hrefs == expected.html hrefs exactly (9x href=\"#\"). A speculative style-run fallback was implemented and reverted.",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py:~1252 (_walk_for_buttons btn_url = node.hyperlink or text_children[0].hyperlink)",
+        "data/debug/7/expected.html (9x href=\"#\")"
+      ],
+      "symptom_if_broken": "A future session re-opens 52.5 'restore button URL', adds style-run link reading, and diverges from expected.html (which deliberately renders CTA buttons as href=\"#\").",
+      "closes_when": "Closed by inspection 2026-06-01: btn_url=0 matches ground-truth expected.html. Revisit only if a NEW design fixture actually carries node/run links on its CTA frames.",
+      "closed_date": "2026-06-01",
+      "closed_commit": "144aba27",
+      "notes": "Separate UNCONFIRMED follow-up the spike flagged: content/footer style_run links (8 in case 7) may be genericized to https://example.com downstream — but expected.html ALSO shows example.com, so likely intended. Investigate only if real footer links are confirmed dropped."
+    },
+    {
+      "id": "phase-52.4b-per-run-typography-structural",
+      "phase": "52.4",
+      "title": "Per-run typography (remove first-heading/body break) needs per-node <td> anchors — structural sub-project",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-06-01",
+      "introduced_commit": "144aba27",
+      "summary": "Only the FIRST heading + FIRST body per non-column section get design typography; a break in component_matcher._build_token_overrides limits it. Removing the break in isolation is no-op-to-harmful: all overrides collide on the shared _heading/_body class (last-write-wins). The real fix is structural — stop the '<br><br>'.join in _fills_text_block, emit one data-node-id <td> per text node, add a _text_<node_id> override target + renderer dispatch arm (mirror the existing _image_<node_id> pattern). style_runs is the WRONG lever (intra-node char spans, not per-node typography).",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_build_token_overrides break; _fills_text_block '<br><br>'.join ~954/964; _image_node_id_attrs ~799)",
+        "app/design_sync/component_renderer.py (_image_ dispatch ~735-741)"
+      ],
+      "symptom_if_broken": "Multi-heading / multi-paragraph sections render every text run with the first run's font/size/weight/color — intra-section typographic hierarchy is flattened.",
+      "closes_when": "Per-node text <td> anchors + a _text_<node_id> override target land and every text node renders its own design typography (verified on a multi-heading fixture)."
+    },
+    {
+      "id": "phase-53-a2-advisory-section-gate",
+      "phase": "53",
+      "title": "A2 section-count gate is advisory (xfail strict=False) and its target metric is per-block, not band-derived",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-04",
+      "introduced_commit": "f897a0fa",
+      "summary": "A2 un-circulared the section-count gate. TestSectionLadder.test_ladder_no_drift hard-pins the full count ladder (candidates/analyzed/rendered/bands + per-wrapper band descriptor) to data/debug/ladder_snapshot.json (drift gate, green today); test_rendered_matches_target + TestSnapshotSectionCount xfail rendered==target_sections (defect gate). Two concessions: (1) target gate is xfail(strict=False) so it enforces nothing and a converging case becomes a silent XPASS, not a CI signal; (2) the target metric is ConversionResult.sections_count == len(match.matches) (per-BLOCK) compared to a band-count target, so convergence post-fix is not guaranteed if Track C/D groups cards via render_repeating_group at render time instead of reducing the match count (LEGO: sections_count=17 vs analyzed=21 vs target 8 bands). regression_runner.py:113 also still reads the circular manifest.sections.count for advisory collect_metrics (left as-is).",
+      "code_refs": [
+        "app/design_sync/tests/test_converter_data_regression.py (TestSectionLadder — drift gate + target xfail)",
+        "app/design_sync/tests/test_snapshot_regression.py (TestSnapshotSectionCount — target xfail)",
+        "app/design_sync/tests/ladder_harness.py (compute_ladder/band_descriptor/load_ladder_snapshot)",
+        "app/design_sync/converter_service.py:919 (sections_count=len(match.matches) — per-block)",
+        "app/design_sync/tests/regression_runner.py:113 (still reads circular manifest.sections.count, advisory)"
+      ],
+      "symptom_if_broken": "Section-count gates stay green/xfail even when the converter converges to (or regresses from) the design target — no positive CI signal that a Track C/D segmentation fix actually closed the gap; or a forgotten ladder_snapshot.json commit silently drops the drift gate.",
+      "closes_when": "At the 53.1/D fork: the converter converges on the fixtures AND the target gate is tightened (strict=True, or a band-derived metric such as len(section_parts)/band_descriptor) so it positively asserts convergence; the regression_runner advisory metric is re-pinned or removed.",
+      "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). The drift gate is the load-bearing protection today; the target gate is only the headline-gap measure."
+    },
+    {
+      "id": "tech-debt-03-memory-recall-dead-on-read",
+      "phase": "tech-debt-03",
+      "title": "MemoryService.recall() is dead-on-read — every recall raises on an unstamped session and silently returns []",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-04-26",
+      "introduced_commit": "db953681",
+      "summary": "The per-tenant DB-scoping fix (F001/F002/F003, db953681) made MemoryRepository.similarity_search call scoped_access(self.db) unconditionally (repository.py:56); scoped_access raises RuntimeError on any session not stamped with tenant_access (scoped_db.py:176-181, 'failing loud is the point'). But every MemoryService.recall() caller opens a plain get_db_context() session, which does NOT stamp tenant_access (database.py:74-87) — unlike get_system_db_context (scoped_db.py:161-164). So every recall raises, each caller's failure-safe try/except swallows it, and recall returns []. The entire app/memory recall-into-context layer (blueprint LAYER 10 memory block, scaffolder conversion-memory recall, proactive_qa, correction_examples, insight_bus, confidence_calibration) is silently inert at read time despite memory.enabled=True and despite writes succeeding (writers that use get_system_db_context, e.g. converter quality memory, persist fine). Because the exception is swallowed, existing tests stay green and no integration test exercises the real scoped_access path on recall. Net: cross-task episodic + procedural memory never reaches an agent prompt — 'persistent memory across tasks' silently no-ops.",
+      "code_refs": [
+        "app/memory/repository.py:56 (similarity_search — unconditional scoped_access(self.db))",
+        "app/core/scoped_db.py:176-181 (scoped_access raises RuntimeError on unstamped session)",
+        "app/core/database.py:74-87 (get_db_context — does NOT stamp tenant_access)",
+        "app/core/scoped_db.py:161-164 (get_system_db_context — DOES stamp; the working pattern used by converter quality-memory writes)",
+        "app/ai/blueprints/engine.py:1501 (recall caller opens get_db_context — blueprint LAYER 10)",
+        "app/ai/agents/scaffolder/pipeline.py:311 (recall_conversion_context opens get_db_context)"
+      ],
+      "symptom_if_broken": "Agents never recall prior-run memories: blueprint LAYER 10 memory block always empty; the converter->scaffolder quality-memory loop (writes succeed via get_system_db_context, reads return []) never surfaces 'avoid template X for client Y' hints; metrics/logs show memory rows being WRITTEN while recall yields nothing, and no exception is visible (swallowed).",
+      "closes_when": "Recall callers open a tenant-stamped session (get_scoped_db / get_system_db_context) OR similarity_search accepts an explicit access scope instead of reading session.info — AND a test exercises the real scoped_access path (stop swallowing/mocking) so a regression re-surfaces. Confirm a blueprint run actually injects a recalled memory into a node prompt.",
+      "available_data": "Discovered 2026-06-05; full trace in docs/agentic_rl_memory_handoff_findings.md sec 3.2 / 7.2 (5-agent audit, mechanism + caller side hand-verified). Distinct from closed tech-debt-03-memory-isolation-embedding-stub (an embedding-provider xfail in the isolation harness).",
+      "fix_sketch": "Smallest fix: swap the recall-site session openers from get_db_context() to get_system_db_context() (system sentinel — correct for background/agent context that legitimately spans projects), mirroring how the converter quality-memory WRITE already works. Alternative: thread the caller's TenantAccess explicitly into similarity_search(..., access=...) and drop the session.info read.",
+      "notes": "Prerequisite (B1) for any agent self-improvement loop that depends on memory recall (handoff_memory, insight_bus) — see proposed Phase 54. Also verify a separately-flagged gap: MemoryCompactionPoller appears never registered in app/main.py (decay/compaction never runs) — relevant before Phase 51.2 hardens compaction and before turning memory writes up (unbounded growth = write-only-memory anti-pattern)."
+    },
+    {
+      "id": "phase-53-b5-decorative-empty-alt-vs-g3neg",
+      "phase": "53",
+      "title": "B5 'alt=\"\" for decorative images' conflicts with the G3-neg conformance gate, which forbids empty/generic alt",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-06-06",
+      "introduced_commit": "37996703",
+      "summary": "B1 (seed-literal cleanup) attempted to blank the image-grid seed's placeholder alt (alt=\"Grid image 1/2\") to alt=\"\". The golden-conformance gate G3-neg (test_golden_conformance.py:72-76, should_match=False) rejects alt values that are empty or a single generic word (image/photo/picture/img/mj-image/mj-text/frame/banner) — and correctly so here: image-grid's images are wrapped in <a href>, so an empty alt strips the link's accessible name. B1 therefore reverted the image-grid edit (restored the descriptive multi-word placeholder, matching sibling seeds full-width-image/article-card/logo-header, all of which pass G3-neg) and shipped only its gate-clean parts. The real placeholder-alt fix is deferred to B5 (alt derivation: real alt when available, alt=\"\" only for genuinely decorative). But B5's prescribed alt=\"\"-for-decorative re-trips this same gate the moment a decorative image flows through the fragment/snapshot conformance conversion.",
+      "code_refs": [
+        "app/design_sync/tests/test_golden_conformance.py:72-76 (G3-neg — forbids empty/generic alt)",
+        "email-templates/components/image-grid.html:16,30 (linked <a><img> — descriptive placeholder alt restored, NOT blanked)",
+        "app/design_sync/component_matcher.py:_is_descriptive_alt/_derive_image_alt (B5 alt-derivation helpers, shipped commit 65a8b703) — TIER 1 routed 8 emission sites: 2 column f-strings (_build_column_fill_html/_build_column_fills) + 4 SlotFill(image_alt) (_fills_full_width_image/_fills_article_card/_fills_image_block/_fills_event_card) + 1 SlotFill(logo_alt) (_fills_logo_header) + social fallback (_fills_social). NOTE: leak was 8 sites, NOT the 2 originally cited — the slot-fill image_alt/logo_alt feeders also passed raw node_name",
+        "email-templates/components/col-icon.html (linked icons <a><img alt=\"\"> → alt=\"Feature icon\", fixed in 65a8b703 — unlabeled-link a11y bug, separate from node_name leak)",
+        ".agents/plans/53-b5-alt-derivation-decision.md (decision + execution correction) ; .agents/plans/53-converter-engine-fix.md §Track B (B1 blank-alt step; B5 alt derivation)"
+      ],
+      "symptom_if_broken": "B5 (or any change) emits alt=\"\" for a decorative image that flows through test_golden_conformance fragment/snapshot conversion → G3-neg VIOLATION fails `make golden-conformance` / `make check`. Or: image-grid's 'Grid image 1/2' placeholder alt keeps leaking into shipped output (meaningless screen-reader text on linked images) because real derivation never landed.",
+      "closes_when": "TWO TIERS, decided in .agents/plans/53-b5-alt-derivation-decision.md (2026-06-06). TIER 1 (B5, closes the leak): the column path (component_matcher.py:795,1455) stops emitting raw node_name as alt — emits a meaningful name when node_name is descriptive, else a descriptive multi-word non-generic placeholder; never alt=\"\" and never a lone generic token on that path; golden-conformance stays green. TIER 2 (deferred to RC-E, NOT B5): true per-image semantic alt + a genuine decorative signal require an ingest-level role/decorative flag; only then is a role-aware G3-neg amendment justified. Verified by data/debug snapshot output no longer carrying node.name as alt while golden-conformance stays green.",
+      "notes": "Surfaced during B1 execution (2026-06-06). DECISION 2026-06-06 (.agents/plans/53-b5-alt-derivation-decision.md): empirical trace confirms B5's column-builder path (_build_column_fill_html) IS exercised by golden-conformance (6 seeds) — so alt=\"\" there WOULD fail the gate; but the leak only occurs on the Figma-fixture provenance of node_name (= node.name), which the data/debug regression does NOT alt-check. Resolution = conservative: B5 fixes the leak with a meaningful-or-descriptive-placeholder alt, NEVER alt=\"\" on the column path, and does NOT touch G3-neg. The plan's 'alt=\"\" for decorative' has no live safe case (decorative images render as CSS background-url, not <img>; column images are content). 'Do not loosen G3-neg' stands — a role=presentation exemption would let the code-under-test opt itself out of the gate. B1 shipped its gate-clean parts (col-icon mobile Headline blanks; data-slot-alt removal from logo-header/article-card/full-width-image) and carved out the image-grid alt to B5."
+    },
+    {
+      "id": "phase-53-b8-cta-pair-color-fidelity",
+      "phase": "53",
+      "title": "B8 cta-pair buttons render in seed-default color — the primary button's Figma color regresses vs the single-CTA path",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-06-06",
+      "introduced_commit": "10e6e1e2",
+      "summary": "B8 routes CTA-typed sections with >=2 buttons to the cta-pair seed and _fills_cta emits primary_/secondary_ text+url fills. But the renderer's _cta token-override helpers (_replace_cta_background_color/_fillcolor/_text_color/_css_prop, component_renderer.py:1071-1149) match ONLY class=\"cta-btn\"/\"cta-ghost\" or <a data-slot=\"cta_url\">. The cta-pair seed uses class=\"cta\" and data-slot=\"primary_url\"/\"secondary_url\", so the _cta overrides _build_token_overrides extracts from buttons[0] (~1709) are no-ops on cta-pair output. Both buttons therefore render with the seed's hardcoded #e84e0f orange. This is a REGRESSION for the primary button specifically: the single-button cta-button path DID apply its Figma color; the dual path does not. A single TokenOverride targeting one _cta class also cannot express the distinct primary(filled)/secondary(outlined) colors the seed is designed for.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_fills_cta (B8 pair fills) + match_section CTA branch (~239, len(buttons)>=2 -> cta-pair routing)",
+        "app/design_sync/component_matcher.py:_build_token_overrides (~1709 — extracts _cta override from buttons[0] only)",
+        "app/design_sync/component_renderer.py:1071-1149 (_replace_cta_* helpers target cta-btn/cta-ghost/cta_url, NOT class=\"cta\"/primary_url/secondary_url)",
+        "email-templates/components/cta-pair.html (primary filled bg #e84e0f, secondary outlined; slots primary_text/primary_url/secondary_text/secondary_url)"
+      ],
+      "symptom_if_broken": "A Figma CTA section with two buttons of distinct brand colors renders both as the seed-default orange in email output; the primary button in particular loses the color it would have had as a single CTA.",
+      "closes_when": "_cta token-override extraction + apply support per-button color for cta-pair: either (a) the _CTA_*_RE templates also match primary_url/secondary_url + class=\"cta\", with _build_token_overrides emitting per-button overrides (e.g. _cta_primary/_cta_secondary target classes), or (b) the cta-pair seed is restructured to carry the cta-btn/cta_url markers the existing helpers target. Verified by a dual-CTA section with two distinct fill_colors rendering each button in its own color.",
+      "notes": "Discovered during B8 execution (2026-06-06). Knowingly-shipped regression: the user chose to ship cta-pair activation (zero current-fixture impact — no fixture has a CTA-typed section) for correct infra + the real-world dual-CTA case. Per-button color fidelity deferred as a larger change (new regexes + per-button override model). Related: phase-53-b8-non-cta-multibutton-drop."
+    },
+    {
+      "id": "phase-53-b8-non-cta-multibutton-drop",
+      "phase": "53",
+      "title": "Non-CTA-typed multi-button sections still drop button 2+ — B8's cta-pair routing only fires on EmailSectionType.CTA",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-06-06",
+      "introduced_commit": "10e6e1e2",
+      "summary": "B8 routes only EmailSectionType.CTA sections with >=2 buttons to cta-pair. Empirically the 6 converter regression fixtures (data/debug cases 5-10) contain ZERO CTA-typed sections, so B8 fires on none of them. The real multi-button defects sit in other section types: case 10 sec#1 is a 'content'-typed section classified as text-block (2 texts + 2 buttons) whose second button ('DISCOVER EIGER EXTREME 6.0') is DROPPED — _fills_text_block (~1040) emits buttons[0] only and text-block has a single CTA slot. (Most other fixture multi-button sections route to column-layout-N, which already render every button as a column — confirmed: case 5 output contains Melbourne/Amsterdam/Seoul — and are NOT affected.) Fixing the text-block drop is a classification/segmentation question (re-split into 2 sections? add a 2nd CTA slot? route button-dominant content to cta-pair, losing the texts?), deferred to the segmentation track (C/D) per the phase thesis that segmentation is the dominant defect.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:match_section CTA branch (~239 — routing gated on EmailSectionType.CTA only)",
+        "app/design_sync/component_matcher.py:_fills_text_block (~1040 — buttons[0], drops 2nd button)",
+        "data/debug/10 (case 10 sec#1: content-typed text-block, 2 buttons; 2nd label 'DISCOVER EIGER EXTREME 6.0' verified absent from rendered HTML)"
+      ],
+      "symptom_if_broken": "A content/hero/text-block section carrying 2+ buttons renders only the first; case 10 output lacks 'DISCOVER EIGER'. Any non-CTA-typed multi-button design loses buttons silently.",
+      "closes_when": "Either the boundary/layout classifier types button-dominant multi-button sections as CTA (so B8's routing catches them), or the segmentation track splits/re-types case 10 sec#1 so both buttons render. Verified by case 10 rendered output containing BOTH 'SHOP THE COLLECTION' and 'DISCOVER EIGER EXTREME 6.0'.",
+      "notes": "Discovered during B8 execution (2026-06-06). B8 shipped as CTA-only cta-pair activation by user decision; this entry records that the literal 'emit all section.buttons' intent of B8's cited lines (_fills_hero/_fills_text_block/etc.) is NOT achievable for single-CTA-slot seeds, and the real instances are a classification problem. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-a2-advisory-section-gate."
+    },
+    {
+      "id": "phase-53-b8-fills-cta-slug-desync-vlm",
+      "phase": "53",
+      "title": "_fills_cta keys on button count, not slug — can desync from routing on the VLM fallback path",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-06-06",
+      "introduced_commit": "10e6e1e2",
+      "summary": "B8 made _fills_cta branch on len(section.buttons)>=2 (emit primary_/secondary_ for cta-pair) vs single (cta_text/cta_url for cta-button). The component dispatch maps BOTH slugs to the same _fills_cta (component_matcher.py:515,545), and the filler is NOT told which slug/seed it is filling. On the normal path this is safe because _match_by_type and _fills_cta encode the SAME >=2 condition, so slug and fills always agree. But match_section_with_vlm_fallback (~145/166) sets the slug from the VLM result (vlm_result.component_type) independent of button count, then calls _build_slot_fills(slug, section). If the VLM picked 'cta-button' for a 2-button section, _fills_cta emits primary_/secondary_ into the cta-button seed (slots cta_text/cta_url) → both fills are no-ops → button labels lost + cta-button placeholder leaks. The reverse (VLM 'cta-pair' for 1 button) leaks the 'Primary button'/'Secondary button' seed placeholders. Before B8, _fills_cta always emitted cta_text/cta_url, so a VLM 'cta-button' pick was self-consistent; B8 introduced the desync.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_fills_cta (branches on len(buttons), not slug)",
+        "app/design_sync/component_matcher.py:515,545 (both cta-button and cta-pair dispatch to _fills_cta)",
+        "app/design_sync/component_matcher.py:match_section_with_vlm_fallback ~145/166 (slug from VLM, fills from _build_slot_fills(slug,...))"
+      ],
+      "symptom_if_broken": "With DESIGN_SYNC__VLM_FALLBACK_ENABLED=true and a VLM-wired pipeline: a low-confidence non-CTA section reclassified by the VLM to a cta slug renders with empty/placeholder buttons ('Primary button'/'Secondary button' leak, or dropped labels).",
+      "closes_when": "Either _fills_cta becomes slug-aware (thread the chosen slug into the filler and emit the slot set matching the seed), or the dispatch keeps cta-button/cta-pair on separate fillers. Verified: a section forced to slug 'cta-button' with 2 buttons emits cta_text/cta_url (not primary_/secondary_), and slug 'cta-pair' with 1 button does not leak pair placeholders.",
+      "notes": "Found by adversarial review during B8 execution (2026-06-06). DOUBLY UNREACHABLE today: (1) vlm_fallback_enabled defaults to False (app/core/config/design_sync.py:47), and (2) match_section_with_vlm_fallback has NO non-test callers — it is not wired into the live convert_document pipeline. CTA sections also return confidence 1.0, so even an enabled VLM fallback never fires for them; the only trigger is a low-confidence NON-CTA section the VLM reclassifies to a cta slug. Logged as speculative so it surfaces if/when VLM fallback is wired up. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-b8-non-cta-multibutton-drop."
     }
   ],
   "tooling_followups": [
@@ -355,7 +508,7 @@
       "closed": "2026-05-04",
       "trigger": "When open_items count reaches >= 5 (was 5 when this entry was opened; closed at 6)",
       "summary": "Add a step to .claude/commands/preflight-check.md that grep s .agents/deferred-items.json for entries whose phase or code_refs overlap the plan's 'Files to Create/Modify' list, and surfaces matches in the preflight report. This converts the convention from 'rule the model must remember' to 'mechanical check that runs before /be-execute'.",
-      "acceptance": "Preflight report includes a 'Deferred Items Touching This Plan' section listing matching entries with id, summary, and severity. Empty section when no matches \u2014 never silent.",
+      "acceptance": "Preflight report includes a 'Deferred Items Touching This Plan' section listing matching entries with id, summary, and severity. Empty section when no matches — never silent.",
       "resolution": "Step 2 'Deferred-Items Cross-Reference' added to .claude/commands/preflight-check.md (with 2a phase-match and 2b code_refs-match jq queries); Step 6 report template gained a 'Deferred Items Touching This Plan' table that is required to render even when empty."
     }
   ],

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 
 from app.core.logging import get_logger
 from app.design_sync.figma.layout_analyzer import (
+    ButtonElement,
     ColumnGroup,
     ColumnLayout,
     ContentGroup,
@@ -224,7 +225,6 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         )
         ext_slug, ext_confidence = _score_extended_candidates(
             section,
-            has_images,
             has_texts,
             has_buttons,
             has_headings,
@@ -236,6 +236,10 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         return slug, confidence
 
     if st == EmailSectionType.CTA:
+        # Two or more buttons → dual-CTA seed (primary + secondary slots).
+        # B8: a single button keeps the standalone cta-button seed.
+        if len(section.buttons) >= 2:
+            return "cta-pair", 1.0
         return "cta-button", 1.0
 
     if st == EmailSectionType.FOOTER:
@@ -384,7 +388,6 @@ _TIME_OF_DAY_PATTERN = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)\b")
 
 def _score_extended_candidates(
     section: EmailSection,
-    has_images: bool,
     has_texts: bool,
     has_buttons: bool,
     has_headings: bool,
@@ -392,9 +395,9 @@ def _score_extended_candidates(
     """Score extended component types added in 47.6.
 
     Returns the best (slug, confidence) among countdown-timer, testimonial,
-    pricing-table, video-placeholder, event-card, faq-accordion, and
-    zigzag-alternating.  Returns ``("text-block", 0.0)`` when nothing matches
-    so the caller can safely compare against the base scorer.
+    pricing-table, video-placeholder, event-card, and zigzag-alternating.
+    Returns ``("text-block", 0.0)`` when nothing matches so the caller can
+    safely compare against the base scorer.
     """
     candidates: list[tuple[str, float]] = []
 
@@ -465,12 +468,6 @@ def _score_extended_candidates(
             )
             if keyword_hits >= 2:
                 candidates.append(("event-card", 0.83))
-
-    # faq-accordion: 3+ texts with ? in alternating items, no images
-    if not has_images and len(texts) >= 3:
-        question_count = sum(1 for i, t in enumerate(texts) if i % 2 == 0 and "?" in t.content)
-        if question_count >= 2:
-            candidates.append(("faq-accordion", 0.88))
 
     # zigzag-alternating: 3+ col_groups each with mixed image+text
     # (product-grid fires at 2+, so 3+ distinguishes zigzag rows)
@@ -660,6 +657,12 @@ def _is_placeholder(text: str) -> bool:
 
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}){1,2}$")
 
+# Allowlists for typographic enum properties (Phase 52.4). Values outside the
+# set are dropped so a malformed ``text_transform``/``text_decoration`` from the
+# design can never reach the rendered CSS (defence-in-depth against injection).
+_ALLOWED_TEXT_TRANSFORM = frozenset({"uppercase", "lowercase", "capitalize", "none"})
+_ALLOWED_TEXT_DECORATION = frozenset({"underline", "line-through", "none", "overline"})
+
 
 def _safe_color(color: str | None, fallback: str = "#333333") -> str:
     """Validate hex color, returning fallback if malformed."""
@@ -680,6 +683,146 @@ def _safe_url(url: str | None) -> str:
     return "#"
 
 
+_ALLOWED_TEXT_ALIGN = frozenset({"left", "center", "right", "justify"})
+
+
+def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
+    """Build a column-text ``<tr><td>…</td></tr>`` row from design properties.
+
+    Shared by ``_build_column_fill_html`` (real fixtures) and the round-robin
+    fallback in ``_build_column_fills`` so the two cannot drift. Mirrors the
+    validation in ``_typography_overrides`` byte-for-byte (font-weight ``str``,
+    line-height ``round(px)``, letter-spacing ``{:.2f}px`` skipping ``0.0``,
+    transform/decoration/align ``.lower()`` + allowlist, color ``_safe_color``).
+    ``font-family`` is passed through unvalidated — matching the existing
+    override path (``_build_token_overrides`` line ~1542) which also emits it
+    raw — with only a web-safe fallback appended. Falls back to the pre-52.x
+    hardcoded heading/body defaults when a property is absent.
+    """
+    decls = ["padding:0 0 8px"]
+
+    # font-family — design value with a web-safe fallback appended, else Arial.
+    # Escaped (quote=True) so a font name can't break out of the style attr —
+    # the override path is escaped equivalently by the renderer (_replace_heading_font).
+    if text.font_family:
+        family = html.escape(text.font_family, quote=True)
+        if "," not in family:
+            family = f"{family},sans-serif"
+        decls.append(f"font-family:{family}")
+    else:
+        decls.append("font-family:Arial,sans-serif")
+
+    # font-size — keep the 18/14 heading/body fallback.
+    size = int(text.font_size) if text.font_size else (18 if is_heading else 14)
+    decls.append(f"font-size:{size}px")
+
+    # font-weight — design value, else heading=bold / body=normal.
+    if text.font_weight is not None:
+        decls.append(f"font-weight:{text.font_weight}")
+    elif is_heading:
+        decls.append("font-weight:bold")
+
+    decls.append(f"color:{_safe_color(text.text_color)}")
+
+    # line-height — design value as round(px), else unitless 1.3/1.5 default.
+    if text.line_height is not None:
+        decls.append(f"line-height:{round(text.line_height)}px")
+    else:
+        decls.append(f"line-height:{'1.3' if is_heading else '1.5'}")
+
+    # text-align — only the four valid CSS keywords.
+    align = text.text_align.lower() if text.text_align else None
+    if align in _ALLOWED_TEXT_ALIGN:
+        decls.append(f"text-align:{align}")
+
+    # letter-spacing — skip the 0.0 no-op.
+    if text.letter_spacing not in (None, 0.0):
+        decls.append(f"letter-spacing:{text.letter_spacing:.2f}px")
+
+    # text-transform / text-decoration — allowlist-validated.
+    if text.text_transform is not None:
+        tt = text.text_transform.lower()
+        if tt in _ALLOWED_TEXT_TRANSFORM:
+            decls.append(f"text-transform:{tt}")
+
+    if text.text_decoration is not None:
+        td = text.text_decoration.lower()
+        if td in _ALLOWED_TEXT_DECORATION:
+            decls.append(f"text-decoration:{td}")
+
+    decls.append("mso-line-height-rule:exactly")
+    style = ";".join(decls) + ";"
+    return f'<tr><td style="{style}">{_safe_text(text.content)}</td></tr>'
+
+
+def _cta_label_typography(btn: ButtonElement) -> str:
+    """Build font-family/size/weight CSS for a CTA label from design typography.
+
+    Phase 52.4b — sources the button label's font from its design ``TextBlock``,
+    falling back to the pre-52.4b hardcoded ``14px``/``bold`` when a property is
+    absent. Mirrors ``_column_text_row``'s validation: font-family is
+    ``html.escape``d (quote=True) with a web-safe fallback appended so a font
+    name cannot break out of the style attr; font-size is coerced to ``int``;
+    font-weight is emitted raw.
+    """
+    decls: list[str] = []
+    if btn.font_family:
+        family = html.escape(btn.font_family, quote=True)
+        if "," not in family:
+            family = f"{family},sans-serif"
+        decls.append(f"font-family:{family}")
+    size = int(btn.font_size) if btn.font_size else 14
+    decls.append(f"font-size:{size}px")
+    decls.append(
+        f"font-weight:{btn.font_weight}" if btn.font_weight is not None else "font-weight:bold"
+    )
+    return ";".join(decls) + ";"
+
+
+# Figma layer names that leak MJML/element internals as alt text (Phase 53 B5).
+# These surface as meaningless screen-reader text (``mj-image, (mjml:mj-image),
+# (type: logo)``) and ``mj-image`` is itself a G3-neg generic token.
+_GENERIC_ALT_TOKENS = frozenset(
+    {"mj-image", "mj-text", "image", "photo", "picture", "img", "frame", "banner"}
+)
+_FIGMA_NODE_ID_RE = re.compile(r"^\d+[:_]\d+")
+
+
+def _is_descriptive_alt(name: str | None) -> bool:
+    """True when a Figma layer name is usable as alt text (Phase 53 B5).
+
+    Rejects the Mode E-alt leak: empty, a lone G3-neg generic token, MJML
+    internals (``(mjml:`` / ``(type:``), or a raw Figma node-id. A name that
+    passes is safe to emit verbatim and clears the G3-neg conformance gate.
+    """
+    stripped = (name or "").strip()
+    lowered = stripped.lower()
+    return bool(
+        stripped
+        and lowered not in _GENERIC_ALT_TOKENS
+        and "(mjml:" not in lowered
+        and "(type:" not in lowered
+        and not _FIGMA_NODE_ID_RE.match(stripped)
+    )
+
+
+def _derive_image_alt(img: ImagePlaceholder) -> str:
+    """Derive accessible alt text for a converter image (Phase 53 B5).
+
+    Stops the Figma layer-name leak (Mode E-alt): the raw ``node_name`` carries
+    MJML internals like ``mj-image, (mjml:mj-image), (type: logo)``. A
+    descriptive ``node_name`` is kept verbatim; a non-descriptive one falls back
+    to a generic but gate-clean multi-word placeholder. Never returns an empty
+    string or a lone generic token, so the G3-neg golden-conformance gate stays
+    green. True per-image semantic alt + decorative ``alt=""`` are deferred to
+    RC-E (ingest signal) — see ``.agents/plans/53-b5-alt-derivation-decision.md``.
+    """
+    name = (img.node_name or "").strip()
+    if _is_descriptive_alt(name):
+        return name
+    return "Company logo" if "logo" in name.lower() else "Content image"
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -691,26 +834,13 @@ def _build_column_fill_html(
         url = _resolve_image_url(img.node_id, image_urls)
         parts.append(
             f'<img src="{html.escape(url)}" '
-            f'alt="{html.escape(img.node_name)}" '
+            f'alt="{html.escape(_derive_image_alt(img))}" '
             f'style="display:block;width:100%;height:auto;border:0;" />'
         )
     for text in group.texts:
         if _is_placeholder(text.content):
             continue
-        color = _safe_color(text.text_color)
-        escaped = _safe_text(text.content)
-        if text.is_heading:
-            size = int(text.font_size) if text.font_size else 18
-            parts.append(
-                f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;font-size:{size}px;'
-                f'font-weight:bold;color:{color};line-height:1.3;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-            )
-        else:
-            size = int(text.font_size) if text.font_size else 14
-            parts.append(
-                f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;font-size:{size}px;'
-                f'color:{color};line-height:1.5;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-            )
+        parts.append(_column_text_row(text, is_heading=text.is_heading))
     for btn in group.buttons:
         if _is_placeholder(btn.text):
             continue
@@ -725,7 +855,7 @@ def _build_column_fill_html(
         parts.append(
             f'<a href="{btn_url}" style="display:inline-block;'
             f"padding:10px 24px;background-color:{bg};color:{txt_color};"
-            f"text-decoration:none;font-size:14px;font-weight:bold;"
+            f"text-decoration:none;{_cta_label_typography(btn)}"
             f'border-radius:{radius}px;{border_css}">{_safe_text(btn.text)}</a>'
         )
     return "\n".join(parts)
@@ -797,7 +927,7 @@ def _fills_logo_header(
                 attr_overrides=overrides,
             )
         )
-        fills.append(SlotFill("logo_alt", img.node_name))
+        fills.append(SlotFill("logo_alt", _derive_image_alt(img)))
     return fills
 
 
@@ -868,7 +998,7 @@ def _fills_full_width_image(
                 attr_overrides=overrides,
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
     return fills
 
 
@@ -918,7 +1048,7 @@ def _fills_text_block(
             cta_html = (
                 f'<a href="{btn_url}" style="display:inline-block;'
                 f"padding:10px 24px;background-color:{bg};color:#ffffff;"
-                f"text-decoration:none;font-size:14px;font-weight:bold;"
+                f"text-decoration:none;{_cta_label_typography(btn)}"
                 f'border-radius:4px;">{_safe_text(btn.text)}</a>'
             )
             # Append to existing body fill or create new one
@@ -952,7 +1082,7 @@ def _fills_article_card(
                 attr_overrides=_image_node_id_attrs(img),
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
     if groups:
         headings = _headings_from_groups(groups)
         bodies = _bodies_from_groups(groups)
@@ -1002,7 +1132,7 @@ def _fills_image_block(
                 attr_overrides=_image_node_id_attrs(img),
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
     return fills
 
 
@@ -1097,8 +1227,18 @@ def _fills_cta(
     **_kw: object,
 ) -> list[SlotFill]:
     fills: list[SlotFill] = []
-    if section.buttons:
-        btn = section.buttons[0]
+    buttons = section.buttons
+    if len(buttons) >= 2:
+        # B8: dual-CTA section → cta-pair seed (primary + secondary slots).
+        # Only the first two buttons are emitted; the seed has no slot for a
+        # third (email layout caps a button row at two).
+        primary, secondary = buttons[0], buttons[1]
+        fills.append(SlotFill("primary_text", _safe_text(primary.text)))
+        fills.append(SlotFill("primary_url", _safe_url(primary.url), slot_type="cta"))
+        fills.append(SlotFill("secondary_text", _safe_text(secondary.text)))
+        fills.append(SlotFill("secondary_url", _safe_url(secondary.url), slot_type="cta"))
+    elif buttons:
+        btn = buttons[0]
         fills.append(SlotFill("cta_text", _safe_text(btn.text)))
         fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
     return fills
@@ -1212,7 +1352,7 @@ def _fills_event_card(
                 attr_overrides=_image_node_id_attrs(img),
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
 
     return fills
 
@@ -1261,7 +1401,9 @@ def _fills_social(
         # with a neutral "#" href. Still better than leaking example.com.
         for img in section.images:
             icon_src = html.escape(_resolve_image_url(img.node_id, image_urls))
-            alt = html.escape(img.node_name or "Social icon")
+            alt = html.escape(
+                img.node_name if _is_descriptive_alt(img.node_name) else "Social icon"
+            )
             cells.append(
                 '<td style="padding: 0 8px;">'
                 '<a href="#" style="text-decoration: none;">'
@@ -1356,16 +1498,7 @@ def _build_column_fills(
             if (i % col_count) + 1 == col_idx:
                 if _is_placeholder(text.content):
                     continue
-                color = _safe_color(text.text_color)
-                escaped = _safe_text(text.content)
-                if text.is_heading:
-                    col_texts.append(
-                        f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;font-weight:bold;color:{color};line-height:1.3;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-                    )
-                else:
-                    col_texts.append(
-                        f'<tr><td style="padding:0 0 8px;font-family:Arial,sans-serif;color:{color};line-height:1.5;mso-line-height-rule:exactly;">{escaped}</td></tr>'
-                    )
+                col_texts.append(_column_text_row(text, is_heading=text.is_heading))
 
         col_images: list[str] = []
         for i, img in enumerate(section.images):
@@ -1373,7 +1506,7 @@ def _build_column_fills(
                 url = _resolve_image_url(img.node_id, image_urls)
                 col_images.append(
                     f'<img src="{html.escape(url)}" '
-                    f'alt="{html.escape(img.node_name)}" '
+                    f'alt="{html.escape(_derive_image_alt(img))}" '
                     f'style="display:block;width:100%;height:auto;border:0;" />'
                 )
 
@@ -1417,6 +1550,56 @@ def _build_column_fills_from_content_groups(
         if content:
             fills.append(SlotFill(f"col_{col_idx}", content))
     return fills
+
+
+def _typography_overrides(
+    texts: list[TextBlock],
+    *,
+    is_heading: bool,
+    target: str,
+) -> list[TokenOverride]:
+    """Emit the typographic overrides from the first heading/body text.
+
+    Covers font-weight / line-height / letter-spacing / text-transform /
+    text-decoration, taken from the first heading- or body-class text that
+    declares each property.
+
+    Each property is sourced independently from the first text carrying it
+    (mirroring the existing font/color blocks). ``letter-spacing: 0`` is the
+    typographic no-op default and is skipped. Numeric values are rounded for
+    readability; enum values are allowlist-validated. ``target`` is the slot the
+    renderer dispatches on (``_heading`` / ``_body``).
+    """
+    overrides: list[TokenOverride] = []
+
+    def _first(predicate: Callable[[TextBlock], bool]) -> TextBlock | None:
+        return next((t for t in texts if t.is_heading == is_heading and predicate(t)), None)
+
+    weight_text = _first(lambda t: t.font_weight is not None)
+    if weight_text is not None and weight_text.font_weight is not None:
+        overrides.append(TokenOverride("font-weight", target, str(weight_text.font_weight)))
+
+    lh_text = _first(lambda t: t.line_height is not None)
+    if lh_text is not None and lh_text.line_height is not None:
+        overrides.append(TokenOverride("line-height", target, f"{round(lh_text.line_height)}px"))
+
+    ls_text = _first(lambda t: t.letter_spacing not in (None, 0.0))
+    if ls_text is not None and ls_text.letter_spacing is not None:
+        overrides.append(TokenOverride("letter-spacing", target, f"{ls_text.letter_spacing:.2f}px"))
+
+    tt_text = _first(lambda t: t.text_transform is not None)
+    if tt_text is not None and tt_text.text_transform is not None:
+        value = tt_text.text_transform.lower()
+        if value in _ALLOWED_TEXT_TRANSFORM:
+            overrides.append(TokenOverride("text-transform", target, value))
+
+    td_text = _first(lambda t: t.text_decoration is not None)
+    if td_text is not None and td_text.text_decoration is not None:
+        value = td_text.text_decoration.lower()
+        if value in _ALLOWED_TEXT_DECORATION:
+            overrides.append(TokenOverride("text-decoration", target, value))
+
+    return overrides
 
 
 def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
@@ -1513,6 +1696,15 @@ def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
         if not text.is_heading and text.text_color and _HEX_COLOR_RE.match(text.text_color):
             overrides.append(TokenOverride("color", "_body", text.text_color))
             break
+
+    # Typography overrides (Phase 52.4) — font-weight / line-height /
+    # letter-spacing from the typography trio, plus text-transform /
+    # text-decoration. First-heading / first-body targeting mirrors the
+    # font/color blocks above; per-run targeting is deferred to 52.4b.
+    # Each value is numerically coerced or allowlist-validated to prevent
+    # CSS injection, matching the ``_HEX_COLOR_RE`` guard on colors.
+    overrides.extend(_typography_overrides(section.texts, is_heading=True, target="_heading"))
+    overrides.extend(_typography_overrides(section.texts, is_heading=False, target="_body"))
 
     # Padding overrides
     padding_parts: list[str] = []

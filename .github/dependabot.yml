@@ -22,6 +22,13 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 5
 
+  # Maizzle builder sidecar (npm)
+  - package-ecosystem: "npm"
+    directory: "/services/maizzle-builder"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
   # Frontend monorepo (npm/pnpm at cms/)
   - package-ecosystem: "npm"
     directory: "/cms"

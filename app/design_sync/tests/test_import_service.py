@@ -712,6 +712,42 @@ class TestDesignImportServiceOrchestrator:
         # Light section: black text stays black
         assert 'color:#000000;">light section' in fixed
 
+    def test_contrast_fix_nested_light_card_preserved(self) -> None:
+        """Readable text on a nested LIGHT card inside a dark wrapper is kept.
+
+        Regression for the first-close-tag scan: the dark outer wrapper's
+        range used to over-extend across the inner light card, recolouring
+        already-readable ``#333333`` text to invisible white-on-white.
+        """
+        html = (
+            '<table bgcolor="#1a1a2e"><tr><td bgcolor="#1a1a2e">'
+            '<table><tr><td style="background:#ffffff;">'
+            '<span style="color:#333333;">readable body</span>'
+            "</td></tr></table>"
+            "</td></tr></table>"
+        )
+        fixed = DesignImportService._fix_text_contrast(html)
+        # Innermost background of the span is white → text must stay #333333.
+        assert "color:#333333" in fixed
+        # Pin the negative to the span so a future shorthand→longhand fixture
+        # swap (which would surface ``color:#ffffff`` in the cell bg) can't mask
+        # a real regression of the span colour.
+        assert 'color:#ffffff;">readable body' not in fixed
+
+    def test_contrast_fix_nested_dark_still_corrected(self) -> None:
+        """Genuine dark-on-dark text inside a nested dark card is still fixed."""
+        html = (
+            '<table bgcolor="#1a1a2e"><tr><td bgcolor="#1a1a2e">'
+            '<table><tr><td style="background:#0d0d1a;">'
+            '<span style="color:#000000;">on dark card</span>'
+            "</td></tr></table>"
+            "</td></tr></table>"
+        )
+        fixed = DesignImportService._fix_text_contrast(html)
+        # Innermost background is dark → black text must become white.
+        assert "color:#ffffff" in fixed
+        assert "color:#000000" not in fixed
+
     def test_inject_asset_urls_placeholder_uses_full_pool(self) -> None:
         """Strategy 3 replaces placeholder URLs even when Strategy 2 consumed pool."""
         # Strategy 2 will consume the pool on empty src="" tags

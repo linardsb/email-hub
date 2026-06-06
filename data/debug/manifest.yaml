@@ -16,6 +16,10 @@
 # When fixing converter bugs:
 #   - All cases below MUST pass before merging
 #   - If a fix intentionally changes output, re-verify visually and update expected.html
+#   - If a fix changes the section-count ladder, regen the A2 drift snapshot:
+#       python -m app.design_sync.tests.ladder_harness --write
+#     then COMMIT data/debug/ladder_snapshot.json (TestSectionLadder.test_ladder_no_drift
+#     fails until the committed snapshot matches the new output)
 
 cases:
   - id: "5"

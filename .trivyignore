@@ -29,3 +29,4 @@ CVE-2026-42499  # expires:2026-08-31 — go stdlib net/mail consumePhrase DoS in
 CVE-2026-39823  # expires:2026-08-31 — go stdlib html/template <meta> refresh URL escaping in pg16 base gobinary
 CVE-2026-39825  # expires:2026-08-31 — go stdlib net/http/httputil ReverseProxy query-param forwarding in pg16 base gobinary
 CVE-2026-39826  # expires:2026-08-31 — go stdlib html/template <script> type-attr escaping in pg16 base gobinary
+CVE-2026-42504  # expires:2026-08-31 — go stdlib mime/textproto MIME-header decode DoS in pg16 base gobinary

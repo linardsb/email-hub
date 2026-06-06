@@ -853,42 +853,70 @@ class DesignImportService:
             r"color:\s*(#000000|#111111|#222222|#333333|#444444|#1a1a1a)",
             re.IGNORECASE,
         )
-        # Match opening tags that carry a dark background
+        # Match opening tags that carry an explicit background (light OR dark).
+        # Accepts ``bgcolor="..."`` plus ``background`` shorthand and the
+        # ``background-color`` longhand so nested light cards are detected too.
         _BG_TAG = re.compile(
             r"<(table|td|tr)(\s[^>]*?)(?:"
             r'bgcolor="(#[0-9a-fA-F]{3,6})"'
             r"|"
-            r"background-color:\s*(#[0-9a-fA-F]{3,6})"
+            r"background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})"
             r")([^>]*?)>",
             re.IGNORECASE,
         )
 
-        # Collect byte-ranges of dark-bg sections
-        dark_ranges: list[tuple[int, int]] = []
+        # Collect byte-ranges for ALL backgrounded sections (light + dark),
+        # depth-matched so nested tables don't bleed into each other.
+        bg_ranges: list[tuple[int, int, bool]] = []  # (start, end, is_dark)
         for m in _BG_TAG.finditer(html_str):
             bg_hex = m.group(3) or m.group(4)
-            if not bg_hex or relative_luminance(bg_hex) >= 0.2:
+            if not bg_hex:
                 continue
+            is_dark = relative_luminance(bg_hex) < 0.2
             tag_name = m.group(1).lower()
-            # Find the matching closing tag from this position
-            close_tag = f"</{tag_name}>"
-            close_idx = html_str.find(close_tag, m.end())
-            if close_idx < 0:
-                close_idx = len(html_str)
-            dark_ranges.append((m.end(), close_idx))
+            close_idx = DesignImportService._matching_close_index(html_str, m.end(), tag_name)
+            bg_ranges.append((m.end(), close_idx, is_dark))
 
-        if not dark_ranges:
+        if not any(is_dark for _, _, is_dark in bg_ranges):
             return html_str
 
-        def _in_dark_range(pos: int) -> bool:
-            return any(start <= pos < end for start, end in dark_ranges)
+        def _innermost_is_dark(pos: int) -> bool:
+            # Among every background range that contains ``pos``, the one with
+            # the largest start is the nearest (innermost) ancestor; its colour
+            # is the background the text actually sits on.
+            best_start = -1
+            best_dark = False
+            for start, end, is_dark in bg_ranges:
+                if start <= pos < end and start > best_start:
+                    best_start = start
+                    best_dark = is_dark
+            return best_start >= 0 and best_dark
 
         def _replace_if_dark(m: re.Match[str]) -> str:
-            if _in_dark_range(m.start()):
+            if _innermost_is_dark(m.start()):
                 return "color:#ffffff"
             return m.group(0)
 
         return _DARK_TEXT.sub(_replace_if_dark, html_str)
+
+    @staticmethod
+    def _matching_close_index(html_str: str, start: int, tag_name: str) -> int:
+        """Index of the closing tag that matches the open tag at ``start``.
+
+        Tracks open/close depth for ``tag_name`` so nested same-name tables or
+        cells resolve to the correct closing tag rather than the first one.
+        Returns ``len(html_str)`` when no matching close is found.
+        """
+        tag_re = re.compile(rf"<(/?){re.escape(tag_name)}(?=[\s/>])", re.IGNORECASE)
+        depth = 1
+        for tm in tag_re.finditer(html_str, start):
+            if tm.group(1):  # closing tag
+                depth -= 1
+                if depth == 0:
+                    return tm.start()
+            else:  # opening tag
+                depth += 1
+        return len(html_str)
 
     async def _call_scaffolder(
         self,

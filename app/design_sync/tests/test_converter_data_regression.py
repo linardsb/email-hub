@@ -17,12 +17,21 @@ Run a single case::
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
 from lxml import etree
 
 from app.design_sync.converter_service import ConversionResult
+from app.design_sync.tests.ladder_harness import (
+    LadderRow,
+    compute_all_ladders,
+    discover_ladder_case_ids,
+    drift_view,
+    ladder_to_dict,
+    load_ladder_snapshot,
+)
 from app.design_sync.tests.manifest_schema import CaseManifest
 from app.design_sync.tests.regression_runner import (
     collect_metrics,
@@ -218,16 +227,74 @@ class TestUniversalChecks:
 # ── Manifest-driven assertions (all cases) ───────────────────────
 
 
-class TestSectionCount:
-    def test_section_count(self, converter_case: tuple[Path, CaseManifest, str]) -> None:
-        """Section count check — converter output only (uses section markers)."""
-        _, manifest, html = converter_case
-        markers = re.findall(r"<!-- section:section_\d+ -->", html)
-        actual = len(markers)
-        expected = manifest.sections.count
-        tolerance = manifest.sections.tolerance
-        assert abs(actual - expected) <= tolerance, (
-            f"Section count {actual} outside {expected} +/- {tolerance}"
+_LADDER_SNAPSHOT = load_ladder_snapshot()
+
+
+@lru_cache(maxsize=1)
+def _actual_ladders() -> dict[str, LadderRow]:
+    """Converter's current ladder per case (computed once, cached for the run)."""
+    return compute_all_ladders()
+
+
+@pytest.mark.parametrize("case_id", discover_ladder_case_ids())
+class TestSectionLadder:
+    """A2 (plan §Track A): un-circular the structural gate via the A1 ladder.
+
+    No single count cleanly recovers the design target — band_count just inverts
+    the wrapper-unwrap (== candidates by construction) and rendered/marker counts
+    are per-block — so the old ``sections.count`` gate, pinned to the converter's
+    own output, measured nothing. The gate is split in two:
+
+    - ``test_ladder_no_drift`` (hard, green): the converter's current count ladder
+      (candidates → analyzed → rendered → bands + the per-wrapper band descriptor,
+      the harness's "real signal") must match the committed
+      ``data/debug/ladder_snapshot.json``. Catches ANY segmentation/render drift.
+      Regen after an *intended* change (then re-verify expected.html):
+      ``python -m app.design_sync.tests.ladder_harness --write``.
+    - ``test_rendered_matches_target`` (xfail/advisory): the rendered top-level
+      section count must equal the design ``target_sections``. EXPECTED to fail
+      where the converter mis-segments (Phase 53). Red = the real defect surfacing.
+
+    See .agents/plans/53-converter-engine-fix.md §Track A (A2).
+    """
+
+    def test_ladder_no_drift(self, case_id: str) -> None:
+        row = _actual_ladders().get(case_id)
+        if row is None:
+            pytest.skip(f"{case_id}: missing structure.json/tokens.json")
+        if case_id not in _LADDER_SNAPSHOT:
+            pytest.fail(
+                f"{case_id}: fixture present but no entry in committed "
+                f"data/debug/ladder_snapshot.json. Regen via "
+                f"`python -m app.design_sync.tests.ladder_harness --write` and COMMIT it "
+                f"(a missing snapshot must fail loudly, not silently drop the gate)."
+            )
+        committed = drift_view(_LADDER_SNAPSHOT[case_id])
+        actual = drift_view(ladder_to_dict(row))
+        assert actual == committed, (
+            f"Case {case_id}: count ladder drifted from committed snapshot.\n"
+            f"  committed: {committed}\n  actual:    {actual}\n"
+            f"If intended, re-verify expected.html and regen via "
+            f"`python -m app.design_sync.tests.ladder_harness --write`."
+        )
+
+    @pytest.mark.xfail(
+        reason=(
+            "A2: rendered section count vs design target_sections. The converter "
+            "mis-segments several fixtures (Phase 53) — xfail means the gate is "
+            "measuring the dominant defect, not regressing. Red = the real defect "
+            "surfacing. See .agents/plans/53-converter-engine-fix.md §Track A (A2)."
+        ),
+        strict=False,
+    )
+    def test_rendered_matches_target(self, case_id: str) -> None:
+        row = _actual_ladders().get(case_id)
+        if row is None:
+            pytest.skip(f"{case_id}: missing structure.json/tokens.json")
+        if row.target is None:
+            pytest.skip(f"{case_id}: no design target_sections")
+        assert row.rendered == row.target, (
+            f"Case {case_id}: rendered {row.rendered} sections != design target {row.target}"
         )
 
 

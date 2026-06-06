@@ -1,0 +1,524 @@
+{
+  "5": {
+    "name": "maap-kask",
+    "target": 13,
+    "candidates": 9,
+    "analyzed": 11,
+    "rendered": 11,
+    "bands": 9,
+    "band_desc": "wrappers[1692=3] solo=8",
+    "bags": [
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        3,
+        0,
+        1
+      ],
+      [
+        "mj-wrapper",
+        2,
+        2,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        6,
+        6,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        3
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        4
+      ],
+      [
+        "mj-wrapper",
+        0,
+        3,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        0,
+        0
+      ]
+    ]
+  },
+  "6": {
+    "name": "starbucks-pumpkin-spice",
+    "target": 9,
+    "candidates": 5,
+    "analyzed": 5,
+    "rendered": 5,
+    "bands": 5,
+    "band_desc": "solo=5",
+    "bags": [
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        0,
+        1
+      ],
+      [
+        "mj-wrapper",
+        2,
+        1,
+        1
+      ],
+      [
+        "mj-wrapper",
+        4,
+        4,
+        0
+      ],
+      [
+        "mj-wrapper",
+        1,
+        5,
+        0
+      ]
+    ]
+  },
+  "7": {
+    "name": "lego-insiders-halloween",
+    "target": 8,
+    "candidates": 8,
+    "analyzed": 21,
+    "rendered": 17,
+    "bands": 8,
+    "band_desc": "wrappers[1897=4, 1941=8, 2040=4] solo=5",
+    "bags": [
+      [
+        "mj-wrapper",
+        1,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        2,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        0,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        2
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        2
+      ],
+      [
+        "mj-section",
+        1,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        3,
+        3,
+        1
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        3,
+        3,
+        1
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        3,
+        3,
+        1
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        3,
+        3,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        2,
+        0
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        3,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        0,
+        0
+      ]
+    ]
+  },
+  "8": {
+    "name": "performance-reimagined",
+    "target": 10,
+    "candidates": 10,
+    "analyzed": 11,
+    "rendered": 11,
+    "bands": 10,
+    "band_desc": "wrappers[2277=2] solo=9",
+    "bags": [
+      [
+        "mj-wrapper",
+        0,
+        2,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        4,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        4,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        3,
+        0,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        3,
+        0,
+        1
+      ],
+      [
+        "mj-wrapper",
+        4,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        5,
+        0
+      ]
+    ]
+  },
+  "9": {
+    "name": "slate-newsletter",
+    "target": 8,
+    "candidates": 8,
+    "analyzed": 11,
+    "rendered": 10,
+    "bands": 8,
+    "band_desc": "wrappers[2084=4] solo=7",
+    "bags": [
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        2,
+        0
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        1,
+        1,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        1,
+        2,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        4,
+        5,
+        0
+      ]
+    ]
+  },
+  "10": {
+    "name": "mammut-duvet-day",
+    "target": 18,
+    "candidates": 12,
+    "analyzed": 17,
+    "rendered": 14,
+    "bands": 12,
+    "band_desc": "wrappers[1175=2, 1240=5] solo=10",
+    "bags": [
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        0,
+        2
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        3,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        6,
+        2,
+        0
+      ],
+      [
+        "mj-section",
+        6,
+        2,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        3,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        3,
+        6,
+        0
+      ]
+    ]
+  }
+}

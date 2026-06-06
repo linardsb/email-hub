@@ -29,6 +29,7 @@ import yaml
 from app.design_sync.converter_service import ConversionResult, DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
 from app.design_sync.email_design_document import EmailDesignDocument
+from app.design_sync.tests.ladder_harness import load_target_sections
 from app.design_sync.visual_verify import (
     VerificationLoopResult,
     VerificationResult,
@@ -288,20 +289,36 @@ class TestSnapshotSanity:
 
 @pytest.mark.snapshot
 class TestSnapshotSectionCount:
-    """Section count must match manifest expectation (catches layout analysis regressions)."""
+    """Rendered section count vs the *design* ``target_sections`` (the Phase 53 defect).
 
+    Re-pinned from ``sections`` (= the converter's own current output, which made
+    this a circular gate that passed *because* the converter mis-segments) to
+    ``target_sections`` (design truth). xfail/advisory: the converter currently
+    mis-segments several fixtures and this gate is meant to *see* that, not regress
+    on it. Output drift is independently caught by
+    ``TestSnapshotRegression.test_snapshot_matches`` (expected.html comparison); the
+    full count ladder lives in the converter-data-regression suite
+    (``TestSectionLadder``). See .agents/plans/53-converter-engine-fix.md §Track A (A2).
+    """
+
+    @pytest.mark.xfail(
+        reason=(
+            "A2 (plan §Track A): gate re-pinned to design target_sections; the "
+            "converter mis-segments several fixtures (Phase 53). xfail means "
+            "measuring the defect, not regressing. Red here = the real defect."
+        ),
+        strict=False,
+    )
     @pytest.mark.parametrize("case_id", _get_active_case_ids())
     def test_section_count(self, case_id: str) -> None:
-        cases = {c["id"]: c for c in _load_manifest()}
-        case = cases[case_id]
-        expected_sections = case.get("sections")
-        if expected_sections is None:
-            pytest.skip("No expected section count in manifest")
+        target = load_target_sections().get(case_id)
+        if target is None:
+            pytest.skip("No target_sections in manifest")
 
         case_dir = _DEBUG_DIR / case_id
         result = _run_conversion(case_dir)
-        assert result.sections_count == expected_sections, (
-            f"Case {case_id}: expected {expected_sections} sections, got {result.sections_count}"
+        assert result.sections_count == target, (
+            f"Case {case_id}: rendered {result.sections_count} sections != design target {target}"
         )
 
 

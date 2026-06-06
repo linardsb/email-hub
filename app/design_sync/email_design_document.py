@@ -19,12 +19,14 @@ from app.design_sync.figma.layout_analyzer import (
     ButtonElement,
     ColumnGroup,
     ColumnLayout,
+    ContentGroup,
     DesignLayoutDescription,
     EmailSection,
     EmailSectionType,
     ImagePlaceholder,
     TextBlock,
 )
+from app.design_sync.frame_rules import CornerRadiusSpec
 from app.design_sync.protocol import (
     ExtractedColor,
     ExtractedGradient,
@@ -32,6 +34,7 @@ from app.design_sync.protocol import (
     ExtractedTokens,
     ExtractedTypography,
     ExtractedVariable,
+    StyleRun,
 )
 
 if TYPE_CHECKING:
@@ -400,6 +403,113 @@ class DocumentTokens:
 
 
 @dataclass(frozen=True)
+class DocumentStyleRun:
+    """A styled text segment within a text element (mirrors ``StyleRun``)."""
+
+    start: int
+    end: int
+    bold: bool = False
+    italic: bool = False
+    underline: bool = False
+    strikethrough: bool = False
+    color_hex: str | None = None
+    font_size: float | None = None
+    link_url: str | None = None
+
+    def to_json(self) -> dict[str, Any]:
+        d: dict[str, Any] = {"start": self.start, "end": self.end}
+        if self.bold:
+            d["bold"] = self.bold
+        if self.italic:
+            d["italic"] = self.italic
+        if self.underline:
+            d["underline"] = self.underline
+        if self.strikethrough:
+            d["strikethrough"] = self.strikethrough
+        if self.color_hex is not None:
+            d["color_hex"] = self.color_hex
+        if self.font_size is not None:
+            d["font_size"] = self.font_size
+        if self.link_url is not None:
+            d["link_url"] = self.link_url
+        return d
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> DocumentStyleRun:
+        return cls(
+            start=data["start"],
+            end=data["end"],
+            bold=data.get("bold", False),
+            italic=data.get("italic", False),
+            underline=data.get("underline", False),
+            strikethrough=data.get("strikethrough", False),
+            color_hex=data.get("color_hex"),
+            font_size=data.get("font_size"),
+            link_url=data.get("link_url"),
+        )
+
+    @classmethod
+    def from_style_run(cls, run: StyleRun) -> DocumentStyleRun:
+        return cls(
+            start=run.start,
+            end=run.end,
+            bold=run.bold,
+            italic=run.italic,
+            underline=run.underline,
+            strikethrough=run.strikethrough,
+            color_hex=run.color_hex,
+            font_size=run.font_size,
+            link_url=run.link_url,
+        )
+
+    def to_style_run(self) -> StyleRun:
+        return StyleRun(
+            start=self.start,
+            end=self.end,
+            bold=self.bold,
+            italic=self.italic,
+            underline=self.underline,
+            strikethrough=self.strikethrough,
+            color_hex=self.color_hex,
+            font_size=self.font_size,
+            link_url=self.link_url,
+        )
+
+
+@dataclass(frozen=True)
+class DocumentCornerRadiusSpec:
+    """Per-corner radius spec (mirrors ``CornerRadiusSpec`` — Rule 8 / Rule 10)."""
+
+    scalar: float | None = None
+    per_corner: tuple[float, float, float, float] | None = None
+
+    def to_json(self) -> dict[str, Any]:
+        d: dict[str, Any] = {}
+        if self.scalar is not None:
+            d["scalar"] = self.scalar
+        if self.per_corner is not None:
+            d["per_corner"] = list(self.per_corner)
+        return d
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> DocumentCornerRadiusSpec:
+        pc = data.get("per_corner")
+        per_corner = (
+            (float(pc[0]), float(pc[1]), float(pc[2]), float(pc[3]))
+            if pc is not None and len(pc) == 4
+            else None
+        )
+        return cls(scalar=data.get("scalar"), per_corner=per_corner)
+
+    @classmethod
+    def from_spec(cls, spec: CornerRadiusSpec) -> DocumentCornerRadiusSpec:
+        return cls(scalar=spec.scalar, per_corner=spec.per_corner)
+
+    def to_spec(self) -> CornerRadiusSpec:
+        return CornerRadiusSpec(scalar=self.scalar, per_corner=self.per_corner)
+
+
+@dataclass(frozen=True)
 class DocumentText:
     """A text element within a section."""
 
@@ -413,6 +523,12 @@ class DocumentText:
     letter_spacing: float | None = None
     color: str | None = None
     text_align: str | None = None  # left|center|right|justify
+    text_transform: str | None = None  # uppercase|lowercase|capitalize
+    text_decoration: str | None = None  # underline|line-through
+    hyperlink: str | None = None
+    role_hint: str | None = None  # heading|body|label|cta
+    layout_align: str | None = None  # left|center|right
+    style_runs: tuple[DocumentStyleRun, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"node_id": self.node_id, "content": self.content}
@@ -432,6 +548,18 @@ class DocumentText:
             d["color"] = self.color
         if self.text_align is not None:
             d["text_align"] = self.text_align
+        if self.text_transform is not None:
+            d["text_transform"] = self.text_transform
+        if self.text_decoration is not None:
+            d["text_decoration"] = self.text_decoration
+        if self.hyperlink is not None:
+            d["hyperlink"] = self.hyperlink
+        if self.role_hint is not None:
+            d["role_hint"] = self.role_hint
+        if self.layout_align is not None:
+            d["layout_align"] = self.layout_align
+        if self.style_runs:
+            d["style_runs"] = [r.to_json() for r in self.style_runs]
         return d
 
     @classmethod
@@ -447,6 +575,53 @@ class DocumentText:
             letter_spacing=data.get("letter_spacing"),
             color=data.get("color"),
             text_align=data.get("text_align"),
+            text_transform=data.get("text_transform"),
+            text_decoration=data.get("text_decoration"),
+            hyperlink=data.get("hyperlink"),
+            role_hint=data.get("role_hint"),
+            layout_align=data.get("layout_align"),
+            style_runs=tuple(DocumentStyleRun.from_json(r) for r in data.get("style_runs", [])),
+        )
+
+    @classmethod
+    def from_text_block(cls, t: TextBlock) -> DocumentText:
+        return cls(
+            node_id=t.node_id,
+            content=t.content,
+            font_size=t.font_size,
+            is_heading=t.is_heading,
+            font_family=t.font_family,
+            font_weight=t.font_weight,
+            line_height=t.line_height,
+            letter_spacing=t.letter_spacing,
+            color=t.text_color,
+            text_align=t.text_align,
+            text_transform=t.text_transform,
+            text_decoration=t.text_decoration,
+            hyperlink=t.hyperlink,
+            role_hint=t.role_hint,
+            layout_align=t.layout_align,
+            style_runs=tuple(DocumentStyleRun.from_style_run(r) for r in t.style_runs),
+        )
+
+    def to_text_block(self) -> TextBlock:
+        return TextBlock(
+            node_id=self.node_id,
+            content=self.content,
+            font_size=self.font_size,
+            is_heading=self.is_heading,
+            font_family=self.font_family,
+            font_weight=self.font_weight,
+            line_height=self.line_height,
+            letter_spacing=self.letter_spacing,
+            text_color=self.color,
+            text_align=self.text_align,
+            text_transform=self.text_transform,
+            text_decoration=self.text_decoration,
+            hyperlink=self.hyperlink,
+            role_hint=self.role_hint,
+            layout_align=self.layout_align,
+            style_runs=tuple(r.to_style_run() for r in self.style_runs),
         )
 
 
@@ -459,6 +634,8 @@ class DocumentImage:
     width: float | None = None
     height: float | None = None
     is_background: bool = False
+    export_node_id: str | None = None
+    corner_radius_spec: DocumentCornerRadiusSpec | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"node_id": self.node_id, "node_name": self.node_name}
@@ -468,16 +645,54 @@ class DocumentImage:
             d["height"] = self.height
         if self.is_background:
             d["is_background"] = self.is_background
+        if self.export_node_id is not None:
+            d["export_node_id"] = self.export_node_id
+        if self.corner_radius_spec is not None:
+            d["corner_radius_spec"] = self.corner_radius_spec.to_json()
         return d
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> DocumentImage:
+        crs = data.get("corner_radius_spec")
         return cls(
             node_id=data["node_id"],
             node_name=data["node_name"],
             width=data.get("width"),
             height=data.get("height"),
             is_background=data.get("is_background", False),
+            export_node_id=data.get("export_node_id"),
+            corner_radius_spec=(
+                DocumentCornerRadiusSpec.from_json(crs) if crs is not None else None
+            ),
+        )
+
+    @classmethod
+    def from_image_placeholder(cls, i: ImagePlaceholder) -> DocumentImage:
+        return cls(
+            node_id=i.node_id,
+            node_name=i.node_name,
+            width=i.width,
+            height=i.height,
+            is_background=i.is_background,
+            export_node_id=i.export_node_id,
+            corner_radius_spec=(
+                DocumentCornerRadiusSpec.from_spec(i.corner_radius_spec)
+                if i.corner_radius_spec is not None
+                else None
+            ),
+        )
+
+    def to_image_placeholder(self) -> ImagePlaceholder:
+        return ImagePlaceholder(
+            node_id=self.node_id,
+            node_name=self.node_name,
+            width=self.width,
+            height=self.height,
+            is_background=self.is_background,
+            export_node_id=self.export_node_id,
+            corner_radius_spec=(
+                self.corner_radius_spec.to_spec() if self.corner_radius_spec is not None else None
+            ),
         )
 
 
@@ -492,6 +707,14 @@ class DocumentButton:
     url: str | None = None
     border_radius: float | None = None
     fill_color: str | None = None
+    text_color: str | None = None
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
+    icon_node_id: str | None = None
+    font_size: float | None = None
+    font_weight: int | None = None
+    font_family: str | None = None
+    corner_radius_spec: DocumentCornerRadiusSpec | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"node_id": self.node_id, "text": self.text}
@@ -505,10 +728,27 @@ class DocumentButton:
             d["border_radius"] = self.border_radius
         if self.fill_color is not None:
             d["fill_color"] = self.fill_color
+        if self.text_color is not None:
+            d["text_color"] = self.text_color
+        if self.stroke_color is not None:
+            d["stroke_color"] = self.stroke_color
+        if self.stroke_weight is not None:
+            d["stroke_weight"] = self.stroke_weight
+        if self.icon_node_id is not None:
+            d["icon_node_id"] = self.icon_node_id
+        if self.font_size is not None:
+            d["font_size"] = self.font_size
+        if self.font_weight is not None:
+            d["font_weight"] = self.font_weight
+        if self.font_family is not None:
+            d["font_family"] = self.font_family
+        if self.corner_radius_spec is not None:
+            d["corner_radius_spec"] = self.corner_radius_spec.to_json()
         return d
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> DocumentButton:
+        crs = data.get("corner_radius_spec")
         return cls(
             node_id=data["node_id"],
             text=data["text"],
@@ -517,6 +757,61 @@ class DocumentButton:
             url=data.get("url"),
             border_radius=data.get("border_radius"),
             fill_color=data.get("fill_color"),
+            text_color=data.get("text_color"),
+            stroke_color=data.get("stroke_color"),
+            stroke_weight=data.get("stroke_weight"),
+            icon_node_id=data.get("icon_node_id"),
+            font_size=data.get("font_size"),
+            font_weight=data.get("font_weight"),
+            font_family=data.get("font_family"),
+            corner_radius_spec=(
+                DocumentCornerRadiusSpec.from_json(crs) if crs is not None else None
+            ),
+        )
+
+    @classmethod
+    def from_button_element(cls, b: ButtonElement) -> DocumentButton:
+        return cls(
+            node_id=b.node_id,
+            text=b.text,
+            width=b.width,
+            height=b.height,
+            url=b.url,
+            border_radius=b.border_radius,
+            fill_color=b.fill_color,
+            text_color=b.text_color,
+            stroke_color=b.stroke_color,
+            stroke_weight=b.stroke_weight,
+            icon_node_id=b.icon_node_id,
+            font_size=b.font_size,
+            font_weight=b.font_weight,
+            font_family=b.font_family,
+            corner_radius_spec=(
+                DocumentCornerRadiusSpec.from_spec(b.corner_radius_spec)
+                if b.corner_radius_spec is not None
+                else None
+            ),
+        )
+
+    def to_button_element(self) -> ButtonElement:
+        return ButtonElement(
+            node_id=self.node_id,
+            text=self.text,
+            width=self.width,
+            height=self.height,
+            fill_color=self.fill_color,
+            url=self.url,
+            border_radius=self.border_radius,
+            text_color=self.text_color,
+            stroke_color=self.stroke_color,
+            stroke_weight=self.stroke_weight,
+            icon_node_id=self.icon_node_id,
+            font_size=self.font_size,
+            font_weight=self.font_weight,
+            font_family=self.font_family,
+            corner_radius_spec=(
+                self.corner_radius_spec.to_spec() if self.corner_radius_spec is not None else None
+            ),
         )
 
 
@@ -558,6 +853,82 @@ class DocumentColumn:
             texts=[DocumentText.from_json(t) for t in data.get("texts", [])],
             images=[DocumentImage.from_json(i) for i in data.get("images", [])],
             buttons=[DocumentButton.from_json(b) for b in data.get("buttons", [])],
+        )
+
+    @classmethod
+    def from_column_group(cls, c: ColumnGroup) -> DocumentColumn:
+        return cls(
+            column_idx=c.column_idx,
+            node_id=c.node_id,
+            node_name=c.node_name,
+            width=c.width,
+            texts=[DocumentText.from_text_block(t) for t in c.texts],
+            images=[DocumentImage.from_image_placeholder(i) for i in c.images],
+            buttons=[DocumentButton.from_button_element(b) for b in c.buttons],
+        )
+
+    def to_column_group(self) -> ColumnGroup:
+        return ColumnGroup(
+            column_idx=self.column_idx,
+            node_id=self.node_id,
+            node_name=self.node_name,
+            width=self.width,
+            texts=[t.to_text_block() for t in self.texts],
+            images=[i.to_image_placeholder() for i in self.images],
+            buttons=[b.to_button_element() for b in self.buttons],
+        )
+
+
+@dataclass(frozen=True)
+class DocumentContentGroup:
+    """A visually distinct content block within a section (mirrors ``ContentGroup``)."""
+
+    frame_node_id: str
+    frame_name: str
+    texts: list[DocumentText] = field(default_factory=list[DocumentText])
+    images: list[DocumentImage] = field(default_factory=list[DocumentImage])
+    buttons: list[DocumentButton] = field(default_factory=list[DocumentButton])
+
+    def to_json(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
+            "frame_node_id": self.frame_node_id,
+            "frame_name": self.frame_name,
+        }
+        if self.texts:
+            d["texts"] = [t.to_json() for t in self.texts]
+        if self.images:
+            d["images"] = [i.to_json() for i in self.images]
+        if self.buttons:
+            d["buttons"] = [b.to_json() for b in self.buttons]
+        return d
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> DocumentContentGroup:
+        return cls(
+            frame_node_id=data["frame_node_id"],
+            frame_name=data["frame_name"],
+            texts=[DocumentText.from_json(t) for t in data.get("texts", [])],
+            images=[DocumentImage.from_json(i) for i in data.get("images", [])],
+            buttons=[DocumentButton.from_json(b) for b in data.get("buttons", [])],
+        )
+
+    @classmethod
+    def from_content_group(cls, g: ContentGroup) -> DocumentContentGroup:
+        return cls(
+            frame_node_id=g.frame_node_id,
+            frame_name=g.frame_name,
+            texts=[DocumentText.from_text_block(t) for t in g.texts],
+            images=[DocumentImage.from_image_placeholder(i) for i in g.images],
+            buttons=[DocumentButton.from_button_element(b) for b in g.buttons],
+        )
+
+    def to_content_group(self) -> ContentGroup:
+        return ContentGroup(
+            frame_node_id=self.frame_node_id,
+            frame_name=self.frame_name,
+            texts=[t.to_text_block() for t in self.texts],
+            images=[i.to_image_placeholder() for i in self.images],
+            buttons=[b.to_button_element() for b in self.buttons],
         )
 
 
@@ -606,6 +977,23 @@ class DocumentSection:
     spacing_after: float | None = None
     classification_confidence: float | None = None
     element_gaps: list[float] = field(default_factory=list[float])
+    # Phase-50 structural fields carried through from EmailSection.
+    child_content_groups: list[DocumentContentGroup] = field(
+        default_factory=list[DocumentContentGroup]
+    )
+    boundary_above: str | None = None
+    boundary_below: str | None = None
+    sampled_top_color: str | None = None
+    sampled_bottom_color: str | None = None
+    container_bg: str | None = None
+    parent_wrapper_id: str | None = None
+    inner_bg: str | None = None
+    inner_radius: float | None = None
+    inner_card_fixed_width: int | None = None
+    is_physical_card_surface: bool = False
+    physical_card_signals: tuple[str, ...] = ()
+    vlm_classification: str | None = None
+    vlm_confidence: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"id": self.id, "type": self.type}
@@ -643,6 +1031,34 @@ class DocumentSection:
             d["classification_confidence"] = self.classification_confidence
         if self.element_gaps:
             d["element_gaps"] = list(self.element_gaps)
+        if self.child_content_groups:
+            d["child_content_groups"] = [g.to_json() for g in self.child_content_groups]
+        if self.boundary_above is not None:
+            d["boundary_above"] = self.boundary_above
+        if self.boundary_below is not None:
+            d["boundary_below"] = self.boundary_below
+        if self.sampled_top_color is not None:
+            d["sampled_top_color"] = self.sampled_top_color
+        if self.sampled_bottom_color is not None:
+            d["sampled_bottom_color"] = self.sampled_bottom_color
+        if self.container_bg is not None:
+            d["container_bg"] = self.container_bg
+        if self.parent_wrapper_id is not None:
+            d["parent_wrapper_id"] = self.parent_wrapper_id
+        if self.inner_bg is not None:
+            d["inner_bg"] = self.inner_bg
+        if self.inner_radius is not None:
+            d["inner_radius"] = self.inner_radius
+        if self.inner_card_fixed_width is not None:
+            d["inner_card_fixed_width"] = self.inner_card_fixed_width
+        if self.is_physical_card_surface:
+            d["is_physical_card_surface"] = self.is_physical_card_surface
+        if self.physical_card_signals:
+            d["physical_card_signals"] = list(self.physical_card_signals)
+        if self.vlm_classification is not None:
+            d["vlm_classification"] = self.vlm_classification
+        if self.vlm_confidence is not None:
+            d["vlm_confidence"] = self.vlm_confidence
         return d
 
     @classmethod
@@ -668,6 +1084,22 @@ class DocumentSection:
             spacing_after=data.get("spacing_after"),
             classification_confidence=data.get("classification_confidence"),
             element_gaps=data.get("element_gaps", []),
+            child_content_groups=[
+                DocumentContentGroup.from_json(g) for g in data.get("child_content_groups", [])
+            ],
+            boundary_above=data.get("boundary_above"),
+            boundary_below=data.get("boundary_below"),
+            sampled_top_color=data.get("sampled_top_color"),
+            sampled_bottom_color=data.get("sampled_bottom_color"),
+            container_bg=data.get("container_bg"),
+            parent_wrapper_id=data.get("parent_wrapper_id"),
+            inner_bg=data.get("inner_bg"),
+            inner_radius=data.get("inner_radius"),
+            inner_card_fixed_width=data.get("inner_card_fixed_width"),
+            is_physical_card_surface=data.get("is_physical_card_surface", False),
+            physical_card_signals=tuple(data.get("physical_card_signals", [])),
+            vlm_classification=data.get("vlm_classification"),
+            vlm_confidence=data.get("vlm_confidence"),
         )
 
     def to_email_section(self) -> EmailSection:
@@ -682,40 +1114,9 @@ class DocumentSection:
             height=self.height,
             column_layout=ColumnLayout(self.column_layout),
             column_count=self.column_count,
-            texts=[
-                TextBlock(
-                    node_id=t.node_id,
-                    content=t.content,
-                    font_size=t.font_size,
-                    is_heading=t.is_heading,
-                    font_family=t.font_family,
-                    font_weight=t.font_weight,
-                    line_height=t.line_height,
-                    letter_spacing=t.letter_spacing,
-                    text_color=getattr(t, "text_color", None),
-                )
-                for t in self.texts
-            ],
-            images=[
-                ImagePlaceholder(
-                    node_id=i.node_id,
-                    node_name=i.node_name,
-                    width=i.width,
-                    height=i.height,
-                    is_background=i.is_background,
-                )
-                for i in self.images
-            ],
-            buttons=[
-                ButtonElement(
-                    node_id=b.node_id,
-                    text=b.text,
-                    width=b.width,
-                    height=b.height,
-                    fill_color=getattr(b, "fill_color", None),
-                )
-                for b in self.buttons
-            ],
+            texts=[t.to_text_block() for t in self.texts],
+            images=[i.to_image_placeholder() for i in self.images],
+            buttons=[b.to_button_element() for b in self.buttons],
             spacing_after=self.spacing_after,
             bg_color=self.background_color,
             padding_top=pad.top if pad else None,
@@ -724,51 +1125,23 @@ class DocumentSection:
             padding_left=pad.left if pad else None,
             item_spacing=self.item_spacing,
             element_gaps=tuple(self.element_gaps),
-            column_groups=[
-                ColumnGroup(
-                    column_idx=c.column_idx,
-                    node_id=c.node_id,
-                    node_name=c.node_name,
-                    width=c.width,
-                    texts=[
-                        TextBlock(
-                            node_id=t.node_id,
-                            content=t.content,
-                            font_size=t.font_size,
-                            is_heading=t.is_heading,
-                            font_family=t.font_family,
-                            font_weight=t.font_weight,
-                            line_height=t.line_height,
-                            letter_spacing=t.letter_spacing,
-                            text_color=getattr(t, "text_color", None),
-                        )
-                        for t in c.texts
-                    ],
-                    images=[
-                        ImagePlaceholder(
-                            node_id=i.node_id,
-                            node_name=i.node_name,
-                            width=i.width,
-                            height=i.height,
-                            is_background=i.is_background,
-                        )
-                        for i in c.images
-                    ],
-                    buttons=[
-                        ButtonElement(
-                            node_id=b.node_id,
-                            text=b.text,
-                            width=b.width,
-                            height=b.height,
-                            fill_color=getattr(b, "fill_color", None),
-                        )
-                        for b in c.buttons
-                    ],
-                )
-                for c in self.columns
-            ],
+            column_groups=[c.to_column_group() for c in self.columns],
             classification_confidence=self.classification_confidence,
+            vlm_classification=self.vlm_classification,
+            vlm_confidence=self.vlm_confidence,
             content_roles=tuple(self.content_roles),
+            child_content_groups=[g.to_content_group() for g in self.child_content_groups],
+            boundary_above=self.boundary_above,
+            boundary_below=self.boundary_below,
+            sampled_top_color=self.sampled_top_color,
+            sampled_bottom_color=self.sampled_bottom_color,
+            container_bg=self.container_bg,
+            parent_wrapper_id=self.parent_wrapper_id,
+            inner_bg=self.inner_bg,
+            inner_radius=self.inner_radius,
+            inner_card_fixed_width=self.inner_card_fixed_width,
+            is_physical_card_surface=self.is_physical_card_surface,
+            physical_card_signals=self.physical_card_signals,
         )
 
     @classmethod
@@ -802,93 +1175,30 @@ class DocumentSection:
             padding=padding,
             item_spacing=section.item_spacing,
             background_color=section.bg_color,
-            texts=[
-                DocumentText(
-                    node_id=t.node_id,
-                    content=t.content,
-                    font_size=t.font_size,
-                    is_heading=t.is_heading,
-                    font_family=t.font_family,
-                    font_weight=t.font_weight,
-                    line_height=t.line_height,
-                    letter_spacing=t.letter_spacing,
-                    color=t.text_color,
-                    text_align=t.text_align,
-                )
-                for t in section.texts
-            ],
-            images=[
-                DocumentImage(
-                    node_id=i.node_id,
-                    node_name=i.node_name,
-                    width=i.width,
-                    height=i.height,
-                    is_background=i.is_background,
-                )
-                for i in section.images
-            ],
-            buttons=[
-                DocumentButton(
-                    node_id=b.node_id,
-                    text=b.text,
-                    width=b.width,
-                    height=b.height,
-                    url=b.url,
-                    border_radius=b.border_radius,
-                    fill_color=b.fill_color,
-                )
-                for b in section.buttons
-            ],
-            columns=[
-                DocumentColumn(
-                    column_idx=c.column_idx,
-                    node_id=c.node_id,
-                    node_name=c.node_name,
-                    width=c.width,
-                    texts=[
-                        DocumentText(
-                            node_id=t.node_id,
-                            content=t.content,
-                            font_size=t.font_size,
-                            is_heading=t.is_heading,
-                            font_family=t.font_family,
-                            font_weight=t.font_weight,
-                            line_height=t.line_height,
-                            letter_spacing=t.letter_spacing,
-                            color=t.text_color,
-                            text_align=t.text_align,
-                        )
-                        for t in c.texts
-                    ],
-                    images=[
-                        DocumentImage(
-                            node_id=i.node_id,
-                            node_name=i.node_name,
-                            width=i.width,
-                            height=i.height,
-                            is_background=i.is_background,
-                        )
-                        for i in c.images
-                    ],
-                    buttons=[
-                        DocumentButton(
-                            node_id=b.node_id,
-                            text=b.text,
-                            width=b.width,
-                            height=b.height,
-                            url=b.url,
-                            border_radius=b.border_radius,
-                            fill_color=b.fill_color,
-                        )
-                        for b in c.buttons
-                    ],
-                )
-                for c in section.column_groups
-            ],
+            texts=[DocumentText.from_text_block(t) for t in section.texts],
+            images=[DocumentImage.from_image_placeholder(i) for i in section.images],
+            buttons=[DocumentButton.from_button_element(b) for b in section.buttons],
+            columns=[DocumentColumn.from_column_group(c) for c in section.column_groups],
             content_roles=list(section.content_roles),
             spacing_after=section.spacing_after,
             classification_confidence=section.classification_confidence,
             element_gaps=list(section.element_gaps),
+            child_content_groups=[
+                DocumentContentGroup.from_content_group(g) for g in section.child_content_groups
+            ],
+            boundary_above=section.boundary_above,
+            boundary_below=section.boundary_below,
+            sampled_top_color=section.sampled_top_color,
+            sampled_bottom_color=section.sampled_bottom_color,
+            container_bg=section.container_bg,
+            parent_wrapper_id=section.parent_wrapper_id,
+            inner_bg=section.inner_bg,
+            inner_radius=section.inner_radius,
+            inner_card_fixed_width=section.inner_card_fixed_width,
+            is_physical_card_surface=section.is_physical_card_surface,
+            physical_card_signals=section.physical_card_signals,
+            vlm_classification=section.vlm_classification,
+            vlm_confidence=section.vlm_confidence,
         )
 
 
