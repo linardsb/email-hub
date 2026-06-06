@@ -1323,7 +1323,13 @@ class TestExtendedComponentScoring:
         assert m.component_slug != "event-card"
 
     def test_faq_question_answer_pairs(self) -> None:
-        """Alternating Q?/A texts, no images → faq-accordion."""
+        """Alternating Q?/A texts, no images → text-block.
+
+        The ``faq-accordion`` slug was a phantom (absent from
+        ``component_manifest.yaml`` and from the slot-fill builders), so it
+        was removed in B7. FAQ-shaped content now falls through to the base
+        scorer's ``text-block``, which renders the real Q/A text.
+        """
         s = _make_section(
             texts=[
                 _text("What is your return policy?"),
@@ -1335,8 +1341,7 @@ class TestExtendedComponentScoring:
             ],
         )
         m = match_section(s, 0)
-        assert m.component_slug == "faq-accordion"
-        assert m.confidence == 0.88
+        assert m.component_slug == "text-block"
 
     def test_zigzag_alternating_columns(self) -> None:
         """3+ col_groups each with mixed image+text → zigzag-alternating."""
@@ -1713,7 +1718,6 @@ class TestFillsSocial:
         )
         fills = _fills_social(section, 600, image_urls=None)
         assert fills == [] or '"2833:1172"' not in fills[0].value
-
 
 
 class TestDeriveImageAlt:

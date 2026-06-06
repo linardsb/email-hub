@@ -400,6 +400,49 @@
       "symptom_if_broken": "Section-count gates stay green/xfail even when the converter converges to (or regresses from) the design target — no positive CI signal that a Track C/D segmentation fix actually closed the gap; or a forgotten ladder_snapshot.json commit silently drops the drift gate.",
       "closes_when": "At the 53.1/D fork: the converter converges on the fixtures AND the target gate is tightened (strict=True, or a band-derived metric such as len(section_parts)/band_descriptor) so it positively asserts convergence; the regression_runner advisory metric is re-pinned or removed.",
       "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). The drift gate is the load-bearing protection today; the target gate is only the headline-gap measure."
+    },
+    {
+      "id": "tech-debt-03-memory-recall-dead-on-read",
+      "phase": "tech-debt-03",
+      "title": "MemoryService.recall() is dead-on-read — every recall raises on an unstamped session and silently returns []",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-04-26",
+      "introduced_commit": "db953681",
+      "summary": "The per-tenant DB-scoping fix (F001/F002/F003, db953681) made MemoryRepository.similarity_search call scoped_access(self.db) unconditionally (repository.py:56); scoped_access raises RuntimeError on any session not stamped with tenant_access (scoped_db.py:176-181, 'failing loud is the point'). But every MemoryService.recall() caller opens a plain get_db_context() session, which does NOT stamp tenant_access (database.py:74-87) — unlike get_system_db_context (scoped_db.py:161-164). So every recall raises, each caller's failure-safe try/except swallows it, and recall returns []. The entire app/memory recall-into-context layer (blueprint LAYER 10 memory block, scaffolder conversion-memory recall, proactive_qa, correction_examples, insight_bus, confidence_calibration) is silently inert at read time despite memory.enabled=True and despite writes succeeding (writers that use get_system_db_context, e.g. converter quality memory, persist fine). Because the exception is swallowed, existing tests stay green and no integration test exercises the real scoped_access path on recall. Net: cross-task episodic + procedural memory never reaches an agent prompt — 'persistent memory across tasks' silently no-ops.",
+      "code_refs": [
+        "app/memory/repository.py:56 (similarity_search — unconditional scoped_access(self.db))",
+        "app/core/scoped_db.py:176-181 (scoped_access raises RuntimeError on unstamped session)",
+        "app/core/database.py:74-87 (get_db_context — does NOT stamp tenant_access)",
+        "app/core/scoped_db.py:161-164 (get_system_db_context — DOES stamp; the working pattern used by converter quality-memory writes)",
+        "app/ai/blueprints/engine.py:1501 (recall caller opens get_db_context — blueprint LAYER 10)",
+        "app/ai/agents/scaffolder/pipeline.py:311 (recall_conversion_context opens get_db_context)"
+      ],
+      "symptom_if_broken": "Agents never recall prior-run memories: blueprint LAYER 10 memory block always empty; the converter->scaffolder quality-memory loop (writes succeed via get_system_db_context, reads return []) never surfaces 'avoid template X for client Y' hints; metrics/logs show memory rows being WRITTEN while recall yields nothing, and no exception is visible (swallowed).",
+      "closes_when": "Recall callers open a tenant-stamped session (get_scoped_db / get_system_db_context) OR similarity_search accepts an explicit access scope instead of reading session.info — AND a test exercises the real scoped_access path (stop swallowing/mocking) so a regression re-surfaces. Confirm a blueprint run actually injects a recalled memory into a node prompt.",
+      "available_data": "Discovered 2026-06-05; full trace in docs/agentic_rl_memory_handoff_findings.md sec 3.2 / 7.2 (5-agent audit, mechanism + caller side hand-verified). Distinct from closed tech-debt-03-memory-isolation-embedding-stub (an embedding-provider xfail in the isolation harness).",
+      "fix_sketch": "Smallest fix: swap the recall-site session openers from get_db_context() to get_system_db_context() (system sentinel — correct for background/agent context that legitimately spans projects), mirroring how the converter quality-memory WRITE already works. Alternative: thread the caller's TenantAccess explicitly into similarity_search(..., access=...) and drop the session.info read.",
+      "notes": "Prerequisite (B1) for any agent self-improvement loop that depends on memory recall (handoff_memory, insight_bus) — see proposed Phase 54. Also verify a separately-flagged gap: MemoryCompactionPoller appears never registered in app/main.py (decay/compaction never runs) — relevant before Phase 51.2 hardens compaction and before turning memory writes up (unbounded growth = write-only-memory anti-pattern)."
+    },
+    {
+      "id": "phase-53-b5-decorative-empty-alt-vs-g3neg",
+      "phase": "53",
+      "title": "B5 'alt=\"\" for decorative images' conflicts with the G3-neg conformance gate, which forbids empty/generic alt",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-06-06",
+      "introduced_commit": "37996703",
+      "summary": "B1 (seed-literal cleanup) attempted to blank the image-grid seed's placeholder alt (alt=\"Grid image 1/2\") to alt=\"\". The golden-conformance gate G3-neg (test_golden_conformance.py:72-76, should_match=False) rejects alt values that are empty or a single generic word (image/photo/picture/img/mj-image/mj-text/frame/banner) — and correctly so here: image-grid's images are wrapped in <a href>, so an empty alt strips the link's accessible name. B1 therefore reverted the image-grid edit (restored the descriptive multi-word placeholder, matching sibling seeds full-width-image/article-card/logo-header, all of which pass G3-neg) and shipped only its gate-clean parts. The real placeholder-alt fix is deferred to B5 (alt derivation: real alt when available, alt=\"\" only for genuinely decorative). But B5's prescribed alt=\"\"-for-decorative re-trips this same gate the moment a decorative image flows through the fragment/snapshot conformance conversion.",
+      "code_refs": [
+        "app/design_sync/tests/test_golden_conformance.py:72-76 (G3-neg — forbids empty/generic alt)",
+        "email-templates/components/image-grid.html:16,30 (linked <a><img> — descriptive placeholder alt restored, NOT blanked)",
+        "app/design_sync/component_matcher.py:_is_descriptive_alt/_derive_image_alt (B5 alt-derivation helpers, shipped commit 65a8b703) — TIER 1 routed 8 emission sites: 2 column f-strings (_build_column_fill_html/_build_column_fills) + 4 SlotFill(image_alt) (_fills_full_width_image/_fills_article_card/_fills_image_block/_fills_event_card) + 1 SlotFill(logo_alt) (_fills_logo_header) + social fallback (_fills_social). NOTE: leak was 8 sites, NOT the 2 originally cited — the slot-fill image_alt/logo_alt feeders also passed raw node_name",
+        "email-templates/components/col-icon.html (linked icons <a><img alt=\"\"> → alt=\"Feature icon\", fixed in 65a8b703 — unlabeled-link a11y bug, separate from node_name leak)",
+        ".agents/plans/53-b5-alt-derivation-decision.md (decision + execution correction) ; .agents/plans/53-converter-engine-fix.md §Track B (B1 blank-alt step; B5 alt derivation)"
+      ],
+      "symptom_if_broken": "B5 (or any change) emits alt=\"\" for a decorative image that flows through test_golden_conformance fragment/snapshot conversion → G3-neg VIOLATION fails `make golden-conformance` / `make check`. Or: image-grid's 'Grid image 1/2' placeholder alt keeps leaking into shipped output (meaningless screen-reader text on linked images) because real derivation never landed.",
+      "closes_when": "TWO TIERS, decided in .agents/plans/53-b5-alt-derivation-decision.md (2026-06-06). TIER 1 (B5, closes the leak): the column path (component_matcher.py:795,1455) stops emitting raw node_name as alt — emits a meaningful name when node_name is descriptive, else a descriptive multi-word non-generic placeholder; never alt=\"\" and never a lone generic token on that path; golden-conformance stays green. TIER 2 (deferred to RC-E, NOT B5): true per-image semantic alt + a genuine decorative signal require an ingest-level role/decorative flag; only then is a role-aware G3-neg amendment justified. Verified by data/debug snapshot output no longer carrying node.name as alt while golden-conformance stays green.",
+      "notes": "Surfaced during B1 execution (2026-06-06). DECISION 2026-06-06 (.agents/plans/53-b5-alt-derivation-decision.md): empirical trace confirms B5's column-builder path (_build_column_fill_html) IS exercised by golden-conformance (6 seeds) — so alt=\"\" there WOULD fail the gate; but the leak only occurs on the Figma-fixture provenance of node_name (= node.name), which the data/debug regression does NOT alt-check. Resolution = conservative: B5 fixes the leak with a meaningful-or-descriptive-placeholder alt, NEVER alt=\"\" on the column path, and does NOT touch G3-neg. The plan's 'alt=\"\" for decorative' has no live safe case (decorative images render as CSS background-url, not <img>; column images are content). 'Do not loosen G3-neg' stands — a role=presentation exemption would let the code-under-test opt itself out of the gate. B1 shipped its gate-clean parts (col-icon mobile Headline blanks; data-slot-alt removal from logo-header/article-card/full-width-image) and carved out the image-grid alt to B5."
     }
   ],
   "tooling_followups": [

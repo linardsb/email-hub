@@ -225,7 +225,6 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         )
         ext_slug, ext_confidence = _score_extended_candidates(
             section,
-            has_images,
             has_texts,
             has_buttons,
             has_headings,
@@ -385,7 +384,6 @@ _TIME_OF_DAY_PATTERN = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)\b")
 
 def _score_extended_candidates(
     section: EmailSection,
-    has_images: bool,
     has_texts: bool,
     has_buttons: bool,
     has_headings: bool,
@@ -393,9 +391,9 @@ def _score_extended_candidates(
     """Score extended component types added in 47.6.
 
     Returns the best (slug, confidence) among countdown-timer, testimonial,
-    pricing-table, video-placeholder, event-card, faq-accordion, and
-    zigzag-alternating.  Returns ``("text-block", 0.0)`` when nothing matches
-    so the caller can safely compare against the base scorer.
+    pricing-table, video-placeholder, event-card, and zigzag-alternating.
+    Returns ``("text-block", 0.0)`` when nothing matches so the caller can
+    safely compare against the base scorer.
     """
     candidates: list[tuple[str, float]] = []
 
@@ -466,12 +464,6 @@ def _score_extended_candidates(
             )
             if keyword_hits >= 2:
                 candidates.append(("event-card", 0.83))
-
-    # faq-accordion: 3+ texts with ? in alternating items, no images
-    if not has_images and len(texts) >= 3:
-        question_count = sum(1 for i, t in enumerate(texts) if i % 2 == 0 and "?" in t.content)
-        if question_count >= 2:
-            candidates.append(("faq-accordion", 0.88))
 
     # zigzag-alternating: 3+ col_groups each with mixed image+text
     # (product-grid fires at 2+, so 3+ distinguishes zigzag rows)
@@ -777,7 +769,9 @@ def _cta_label_typography(btn: ButtonElement) -> str:
         decls.append(f"font-family:{family}")
     size = int(btn.font_size) if btn.font_size else 14
     decls.append(f"font-size:{size}px")
-    decls.append(f"font-weight:{btn.font_weight}" if btn.font_weight is not None else "font-weight:bold")
+    decls.append(
+        f"font-weight:{btn.font_weight}" if btn.font_weight is not None else "font-weight:bold"
+    )
     return ";".join(decls) + ";"
 
 
