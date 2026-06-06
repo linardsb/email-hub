@@ -28,6 +28,15 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    ignore:
+      # MJML 5 is a young, fast-moving major rewrite (5.0 shipped 2026-04-16;
+      # alpha/beta tags still active). It changes mjml2html to async/new shape,
+      # which silently breaks the sidecar's sync compileMjml (empty HTML, no
+      # error) — verified via the vitest suite (PR #245, 11 failures). MJML 4.18
+      # is stable and our /compile-mjml path works on it. Revisit deliberately
+      # (await + output re-validation) when there is a real MJML-5 need.
+      - dependency-name: "mjml"
+        update-types: ["version-update:semver-major"]
 
   # Frontend monorepo (npm/pnpm at cms/)
   - package-ecosystem: "npm"
