@@ -1,0 +1,79 @@
+name: Dependabot auto-merge
+
+# Auto-merges Dependabot **minor/patch** PRs once the CI workflow succeeds.
+#
+# Why workflow_run (not native `gh pr merge --auto`): this repo has no required
+# status checks (branch protection is unavailable on the current plan), so
+# native auto-merge cannot "arm" and wait for green — it only merges if already
+# green at enable time. This job instead fires when the "CI" workflow completes
+# for a Dependabot branch, re-verifies the FULL check rollup is green (so it also
+# accounts for Semgrep/Trivy/etc., not just CI), confirms the bump is minor/patch
+# by parsing the PR title, then squash-merges. Major bumps are left for a human.
+#
+# Security: this never checks out PR code — it only runs the `gh` CLI against the
+# API — so it is not exposed to the workflow_run/pull_request_target code-exec
+# class of attacks.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
+    steps:
+      - name: Merge minor/patch Dependabot PR when fully green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          # Resolve the open PR for the commit that triggered CI.
+          pr=$(gh pr list --repo "$REPO" --state open --json number,headRefOid \
+                 --jq "map(select(.headRefOid==\"$SHA\"))[0].number // empty")
+          if [ -z "$pr" ]; then
+            echo "No open PR for $SHA — nothing to do."
+            exit 0
+          fi
+          echo "Candidate: PR #$pr"
+
+          # Re-verify EVERY check is green (CI workflow success alone is not
+          # enough — Semgrep/Trivy/etc. are separate workflows).
+          nongreen=$(gh pr view "$pr" --repo "$REPO" --json statusCheckRollup \
+            --jq '[.statusCheckRollup[]
+                   | (.conclusion // .state) as $s
+                   | select($s != "SUCCESS" and $s != "NEUTRAL" and $s != "SKIPPED")] | length')
+          if [ "$nongreen" != "0" ]; then
+            echo "PR #$pr has $nongreen non-green check(s) — skipping."
+            exit 0
+          fi
+
+          # Determine the semver bump from the title: "... from <X.…> to <Y.…>".
+          # Tolerate v / >= / ^ / ~ prefixes. Unparseable (e.g. grouped updates)
+          # => skip, so we never auto-merge something we can't classify.
+          title=$(gh pr view "$pr" --repo "$REPO" --json title --jq .title)
+          from_major=$(printf '%s' "$title" | sed -nE 's/.* from [^0-9]*([0-9]+)\..*/\1/p')
+          to_major=$(printf '%s' "$title"   | sed -nE 's/.* from [^0-9]*[0-9][^ ]* to [^0-9]*([0-9]+)\..*/\1/p')
+          if [ -z "$from_major" ] || [ -z "$to_major" ]; then
+            echo "Cannot classify bump from title — leaving for manual review: $title"
+            exit 0
+          fi
+          if [ "$from_major" != "$to_major" ]; then
+            echo "Major bump ($from_major -> $to_major) — leaving for manual review: $title"
+            exit 0
+          fi
+
+          echo "Auto-merging #$pr (minor/patch, all checks green): $title"
+          gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
