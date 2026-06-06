@@ -12,568 +12,234 @@
 
 ---
 
-## Active Execution Order (Phases 50 → 53)
-
-Single cross-phase sequence of every remaining task, in exact execution order. **Disc.** = discipline. **Plan** = `Ready` (a written plan exists) / `Needs plan` (detailed plan produced later, at the cited gate). Per-subtask detail is in each phase's section below. Phases are independent workstreams — the only *mandatory* ordering is within each phase + the dependency arrows noted. Phase 51 (security) and Phase 52/53 (converter) can be reordered relative to each other.
-
-| # | Task | Title | Disc. | Plan | Effort |
-|---|------|-------|-------|------|--------|
-| — | 50.1–50.4 | *(shipped — audit refresh, eval registry, workspace hooks, connector tests)* | — | ✅ done | — |
-| 1 | **50.6.1** | Memory embedding stub | Backend | Ready | ~30min |
-| 2 | **50.6.2** | Briefs BOLA isolation test | Backend, Testing | Ready | ~45min |
-| 3 | **50.6.3** | Squawk Python-migrations cleanup | Backend, DB | Ready | ~1h |
-| 4 | **50.6.4** | `DESIGN_SYNC__*` flag cull *(partly landed)* | Backend | Ready | ~2h |
-| 5 | **50.7** | Squash multi-DB redesign → blocks 50.5 | Backend, DB | Ready | ~½d |
-| 6 | **50.5** | Execute migration squash *(blocked on 50.7)* | Backend, DB | Ready | ~2.5h + window |
-| 7 | **51.1** | Credential revocation on kill | Backend, Security | Ready | ½d |
-| 8 | **51.2** | Safe compaction (pinned safety) | Backend, Security | Ready | 1–2d |
-| 9 | **51.3** | Tool-call cap + planning telemetry | Backend, Security | Ready | 1d |
-| 10 | **51.4** | Tamper-evident append-only audit → blocks 51.7 | Backend, Security | Ready | 1–2d |
-| 11 | **51.5** | Toxic-combination policy DSL | Backend, Security | Ready | 2–3d |
-| 12 | **51.6** | HITL cryptographic signatures | Backend, Frontend, Security | Ready | 1–2d |
-| 13 | **51.7** | Infra-level kill + sandboxed tools *(blocked on 51.4)* | Backend, DevOps, Security | Ready | 3–5d |
-| 14 | **52.1** | Repair & activate the fidelity metric | Backend | ⏳ **Partial** (metric correct; wiring remains) | 3–4d |
-| 15 | **52.2** | Serializer bridge Tier-1 (RC-A/RC-B core) | Backend | ✅ **Done** `d6d1854d` | ½d |
-| 16 | **52.3** | Serializer bridge Tier-2 + JSON schema | Backend | ✅ **Done** `c4837dd0` | 2–3d |
-| 17 | **52.4** | Widen override allowlist (typography) | Backend | ✅ **Done** `1b3fcbea`+ | 2–3d |
-| 18 | **52.5** | Ingest correctness *(∥ after 52.1)* | Backend | Ready | 2–3d |
-| 19 | **52.6** | Fix `_fix_text_contrast` *(∥ after 52.1)* | Backend | ✅ **Done** `2f28d880` | ½–1d |
-| 20 | **52.7** | Measurement-truth + regression + supersede | Backend, Docs | Ready | 1–2d |
-| 21 | **53.1** | Strategy-fork decision + spike **← GATE** | Backend | Ready (outline) | 3–5d |
-| 22 | **53.2** | Renderer / engine implementation (per fork) | Backend | Needs plan @ 53.1 | TBD |
-| 23 | **53.3** | Never-parsed ingest render | Backend | Needs plan @ 53.1 | TBD |
-| 24 | **53.4** | Revive or retire the VLM loop | Backend | Needs plan @ 53.1 | 2–4d / ½d |
-| 25 | **53.5** | Decorative VECTOR recovery | Backend | Needs plan @ 53.1 | 1–2d |
-| 26 | **53.6** | Promote surviving rules / composite slots | Backend | Needs plan @ 53.1 | TBD |
-| 27 | **53.7** | Honest per-client ceiling doc | Docs | Needs plan @ 53.1 | ½–1d |
-
-> Within-phase rules: 50.7→50.5; Phase 51 strictly serial (51.4 before 51.7); Phase 52 — 52.1 first, 52.3 before 52.4, 52.5/52.6 parallel-safe after 52.1; **all of Phase 52 before Phase 53**; 53.1 is a gate, 53.2–53.7 fork on it.
+> **How to read this file.** This is the **remaining work only**, in **exact execution order** (top to bottom). Completed subtasks are recorded in [docs/TODO-completed.md](docs/TODO-completed.md). The **converter (active branch) runs first**, then Phase 50, then Phase 51 — independent workstreams that may interleave but are listed in priority order. Each task follows the convention **What / Why / Implementation / Verify / Plan**; the **Plan** line cites the file to read before starting, or marks it ⏳ *plan to be written*.
 
 ---
 
-## Phase 50 — Tech Debt Closeout & Audit Reconciliation (4/11 subtasks)
+## Phase 52–53 — Figma→Email Converter Engine Fix (ACTIVE — branch `tech-debt/phase-52-converter-foundation`)
 
-Final closure of the remaining tech-debt audit items, plus reconciliation of the stale `TECH_DEBT_AUDIT.md` doc against current `main`. Sessions 1–20 closed 53 of 70 findings; the audit table still marks 17 of those false-OPEN because the doc lagged the merges. Of the 17 audit-OPEN findings, 13 are fully shipped in code (flip to RESOLVED), 4 are still real work (F025 not started; F042/F057/F066 partial). Phase 50 closes those 4 + refreshes the doc + drains the deferred-items ledger. Phase 51 (AI security pass) starts after Phase 50 lands so the planning baseline is clean.
+> **Operative plan:** `.agents/plans/53-converter-engine-fix.md` (2026-06-02) — supersedes the old linear `53.1–53.7`, the `52-converter-foundation.md §"Phase 53"` outline, and the `50-converter-fidelity-master.md` 50–53 labels + its 85→99% ladder. The Phase-52 foundation is **shipped** (serializer bridge un-inert RC-A/B, typography/align/CTA/radius overrides incl. 52.4a/b/c/d, `_fix_text_contrast` scoping — see docs/TODO-completed.md). What remains is **measurement + the engine fork**, sequenced by dependency.
+>
+> **Diagnosis (per the plan's re-audit — not independently re-confirmed here):** segmentation (wrong section counts) is the dominant *structural* defect (5/6 fixtures); the fidelity metric is **circular + inverted** until fixture assets resolve; only **case 5 (maap)** binds on disk. Express progress by **defect-class closure, not a fidelity %**.
+>
+> **Execution order:** A1 → A2 → Track B → Track C → A4 → A3 → 52.5 → **53.1 (gate)** → D → Track E.
 
-### Execution order
+### A1 — Structural count-ladder harness (GO/NO-GO) `[Backend]` `[✅ Done 2026-06-04]`
 
-§50.1–§50.4 are shipped. The remaining work is **six grabbable, self-contained sub-phases**. Each lists its plan path + start signal + done signal so a fresh session can pick one off the list and execute end-to-end without prior context. Pick them off the table top-down.
+**What:** A deterministic harness beside `app/design_sync/tests/regression_runner.py` that prints, per fixture `data/debug/{5,6,7,8,9,10}`, the count ladder `target_sections (manifest) → len(_get_section_candidates) → len(analyze_layout().sections) → rendered section count`, plus per-section element bags (text/image/button) and a band-grouping descriptor. Commit all 6 fixtures' `structure.json` + `tokens.json` un-gitignored.
+**Why:** Track C is built on the claim LEGO over-segments (8→21→17), which no prior session cleanly reproduced. The ladder is the first independent confirmation and the shared measurement substrate for B and C; committing inputs kills the per-session variance class.
+**Implementation:** New harness file only; entry point exists — `run_case_conversion(Path("data/debug/<N>"))`. Add `!data/debug/*/structure.json` + `!data/debug/*/tokens.json` to `.gitignore`. Touch only the harness, `.gitignore`, the committed fixtures — do NOT edit `component_matcher.py` / `component_renderer.py` / `layout_analyzer.py` / the regression test.
+**Verify:** `make types`; harness runs clean on all 6; prints the 6-row ladder. **GO/NO-GO:** confirm case 7 (LEGO) renders ~17 against target 8 — if it already groups to ~8, STOP and report (Track C's premise breaks).
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A1).
+**Result (commit `2f4d86e1`):** ✅ **GO** — `app/design_sync/tests/ladder_harness.py` reproduces the ladder for all 6 fixtures. LEGO confirmed **8→21→17** (target 8); pattern holds — over-seg LEGO 17/8 + slate 10/8, under-seg maap 11/13, starbucks 5/9, mammut 14/18. All 6 `structure.json` + `tokens.json` committed un-gitignored; `make types` 0 errors. Committing the fixtures **un-skips** the converter regression + snapshot suites in CI → verified **236 passed / 0 failed** in a clean HEAD worktree (CI's file view). Caveat for A2/Track C: band-count == candidate-count *by construction* (grouping inverts the unwrap) — the per-wrapper breakdown is the signal, not the count. Unblocks A2, Track B, Track C.
 
-| # | Subtask | State | Plan | Effort | Parallel-safe with | Blocks |
-|---|---------|-------|------|--------|--------------------|--------|
-| A | **§50.6.1 — Memory embedding stub** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.1 | ~30min | B, C, D, E, F | — |
-| B | **§50.6.2 — Briefs BOLA isolation test** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.2 | ~45min | A, C, D, E, F | — |
-| C | **§50.6.3 — Squawk Python-migrations cleanup** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.3 | ~1h | A, B, D, E, F | — |
-| D | **§50.6.4 — DESIGN_SYNC__* flag cull (split PR-1/PR-2)** | `[Plan Ready]` | `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.4 | ~2h | A, B, C, E, F | — |
-| E | **§50.7 — Squash Multi-DB Redesign** | `[Plan Ready]` | `.agents/plans/tech-debt-19-squash-multi-db-redesign.md` | ~½d | A, B, C, D | §50.5 |
-| F | **§50.5 — Execute Migration Squash** | `[BLOCKED on §50.7]` | `.agents/plans/tech-debt-19-runbook-db-squash.md` | ~2.5h + maintenance window | — | — |
+### A2 — Un-circular the regression gate `[Backend]` `[✅ Done 2026-06-05]`
 
-§50.8 is **dropped from the active list** — its purpose was to add a tripwire while §50.7 was in flight; §50.7's PR removes the tripwire as part of landing, so adding it now is net-zero. Header `[SKIP]` left in place for traceability.
+**What:** Re-pin the section-count gate(s) from the converter's own output (`manifest.sections.count` / top-level `sections`) to the design `target_sections`.
+**Why:** The old gate passed *because* the converter mis-segments, so it measured nothing. `target_sections` is the design truth (5→13, 6→9, 7→8, 8→10, 9→8, 10→18). *(= old 52.7 core.)*
+**Done (commit `37996703`):** Shipped as a **full ladder-snapshot gate** — not a flat tolerance re-pin. A1 showed no single count cleanly recovers the target (band_count just inverts the wrapper-unwrap; rendered/marker counts are per-block), so: `TestSectionLadder.test_ladder_no_drift` hard-pins the full ladder (candidates/analyzed/rendered/bands + per-wrapper descriptor) to committed `data/debug/ladder_snapshot.json`; `test_rendered_matches_target` + the second circular gate `TestSnapshotSectionCount` xfail `rendered == target_sections`. `manifest_schema.py` untouched (target lives in the top-level manifest, reused via `ladder_harness.load_target_sections`). Parametrized over discovered fixtures so a missing snapshot fails loudly. 6/6 target-xfail + 6/6 drift-pass today; both make-gates green; topology tests intact.
+**Carry-forward:** target gate is advisory `xfail(strict=False)` over a per-block metric (`sections_count == len(match.matches)`) vs a band target — may not converge if Track C/D groups at render time; `regression_runner.py:113` still circular (advisory). Tracked: deferred-items `phase-53-a2-advisory-section-gate` → tighten at 53.1/D.
+**Plan:** `.agents/plans/53-converter-engine-fix.md` §4 Track A (A2).
 
-After Phase 50 drains, Phase 51 (Agentic Security Hardening — 7 `[Plan Ready]` subtasks) opens. Phase 51 is a separate workstream and not blocked by anything in Phase 50.
+### Track B — Cheap, ship-now render fixes (B1–B8) `[Backend]` `[In Progress · 3/8 — B1, B5, B7 ✅]`
 
-### Shipped
+**What:** Eight small per-section fixes to today's shipped render output, in churn-minimizing order.
+**Why:** Each is a real defect in the live output, ≤1d, that the A2 gate finally sees. **B1 is the only fork-surviving fix** (the edited seeds also feed the DB component library); the rest die under fork-(b) but fix shipped output now.
+**Implementation (in order):** **B1** seed-literal cleanup (`col-icon.html:73,106`, `image-grid.html:16,30`; retire dead `data-slot-alt`) → **B7** phantom `faq-accordion` slug (`component_matcher.py:474`) → **B5** alt derivation (`component_matcher.py:795,1455`) → **B8** multi-CTA, emit all `section.buttons` (`component_matcher.py:930,1002,1062,1189,1286,1671`) → **B2** inner-table column builder (`component_matcher.py:784`, `_column_text_row:759`) → **B3** post-fill blank pass (`component_renderer.py:551`) → **B4** footer regex fix (`component_renderer.py:601`; sequence after B3 — shared `_fill_text_slot`) → **B6** width clamp `max-width:640px` (`component_renderer.py:1172,1179`).
+**Verify:** Each fix changes `expected.html` → after EACH: regen baselines + `app/design_sync/tests/snapshot_diff_audit.py` intended-vs-structural review (never assert-unchanged — this caught the 52.4c double-`style=` bug). For B3, confirm footer legally-required fields aren't blanked. `make test` + design_sync suite green.
+**Progress:**
+- **B1 ✅** (commit `7f299e6e`) — seed-literal cleanup; the one fork-surviving fix (edited seeds also feed the DB component library).
+- **B7 ✅** (commit pending) — dropped phantom `faq-accordion` slug → falls to `text-block` (has a slot-fill builder; `faq-list` does not, so a remap would render placeholder Q/A). Removed the now-dead `has_images` param from `_score_extended_candidates` + its callsite; updated `test_faq_question_answer_pairs`. **Baseline-neutral** — `faq-accordion` never fired on the 6 fixtures (no `expected.html` contained it), so no baseline regen needed. be-ship green (lint/mypy/pyright at baseline, 126 matcher tests, converter regression 68 passed).
+- **B5 ✅** (commit `4bc095ae`) — alt derivation: `_is_descriptive_alt`/`_derive_image_alt` stop the raw-`node_name` leak (`mj-image, (mjml:mj-image), (type: logo)`). Leak spanned **8** emission sites, not the 2 originally scoped — also the 4 `SlotFill(image_alt)` + 1 `SlotFill(logo_alt)` feeders + the `_fills_social` fallback. Descriptive name kept, else `Company logo`/`Content image`; never `alt=""`, **G3-neg untouched**. Also fixed `col-icon.html` linked-icon `alt=""`→`Feature icon` (unlabeled-link a11y bug). 0 empty/generic/leak alts across all 6 fixtures; baselines regen (alt-only diff, audit clean); golden-conformance + component suite green. Decision + execution note: `.agents/plans/53-b5-alt-derivation-decision.md`; deferred `phase-53-b5-decorative-empty-alt-vs-g3neg` **Tier-1 closed** (Tier-2 semantic alt → RC-E).
+- **Next:** B8 (multi-CTA, emit all `section.buttons`).
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track B (B1–B8 table with file:line). *(≈ 1 week total.)*
 
-| § | Subtask | Commit | Note |
-|---|---------|--------|------|
-| 50.1 | Audit refresh | `4602430e` | 13 false-OPEN findings flipped to RESOLVED in `TECH_DEBT_AUDIT.md`. |
-| 50.2 | F025 eval runner registry | `0ecc6b65` | 9-branch if-ladder → `dict[AgentName, AgentSpec]` registry in `app/ai/agents/evals/runner.py`. On `refactor/tech-debt-13b-eval-runner-registry`. |
-| 50.3 | F042 workspace hooks | `bff50b12` | Nine workspace hooks under `cms/apps/web/src/hooks/workspace/`; page.tsx is composition shell. |
-| 50.4 | F066 Braze/Taxi connector tests | `cf231b09` | `app/connectors/{braze,taxi}/tests/test_*.py` cover 401 retry + lease failure. On `tech-debt/phase-50-followups`. |
+### Track C — Segmentation spike (C1, C2) `[Backend]` `[Plan Ready · SPIKE]`
 
-### 50.1 Audit Refresh (Session 0) `[Backend, Documentation]` `[RESOLVED]`
+**What:** Address the dominant structural defect — the converter cuts the wrong number of sections. **C1** emits a tagged band group (`RepeatingGroup`) when a multi-child wrapper is unwrapped; **C2** recurses single-child wrappers + absorbs `SPACER` pseudo-sections.
+**Why:** Segmentation drives perceived fidelity. C1 fixes the over-count (LEGO 17, slate 10 → 8); C2 fixes the under-count (Starbucks/maap/mammut). Run as a **spike** because the fix may be subsumed if fork-(b) wins at the gate.
+**Implementation:** **C1** — in `_expand_container_wrappers` (`app/design_sync/figma/layout_analyzer.py:540-576`) emit a tagged band group into the existing group-aware `_match_phase` / `render_repeating_group` path (`converter_service.py:610-638`; `component_renderer.py:514-528`); steer repeated cards to an `_inner`-bearing seed (`article-card`), not `text-block`. **C2** — recurse the single-child wrappers the `≥2` predicate leaves merged (`:584`); reuse `physical_card_detector.find_physical_card_in_subtree` (depth≤4), do NOT write a new walker.
+**Verify:** A1 ladder shows LEGO 17→8 with correctly nested bands; report the all-6 ladder + the residual cases fork-(b) would still beat. **Do NOT full-commit** — this feeds the 53.1 gate.
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track C (prereq: A1 confirms LEGO ~17).
 
-**Resolved in commit `4602430e`** — `TECH_DEBT_AUDIT.md` rows updated + `.agents/plans/tech-debt-00-status-and-roadmap.md:48` refreshed.
+### A4 — Figma node-id-keyed re-export (cases 6–10) `[Backend · USER action]` `[Plan Ready · long pole — start early]`
 
-Doc-only PR. Flipped 13 false-OPEN findings in `TECH_DEBT_AUDIT.md` to `**RESOLVED**` with commit citations. Removed the stale-signal problem that had been forcing every planning session to re-verify status against `main`.
+**What:** Re-export frames for cases 6/7/8/9/10 keyed by the node-ids the converter currently emits, so the pixel metric has an on-disk image map.
+**Why:** The emitted node-ids have no on-disk image map today (only case 5/maap binds) — this is the real blocker for a trustworthy *multi-fixture* fork decision.
+**Implementation:** Per case, either (a) live re-export keyed by current node-ids (needs the Figma file + a PAT), or (b) hand-map the semantic PNGs → node-ids. LEGO *structure* re-parses offline from `.agents/figma-cache/node_2833_1869.json`, but its *images* still need (a) or a ~24-PNG hand-map; perf/slate need live Figma.
+**Verify:** ≥2 fixtures (including an over-segmenter) resolve so the metric becomes gate-worthy.
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A4) — **needs USER / Figma access; begin before the gate.**
 
-**Findings to flip (13):**
-- **F014** Figma typed boundaries — `app/design_sync/figma/raw_types.py` + `_parse_visual_props` (`figma/service.py:554`), `_parse_text_props` (`:465`), `_parse_layout_props` (`:381`)
-- **F038** Scheduling leader-lock fencing — UUID identity at `app/scheduling/engine.py:46,100`
-- **F039** Scheduling inline awaits — `asyncio.create_task` at `app/scheduling/engine.py:186`
-- **F045** Frontend token cache 401 invalidation — `clearTokenCache()` wired at `cms/apps/web/src/lib/sdk.ts:27-28`
-- **F049** SDK drift CI gate — `make sdk-check` target + `scripts/export-openapi.py --live` + `.github/workflows/ci.yml` `sdk-check` job (commit `bd36239b`)
-- **F052** KnowledgeService god class split — `app/knowledge/services/{graph,ingestion,search,tags}.py`; `service.py` 1048 → 53 LOC
-- **F053** RRF + rerank extraction — `app/knowledge/fusion.py`
-- **F055** Repair pipeline stage rollback — snapshot revert at `app/qa_engine/repair/pipeline.py:67-74`
-- **F060** Trace module consolidation — `app/design_sync/traces/` package (commit `ee7093b3`)
-- **F061** Color util extraction — `app/shared/color.py` with 7+ consumers
-- **F065** Untested converter orchestrator — `app/design_sync/tests/test_converter_service.py` exists
-- **F067** QA check test split — no monolithic `test_checks.py`; per-check files in `app/qa_engine/tests/test_*.py`
-- **F070** AgentRequest Protocol — `app/ai/agents/base.py` (commit `bd36239b`)
+### A3 — Case-5 pixel metric, advisory `[Backend]` `[Plan Ready]`
 
-**Findings to mark PARTIAL (4, remaining work scoped to 50.2–50.5):**
-- **F025** still OPEN — see 50.2
-- **F042** partial (390/771 LOC, 1 of 4 hooks) — see 50.3
-- **F057** partial (runbook shipped, execution pending) — see 50.5
-- **F066** partial (SFMC/Adobe done, Braze/Taxi pending) — see 50.4
+**What:** Wire the (already-correct) fidelity metric to render case-5 HTML via Playwright and compare it against the reference PNG; land advisory in CI.
+**Why:** Closes the "can't measure" gap on at least one fixture. The metric code is correct (CIEDE2000 in LAB, MIN-aggregated, blur 0.0); only the wiring + a committed fixture are missing. *(= old 52.1-finish.)*
+**Implementation:** Promote `.tmpscratch/fidelity_case_scorer.WIP.py` + its test into `app/design_sync/`; commit case-5 `assets/` (6 PNGs) + the reference `…/for_converter_engine/maap/visual_design.png`; land the test-harness-only src-rewrite (`/assets/<node>.png` → `file://…/data/debug/5/assets/…`) before screenshot.
+**Verify:** Metric runs in CI on the committed case-5 fixture; stored as advisory. **Never a ship-gate** until ≥2 fixtures resolve (case 5 under-segments → yields *a* number, not the over-segmentation verdict).
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A3) — harness built but **uncommitted** in `.tmpscratch/*.WIP.py`.
 
-**Plan:** None needed (doc-only).
-**Deliverable:** Updated `TECH_DEBT_AUDIT.md` rows + 1-line refresh of `tech-debt-00-status-and-roadmap.md:48`.
-**Verify:** `git diff` shows doc-only changes; `pre-commit` passes; spot-check 2-3 RESOLVED annotations against the cited commit SHAs.
-**Effort:** ~1h.
+### 52.5 — Ingest RC-E lossless capture `[Backend]` `[Plan Ready · fork-independent]`
 
-### 50.2 F025 — Eval Runner Registry `[Backend]` `[RESOLVED]`
+**What:** Capture data the ingest currently drops: composite alpha vs the real backdrop, gradient `node_id`, non-button strokes, AUTO/% line-height.
+**Why:** Correct under any Phase-53 engine; capturing now stops irreversible loss and unblocks the fork's renderer (render of the captured data lands in 53.3).
+**Implementation:** `app/design_sync/figma/service.py:265-291` `_rgba_to_hex_with_opacity` — composite against the real parent/section bg, not hard-coded `#FFFFFF` / `OPACITY_COMPOSITE_BG`. `app/design_sync/protocol.py` — add `node_id` to `ExtractedGradient` (+ `DocumentGradient`). Add a stroke field on `DocumentSection` / `DocumentImage` (already read at `figma/service.py:619`). Read `lineHeightPercent` / `lineHeightPercentFontSize` when `lineHeightPx` is absent.
+**Verify:** Unit tests — translucent-over-color composites against the real bg; gradient carries `node_id`; bordered card keeps its stroke. (Render assertions land in 53.3.)
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track E + `.agents/plans/52-converter-foundation.md` §52.5.
 
-**Resolved in commit `0ecc6b65`** (on branch `refactor/tech-debt-13b-eval-runner-registry`, awaiting PR).
+### 53.1 — Strategy-fork decision (GATE) `[Backend · decision gate]` `[⏳ output: write the chosen-fork sub-plan]`
 
-Replaced the 9-branch if-ladder in `app/ai/agents/evals/runner.py` with a `dict[AgentName, AgentSpec]` registry + shared `_run_case` template. Net ~200 LOC reduction. Tests at `app/ai/agents/evals/tests/test_runner_registry.py` cover `AGENT_REGISTRY` ↔ `AGENT_NAMES` symmetry, callable specs, canonical trace shape. JSONL trace shape unchanged. Plan: `.agents/plans/tech-debt-13b-eval-runner-registry.md`.
+**What:** With the live metric + the Track C spike, choose the engine direction — **(a)** keep fixed-seed + Track C patch · **(b)** restore the recursive renderer · **(c)** per-frame raster — and write the chosen sub-plan.
+**Why:** Each option implies a different home for ingest render (RC-E) and the VLM loop, so it must be decided before any downstream engine build — on a real number, with segmentation as the explicit success criterion.
+**Implementation:** Re-run the fork spike on the committed fixtures with the live metric; record measured ΔE + effort per option; author the decision doc + the selected sub-plan. Recommended posture (audits' consensus, to ratify): A+B regardless; C as a spike; lean (b)-long-term + (c)-escape-hatch only if the metric + multi-fixture spike justify the weeks; never (c) as default.
+**Verify:** Decision recorded; chosen fork's sub-plan written to `.agents/plans/`; stakeholder sign-off.
+**Plan:** procedure in `.agents/plans/53-converter-engine-fix.md` §Gate; **its output is a new sub-plan — ⏳ to be written here.** Unblocked by A3 (+ ideally A4) + the Track C spike.
 
-### 50.3 F042 — Workspace Page Hook Extraction Completion `[Frontend]` `[RESOLVED]`
+### D — Execute the chosen fork `[Backend]` `[⏳ Plan to be written at 53.1]`
 
-**Resolved in commit `bff50b12`** (Plan 09 §B). All planned hooks landed under `cms/apps/web/src/hooks/workspace/`: `use-workspace-template.ts`, `use-workspace-dialogs.ts`, `use-workspace-follow-mode.ts`, plus `use-agent-mode.ts`, `use-editor-state.ts`, `use-auto-compile.ts`, `use-workspace-actions.ts`, `use-workspace-export-actions.ts`, `use-workspace-qa.ts`. `page.tsx` consumes all nine and contains zero god-component anti-patterns — no `useEffect` chains, all `useState` collapsed into hooks, render tree is pure prop-passing into 5 sub-components (`WorkspaceToolbar`, `WorkspaceMainPanels`, `WorkspaceRightRail`, `WorkspaceDialogs`, `CommandPalette`).
+**What:** Build the engine direction chosen at 53.1 (the structural "for good" fix).
+**Why:** Closes the segmentation ceiling (and, for fork b/c, asymmetric columns / pixel fidelity).
+**Implementation:** **(a)** full-commit Track C across all 6 fixtures + a per-column-width override; **(b)** add a `convert_from_structure` tree-persistence entry, rebuild the recursive renderer re-wired to the live extracted helpers (NOT a verbatim restore — `d9132c7c` pre-extracted ~8 helpers into `shared/color.py`/`sanitizers.py`/`token_transforms.py`/`protocol.py`), rebuild the deleted ~4,490-LOC test corpus, keep `data-slot` hooks so editability survives; **(c)** wire raster only as a per-subtree fallback behind a reproducibility classifier.
+**Verify:** A1 ladder + A3 metric improve vs the pre-fork baseline; `make converter-data-regression` green.
+**Plan:** ⏳ **NEEDS WRITING** — only the per-fork framing exists (`.agents/plans/53-converter-engine-fix.md` §Track D); the concrete sub-plan is authored at the 53.1 gate.
 
-`page.tsx` sits at 390 LOC rather than the original <200 LOC target, but the residual length is JSX prop-wiring on a composition shell, not god-component logic. The <200 LOC bar was a proxy for the underlying anti-pattern, which is gone. Tests for all five planned hooks exist in `cms/apps/web/src/hooks/workspace/__tests__/`.
+### Track E — Ingest render + remaining plumbing `[Backend, Docs]` `[mixed — some Ready, some ⏳ post-fork]`
 
-### 50.4 F066 — Braze + Taxi Per-Service Connector Tests `[Backend, Testing]` `[RESOLVED]`
-
-**Resolved in commit `cf231b09`** (on branch `tech-debt/phase-50-followups`, awaiting PR).
-
-Added `app/connectors/braze/tests/test_braze_service.py` + `app/connectors/taxi/tests/test_taxi_service.py` covering 401 → lease evict + retry once → success. Closes F066. Mirrors the existing SFMC/Adobe per-service test shape from `.agents/plans/tech-debt-04-connector-dedup.md:245-248`.
-
-### 50.5 F057 — Execute Migration Squash `[Backend, Database]` `[BLOCKED — design flaw]`
-
-> ⚠️ **DO NOT RUN `make db-squash`.** The squash scripts and the runbook share a latent design flaw: `alembic revision --autogenerate` runs against the populated DB, where `target_metadata` already matches the live schema, so the generated baseline's `upgrade()` body is empty (`pass`). Production DB cutover would succeed deceptively, but the next fresh-DB bootstrap (CI, onboarding, DR restore) creates no schema and the app crashes on first request. See `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` for the empirical reproduction and the multi-DB redesign sketch.
-
-Squash 46 alembic migrations to a single baseline using `make db-squash`. Runbook + dry-run script shipped in `8aa83103`. Requires production maintenance window — coordinate with deployment cadence. Drop the `alembic/versions/2eb1d5b05ad3_merge_heads.py` merge artifact in the same operation.
-
-**Prerequisite:** §50.7 (F057a — Squash Multi-DB Redesign) must ship and close `tech-debt-19-squash-empty-baseline` before this phase can be unblocked.
-**Plan:** ⚠️ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh` — design-broken (see warning above); needs redesign per §50.7 before execution.
-**Deliverable:**
-- New consolidated baseline migration in `alembic/versions/` (single `down_revision = None` file)
-- 46 historical migrations deleted (or archived per runbook)
-- `alembic heads` reports single head; `alembic upgrade head` clean on fresh DB
-- Operator postmortem in `docs/migrations/` noting cutover SHA + restoration procedure
-**Verify:** Dry-run: `bash scripts/squash-migrations-dryrun.sh` on staging DB clone shows zero schema drift vs HEAD. Execute: maintenance-window cutover with rollback plan (restore from snapshot). Post-cutover: `make db-migrate` on empty DB succeeds; existing prod DB applies baseline as no-op.
-**Effort:** ~1h in maintenance window + ~1h staging dry-run + ~30m post-verification.
-
-### 50.6 Deferred-Items Ledger Cleanup `[Backend, Testing]` `[Plan Ready — split into 4 grabbable subtasks]`
-
-Close the four open entries in `.agents/deferred-items.json`. Each entry's `closes_when` field is the spec; entries are load-bearing memory and worth draining. **Each subtask below is independently grabbable** — pick one and execute in a fresh context.
-
-**Master plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` (198 lines — recommended sub-order, per-item tasks with file lists + acceptance criteria, decision tree for the squawk item).
-
-#### 50.6.1 Memory Isolation Embedding Stub `[Plan Ready]` `[~30min]`
-
-**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.1.
-**Deferred entry:** `tech-debt-03-memory-isolation-embedding-stub`.
-**Start signal:** clean branch checked out off `main`.
-**What:** Add `embedding_stub` fixture in `app/tests/conftest.py` returning a deterministic zero-vector (dim 1536 per `app/knowledge/embedding.py:177`). Drop `@pytest.mark.xfail` on the Memory parametrise in `app/tests/test_tenant_isolation.py`; thread the new fixture in.
-**Done signal:** `uv run pytest app/tests/test_tenant_isolation.py -k memory -v` passes without xfail; `make check` green; deferred entry flipped to `closed` with `closed_commit`.
-
-#### 50.6.2 Briefs BOLA-by-Creator Isolation Test `[Plan Ready]` `[~45min]`
-
-**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.2.
-**Deferred entry:** `tech-debt-03-briefs-user-isolation-test`.
-**Start signal:** clean branch checked out off `main`. Read `app/projects/tests/test_bola.py` first — that is the reference pattern to mirror.
-**What:** Create `app/briefs/tests/test_user_isolation.py` covering user A creates brief → user B (same org) cannot read/update/delete via route OR repository. Explicitly assert that same-org-different-user is the contrast case (briefs are per-creator, not org-scoped).
-**Done signal:** new test file passes; route + repository layers both exercised; same-org case in assertions; `make check` green; deferred entry flipped.
-
-#### 50.6.3 Squawk Python-Migrations Decision + Cleanup `[Plan Ready]` `[~1h]`
-
-**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.3.
-**Deferred entry:** `tech-debt-squawk-python-migrations`.
-**Start signal:** clean branch + **decision made on Option (a) vs (b)** (plan recommends (b) absent evidence of migration bugs slipping through).
-**What — Option (b) (recommended):** Remove squawk hook from `.pre-commit-config.yaml:94`. Drop squawk job from `.github/workflows/ci.yml`. Update `Makefile` `migration-lint` target (remove or no-op). Strip `# squawk-ignore` comments from `alembic/versions/normalize_schema_drift.py`. Add manual-review guidance to `.claude/rules/architecture.md` or new `.claude/docs/migration-safety.md`.
-**Done signal:** no more misleading "passing" advisory in CI; either real Python-aware linter exists (a) or gap is documented (b); `make check` green; deferred entry flipped.
-
-#### 50.6.4 DESIGN_SYNC__* Flag Cull (PR-1 only this subtask) `[Plan Ready]` `[~2h]`
-
-**Plan:** `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.4.
-**Deferred entry:** `tech-debt-19-design-sync-flag-cull-deeper`.
-**Start signal:** clean branch. Read `app/core/config/design_sync.py` (62 fields) + `feature-flags.yaml` and classify each field as (constantize) / (retire-feature) / (keep).
-**Scope split — important:** This subtask delivers **PR-1 (constantize set only)** — additive, no behavior change, no test deletion. PR-2 (retire-feature set) is a separate follow-up subtask gated on PR-1 merging — leave a new deferred-items entry pointing at the retire-feature candidate list when PR-1 ships.
-**What — PR-1:** For each (constantize) field: move to a `Final` constant in `app/design_sync/tuning.py`, update consumers, delete the config field. Add bounded-count regression test in `app/core/tests/test_config_design_sync.py` (`assert len(DesignSyncConfig.model_fields) <= 45`). Do NOT touch any (retire-feature) candidates this round.
-**Done signal:** `len(DesignSyncConfig.model_fields)` between 45 and 50 (~15-17 fields constantized); `make flag-audit` clean; `make check-full` green; new deferred entry created for PR-2.
-
-**Done signal for §50.6 overall:** all four sub-entries `closed` in `.agents/deferred-items.json` + a new entry exists for the §50.6.4 PR-2 retire-feature work.
-
-### 50.7 F057a — Squash Multi-DB Redesign `[Backend, Database]` `[Plan Ready]`
-
-Prerequisite for §50.5. Rewrite the squash flow shared by `scripts/squash-migrations.sh`, `scripts/squash-migrations-dryrun.sh`, and the runbook to separate the "schema source" DB from the "autogenerate target" DB so the generated baseline contains `CreateTable` for every model (currently empty `pass`). Closes deferred entry `tech-debt-19-squash-empty-baseline`.
-
-**Plan:** ✅ `.agents/plans/tech-debt-19-squash-multi-db-redesign.md` (146 lines — three-DB design, file-by-file change list, acceptance criteria, risks).
-**Deliverable:**
-- `scripts/squash-migrations-dryrun.sh` rewritten to use three throwaway containers (reference, autogenerate target, validation) + inline `op.create_table` count assertion + end-to-end `pg_dump` parity check.
-- `scripts/squash-migrations.sh` (destructive sibling) rewritten to autogenerate against an ephemeral empty container instead of production. Production stays untouched until the final stamp.
-- `.agents/plans/tech-debt-19-runbook-db-squash.md` procedure step 5 updated; ⚠️ BLOCKED callout removed.
-- `.agents/deferred-items.json` → `tech-debt-19-squash-empty-baseline` flipped to `closed`.
-- `TECH_DEBT_AUDIT.md` F057 row updated from `BLOCKED` to `READY`.
-**Verify:** `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end; `grep -c "op.create_table"` on generated baseline equals `len(Base.metadata.tables)`; `diff schema_A.sql schema_C.sql` empty; `make check-full` green.
-**Effort:** ~½d (script rewrites + runbook + end-to-end dry-run).
-
-### 50.8 F057b — Squash Defense-in-Depth `[Backend, DevOps]` `[SKIP — superseded by §50.7]`
-
-Plan kept on disk for historical reference (`.agents/plans/tech-debt-19-squash-defense-in-depth.md`), but **do not execute**. Rationale: the tripwire's purpose is to block accidental `make db-squash` execution *while* §50.7 is in flight. §50.7's own PR removes the tripwire as part of landing — adding it now is net-zero churn and would be reverted in the very next PR.
-
-**Re-open this only if:** §50.7 slips past a date someone is actively planning a maintenance window for, AND there is a credible risk an operator runs the destructive script before §50.7 ships. Neither condition currently applies.
+**What:** The fork-dependent + latent items that land after (or alongside) the gate.
+**Why:** Render the data 52.5 captures, decide the VLM loop's fate, recover vectors, and publish the honest ceiling — each measured by the real metric, not the blind ladder.
+**Implementation (per item):**
+- **RC-D′ — per-run typography** `[Plan Ready]`: emit one `data-node-id` `<td>` per text node + a `_text_<node_id>` override target + renderer dispatch arm. Closes deferred `phase-52.4b-per-run-typography-structural`; subsumed if fork-(b) wins. → §Track E.
+- **53.3 — never-parsed ingest render** `[⏳ plan post-fork]`: effects/blendMode (VML/flat fallback), per-node gradient reattach (uses the 52.5 `node_id`), `scaleMode`/`imageTransform` crop, rotation, z-order/overlap → `frame_export`.
+- **53.4 — revive or honestly RETIRE the VLM loop** `[⏳ plan post-fork]`: dead on the default path (`vlm_verify_enabled=False`; correction applicator is property-only — cannot add/remove/reorder/merge sections); metric returns 1.0 on empty input. Decide explicitly — no silent "it lifts fidelity" claim.
+- **53.5 — decorative vector recovery** `[⏳ plan post-fork]`: standalone VECTOR/LINE nodes fall through extraction (`layout_analyzer.py:1088-1167`) — add a `DocumentVector` class OR rasterize / inline-PNG the subtree.
+- **53.7 — honest ceiling doc + numbering supersession** `[Plan Ready]`: per-client ceiling table; correct `docs/fidelity-gap-audit-findings.md`; banner the stale 50–53 labels in `50-converter-fidelity-master.md`; add deferred-items entries (typography `maxItems:200` cap vs LEGO's 234; the asset re-export prerequisite; the circular-gate fix). → §Track E.
+- **deferred/ stub promotion (×23)** `[⏳ plan per stub]`: promote only the `.agents/plans/deferred/` Rules-1–11 / composite-slot stubs the chosen fork keeps (folds in old 53.6); each gets a detailed plan at promotion.
+**Verify:** per-feature fixtures render within ΔE tolerance OR fall back to a documented flat export; the real A3 metric confirms.
+**Plan:** framing in `.agents/plans/53-converter-engine-fix.md` §Track E; **53.3 / 53.4 / 53.5 + each stub ⏳ need plans written** (post-fork).
 
 ---
 
-## Phase 51 — Agentic Security Hardening (0/7 subtasks)
+## Phase 50 — Tech Debt Closeout & Audit Reconciliation (remaining: 5)
 
-Close the seven gaps between the existing G1–G5 envelope (commit `3f96ceb5`, Apr 25 2026 — `app/ai/agents/base.py`, `app/ai/agents/audit.py`) and the architectural mandates in `docs/security/agentic-defense-in-depth.md`. G1–G5 ships sanitization, USER_INPUT delimiter, in-process kill flag, token+time caps, and a single audit line — necessary but not sufficient for the Autonomous AI Trifecta: `Risk = (Autonomy × Power) / Assurance`. Power grew Phase 45–50 (cron jobs in `app/scheduling/`, plugin connectors in `app/plugins/`, VLM verify loop in `app/design_sync/visual_verify.py`, custom-component generation in `app/design_sync/custom_component_generator.py`, full-design PNG pipeline in 50.1) — assurance must catch up via control planes that bypass the model's interpretation loop entirely.
+> Independent workstream. Execution order: 50.6.2 ∥ 50.6.3 ∥ 50.6.4 (parallel-safe) → **50.7 → 50.5** (the only hard chain). 50.1–50.4 + 50.6.1 are shipped (see docs/TODO-completed.md); 50.8 is a SKIP.
 
-**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` (full spec, all 7 subtasks scoped).
-**Order:** Strict serial — each subtask builds on the previous chain head. Parallel execution forbidden until 51.4 ships (the audit chain is the dependency for 51.7's `ai.agent_killed` entries).
-**Rollout:** All 7 ship behind `SECURITY__*` feature flags for progressive enable without redeploy.
-**Non-negotiables:**
-- No regressions to G1–G5. New layers wrap, never replace.
-- Default-deny on policy ambiguity (51.5).
-- Per-action security overhead ≤ 50ms p95 (excluding HITL waits in 51.6); new `make bench` case `bench_security_envelope`.
-- Calibration gate (`make eval-calibration-gate`) within 5pp after each subtask.
-- Existing 2037+ `app/ai` tests must pass after each subtask.
-- ≥ 80 new tests across the 7 subtasks.
-**Effort:** ~10–14 dev-days total.
+### 50.6.2 — Briefs BOLA-by-Creator Isolation Test `[Backend, Testing]` `[Plan Ready]`
 
-### 51.1 Credential Revocation on Kill `[Backend, Security]` `[Plan Ready]`
+**What:** Test that a brief created by user A cannot be read/updated/deleted by user B in the same org, via the route AND the repository.
+**Why:** Briefs are per-creator (not org-scoped) and that boundary is untested. Closes deferred entry `tech-debt-03-briefs-user-isolation-test`.
+**Implementation:** Create `app/briefs/tests/test_user_isolation.py` mirroring the pattern in `app/projects/tests/test_bola.py`; explicitly assert same-org-different-user as the contrast case.
+**Verify:** New test passes; route + repository layers both exercised; `make check` green; deferred entry flipped to `closed`.
+**Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.2.
 
-When the kill switch trips, immediately revoke all credentials held by the offending agent via `app/core/credentials.py::revoke_for_agent()` (already exists at `:301`). Audit chain entry on revocation. Closes the failure mode where `SECURITY__DISABLED_AGENTS` is checked by the same process running the offending loop — if that process is hung or OOM, the in-band check never fires.
+### 50.6.3 — Squawk Python-Migrations Decision + Cleanup `[Backend, DB]` `[Plan Ready]`
 
-**Plan:** §51.1 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- Hook `revoke_for_agent()` into kill-switch trip path (find call site of `SECURITY__DISABLED_AGENTS` check; emit revocation alongside the deny)
-- New `SECURITY__REVOKE_ON_KILL_ENABLED` flag (default `true`) in `app/core/config/security.py`
-- Audit chain entry: `ai.agent_credentials_revoked` event with agent_id + reason + revoked_credential_ids
-- Tests in `app/core/tests/test_credentials_revocation.py` extending existing suite — kill→revoke→retry-blocked path
-**Verify:** `uv run pytest app/core/tests/test_credentials_revocation.py -v` + `make check`.
-**Reduces:** Power axis when assurance signals breach.
-**Effort:** ½d.
+**What:** Resolve the misleading "passing" squawk advisory (plan recommends Option b — remove it, document manual review).
+**Why:** Squawk doesn't actually lint Python migrations, so the green CI check is false assurance. Closes `tech-debt-squawk-python-migrations`.
+**Implementation:** Remove the squawk hook from `.pre-commit-config.yaml:92-94`; drop the squawk job from `.github/workflows/ci.yml:243-272`; update/no-op the `migration-lint` Makefile target; strip `# squawk-ignore` comments; add manual-review guidance to `.claude/rules/architecture.md` or a new `.claude/docs/migration-safety.md`.
+**Verify:** No misleading advisory in CI; gap documented; `make check` green; deferred entry flipped.
+**Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.3.
 
-### 51.2 Safe Compaction — Pinned Safety Instructions `[Backend, Security]` `[Plan Ready]`
+### 50.6.4 — DESIGN_SYNC__* Flag Cull (PR-1 only) `[Backend]` `[Plan Ready]`
 
-OpenClaw-class fix: when the context window slides or compacts, pin the system prompt + safety constraints so they never drop. Apply to all blueprint engine sliding-window operations and any agent service that does conversational compaction. Tests verify safety instructions persist after simulated compaction events.
+**What:** Constantize the (constantize) subset of `DesignSyncConfig` fields (61 today) — additive, no behavior change, no test deletion.
+**Why:** The config carries far more flags than warranted; PR-1 trims the constant-only set. Closes part of `tech-debt-19-design-sync-flag-cull-deeper`.
+**Implementation:** For each (constantize) field: move it to a `Final` constant in `app/design_sync/tuning.py`, update consumers, delete the config field; add a bounded-count regression test (`len(DesignSyncConfig.model_fields) <= 45`) in `app/core/tests/test_config_design_sync.py`. Do NOT touch (retire-feature) candidates this round.
+**Verify:** Field count 45–50 (~15–17 constantized); `make flag-audit` clean; `make check-full` green; a new deferred entry created for the PR-2 (retire-feature) follow-up.
+**Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.4. *(PR-2 = ⏳ plan + deferred entry to write when PR-1 ships.)*
 
-**Plan:** §51.2 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- `app/ai/security/safe_compaction.py` — `PinnedPrompt` wrapper that carries safety constraints through compaction operations
-- Integration into `BaseAgentService.process` envelope so all 9 agents inherit it
-- Integration into `BlueprintEngine` for cross-node memory sliding
-- New `SECURITY__SAFE_COMPACTION_ENABLED` flag (default `true`)
-- Property test: 10k random compaction events, safety instruction count must stay ≥1 in every output
-**Verify:** New test file `app/ai/security/tests/test_safe_compaction.py` (~15 tests) + `make eval-calibration-gate` no regression.
-**Reduces:** Assurance failure mode where the in-band check disappears mid-loop.
-**Effort:** 1–2d.
+### 50.7 — Squash Multi-DB Redesign `[Backend, DB]` `[Plan Ready]` — prerequisite for 50.5
 
-### 51.3 Tool-Call Cap + Planning Telemetry `[Backend, Security]` `[Plan Ready]`
+**What:** Rewrite the squash flow so the generated baseline contains `CreateTable` for every model (today its `upgrade()` body is empty `pass`).
+**Why:** The current squash autogenerates against the *populated* DB, so a fresh-DB bootstrap (CI, onboarding, DR) creates no schema and the app crashes. Closes known-bug `tech-debt-19-squash-empty-baseline` and unblocks 50.5.
+**Implementation:** Rewrite `scripts/squash-migrations-dryrun.sh` to use three throwaway containers (reference / autogenerate-target / validation) + an `op.create_table` count assertion + a `pg_dump` parity check; rewrite `scripts/squash-migrations.sh` to autogenerate against an ephemeral empty container (production untouched until the final stamp); update the runbook step 5 + remove its BLOCKED callout; flip the deferred entry; update `TECH_DEBT_AUDIT.md` F057 BLOCKED→READY.
+**Verify:** `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end; `grep -c op.create_table` on the baseline == `len(Base.metadata.tables)`; schema diff empty; `make check-full` green.
+**Plan:** ✅ `.agents/plans/tech-debt-19-squash-multi-db-redesign.md`.
 
-Add `SECURITY__AGENT_MAX_TOOL_CALLS` deterministic circuit breaker — closes the K_max trio with the existing `AGENT_MAX_RUN_SECONDS` time cap and `AGENT_MAX_TOTAL_TOKENS` token cap. Capture intermediate reasoning steps as structured telemetry per planning step. Hook into `BlueprintEngine._execute_from` step recorder.
+### 50.5 — Execute Migration Squash `[Backend, DB]` `[BLOCKED on 50.7 — design flaw]`
 
-**Plan:** §51.3 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- `SECURITY__AGENT_MAX_TOOL_CALLS: int = 100` (default) in `app/core/config/security.py`
-- Counter in `BaseAgentService.process` that raises `AgentKMaxExceededError` (new exception under `app/ai/security/exceptions.py`) when cap exceeded
-- Planning-step telemetry: emit `ai.agent_planning_step` event per `_execute_from` iteration with step_id + tool_call_count + cumulative_tokens + elapsed_ms
-- New `bench_security_envelope` case in `make bench`
-**Verify:** New test `app/ai/security/tests/test_tool_call_cap.py` covering at-cap + over-cap + per-agent-override paths. Telemetry assertions in `app/ai/blueprints/tests/test_engine.py`.
-**Reduces:** Autonomy — bounds how far an agent can drift before deterministic stop.
-**Effort:** 1d.
-
-### 51.4 Tamper-Evident Append-Only Audit `[Backend, Security]` `[Plan Ready]`
-
-Convert `AgentAuditLog` to a chained-hash append-only structure (Merkle chain or hash-pointer per entry). Loki logs remain for query convenience; the chained log is the canonical record. Replay verification CLI for audit reconciliation. Killing an agent (51.7) emits an `ai.agent_killed` entry that is part of this chain — this is why 51.7 blocks on 51.4.
-
-**Plan:** §51.4 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- `app/ai/agents/audit.py::AgentAuditLog` extended with `prev_hash: str` + `entry_hash: str` columns (alembic migration)
-- Insert path computes `entry_hash = sha256(prev_hash || json(entry))`; rejects if `prev_hash` doesn't match latest
-- `app/ai/agents/audit_chain.py::verify_chain()` walks the chain and returns first divergence point
-- CLI: `python -m app.ai.agents.audit_chain verify` for ops use
-- New `SECURITY__AUDIT_CHAIN_ENABLED` flag (default `true`)
-**Verify:** `app/ai/agents/tests/test_audit_chain.py` — append 100 entries, verify; tamper with row 50, verify reports divergence at row 50.
-**Reduces:** Assurance — audit trail can no longer be silently rewritten.
-**Effort:** 1–2d.
-
-### 51.5 Toxic-Combination Policy DSL `[Backend, Security]` `[Plan Ready]`
-
-Implement a Progen-like DSL for declarative policy invariants. Example rule: `DENY tool[internal_db_read] WHEN session.has(tool[outbound_network])`. Policy engine evaluates per tool invocation; default-deny on rule ambiguity. Replaces procedural enforcement scattered across agent services with declarative rules.
-
-**Plan:** §51.5 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- `app/ai/security/policy/__init__.py` package
-- `app/ai/security/policy/dsl.py` — Lark-based grammar for `ALLOW|DENY tool[X] WHEN <expr>`; rule loader from `app/ai/security/policy/rules.yaml`
-- `app/ai/security/policy/evaluator.py` — `Evaluator.check(action, session_context) -> Decision(allowed, reason)`; default-deny on ambiguity
-- Wire into `BaseAgentService.process` envelope as the pre-dispatch gate
-- Initial ruleset: 5-10 known toxic combinations (internal-DB-read + outbound-network, credential-read + external-API-write, etc.)
-- New `SECURITY__POLICY_DSL_ENABLED` flag (default `true`)
-**Verify:** `app/ai/security/policy/tests/test_evaluator.py` (~25 tests) covering allow/deny/ambiguous; integration test that wires through a real agent invocation.
-**Reduces:** Autonomy + Power — explicit toxic-combination boundaries.
-**Effort:** 2–3d.
-
-### 51.6 HITL Cryptographic Signatures `[Backend, Frontend, Security]` `[Plan Ready]`
-
-Non-reversible or high-impact actions require an external cryptographic signature the agent cannot fabricate. Frontend approval UI prompts for signature; backend verifier checks before dispatch. Wire into export-to-ESP and credential rotation as first targets. One frontend touch — approval dialog signature input.
-
-**Plan:** §51.6 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- `app/ai/security/hitl.py` — `SignatureChallenge` + `verify_signature(action_id, signature, public_key)`; Ed25519 keypair per operator
-- New table `hitl_approvals` (action_id, signature, signer_id, signed_at, ttl)
-- Backend gate: `app/approval/service.py` or new `app/ai/security/hitl_gate.py` checks signature before dispatching ESP export / credential rotation
-- Frontend: extend `cms/apps/web/src/components/approvals/decision-bar.tsx` with WebAuthn signature input
-- New `SECURITY__HITL_REQUIRED_FOR: list[str]` config (defaults `["esp_export", "credential_rotate"]`)
-**Verify:** `app/ai/security/tests/test_hitl.py` (~20 tests) covering valid/invalid/expired signatures + agent-fabrication rejection. Frontend smoke via Playwright (`cms/apps/web/playwright/approval-signature.spec.ts`).
-**Reduces:** Autonomy — hard gate on irreversible operations.
-**Effort:** 1–2d.
-
-### 51.7 Infra-Level Kill + Sandboxed Tool Execution `[Backend, DevOps, Security]` `[Plan Ready]`
-
-Move agent MCP tool execution into a separate sidecar process (`services/tool-runner/`) with cgroup/namespace isolation. Out-of-band kill switch operates at the orchestrator layer — terminates the sidecar regardless of agent LLM state. Maizzle sidecar already proves the pattern. Containerise agent MCP tools (`app/mcp/tools/`) into the new sidecar. Blocks on 51.4 (audit chain captures `ai.agent_killed` entries).
-
-**Plan:** §51.7 of `.agents/plans/51-agentic-security-hardening.md`.
-**Deliverable:**
-- `services/tool-runner/` — new Node or Python sidecar with single endpoint `POST /execute` (tool_name, args) → result
-- Dockerfile with cgroup limits (memory, CPU, network egress allowlist); seccomp profile
-- `app/mcp/tools/` invocations rerouted through HTTP client to the sidecar (replaces in-process import path)
-- Orchestrator-level kill: `app/ai/security/kill_switch.py::kill_agent(agent_id)` sends `SIGTERM` to the sidecar PID + writes `ai.agent_killed` chain entry (consumes 51.4)
-- `docker-compose.yml` adds the tool-runner service
-- New `SECURITY__SANDBOXED_TOOLS_ENABLED` flag (default `false` until soak); flip to `true` after observation period
-**Verify:** `services/tool-runner/tests/` integration tests + `app/mcp/tests/test_sandbox_dispatch.py`. Manual kill drill: start agent, trigger kill mid-tool-call, verify sidecar process terminates within 1s + audit chain entry recorded.
-**Reduces:** Power — toxic combinations enforced at the OS boundary, not in-process.
-**Effort:** 3–5d.
+**What:** Squash the ~46 alembic migrations to a single baseline during a maintenance window.
+**Why:** Reduce migration-chain weight. **DO NOT RUN `make db-squash` until 50.7 ships** — the current scripts + runbook share the empty-baseline design flaw (cutover succeeds deceptively; the next fresh-DB bootstrap crashes).
+**Implementation:** After 50.7: produce the consolidated baseline (`down_revision = None`), archive the historical migrations, drop the `2eb1d5b05ad3_merge_heads.py` artifact; maintenance-window cutover with snapshot rollback.
+**Verify:** `alembic heads` single; `alembic upgrade head` clean on a fresh DB; existing prod DB applies the baseline as a no-op; operator postmortem in `docs/migrations/`.
+**Plan:** ⚠️ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh` — **design-broken; must be redesigned by 50.7 before execution.**
 
 ---
 
-## Phase 52 — Design→HTML Converter Foundation: Measure + Un-Inert (5/7 done + 52.4b; 52.1 partial; 52.5a not-a-bug)
+## Phase 51 — Agentic Security Hardening (remaining: 6 — strictly serial)
 
-> **STATUS 2026-06-01** (branch `tech-debt/phase-52-converter-foundation`, 12 commits, not yet merged). Root cause fixed + **proven on the 6 real fixtures**: bridge dropped 424 props → **now 0**; design color/align/typography/CTA-radius/corner-radius render in final HTML, incl. multi-column. ✅ **Done:** 52.2, 52.3, 52.4 (+52.4a/c/d), 52.6, **52.4b CTA-label typography** (`144aba27` — column + text-block CTA labels now use design font/size/weight, not hardcoded 14/bold). 🚫 **52.5a (button URL) = NOT-A-BUG** — misdiagnosis; fixtures' CTAs carry no link, expected.html renders `href="#"` (ground-truth confirmed; deferred-items `phase-52.5a-button-url-not-a-bug`, closed). ⏳ **Partial:** 52.1 (metric color-aware/min/no-blur, UNWIRED). ⬜ **Remaining (revised priority):** **(1) 52.1-finish — gated on ASSET RESOLUTION** (registration is easy — min_y-offset + global Y-scale vs the real `viaual_design.png` [sic, typo] sidesteps composite-drift — BUT the metric is INVERTED until the 22 fixture images resolve: with them broken a blank render scores 0.72 > the real 0.637. NO node-id→file map exists on disk; needs a hand-map of ~24 semantic PNGs→22 node-ids or a node-id-keyed re-export. A CI-safe harness+test are BUILT, NOT committed, in `.tmpscratch/*.WIP.py`. **Do NOT commit/gate the metric until images resolve.** Next-session task 1 = asset resolution). **(2) 52.4b-A per-run typography = STRUCTURAL sub-project** (per-node `<td>` anchors; removing the break alone is no-op-to-harmful; deferred-items `phase-52.4b-per-run-typography-structural`). **(3) 52.5b** — only Item 3 (strokes) touches the fixtures + is capture-only; items 1/2/4 synthetic. **(4) 52.7** truth+docs. **(5) Phase 53 engine fork (53.1)** — gated on 52.1-finish; USER decision. Gates green: design_sync 2077 · golden 26 · mypy+pyright+ruff. Full detail in `HANDOFF.md` (⭐ 2026-06-01 block).
+> Independent workstream. Execution order: **51.2 → 51.3 → 51.4 → 51.5 → 51.6 → 51.7** (51.4 must precede 51.7). 51.1 (credential revocation on kill) is shipped. All ship behind `SECURITY__*` flags; no regressions to the G1–G5 envelope; ≤50ms p95 overhead; calibration gate within 5pp after each. Plan: `.agents/plans/51-agentic-security-hardening.md`.
 
-Close the real reason Figma→email fidelity has not moved in months. A re-verification of `docs/fidelity-gap-audit-findings.md` (11-finder + adversarial workflow `wf_fa48d17b-6ea`, every root cause confirmed at `file:line`) found that the shipped Phase 49/50 fidelity logic is **built, enabled-by-default, and inert**: the serializer bridge `EmailDesignDocument.to_email_section` silently nulls the very fields the overrides consume (RC-A: `text_color` is *always* `None` because the reader does `getattr(t,"text_color",None)` on a field named `color`; RC-B: it also drops `text_align`/`url`/`border_radius`/`corner_radius_spec`/stroke on every path). And the only fidelity metric that can be turned on is **color-blind, blurred, gmail-only, mean-aggregated, dimensionally mis-registered (2× Figma vs 1× HTML), off by default, and never actually runs** — so the system can neither apply its corrections nor measure them. Phase 52 is **foundation-first and fork-independent**: make the failure measurable, then stop the self-inflicted losses. The engine question (fixed-seed vs. restore-recursive-renderer vs. rasterize) is deferred to **Phase 53**, sequenced *after* 52 so it is finally driven by a real fidelity signal. Target is an **honest measured ceiling** per email client, not "99.9% everywhere" (physically capped: Outlook ~95%; shadows/gradients/SVG/blend/rotation/overlap not reproducible in table email).
+### 51.2 — Safe Compaction (Pinned Safety Instructions) `[Backend, Security]` `[Plan Ready]`
 
-**Plan:** ✅ `.agents/plans/52-converter-foundation.md` (verified root-cause map, three-way loss taxonomy, per-subtask step-by-step, files-affected, risks).
-**Order:** 52.1 first (measurement is the lowest-regret unblock). 52.2 → 52.3 (bridge tiers, ordered). 52.4 depends on 52.3 (fields must survive the bridge). 52.5 / 52.6 parallel-safe. 52.7 last (truth + supersede).
-**Rollout:** New behavior behind `DESIGN_SYNC__*` flags; the color-aware metric lands **advisory** before any ship-gate threshold.
-**Non-negotiables:**
-- `make converter-data-regression` stays green (or baselines regenerated with reviewed structural diff per the master-plan risk note).
-- `make check-full` after each subtask; `make migration-lint` on the 52.3 schema change.
-- No new parallel HTML-generation path (`TemplateAssembler` remains the single generation point per CLAUDE.md).
-- The metric must **execute in CI** by end of 52.1 (commit one real fixture; today fixtures are gitignored and `fidelity_enabled=False`).
-**Supersedes:** the orphaned 50–53 labels in `.agents/plans/50-converter-fidelity-master.md` + the 23 `deferred/` stubs (reconciled in 52.7). Those numbers never entered TODO.md; this is the operative numbering.
-**Effort:** ~12–17 dev-days total.
+**What:** Pin the system prompt + safety constraints so they survive context-window slide / compaction across all blueprint-engine and agent-service operations.
+**Why:** OpenClaw-class fix — stops the in-band safety check disappearing mid-loop when context compacts.
+**Implementation:** `app/ai/security/safe_compaction.py` `PinnedPrompt` wrapper; integrate into `BaseAgentService.process` (all 9 agents inherit) + `BlueprintEngine` cross-node sliding; flag `SECURITY__SAFE_COMPACTION_ENABLED` (default true).
+**Verify:** `app/ai/security/tests/test_safe_compaction.py` (~15 tests) incl. a property test (10k random compactions, safety-instruction count ≥1 in every output); `make eval-calibration-gate` no regression.
+**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.2.
 
-### 52.1 Repair & Activate the Fidelity Instrument `[Backend]` `[⏳ Partial @3099ca82]`
+### 51.3 — Tool-Call Cap + Planning Telemetry `[Backend, Security]` `[Plan Ready]`
 
-**Status (2026-05-31):** ⏳ **Instrument repaired; NOT wired.** Metric is now color-aware (CIEDE2000 ΔE in CIELAB, was grayscale-blind), blur-free, and MIN-aggregated (`visual_scorer.py`); `test_visual_scorer_color.py` proves a wrong-hue-at-matching-luminance scores 0.45 (was ~perfect) and MIN catches a broken section. **Still to do (52.1-finish):** render HTML via Playwright and compare against `email-templates/training_HTML/for_converter_engine/<tmpl>/visual_design.png` — **blocked on image registration** (the no-blur metric scores 0.0 on a 2px shift, so alignment is now a hard prerequisite); recalibrate `_DELTA_E_MAX`/severity thresholds + prod `fidelity_blur_sigma`; commit one un-gitignored fixture+PNG; flip `fidelity_enabled` for the test path. **So no real fidelity % exists yet** — this session's fixes are proven *structurally* (fields render), not as a pixel score.
+**What:** A deterministic `SECURITY__AGENT_MAX_TOOL_CALLS` circuit breaker + structured per-step planning telemetry.
+**Why:** Completes the K_max trio with the existing run-seconds + token caps; bounds how far an agent can drift before a deterministic stop.
+**Implementation:** Counter in `BaseAgentService.process` raising `AgentKMaxExceededError` (new, in `app/ai/security/exceptions.py`); emit `ai.agent_planning_step` per `_execute_from` iteration (step_id + tool_call_count + cumulative_tokens + elapsed_ms); add a `bench_security_envelope` case to `make bench`.
+**Verify:** `app/ai/security/tests/test_tool_call_cap.py` (at-cap / over-cap / per-agent-override) + telemetry assertions in `test_engine.py`.
+**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.3.
 
-The metric is not merely lenient — it is dimensionally invalid and never runs. Make it color-aware, multi-client, min-aggregated, correctly registered, and actually executed in CI. This is the lowest-*regret* first move: you cannot pick the Phase 53 engine fork or prove any fix without a metric that runs and can see color.
+### 51.4 — Tamper-Evident Append-Only Audit `[Backend, Security]` `[Plan Ready]` — blocks 51.7
 
-**Plan:** §52.1 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- Replace grayscale SSIM with a color-aware metric (CIEDE2000/ΔE in LAB, or the existing ODiff path); remove `.convert("L")` at `app/design_sync/visual_scorer.py:54`
-- Remove the σ=1.0 Gaussian blur (`visual_scorer.py:77-79, 139`) that smooths the exact spacing errors the converter introduces
-- Fix registration/scale: render HTML at `device_scale_factor=2` to match `fidelity_figma_scale=2.0` (`config/design_sync.py:23`) OR resample (not white-pad) in `_pad_to_match` (`visual_scorer.py:58`); fix the gap-omitting composite scale (`fidelity_service.py:151-157` vs `visual_scorer.py:147-159`)
-- Score across the multi-client profile set incl. Outlook (not hardcoded `gmail_web` at `fidelity_service.py:33,168`); aggregate per-section by **MIN not MEAN** (`visual_scorer.py:181`) and min-across-clients
-- Commit ≥1 real fixture + `design.png` into `data/debug/` (un-gitignore that one case); flip `fidelity_enabled=True` (`config/design_sync.py:20`) for the test path so the metric runs in CI; land **advisory** (stored via `update_import_fidelity`), no ship-gate yet
-**Verify:** new `app/design_sync/tests/test_visual_scorer_color.py` — a wrong-brand-color-at-matching-luminance fixture scores LOW (proves color-awareness); a 1-section-broken fixture drags MIN down (proves aggregation). `make converter-data-regression` runs the metric on the committed fixture.
-**Reduces:** The "can't measure 99%" trust collapse — unblocks proving every later fix.
-**Effort:** 3–4d.
+**What:** Convert the agent audit log to a chained-hash append-only structure + a replay-verification CLI.
+**Why:** The audit trail can no longer be silently rewritten; 51.7's `ai.agent_killed` entries become part of this chain (the dependency).
+**Implementation:** Extend `AgentAuditLog` (`app/ai/agents/audit.py`) with `prev_hash` + `entry_hash` columns (alembic migration); insert path computes `entry_hash = sha256(prev_hash || json(entry))` and rejects mismatch; `app/ai/agents/audit_chain.py::verify_chain()` + `python -m app.ai.agents.audit_chain verify` CLI; flag `SECURITY__AUDIT_CHAIN_ENABLED`.
+**Verify:** `app/ai/agents/tests/test_audit_chain.py` — append 100 entries + verify; tamper row 50 → verify reports divergence at row 50.
+**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.4.
 
-### 52.2 Serializer Bridge Tier-1 (RC-A + RC-B core) `[Backend]` `[✅ Done @d6d1854d]`
+### 51.5 — Toxic-Combination Policy DSL `[Backend, Security]` `[Plan Ready]`
 
-**Status (2026-05-31):** ✅ Shipped. Reader `to_email_section` fixed: `text_color=t.color` (RC-A), +`text_align`, +button `url`/`border_radius` (RC-B), both text + column sites. Corpus probe: 424 dropped props → **0**. Design heading color `#2C2C2C` + CTA `border-radius:25px` now render in final HTML (case 7). converter-data-regression 68/0.
+**What:** A declarative policy DSL (`DENY tool[internal_db_read] WHEN session.has(tool[outbound_network])`), evaluated per tool invocation, default-deny on ambiguity.
+**Why:** Replaces procedural enforcement scattered across agent services with explicit, auditable toxic-combination boundaries.
+**Implementation:** `app/ai/security/policy/` package — `dsl.py` (Lark grammar + `rules.yaml` loader), `evaluator.py` (`Evaluator.check(action, session_context) -> Decision`); wire into `BaseAgentService.process` as the pre-dispatch gate; ship 5–10 initial toxic-combination rules; flag `SECURITY__POLICY_DSL_ENABLED`.
+**Verify:** `app/ai/security/policy/tests/test_evaluator.py` (~25 tests, allow/deny/ambiguous) + an integration test through a real agent invocation.
+**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.5.
 
-The cheapest real fidelity fix in the whole program — ~6 lines, two call sites — provable via 52.1. These fields already round-trip JSON; only the reader bridge drops them, which is why the shipped Phase 49/50 color/align/CTA overrides have been inert.
+### 51.6 — HITL Cryptographic Signatures `[Backend, Frontend, Security]` `[Plan Ready]`
 
-**Plan:** §52.2 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- `app/design_sync/email_design_document.py:695` and `:743` — `text_color=getattr(t,"text_color",None)` → `text_color=t.color` (RC-A; the DocumentText attr is `color` at `:414`, never `text_color`)
-- Same two `TextBlock(...)` sites — add `text_align=t.text_align` (DocumentText carries it at `:415`, written but never read back)
-- `ButtonElement(...)` at `:709-718` and `:757-765` — add `url=b.url`, `border_radius=b.border_radius` (DocumentButton round-trips both at `:492-493`)
-- Regression fixture in `data/debug/` whose heading is non-default color + right-aligned + CTA with real href/radius
-**Verify:** assert the shipped HTML carries the color/alignment/href/radius; assert the 52.1 score rises vs the pre-fix baseline. Added to `make converter-data-regression`.
-**Reduces:** Restores text color, alignment, CTA targets, and corner rounding to the shipped path.
-**Effort:** ½d.
+**What:** Require an external Ed25519 signature the agent cannot fabricate for irreversible / high-impact actions (first targets: ESP export, credential rotation).
+**Why:** A hard gate on irreversible operations the model can't satisfy on its own.
+**Implementation:** `app/ai/security/hitl.py` (`SignatureChallenge`, `verify_signature(action_id, signature, public_key)`); new `hitl_approvals` table + migration; backend gate checks the signature before dispatch; WebAuthn signature input in `cms/apps/web/src/components/approvals/approval-decision-bar.tsx`; config `SECURITY__HITL_REQUIRED_FOR` (default `["esp_export","credential_rotate"]`).
+**Verify:** `app/ai/security/tests/test_hitl.py` (~20 tests, valid/invalid/expired + agent-fabrication rejection); Playwright signature smoke (`approval-signature.spec.ts`).
+**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.6.
 
-### 52.3 Serializer Bridge Tier-2 + JSON Schema `[Backend]` `[✅ Done @c4837dd0]`
+### 51.7 — Infra-Level Kill + Sandboxed Tool Execution `[Backend, DevOps, Security]` `[Plan Ready · blocked on 51.4]`
 
-**Status (2026-05-31):** ✅ Shipped. Widened `Document*` + `to_json`/`from_json` + both bridge halves + `email-design-document-v1.json` (fixed the `additionalProperties:false` holes) to carry corner_radius_spec, stroke, text_transform/decoration, style_runs, role_hint, layout_align, and all Phase-50 section fields. Extracted single-element converters (the inline duplication is why RC-A/RC-B diverged). **Round-trip property test `test_bridge_roundtrip.py`** (full `==` through all 4 boundaries + Hypothesis 200 + 6 fixtures) makes the drop-class unrepeatable. Residual: `source_frame_id` not bridged (out of scope, documented in test).
-
-Un-inert the rest of the already-shipped Phase 49/50 machinery (Rules 8/10/11, CTA stroke, nested-card/boundary classification) at zero new-feature cost, and add a property test so fields can never be silently re-dropped.
-
-**Plan:** §52.3 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- Widen `DocumentText`/`DocumentImage`/`DocumentButton`/`DocumentSection` + `to_json`/`from_json` to carry `corner_radius_spec`, `stroke` (color/weight), `text_transform`, `text_decoration`, `style_runs`, `layout_align`, `role_hint`, and the Phase-50 section fields (`inner_bg`/`inner_radius`/`container_bg`/`boundary_above|below`/`child_content_groups`/physical-card signals)
-- Carry all of the above through BOTH bridge halves: reader `to_email_section` (`email_design_document.py:685-766`) and writer `from_email_section` (`:793-892`)
-- Update `data/schemas/email-design-document-v1.json` to add the new fields AND fix the `additionalProperties:false` inconsistency (it currently forbids `text_align` on the text def and `url`/`border_radius`/`fill_color` on the button def that `to_json` already emits — `:273-311`)
-- Round-trip property test: `write → to_json → from_json → to_email_section` asserts field equality
-**Verify:** property test green; the Phase-50 nested-card/Rule-10 fixtures now show their overrides in output (previously fed `None`). `make check-full` (schema/migration lint).
-**Reduces:** Converts default-on dead logic into live fidelity; prevents silent re-drop.
-**Effort:** 2–3d.
-
-### 52.4 Widen the Override Allowlist + Renderer Dispatch (RC-D) `[Backend]` `[✅ Done @1b3fcbea + 2f119887/114ff108/4fdfc514]`
-
-**Status (2026-05-31):** ✅ Shipped (expanded into 4 commits as latent gaps surfaced):
-- **52.4** `1b3fcbea` — matcher emits + renderer renders font-weight/line-height/letter-spacing/text-transform/text-decoration (`test_typography_override.py`).
-- **52.4a** `2f119887` — the renderer had NO `_heading`/`_body` text-align dispatch arm, so even bridged alignment was a no-op; added replace-or-inject arm (`test_text_align_override.py`).
-- **52.4c** `114ff108` — Rule-10 corner-radius applicator emitted a malformed SECOND `style=` attr (assumed attr order); rewritten order-independent (`test_image_corner_radius.py`). Found by the snapshot diff review.
-- **52.4d** `4fdfc514` — **`col_N` gap**: multi-column text (`_build_column_fill_html`) hardcoded font/weight/line-height + dropped align/letter-spacing; new shared `_column_text_row` helper emits design props (font-family `html.escape`d). case 7 col aligns 5→23, weights 0→18 (`test_column_text_styling.py`).
-- Snapshot baselines regenerated after structural + content audit (`456ec23d`, `23d03a20`).
-- **Deferred → 52.4b:** the break-after-first-heading/body is RETAINED (only first heading + first body styled per non-column section); removing it needs per-node CSS targeting + `style_runs` consumption. **Residual:** column BUTTON-label typography still hardcoded; text-transform/decoration proven synthetically (no fixture populates them).
-
-The typography trio + transform/decoration are already on `TextBlock` from the Figma API (`layout_analyzer.py:1097-1099`) — only the emission and a renderer dispatch arm are missing, so seeds' hardcoded `font-weight:bold` / `line-height:1.3` always win. Cheapest wins once 52.3 keeps the fields.
-
-**Plan:** §52.4 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- `app/design_sync/component_matcher.py::_build_token_overrides` (`~1422-1545`) — emit `font-weight`, `line-height`, `letter-spacing`, `text-transform`, `text-decoration` for `_heading` and `_body`
-- Remove the break-after-first-heading/body (`:1485-1515`) so every text run is styled (restores intra-section hierarchy)
-- Replace the all-or-nothing 4-side padding gate with per-side longhand; replace the `<br><br>` body merge with per-paragraph styled blocks
-- `app/design_sync/component_renderer.py` (`~587-663`) — add dispatch arms for each new CSS property, mirroring the existing `font-size` path
-**Verify:** fixture with bold/light contrast + custom line-height/letter-spacing + uppercase label renders them (not seed defaults); 52.1 score rises; `make rendering-baselines` regenerated + structural diff reviewed.
-**Reduces:** The bulk of the audit's typography fidelity gap (Findings 1–2).
-**Effort:** 2–3d.
-
-### 52.5 Ingest Correctness — Lossless Capture + Value Fixes (RC-E, fork-independent) `[Backend]` `[Plan Ready]` ⬅ **NEXT (self-contained, verifiable)**
-
-**Note (2026-05-31):** This session confirmed button **`url` is lost UPSTREAM** — it is `0` at the writer/intermediate (Gate-1) on all 6 fixtures, so 52.2 could not restore it; trace the parser here (it's an ingest gap, not the bridge). The other 52.5 items (opacity-vs-real-bg, gradient `node_id`, non-button strokes, AUTO/% line-height) remain as written.
-
-Wrong-value and lossless-capture fixes that are correct under any Phase 53 engine. Rendering of the captured data lands in 53.3, but capturing it now stops irreversible loss and unblocks the fork.
-
-**Plan:** §52.5 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- `app/design_sync/figma/service.py:265-291` `_rgba_to_hex_with_opacity` — composite alpha against the real backdrop (thread parent/section bg) instead of hard-coded `#FFFFFF` (`bg_hex` default at `:271`)
-- `app/design_sync/protocol.py:54-62` — add `node_id` to `ExtractedGradient` (+ `DocumentGradient`) so a per-section gradient can be reattached later
-- Capture non-button strokes onto `DocumentSection`/`DocumentImage` (already read at `figma/service.py:619` via `_extract_stroke`; no field holds them)
-- Capture AUTO/% line-height (`figma/service.py:509-510` reads only `lineHeightPx`): when absent, read `lineHeightPercent`/`lineHeightPercentFontSize` → relative value
-**Verify:** unit tests — translucent-over-color fixture yields composited-against-real-bg hex; gradient carries `node_id`; bordered card keeps its stroke field. (Render assertions in 53.3.)
-**Reduces:** The dominant upstream capture loss; unblocks the fork's renderer.
-**Effort:** 2–3d.
-
-### 52.6 Fix `_fix_text_contrast` Mis-Scoping `[Backend]` `[✅ Done @2f28d880]`
-
-**Status (2026-05-31):** ✅ Shipped. Two root causes (both reproduced on a nested-table fixture): (1) `find(close_tag)` first-close scan over-extended the dark range across an inner light card; (2) `_BG_TAG` missed the `background:` shorthand. Fix: depth-tracked `_matching_close_index` + recolor only when the INNERMOST containing background is dark. `test_import_service.py` +2 (light cell preserved; dark-on-dark still corrected). **Note:** runs only on the full `run_conversion` import pipeline (not `run_case_conversion`), so it's unit-tested, not fixture-proven end-to-end (a real-pipeline test would close this).
-
-Runs on every shipped artifact (`import_service.py:842-891` via `_sanitize_email_html` at `:402`) and can force nested light-cell text to invisible white because the dark-range scan uses `find(close_tag)` (first close, not the matching close) and recolors to literal `#ffffff` instead of the design's intended on-dark tint.
-
-**Plan:** §52.6 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- Depth-tracked matching-close-tag scan over nested tables (replace the first-`find(close_tag)` scope at `import_service.py:842-891`)
-- Scope the recolor to genuinely WCAG-failing text; use the design's intended on-dark tint, not literal `#ffffff`
-**Verify:** nested-table fixture (dark wrapper containing a light cell with `#333` text) keeps the light cell readable; 52.1 confirms no spurious recolor.
-**Reduces:** A silent shipped-artifact corruption that even a color-aware metric only catches after this fix.
-**Effort:** ½–1d.
-
-### 52.7 Measurement-Truth, Regression De-Vacuum & Roadmap Reconciliation `[Backend, Documentation]` `[Plan Ready]`
-
-**Note (2026-05-31):** Add deferred-items entries surfaced this session: the typography schema cap (`tokens.typography maxItems:200` vs ≤234 emitted on LEGO → full-doc `validate()` fails) and the metric-registration prerequisite. The snapshot baselines (cases 5–10) were already regenerated this session after a structural + content audit — note that the audit is structural, not visual (a human should eyeball them in a browser).
-
-Make the regression suite assert real fidelity, correct the audit doc, and collapse the dual numbering scheme so there is one operative roadmap.
-
-**Plan:** §52.7 of `.agents/plans/52-converter-foundation.md`.
-**Deliverable:**
-- Replace vacuous substring assertions with real color/binding assertions against the 52.1 fixture (`test_converter_data_regression.py:274,291`); document + commit the one un-gated fixture (CI was passing on gitignored fixtures)
-- Add an ingest-capture-vs-Figma-tree delta check (quantifies the upstream loss the system has never measured)
-- Correct `docs/fidelity-gap-audit-findings.md` per the re-audit (three-way loss taxonomy; add RC-A/RC-B; "built+enabled+inert" not "frozen Phase-49"; metric "dimensionally invalid"; narrow the global-PNG claim; "corrected by re-audit" appendix)
-- Supersede the orphaned numbering: banner on `.agents/plans/50-converter-fidelity-master.md` (50–53 labels stale; relabel inert "shipped ✅" rows; mark the 85→99% ladder unfalsifiable); renumber/mark-superseded the `deferred/` 51.x–53.x stubs under the operative 52/53; update `.agents/deferred-items.json` physical-card / "Rule 9" entries to the new numbering
-**Verify:** `make converter-data-regression` asserts a real color divergence is caught (not a substring); doc review confirms no remaining "frozen Phase-49 / trust the 99%" framing.
-**Reduces:** The measurement-trust gap and the two-numbering-scheme debt.
-**Effort:** 1–2d.
-
-### ▶ Remaining Phase 52 work — logical order (as of 2026-05-31)
-
-The un-inert + render work is **done** (52.2/52.3/52.4 incl. 52.4a/c/d, 52.6). What remains, in execution order:
-
-1. **52.5 Ingest correctness** `[Backend]` — fork-independent, self-contained, deterministically verifiable. Do first: composite alpha vs real backdrop; gradient `node_id`; non-button strokes; AUTO/% line-height; **+ trace the upstream button-`url` loss** found this session. *(2–3d)*
-2. **52.4b Per-run typography targeting** `[Backend]` — remove the first-heading/first-body `break` in `_build_token_overrides`; needs per-node CSS targeting (mirror the `_image_<node_id>` pattern) + `style_runs` consumption. Restores intra-section hierarchy. *(1–2d)* — also: column **CTA-label** typography (still hardcoded in `_build_column_fill_html`).
-3. **52.1-finish Wire the metric to real fixtures** `[Backend]` — the hard, uncertain piece. Render HTML via Playwright → **image registration** (hard prerequisite) against `visual_design.png` → recalibrate `_DELTA_E_MAX`/thresholds/prod `fidelity_blur_sigma` → commit one un-gitignored fixture+PNG → flip `fidelity_enabled` for the test path, advisory. **This is the gate for Phase 53.** *(3–4d)*
-4. **52.7 Measurement-truth + docs** `[Backend, Docs]` — real color/binding regression assertions; correct `docs/fidelity-gap-audit-findings.md`; supersede the stale 50–53 numbering; deferred-items entries (typography `maxItems`, registration prerequisite). Do last — closes the books. *(1–2d)*
-
-Then **merge** the branch (run `make check-full` after clearing untracked scratch) and proceed to the **Phase 53** engine-fork gate (53.1), which is blocked on 52.1-finish.
+**What:** Move agent MCP tool execution into an isolated `services/tool-runner/` sidecar; out-of-band kill at the orchestrator layer.
+**Why:** Enforces toxic-combination limits at the OS boundary (not in-process); the kill works regardless of the agent's LLM state.
+**Implementation:** `services/tool-runner/` (`POST /execute`) with cgroup/CPU/network-egress limits + seccomp; reroute `app/mcp/tools/` invocations through an HTTP client to the sidecar; `app/ai/security/kill_switch.py::kill_agent()` SIGTERMs the sidecar + writes the `ai.agent_killed` chain entry (consumes 51.4); add the service to `docker-compose.yml`; flag `SECURITY__SANDBOXED_TOOLS_ENABLED` (default false until soak).
+**Verify:** `services/tool-runner/tests/` + `app/mcp/tests/test_sandbox_dispatch.py`; manual kill drill — trigger mid-tool-call, sidecar terminates <1s + audit-chain entry recorded.
+**Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.7 (blocked on 51.4).
 
 ---
 
-## Phase 53 — Design→HTML Converter Engine: Fork + Ingest Render + VLM Loop (0/7 subtasks)
+## Phase 54 — Activate or Retire the Agent Self-Improvement Loops (optional — DECISION-GATED, not yet committed)
 
-The engine decision Phase 52 deliberately deferred. With a real fidelity signal in hand (52.1), choose how to break the fixed-seed structural ceiling (RC-C) and where the never-parsed ingest losses (RC-E) and the dead VLM verify→correct loop (RC-G) get a home. **53.1 is a decision gate** — the rest of the phase forks on its outcome, which is why per-subtask detail past 53.1 is intentionally thin until the fork is chosen (writing it now would repeat the months of planning against a blind metric). Blocks on Phase 52 (no engine work until the metric runs and the bridge is repaired, so the work is driven by measurement rather than assumption).
+> **Optional, strategic — do not start without ratifying 54.0.** Source: `docs/agentic_rl_memory_handoff_findings.md` (2026-06-05, 5-agent audit). The RL-inspired machinery shipped across P15 (adaptive routing, phase-aware memory, prompt amendments, knowledge prefetch), P32 (cross-agent insight propagation, eval-driven skill updates, visual-QA feedback), P43 (judge feedback loop & self-improving calibration) and P48 (agent pipeline DAG — parked to `prototypes/`) is **built-but-inert**: every online loop ships behind a default-OFF flag, the reward corpus is uncommitted/inert, and memory recall is dead-on-read (deferred-item `tech-debt-03-memory-recall-dead-on-read`). This phase decides whether to **light it up** (corpus-first) or **delete it** (today it is maintenance cost + false capability). **Scope: the agent-generation pipeline only — it does NOT touch converter fidelity (Phase 52-53); the converter is deterministic and outside the agent loop.**
 
-**Plan:** `.agents/plans/52-converter-foundation.md` §"Phase 53" (outline) + `.agents/plans/50-converter-fidelity-master.md` (the option-(a) Rules 1–11 / composite-slot detail, to be promoted only if the fork selects it). 53.1 produces the chosen sub-plan.
-**Order:** 53.1 (gate) → branch. 53.3/53.5 (ingest render, vectors) and 53.4 (VLM loop) can proceed once the renderer target is fixed.
-**Blocked by:** Phase 52 (metric + bridge).
-**Effort:** TBD at 53.1 (fork-dependent; (a) ≈ weeks, (b)/(c) ≈ larger).
+### 54.0 — DECISION GATE: activate vs. retire (per loop) `[Backend · decision gate]` `[⏳ user call]`
 
-### 53.1 Strategy-Fork Decision + Spike `[Backend]` `[Decision Gate]`
+**What:** Decide, per loop, activate-with-measurement vs. delete: inline judge-on-retry, judge-aggregation prompt-patching, recovery-outcome ledger reroute, confidence calibration, insight propagation, adaptive model-tier routing.
+**Why:** "Built-but-inert" is the worst state — cost with no benefit and a false sense of capability. Commit to validating it, or remove it.
+**Verify:** A written per-loop decision (activate/delete) + the rollout-measurement plan or the deletion list.
+**Plan:** ⏳ to be written — basis: `docs/agentic_rl_memory_handoff_findings.md` §3.1/§3.3 (per-component live-vs-inert tables + flag defaults) and §7.3.
 
-With the working metric, measure and choose the engine direction. Each option implies a different home for RC-E (ingest render) and RC-G (VLM loop), so this must be decided before downstream engine work.
+### 54.1 — PREREQUISITE: build the reward corpus `[Backend, Eval]` `[⏳ blocked on 54.0 = activate]`
 
-**Plan:** produces a decision doc + the chosen sub-plan.
-**Deliverable:**
-- Spike each option on the 52.1 committed fixture and report measured ΔE + effort:
-  - **(a) Keep fixed-seed + decorate** — promote surviving Rules 1–11 + composite-slot stubs from `50-converter-fidelity-master.md`. Lowest effort; known structural ceiling (RC-C)
-  - **(b) Restore the recursive renderer** — `git show d9132c7c^:app/design_sync/converter.py` (1625 LOC) + re-plumb ingest to persist the `DesignNode` tree. Buys typography/Auto-Layout/gradient fidelity; NOT effects/geometry/pixel
-  - **(c) Per-frame rasterization** for high-loss subtrees — buys pixel fidelity, destroys editable structure + ESP token/personalisation hooks (mutually exclusive with editability per frame)
-- Decision doc with the measured trade-off and the selected sub-plan
-**Verify:** decision recorded; chosen sub-plan written to `.agents/plans/`; stakeholder sign-off.
-**Reduces:** Determines the ceiling of every subsequent engine investment.
-**Effort:** 3–5d (spike).
+**What:** Make the eval/reward corpus real before any online loop is enabled: commit (or seed) the gitignored `traces/` so a fresh deploy has `analysis.json` for `failure_warnings`; populate the empty/absent `{agent}_human_labels.jsonl` so judges are actually TPR/TNR-calibrated; set a small `EVAL__PRODUCTION_SAMPLE_RATE` to collect on-policy verdicts. Land the `tech-debt-03-memory-recall-dead-on-read` fix (memory-dependent loops recall nothing until it does) and register `MemoryCompactionPoller` in `app/main.py`.
+**Why:** Enabling uncalibrated judges/loops on an empty corpus makes agent output **worse** — the reward signal is noise. Corpus first, always (findings doc §2.1/§2.4 anti-patterns).
+**Verify:** clean-worktree test — `get_failure_warnings()` injects a real KNOWN-FAILURE block into an agent prompt; judges hit TPR≥0.85 / TNR≥0.80 on the human-label set; a blueprint run injects a recalled memory.
+**Plan:** ⏳ to be written.
 
-### 53.2 Renderer / Engine Implementation (per chosen fork) `[Backend]` `[Blocked on 53.1 · Needs Plan]`
+### 54.2 — Enable loops behind a measured rollout (or delete) `[Backend, Eval]` `[⏳ blocked on 54.1]`
 
-Implement the engine direction selected in 53.1. The concrete shape is fork-dependent, so the detailed plan is authored as part of the 53.1 decision doc.
-
-**Plan:** ⏳ defined by the 53.1 sub-plan (fork-dependent).
-**Deliverable:**
-- **(a) keep-seed:** promote Rules 1–11 + composite-slot stubs onto the seed engine (see 53.6)
-- **(b) restore-recursive:** recover `app/design_sync/converter.py` from `git show d9132c7c^`, rewire its callers, and persist the `DesignNode` tree end-to-end so geometry survives to render time
-- **(c) rasterize:** a frame-rasterization renderer for high-loss subtrees, with editable-structure fallback for the rest
-- Whichever fork: wired through the repaired bridge (52.3) + live override surface (52.4)
-**Verify:** 52.1 metric shows measured ΔE improvement vs the pre-fork baseline on the committed fixture; `make converter-data-regression` green.
-**Reduces:** The fixed-seed structural ceiling (RC-C).
-**Effort:** TBD at 53.1 (fork-dependent; (a) smaller, (b)/(c) larger).
-
-### 53.3 Never-Parsed Ingest Render (RC-E) `[Backend]` `[Blocked on 53.1 · Needs Plan]`
-
-Render the data 52.5 began capturing. Several of these are physically unreproducible in table email and ship as documented flat fallbacks (53.7).
-
-**Plan:** ⏳ §"Phase 53" of `.agents/plans/52-converter-foundation.md`; detail finalized post-fork.
-**Deliverable:**
-- Add holding fields on `DesignNode`/Document for effects/blendMode/rotation; parse them at `figma/service.py`
-- Render effects/blendMode as VML/flat fallback; reattach per-node gradient via the 52.5 `node_id`; honor `scaleMode`/`imageTransform` crop window; rotation + z-order/overlap → `frame_export` for non-reproducible subtrees
-**Verify:** per-feature fixtures (translucent-over-color, gradient section, cropped image, rotated badge, overlapping layers) render within ΔE tolerance OR fall back to a frame export; 52.1 confirms.
-**Reduces:** The dominant upstream ingest losses (RC-E).
-**Effort:** TBD at 53.1 (several features physically capped — flat fallbacks).
-
-### 53.4 Revive or Retire the VLM Verify→Correct Loop (RC-G) `[Backend]` `[Blocked on 53.1 · Needs Plan]`
-
-Today the loop only runs on the non-default mjml path and never receives screenshots (`converter_service.py:286,375,396`). Decide at 53.1 whether to revive it on the html path or retire it honestly — no silent "it lifts fidelity to 0.97" claims either way.
-
-**Plan:** ⏳ revive-vs-retire decided at 53.1.
-**Deliverable:**
-- **Revive:** capture per-section screenshots in `import_service`; route the default html path into `_apply_verification`; flip `vlm_verify_enabled` (`config/design_sync.py:58`)
-- **Retire:** delete the dead `_apply_verification` wiring + remove the master-plan/docs claims that credit it
-**Verify:** if revived — a known-divergent fixture triggers ≥1 correction and the 52.1 score rises; if retired — no dead loop path remains and no doc credits it.
-**Reduces:** RC-G — a corrective loop credited for fidelity it never delivered.
-**Effort:** 2–4d (revive) / ½d (retire).
-
-### 53.5 Decorative VECTOR Recovery `[Backend]` `[Blocked on 53.1 · Needs Plan]`
-
-Standalone VECTOR/LINE nodes (inline icons, dividers, vector logomarks) currently fall through extraction (`layout_analyzer.py:1088-1167`) with no `DocumentVector` class.
-
-**Plan:** ⏳ rasterize-vs-inline decided with 52.1 data.
-**Deliverable:**
-- Detect standalone VECTOR/LINE nodes that are neither TEXT nor IMAGE-fill
-- Add a `DocumentVector` model class OR rasterize vector subtrees via per-frame export / inline encoded PNG
-**Verify:** fixture with an inline icon + a vector divider renders them (not dropped); 52.1 confirms.
-**Reduces:** Silent loss of inline icons / dividers / vector logomarks.
-**Effort:** 1–2d.
-
-### 53.6 Promote Surviving Rules / Composite Slots `[Backend]` `[Blocked on 53.1 · Needs Plan]`
-
-Promote the Rules 1–11 + composite-slot `deferred/` stubs that survive the fork — wired to the live override surface (52.4) and measured by the real 52.1 metric, not the blind SSIM that produced the master plan's unfalsifiable 85→99% ladder.
-
-**Plan:** ⏳ promote from `.agents/plans/deferred/` (51.1–53.7 stubs) + `.agents/plans/50-converter-fidelity-master.md` — only the rules the fork keeps; each stub gets a detailed plan at promotion.
-**Deliverable:**
-- Composite-slot infrastructure (`deferred/51.1`) if the fork needs it
-- Per surviving rule: promote the stub → implement → wire to the override surface (52.4)
-**Verify:** each promoted rule measured by the real 52.1 metric; regression fixtures cover it.
-**Reduces:** The remaining structural/role gaps the override surface alone can't close.
-**Effort:** TBD at 53.1 (rule-by-rule).
-
-### 53.7 Honest Per-Client Ceiling Doc `[Documentation]` `[Blocked on 53.1 · Needs Plan]`
-
-Publish the contractual ceiling once 52.1 produces real per-client numbers.
-
-**Plan:** ⏳ authored after 52.1's first multi-client scoring run.
-**Deliverable:**
-- Contractual ceiling doc: Outlook ~95% floor; the explicit "cannot be reproduced in email" list (shadows/gradients/SVG/blend/rotation/overlap → flat fallbacks); measured per-client fidelity from 52.1
-- Replace all "99.9%" framing in `docs/` + the master plan with measured numbers
-**Verify:** doc reviewed; no "99.9% / aspirational ladder" language remains in `docs/` or `.agents/plans/50-converter-fidelity-master.md`.
-**Reduces:** The expectation/trust gap.
-**Effort:** ½–1d.
+**What:** For each loop 54.0 kept: flip its flag on behind a before/after `make eval-calibration-gate` + golden-set comparison; keep only loops that lift pass-rate without regressing the 3pp/5pp gates or cost. Delete the rest — plus the inert structured-decision/`plan_merger` path and the adaptive-tier code that never reads `effective_tier`, if not adopted.
+**Why:** Each loop earns its place on a real number — same discipline as the converter fork gate (53.1).
+**Implementation:** stage `BLUEPRINT__JUDGE_ON_RETRY`, `__RECOVERY_LEDGER_ENABLED`, `__CONFIDENCE_CALIBRATION_ENABLED`, `__JUDGE_AGGREGATION_ENABLED`, `__INSIGHT_PROPAGATION_ENABLED`, `AI__ADAPTIVE_ROUTING_ENABLED`; for adaptive routing also wire nodes to read `metadata["effective_tier"]` (today inert — engine computes it, no node reads it) or delete the loop. Note: structured decisions are doubly dead — `build_plan` never threads between nodes — so reviving `plan_merger`/`TemplateAssembler` is its own sub-task, not a flag flip.
+**Verify:** per-loop eval delta recorded via `improvement_tracker`; no regression to calibration/golden gates; cost within budget.
+**Plan:** ⏳ to be written.
