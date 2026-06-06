@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from app.design_sync.component_matcher import (
     _build_column_fill_html,
+    _derive_image_alt,
+    _is_descriptive_alt,
     _is_placeholder,
     _safe_color,
     _safe_url,
@@ -1711,3 +1713,43 @@ class TestFillsSocial:
         )
         fills = _fills_social(section, 600, image_urls=None)
         assert fills == [] or '"2833:1172"' not in fills[0].value
+
+
+
+class TestDeriveImageAlt:
+    """Phase 53 B5 — alt derivation stops the Figma layer-name leak.
+
+    Every emitted alt must clear the G3-neg golden-conformance gate: never
+    empty, never a lone generic token, never MJML internals or a raw node-id.
+    """
+
+    @staticmethod
+    def _img(name: str) -> ImagePlaceholder:
+        return ImagePlaceholder(node_id="n1", node_name=name)
+
+    def test_descriptive_name_kept_verbatim(self) -> None:
+        for good in ("Gallery image 1", "Article image", "Full width image", "LEGO hero"):
+            assert _derive_image_alt(self._img(good)) == good
+            assert _is_descriptive_alt(good)
+
+    def test_mjml_internal_leak_becomes_placeholder(self) -> None:
+        assert _derive_image_alt(self._img("mj-image")) == "Content image"
+        assert _derive_image_alt(self._img("mj-image, (mjml:mj-image)")) == "Content image"
+        assert not _is_descriptive_alt("mj-image")
+
+    def test_logo_typed_leak_becomes_company_logo(self) -> None:
+        leak = "mj-image, (mjml:mj-image), (type: logo)"
+        assert _derive_image_alt(self._img(leak)) == "Company logo"
+
+    def test_empty_and_nodeid_become_placeholder(self) -> None:
+        assert _derive_image_alt(self._img("")) == "Content image"
+        assert _derive_image_alt(self._img("2833:1869")) == "Content image"
+        assert not _is_descriptive_alt("")
+        assert not _is_descriptive_alt("2833:1869")
+
+    def test_no_derived_alt_trips_g3neg(self) -> None:
+        # The G3-neg forbidden set: empty or a lone generic token.
+        forbidden = {"", "image", "photo", "picture", "img", "mj-image", "mj-text", "frame", "banner"}
+        for name in ("mj-image", "(type: logo)", "", "2833:1869", "Gallery image 1"):
+            alt = _derive_image_alt(self._img(name))
+            assert alt.lower() not in forbidden

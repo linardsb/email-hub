@@ -781,6 +781,50 @@ def _cta_label_typography(btn: ButtonElement) -> str:
     return ";".join(decls) + ";"
 
 
+# Figma layer names that leak MJML/element internals as alt text (Phase 53 B5).
+# These surface as meaningless screen-reader text (``mj-image, (mjml:mj-image),
+# (type: logo)``) and ``mj-image`` is itself a G3-neg generic token.
+_GENERIC_ALT_TOKENS = frozenset(
+    {"mj-image", "mj-text", "image", "photo", "picture", "img", "frame", "banner"}
+)
+_FIGMA_NODE_ID_RE = re.compile(r"^\d+[:_]\d+")
+
+
+def _is_descriptive_alt(name: str | None) -> bool:
+    """True when a Figma layer name is usable as alt text (Phase 53 B5).
+
+    Rejects the Mode E-alt leak: empty, a lone G3-neg generic token, MJML
+    internals (``(mjml:`` / ``(type:``), or a raw Figma node-id. A name that
+    passes is safe to emit verbatim and clears the G3-neg conformance gate.
+    """
+    stripped = (name or "").strip()
+    lowered = stripped.lower()
+    return bool(
+        stripped
+        and lowered not in _GENERIC_ALT_TOKENS
+        and "(mjml:" not in lowered
+        and "(type:" not in lowered
+        and not _FIGMA_NODE_ID_RE.match(stripped)
+    )
+
+
+def _derive_image_alt(img: ImagePlaceholder) -> str:
+    """Derive accessible alt text for a converter image (Phase 53 B5).
+
+    Stops the Figma layer-name leak (Mode E-alt): the raw ``node_name`` carries
+    MJML internals like ``mj-image, (mjml:mj-image), (type: logo)``. A
+    descriptive ``node_name`` is kept verbatim; a non-descriptive one falls back
+    to a generic but gate-clean multi-word placeholder. Never returns an empty
+    string or a lone generic token, so the G3-neg golden-conformance gate stays
+    green. True per-image semantic alt + decorative ``alt=""`` are deferred to
+    RC-E (ingest signal) — see ``.agents/plans/53-b5-alt-derivation-decision.md``.
+    """
+    name = (img.node_name or "").strip()
+    if _is_descriptive_alt(name):
+        return name
+    return "Company logo" if "logo" in name.lower() else "Content image"
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -792,7 +836,7 @@ def _build_column_fill_html(
         url = _resolve_image_url(img.node_id, image_urls)
         parts.append(
             f'<img src="{html.escape(url)}" '
-            f'alt="{html.escape(img.node_name)}" '
+            f'alt="{html.escape(_derive_image_alt(img))}" '
             f'style="display:block;width:100%;height:auto;border:0;" />'
         )
     for text in group.texts:
@@ -885,7 +929,7 @@ def _fills_logo_header(
                 attr_overrides=overrides,
             )
         )
-        fills.append(SlotFill("logo_alt", img.node_name))
+        fills.append(SlotFill("logo_alt", _derive_image_alt(img)))
     return fills
 
 
@@ -956,7 +1000,7 @@ def _fills_full_width_image(
                 attr_overrides=overrides,
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
     return fills
 
 
@@ -1040,7 +1084,7 @@ def _fills_article_card(
                 attr_overrides=_image_node_id_attrs(img),
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
     if groups:
         headings = _headings_from_groups(groups)
         bodies = _bodies_from_groups(groups)
@@ -1090,7 +1134,7 @@ def _fills_image_block(
                 attr_overrides=_image_node_id_attrs(img),
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
     return fills
 
 
@@ -1300,7 +1344,7 @@ def _fills_event_card(
                 attr_overrides=_image_node_id_attrs(img),
             )
         )
-        fills.append(SlotFill("image_alt", img.node_name))
+        fills.append(SlotFill("image_alt", _derive_image_alt(img)))
 
     return fills
 
@@ -1349,7 +1393,7 @@ def _fills_social(
         # with a neutral "#" href. Still better than leaking example.com.
         for img in section.images:
             icon_src = html.escape(_resolve_image_url(img.node_id, image_urls))
-            alt = html.escape(img.node_name or "Social icon")
+            alt = html.escape(img.node_name if _is_descriptive_alt(img.node_name) else "Social icon")
             cells.append(
                 '<td style="padding: 0 8px;">'
                 '<a href="#" style="text-decoration: none;">'
@@ -1452,7 +1496,7 @@ def _build_column_fills(
                 url = _resolve_image_url(img.node_id, image_urls)
                 col_images.append(
                     f'<img src="{html.escape(url)}" '
-                    f'alt="{html.escape(img.node_name)}" '
+                    f'alt="{html.escape(_derive_image_alt(img))}" '
                     f'style="display:block;width:100%;height:auto;border:0;" />'
                 )
 
