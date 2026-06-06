@@ -308,10 +308,11 @@ class TestJudgeTrace:
         }
 
         mock_registry = MagicMock()
+        empty_registry: dict[str, object] = {}
         with (
             patch(
                 "app.ai.agents.evals.production_sampler.JUDGE_REGISTRY",
-                {},
+                empty_registry,
             ),
             patch(
                 "app.ai.agents.evals.production_sampler.get_registry",
