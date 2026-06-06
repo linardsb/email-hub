@@ -114,10 +114,9 @@ def _convert_slot_fills(
     """Map SlotFill list to typed SlotValue dict keyed by slot_id.
 
     ``{stem}_alt`` fills are folded into the paired image fill's
-    ``attr_overrides["alt"]``. The HTML templates carry alt text via
-    ``data-slot-alt="..."`` which is not picked up as a standalone slot by
-    ``TreeCompiler`` (it scans ``data-slot="..."`` only), so emitting
-    ``image_alt`` / ``logo_alt`` as independent slots fails manifest
+    ``attr_overrides["alt"]`` rather than emitted as standalone slots:
+    ``TreeCompiler`` scans ``data-slot="..."`` only, so emitting
+    ``image_alt`` / ``logo_alt`` as independent slots would fail manifest
     cross-validation. Merging them upstream keeps a single ``ImageSlot`` per
     image with the correct alt attribute.
     """
