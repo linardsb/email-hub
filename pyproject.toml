@@ -71,7 +71,7 @@ constraint-dependencies = [
 
 [project.optional-dependencies]
 graph = [
-    "cognee>=1.1.0",
+    "cognee>=1.1.2",
 ]
 observability = [
     "sentry-sdk[fastapi]>=2.61.1",
