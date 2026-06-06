@@ -12,6 +12,7 @@ upstream CVE may appear in both registries when both gates flag it.
 | Package | Advisory | Severity | Pinned at | Why deferred | Fix trigger | Owner |
 |---|---|---|---|---|---|---|
 | pip | [CVE-2026-3219](https://github.com/advisories/GHSA-58qw-9mgm-455v) (GHSA-58qw-9mgm-455v) | medium | 26.0.1 | No upstream patch released; vulnerability is in pip's parsing of attacker-crafted package files (tar+ZIP). We resolve only against PyPI through `uv` and do not pip-install attacker-controlled URLs. Same item tracked as Dependabot #101 in `docs/dependabot-status.md`. | pip releases a patched version | Linards |
+| pip | [PYSEC-2026-196](https://osv.dev/vulnerability/PYSEC-2026-196) | high | 26.1.1 | Newly disclosed (fix: pip 26.1.2). pip is the installer, not a project dependency; we resolve only against PyPI through `uv` and do not pip-install attacker-controlled URLs. Same low-reachability rationale as CVE-2026-3219 above. | bump pip to >=26.1.2 | Linards |
 
 CI invocation lives at `.github/workflows/ci.yml` (backend job, `pip-audit` step) and `Makefile :: ci-be`.
 
@@ -39,6 +40,7 @@ that have no upstream fix; each entry needs an expiration date and re-check trig
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-39823 | HIGH | Go stdlib `html/template` — URLs not correctly escaped inside a `<meta>` refresh directive. Same `gobinary` (confirmed `/usr/local/bin/gosu`); gosu renders no HTML templates. | 2026-08-31 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-39825 | HIGH | Go stdlib `net/http/httputil` — `ReverseProxy` forwards query parameters not visible to `Rewrite` funcs (request-smuggling risk). Same `gobinary`; gosu runs no reverse proxy. | 2026-08-31 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-39826 | HIGH | Go stdlib `html/template` — a `<script>` tag with an empty `type` attribute breaks contextual auto-escaping. Same `gobinary`; gosu renders no HTML templates. | 2026-08-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-42504 | HIGH | Go stdlib `mime`/`net/textproto` — decoding a maliciously-crafted MIME header with many parts causes DoS. Same `gobinary`; gosu does not decode MIME headers. | 2026-08-31 | Linards |
 
 **Re-check trigger:** when pgvector publishes a new `pg16` image (different digest from
 `sha256:7d400e34…`), pull it and re-run Trivy. If the scanner no longer detects the embedded

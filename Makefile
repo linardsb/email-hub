@@ -190,7 +190,7 @@ ci-be: ## Backend CI mirror: ruff format/check + mypy + pyright + pytest (+cover
 	uv run pyright app/
 	uv run ruff check app/ --select=S --ignore=S311 --no-fix
 	uv run pytest -v -m "not integration" --cov=app --cov-report=term --cov-fail-under=88
-	uv run pip-audit --strict --ignore-vuln CVE-2026-3219
+	uv run pip-audit --strict --ignore-vuln CVE-2026-3219 --ignore-vuln PYSEC-2026-196
 
 ci-fe: ## Frontend CI mirror: pnpm install + lint + format:check + type-check + test
 	cd cms && pnpm install --frozen-lockfile
