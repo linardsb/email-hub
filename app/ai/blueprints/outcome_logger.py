@@ -99,7 +99,7 @@ async def queue_outcome_for_graph(
 
         payload = build_outcome_payload(run, blueprint_name, project_id)
         redis = await get_redis()
-        await redis.rpush(OUTCOME_QUEUE_KEY, json.dumps(payload))  # type: ignore[misc]
+        await redis.rpush(OUTCOME_QUEUE_KEY, json.dumps(payload))
         logger.info(
             "blueprint.outcome_queued",
             run_id=run.run_id,

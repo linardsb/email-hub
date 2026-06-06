@@ -39,7 +39,7 @@ class OutcomeGraphPoller(DataPoller):
         outcomes: list[dict[str, Any]] = []
 
         for _ in range(BATCH_SIZE):
-            raw = await redis.lpop(OUTCOME_QUEUE_KEY)  # type: ignore[misc]
+            raw = await redis.lpop(OUTCOME_QUEUE_KEY)
             if raw is None:
                 break
             try:

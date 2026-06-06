@@ -74,7 +74,7 @@ async def health_redis(request: Request) -> dict[str, str]:
         return _redis_health_cache
     try:
         redis_client = await get_redis()
-        result = await redis_client.ping()  # type: ignore[misc]
+        result = await redis_client.ping()
         if not result:
             raise HTTPException(status_code=503, detail="Redis ping failed")
         _redis_health_cache = {"status": "healthy", "service": "redis"}
@@ -102,7 +102,7 @@ async def readiness_check(
         redis_status = "connected"
         try:
             redis_client = await get_redis()
-            if not await redis_client.ping():  # type: ignore[misc]
+            if not await redis_client.ping():
                 redis_status = "unhealthy"
         except Exception:
             redis_status = "unavailable"

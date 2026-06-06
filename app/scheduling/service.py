@@ -121,7 +121,9 @@ async def update_job(name: str, request: JobUpdateRequest) -> JobDefinitionRespo
         updates["enabled"] = "1" if request.enabled else "0"
 
     if updates:
-        await redis.hset(key, mapping=updates)
+        # redis-py stubs type `mapping` as Mapping[FieldT, EncodableT]; the
+        # invariant key type rejects dict[str, str] though it is valid at runtime.
+        await redis.hset(key, mapping=updates)  # type: ignore[arg-type]
         logger.info("scheduling.job_updated", job=name, updates=list(updates.keys()))
 
     return await get_job(name)
