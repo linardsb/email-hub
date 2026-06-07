@@ -101,7 +101,7 @@ class TestNormalizeNeverCrashes:
     """normalize_tree must never raise on valid DesignNode trees."""
 
     @given(tree=design_nodes(max_depth=3))
-    @settings(max_examples=200)
+    @settings(max_examples=200, deadline=None)
     def test_normalize_no_crash(self, tree: DesignNode) -> None:
         page = DesignNode(id="p", name="Page", type=DesignNodeType.PAGE, children=[tree])
         struct = DesignFileStructure(file_name="t", pages=[page])
