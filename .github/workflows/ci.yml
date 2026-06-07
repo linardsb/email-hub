@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs on the same ref (e.g. a Dependabot rebase pushes a new
+# commit to an open PR) instead of letting the stale run finish — this kills the
+# rebase-cascade re-runs that dominate Actions-minute burn. Keyed by workflow +
+# ref so different workflows never cross-cancel, and PR vs main runs stay
+# independent. A cancelled final run merely delays auto-merge; it never mis-merges.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

@@ -6,6 +6,17 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      # Batch all minor/patch backend bumps into ONE PR per week so CI runs
+      # once instead of per-package. Major bumps stay individual (human review).
+      # The "-minor-patch" name is the auto-merge allowlist token — see
+      # dependabot-auto-merge.yml.
+      backend-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       # Pinned by cognee[graph] extra (cognee depends on gunicorn<24).
       # Resolver fails any major-version bump until cognee relaxes its constraint.
@@ -21,6 +32,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      mock-esp-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # Maizzle builder sidecar (npm)
   - package-ecosystem: "npm"
@@ -28,6 +46,13 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      maizzle-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       # MJML 5 is a young, fast-moving major rewrite (5.0 shipped 2026-04-16;
       # alpha/beta tags still active). It changes mjml2html to async/new shape,
@@ -54,9 +79,27 @@ updates:
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
+      # Everything else minor/patch in one weekly PR. Defined AFTER `react`
+      # so react packages stay in their lockstep group (Dependabot assigns
+      # each dependency to the first matching group). Non-react majors stay
+      # individual. The react group has no "-minor-patch" token, so it is
+      # NOT auto-merged (react majors need human review).
+      cms-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # GitHub Actions workflows
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"

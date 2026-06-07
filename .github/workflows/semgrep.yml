@@ -18,6 +18,12 @@ on:
   schedule:
     - cron: "0 6 * * 3" # Weekly Wednesday 6am UTC
 
+# Cancel superseded scans on the same ref (e.g. Dependabot rebases) so stale
+# runs don't keep burning Actions minutes. See ci.yml for rationale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   security-events: write
