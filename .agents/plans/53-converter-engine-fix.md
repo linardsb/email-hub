@@ -103,6 +103,8 @@ This is the real blocker for a trustworthy fork decision. The converter's emitte
 
 **Order:** B1 → B7 → B5 → B8 (low-conflict) → then the shared-helper trio B2, then B3+B4 (sequence — both touch `_fill_text_slot`), then B6. Caution on B3: verify footer **legally-required** fields aren't blanked to empty. **Track-B total ≈ 1 week.**
 
+**Status (2026-06-07):** ✅ B1 · B5 · B7 · B8 shipped (PR #241, squash `7894ff03`). ✅ **B2** shipped on branch `fix/phase-53-b2-column-inner-table` (commit `c3f7fcd8`, pushed; not yet merged) — `_build_column_fill_html` + round-robin `_build_column_fills` now wrap img/text/CTA rows in one inner `<table role="presentation">` via shared `_column_image_row`/`_column_cta_row`/`_wrap_column_table` helpers; baselines 5–10 regenerated. ⬜ **Remaining: B3 → B4 (sequence; shared `_fill_text_slot`) → B6.**
+
 ---
 
 ### TRACK C — Segmentation SPIKE *(de-risks the fork decision; feeds the 53.1 gate)*
