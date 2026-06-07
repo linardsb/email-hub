@@ -823,42 +823,90 @@ def _derive_image_alt(img: ImagePlaceholder) -> str:
     return "Company logo" if "logo" in name.lower() else "Content image"
 
 
+def _column_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None) -> str:
+    """Wrap a column image in its own ``<tr><td>`` row (Phase 53 B2).
+
+    Shared by ``_build_column_fill_html`` and the round-robin fallback in
+    ``_build_column_fills`` so the two builders emit byte-identical image markup
+    and cannot drift. The ``<img>`` itself is unchanged from the pre-B2 bare
+    element (alt derivation + ``display:block`` full-width styling).
+    """
+    url = _resolve_image_url(img.node_id, image_urls)
+    tag = (
+        f'<img src="{html.escape(url)}" '
+        f'alt="{html.escape(_derive_image_alt(img))}" '
+        f'style="display:block;width:100%;height:auto;border:0;" />'
+    )
+    return f"<tr><td>{tag}</td></tr>"
+
+
+def _column_cta_row(btn: ButtonElement) -> str:
+    """Wrap a column CTA ``<a>`` in its own ``<tr><td>`` row (Phase 53 B2).
+
+    The anchor markup (fill/text color, radius, stroke, design-sourced label
+    typography) is unchanged from the pre-B2 bare ``<a>`` — only the enclosing
+    ``<tr><td>`` is new.
+    """
+    btn_url = html.escape(_safe_url(btn.url))
+    bg = _safe_color(btn.fill_color, "#0066cc")
+    txt_color = _safe_color(btn.text_color, "#ffffff")
+    radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
+    border_css = ""
+    if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
+        sw = f"{btn.stroke_weight:.0f}" if btn.stroke_weight else "1"
+        border_css = f"border:{sw}px solid {btn.stroke_color};"
+    anchor = (
+        f'<a href="{btn_url}" style="display:inline-block;'
+        f"padding:10px 24px;background-color:{bg};color:{txt_color};"
+        f"text-decoration:none;{_cta_label_typography(btn)}"
+        f'border-radius:{radius}px;{border_css}">{_safe_text(btn.text)}</a>'
+    )
+    return f"<tr><td>{anchor}</td></tr>"
+
+
+def _wrap_column_table(rows: list[str]) -> str:
+    """Wrap column rows in one inner ``<table>`` (Phase 53 B2).
+
+    Fixes Mode B column collapse: the pre-B2 builders joined bare ``<img>`` /
+    ``<a>`` and orphan ``<tr>`` text rows with newlines and **no** enclosing
+    table, so the orphan rows collapsed in email clients. Each item is now a
+    ``<tr><td>`` inside a single well-formed table. ``role="presentation"``
+    satisfies the G1 conformance gate; ``width:100%`` preserves the pre-B2
+    full-column image fill. Returns ``""`` for an empty column so the callers'
+    truthiness guard still drops the slot.
+    """
+    if not rows:
+        return ""
+    inner = "\n".join(rows)
+    return (
+        '<table cellpadding="0" cellspacing="0" border="0" '
+        f'role="presentation" style="width:100%;">\n{inner}\n</table>'
+    )
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
     image_urls: dict[str, str] | None = None,
 ) -> str:
-    """Build structured semantic HTML for a column group (G-REF-5)."""
-    parts: list[str] = []
+    """Build structured semantic HTML for a column group (G-REF-5).
+
+    Each image, text and CTA is wrapped as a ``<tr><td>`` row inside one inner
+    ``<table>`` (Phase 53 B2) so the column renders as a well-formed nested
+    table instead of collapsing orphan rows in email clients.
+    """
+    rows: list[str] = []
     for img in group.images:
-        url = _resolve_image_url(img.node_id, image_urls)
-        parts.append(
-            f'<img src="{html.escape(url)}" '
-            f'alt="{html.escape(_derive_image_alt(img))}" '
-            f'style="display:block;width:100%;height:auto;border:0;" />'
-        )
+        rows.append(_column_image_row(img, image_urls))
     for text in group.texts:
         if _is_placeholder(text.content):
             continue
-        parts.append(_column_text_row(text, is_heading=text.is_heading))
+        rows.append(_column_text_row(text, is_heading=text.is_heading))
     for btn in group.buttons:
         if _is_placeholder(btn.text):
             continue
-        btn_url = html.escape(_safe_url(btn.url))
-        bg = _safe_color(btn.fill_color, "#0066cc")
-        txt_color = _safe_color(btn.text_color, "#ffffff")
-        radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
-        border_css = ""
-        if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
-            sw = f"{btn.stroke_weight:.0f}" if btn.stroke_weight else "1"
-            border_css = f"border:{sw}px solid {btn.stroke_color};"
-        parts.append(
-            f'<a href="{btn_url}" style="display:inline-block;'
-            f"padding:10px 24px;background-color:{bg};color:{txt_color};"
-            f"text-decoration:none;{_cta_label_typography(btn)}"
-            f'border-radius:{radius}px;{border_css}">{_safe_text(btn.text)}</a>'
-        )
-    return "\n".join(parts)
+        rows.append(_column_cta_row(btn))
+    return _wrap_column_table(rows)
 
 
 def _image_node_id_attrs(img: ImagePlaceholder) -> dict[str, str]:
@@ -1503,16 +1551,11 @@ def _build_column_fills(
         col_images: list[str] = []
         for i, img in enumerate(section.images):
             if (i % col_count) + 1 == col_idx:
-                url = _resolve_image_url(img.node_id, image_urls)
-                col_images.append(
-                    f'<img src="{html.escape(url)}" '
-                    f'alt="{html.escape(_derive_image_alt(img))}" '
-                    f'style="display:block;width:100%;height:auto;border:0;" />'
-                )
+                col_images.append(_column_image_row(img, image_urls))
 
-        content_parts = col_images + col_texts
-        if content_parts:
-            fills.append(SlotFill(f"col_{col_idx}", "\n".join(content_parts)))
+        content = _wrap_column_table(col_images + col_texts)
+        if content:
+            fills.append(SlotFill(f"col_{col_idx}", content))
     return fills
 
 
