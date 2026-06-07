@@ -37,6 +37,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.event.workflow_run.head_sha }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
 
@@ -59,6 +60,22 @@ jobs:
             echo "PR #$pr has $nongreen non-green check(s) — skipping."
             exit 0
           fi
+
+          # Fast path for GROUPED updates. Groups whose name carries the
+          # "-minor-patch" token are configured in dependabot.yml with
+          # update-types: [minor, patch] ONLY, so a grouped PR from one of them
+          # contains no majors by construction — safe to merge once green.
+          # The grouped branch is dependabot/<eco>/[<dir>/]<group-name>-<hash>,
+          # so the token appears in the branch name (no API call needed, and it
+          # sidesteps the "chore(deps):" title prefix). The `react` group has no
+          # token (it may carry a lockstep major) → falls through to manual review.
+          case "$BRANCH" in
+            *-minor-patch-*)
+              echo "Auto-merging grouped minor/patch PR #$pr (all checks green): $BRANCH"
+              gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+              exit 0
+              ;;
+          esac
 
           # Determine the semver bump from the title: "... from <X.…> to <Y.…>".
           # Tolerate v / >= / ^ / ~ prefixes. Unparseable (e.g. grouped updates)
