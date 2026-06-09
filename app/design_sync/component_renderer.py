@@ -66,6 +66,29 @@ def _is_blankable_text(inner: str) -> bool:
     return without_inline.replace("&nbsp;", "").strip() != ""
 
 
+def _find_matching_close(html_str: str, tag_name: str, start: int) -> int | None:
+    """Return the index of the ``</tag_name>`` closing the element at ``start``.
+
+    Counts nested same-tag depth. A footer ``<td>`` whose cell wraps a layout
+    ``<table>`` of ``<td>`` rows has nested same-tag children; a naive
+    ``.*?</td>`` match stops at the first inner ``</td>`` and truncates the cell
+    (Mode A2). This walks same-tag open/close tokens from ``start``, incrementing
+    depth on a start tag and decrementing on an end tag, and returns the index of
+    the end tag that brings depth back to zero. Returns ``None`` when the markup
+    is unbalanced.
+    """
+    depth = 1
+    token_re = re.compile(rf"<(/?){re.escape(tag_name)}\b[^>]*?(/?)>", re.DOTALL)
+    for match in token_re.finditer(html_str, start):
+        if match.group(1):  # closing tag: </tag>
+            depth -= 1
+            if depth == 0:
+                return match.start()
+        elif not match.group(2):  # opening start tag (not self-closing)
+            depth += 1
+    return None
+
+
 # Lazy-loaded to avoid circular imports
 _seed_cache: dict[str, dict[str, Any]] | None = None
 
@@ -716,14 +739,14 @@ class ComponentRenderer:
             )
 
         tag_name = open_match.group(1)
-        # Step 2: match opening tag → content → matching closing tag
-        pattern = (
-            rf'(<{tag_name}\b[^>]*\bdata-slot="{re.escape(slot_id)}"[^>]*>)'
-            rf"(.*?)"
-            rf"(</{tag_name}>)"
-        )
-        replacement = rf"\g<1>{fill.value}\g<3>"
-        return re.sub(pattern, replacement, html_str, count=1, flags=re.DOTALL)
+        # Step 2: replace the cell content up to the *matching* closing tag,
+        # counting nested same-tag depth so a footer <td> wrapping a layout
+        # table of <td> rows isn't truncated at the first inner </td> (Mode A2).
+        content_start = open_match.end()
+        close_start = _find_matching_close(html_str, tag_name, content_start)
+        if close_start is None:
+            return html_str
+        return html_str[:content_start] + fill.value + html_str[close_start:]
 
     def _fill_image_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Update src (and optionally width/height/alt) on a data-slot image element."""

@@ -7,7 +7,11 @@ import re
 import pytest
 
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
-from app.design_sync.component_renderer import ComponentRenderer, _is_blankable_text
+from app.design_sync.component_renderer import (
+    ComponentRenderer,
+    _find_matching_close,
+    _is_blankable_text,
+)
 from app.design_sync.figma.layout_analyzer import (
     EmailSection,
     EmailSectionType,
@@ -654,3 +658,50 @@ class TestBlankUnfilledTextSlots:
         assert _is_blankable_text('<a href="#">Home</a>') is False
         assert _is_blankable_text("&nbsp;") is False
         assert _is_blankable_text("") is False
+
+
+class TestFindMatchingClose:
+    """Phase 53 B4: depth-balanced close-tag finder (CI guard, snapshot-free)."""
+
+    def test_nested_same_tag_returns_outer_close(self) -> None:
+        s = "<td>A<td>B</td>C</td>"
+        start = len("<td>")
+        idx = _find_matching_close(s, "td", start)
+        assert idx is not None
+        # the final (outer) </td>, not the first inner one
+        assert s[idx:] == "</td>"
+        assert s[start:idx] == "A<td>B</td>C"
+
+    def test_leaf_returns_own_close(self) -> None:
+        s = "<td>hello</td>"
+        assert _find_matching_close(s, "td", len("<td>")) == s.index("</td>")
+
+    def test_different_tag_nesting_ignored(self) -> None:
+        s = '<td>x<a href="#">y</a>z</td>'
+        idx = _find_matching_close(s, "td", len("<td>"))
+        assert idx is not None and s[idx:] == "</td>"
+
+    def test_unbalanced_returns_none(self) -> None:
+        assert _find_matching_close("<td>oops", "td", len("<td>")) is None
+
+
+class TestFooterContentNoTruncation:
+    """Phase 53 B4: a footer_content <td> wrapping a nested table is filled
+    whole, not truncated at the first inner </td> (Mode A2)."""
+
+    def test_footer_content_fill_replaces_whole_cell(
+        self, renderer: ComponentRenderer
+    ) -> None:
+        fill = "Acme Ltd legal line<br><br>Unsubscribe | Preferences"
+        match = _make_match("email-footer", fills=[SlotFill("footer_content", fill)])
+        result = renderer.render_section(match).html
+        # The Figma-derived footer content survives in full…
+        assert "Acme Ltd legal line" in result
+        assert "Unsubscribe | Preferences" in result
+        # …and the seed scaffold it replaced is gone — these strings only
+        # survive when the fill truncates at the first nested </td>.
+        assert "123 Business Street" not in result
+        assert "2026 Company Name" not in result
+        # Structure stays balanced — truncation orphans closing tags.
+        assert result.count("<td") == result.count("</td>")
+        assert result.count("<table") == result.count("</table>")
