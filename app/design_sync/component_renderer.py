@@ -19,6 +19,53 @@ _PLACEHOLDER_IN_OUTPUT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Opening tag of a text-content cell. Only <td> carries leaked text seed
+# literals (headings, body, captions). <span> CTA/link labels live inside an
+# <a> — blanking them would leave an empty clickable link, so they are left for
+# the CTA pass; <img>/<a>/<video>/<table> data-slots are structural. None of
+# those are blanked by the post-fill pass.
+_TEXT_SLOT_OPEN_RE = re.compile(r'<td\b[^>]*\bdata-slot="([^"]+)"[^>]*>')
+
+# Legally-required footer fields. When unfilled, keep their seed literal as a
+# compliance fallback instead of blanking to empty — design-system footer
+# injection (BrandRepair stage 8) overrides these downstream. Without this,
+# `_fills_footer` (which only emits `footer_content`) would leave
+# `company_name`/`company_address` unfilled and the blank pass would strip the
+# postal address / identity that CAN-SPAM and GDPR require.
+_PRESERVE_UNFILLED_SLOTS = frozenset(
+    {
+        "copyright",
+        "company_name",
+        "company_address",
+        "footer_content",
+        "unsub_text",
+    }
+)
+
+# Inline text-formatting tags that may legitimately appear inside a leaked text
+# seed (a bold word, a line break). Any *other* child element marks a structural
+# slot.
+_INLINE_FORMAT_TAG_RE = re.compile(
+    r"</?(?:br|strong|em|b|i|u|sub|sup|small)\b[^>]*>", re.IGNORECASE
+)
+
+
+def _is_blankable_text(inner: str) -> bool:
+    """Return True when ``inner`` is a bare text seed safe to blank.
+
+    A leaked seed literal is text — optionally with inline formatting. Strips
+    inline-format tags and ``&nbsp;`` padding; returns True only when visible
+    text remains and no structural child element (``<div>``, ``<table>``,
+    ``<a>``, ``<img>``, a nested data-slot) is present. Structural slots — the
+    divider line, nav links, the social row — keep their seed content because it
+    *is* the intended output, not a placeholder to strip.
+    """
+    without_inline = _INLINE_FORMAT_TAG_RE.sub("", inner)
+    if "<" in without_inline:
+        return False
+    return without_inline.replace("&nbsp;", "").strip() != ""
+
+
 # Lazy-loaded to avoid circular imports
 _seed_cache: dict[str, dict[str, Any]] | None = None
 
@@ -588,6 +635,13 @@ class ComponentRenderer:
             else:
                 result = self._fill_text_slot(result, slot_id, fill)
 
+        # Post-fill blank pass (Mode A1): a text slot that received no fill keeps
+        # its seed literal otherwise. Generalize the event-card empty-fill
+        # behaviour so every component strips unfilled text seeds rather than
+        # leaking them into output.
+        filled_ids = {fill.slot_id for fill in fills}
+        result = self._blank_unfilled_text_slots(result, filled_ids)
+
         # Warn on known placeholder patterns surviving in output
         for m in _PLACEHOLDER_IN_OUTPUT_RE.finditer(result):
             logger.warning(
@@ -596,6 +650,44 @@ class ComponentRenderer:
                 component_slug=slug,
             )
 
+        return result
+
+    def _blank_unfilled_text_slots(self, html_str: str, filled_ids: set[str]) -> str:
+        """Empty the inner content of text slots that received no fill.
+
+        Subtracts the filled slot ids from the ``<td>`` text cells present in
+        the template and blanks each leftover, preserving the
+        ``<td data-slot="…"></td>`` element as a builder/ESP hook.
+
+        Never blanks:
+          * structural elements — only ``<td>`` text cells are considered, so
+            ``<img>`` (image), ``<a>`` (CTA/link) and ``<span>`` CTA-label
+            data-slots are left intact (the CTA pass owns those);
+          * structural slots whose seed content is a child element rather than
+            bare text — the divider line, nav links, the social row, or a
+            container wrapping nested ``data-slot`` children (see
+            :func:`_is_blankable_text`);
+          * legally-required footer fields (:data:`_PRESERVE_UNFILLED_SLOTS`).
+        """
+        result = html_str
+        seen: set[str] = set()
+        for match in _TEXT_SLOT_OPEN_RE.finditer(html_str):
+            slot_id = match.group(1)
+            if slot_id in seen:
+                continue
+            seen.add(slot_id)
+            if slot_id in filled_ids or slot_id in _PRESERVE_UNFILLED_SLOTS:
+                continue
+            inner_match = re.search(
+                rf'<td\b[^>]*\bdata-slot="{re.escape(slot_id)}"[^>]*>(.*?)</td>',
+                result,
+                flags=re.DOTALL,
+            )
+            if inner_match is None:
+                continue
+            if not _is_blankable_text(inner_match.group(1)):
+                continue
+            result = self._fill_text_slot(result, slot_id, SlotFill(slot_id, ""))
         return result
 
     def _fill_text_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:

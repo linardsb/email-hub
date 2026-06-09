@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
-from app.design_sync.component_renderer import ComponentRenderer
+from app.design_sync.component_renderer import ComponentRenderer, _is_blankable_text
 from app.design_sync.figma.layout_analyzer import (
     EmailSection,
     EmailSectionType,
@@ -592,3 +594,63 @@ class TestOutputStructure:
                 depth += line.count("<table") - line.count("</table")
                 max_depth = max(max_depth, depth)
             assert max_depth <= 5, f"{slug} has {max_depth} levels of table nesting"
+
+
+class TestBlankUnfilledTextSlots:
+    """Phase 53 B3: unfilled <td> text slots are blanked; structural slots kept.
+
+    Snapshot baselines also cover this, but they self-skip in CI (gitignored
+    `data/debug` fixtures), so these seed-template tests are the CI guard.
+    """
+
+    @staticmethod
+    def _td_inner(html_str: str, slot_id: str) -> str | None:
+        m = re.search(rf'<td\b[^>]*\bdata-slot="{slot_id}"[^>]*>(.*?)</td>', html_str, re.DOTALL)
+        return m.group(1).strip() if m else None
+
+    def test_unfilled_td_text_slot_blanked(self, renderer: ComponentRenderer) -> None:
+        # headline is filled; subtext gets no fill and must not leak its seed.
+        match = _make_match("hero-block", fills=[SlotFill("headline", "Summer Sale!")])
+        result = renderer.render_section(match)
+        assert self._td_inner(result.html, "subtext") == ""
+        assert "Summer Sale!" in result.html
+
+    def test_filled_td_slot_not_blanked(self, renderer: ComponentRenderer) -> None:
+        match = _make_match(
+            "hero-block",
+            fills=[SlotFill("headline", "Hi"), SlotFill("subtext", "There")],
+        )
+        result = renderer.render_section(match)
+        assert "There" in result.html
+
+    def test_divider_structural_slot_preserved(self, renderer: ComponentRenderer) -> None:
+        # divider_style wraps the visible <div class="divider-line"> — never blank.
+        result = renderer.render_section(_make_match("divider"))
+        assert 'class="divider-line"' in result.html
+
+    def test_footer_legal_fields_preserved(self, renderer: ComponentRenderer) -> None:
+        # _fills_footer never emits company_name/company_address; the seed text is
+        # legally required and must survive an empty fill set.
+        result = renderer.render_section(_make_match("footer"))
+        assert self._td_inner(result.html, "company_name")
+        assert self._td_inner(result.html, "company_address")
+
+    def test_cta_label_span_preserved(self, renderer: ComponentRenderer) -> None:
+        # <span data-slot="cta_text"> lives inside <a>; td-only scope leaves it
+        # intact (blanking would create an empty clickable link).
+        result = renderer.render_section(_make_match("article-card"))
+        cta = re.search(
+            r'<span\b[^>]*\bdata-slot="cta_text"[^>]*>(.*?)</span>',
+            result.html,
+            re.DOTALL,
+        )
+        assert cta is not None and cta.group(1).strip() != ""
+
+    def test_is_blankable_text_predicate(self) -> None:
+        assert _is_blankable_text("Section Heading") is True
+        assert _is_blankable_text("Line 1<br>Line 2") is True
+        assert _is_blankable_text("<strong>Bold</strong>") is True
+        assert _is_blankable_text('<div class="divider-line">&nbsp;</div>') is False
+        assert _is_blankable_text('<a href="#">Home</a>') is False
+        assert _is_blankable_text("&nbsp;") is False
+        assert _is_blankable_text("") is False
