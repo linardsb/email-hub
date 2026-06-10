@@ -892,6 +892,12 @@ class ComponentRenderer:
                     result = self._replace_cta_strokecolor(result, val)
                 elif prop == "border-width":
                     result = self._replace_cta_css_prop(result, "border-width", val)
+            elif target in ("_cta_primary", "_cta_secondary"):
+                # phase-53-b8-cta-pair-color-fidelity: per-button overrides
+                # scoped to one cta-pair button block (class cta-primary /
+                # cta-secondary).
+                class_name = "cta-primary" if target == "_cta_primary" else "cta-secondary"
+                result = self._apply_cta_pair_override(result, class_name, prop, val)
 
         return result
 
@@ -1262,6 +1268,59 @@ class ComponentRenderer:
         """Replace strokecolor on <v:roundrect>."""
         safe = html.escape(color, quote=True)
         return self._CTA_STROKECOLOR_RE.sub(rf'\g<1>strokecolor="{safe}"', html_str)
+
+    # Per-button cta-pair override (phase-53-b8-cta-pair-color-fidelity).
+    # The cta-pair seed encodes button color as a bgcolor="" attribute (filled
+    # primary only) plus a `border:Npx solid <hex>` shorthand — not the
+    # `background-color:`/`border-color:` declarations the _cta helpers target.
+    _CTA_BORDER_SHORTHAND_COLOR_RE = re.compile(r"(border:\s*\d+px\s+solid\s+)#[0-9a-fA-F]{3,8}")
+    _CTA_BORDER_SHORTHAND_WIDTH_RE = re.compile(r"(border:\s*)\d+px(\s+solid)")
+
+    def _apply_cta_pair_override(
+        self, html_str: str, class_name: str, prop: str, value: str
+    ) -> str:
+        """Apply one color/shape override scoped to a single cta-pair button.
+
+        The cta-pair seed renders two buttons distinguished by ``class_name``
+        (``cta-primary``/``cta-secondary``); each is a self-contained,
+        non-nested ``<table class="…cta-x…">…</table>``. Replacements are
+        confined to that block so the primary and secondary buttons cannot
+        bleed into each other (a global ``re.sub`` would paint both).
+
+        Color surfaces per property:
+          * ``background-color`` → the ``bgcolor`` attribute (filled primary)
+            AND the ``border:Npx solid <hex>`` shorthand. The shorthand sync is
+            load-bearing: the outlined secondary has no ``bgcolor`` attribute,
+            so its border is the only surface carrying its fill color.
+          * ``color`` → text color on the inner ``<td>`` and ``<a>``.
+          * ``border-color`` / ``border-width`` → the border shorthand (emitted
+            after ``background-color`` so an explicit stroke wins the border).
+          * ``border-radius`` → the ``border-radius`` declaration.
+        """
+        block_re = re.compile(
+            rf'(<table\b[^>]*\bclass="[^"]*\b{re.escape(class_name)}\b[^"]*"[^>]*>)'
+            r"(.*?)(</table>)",
+            re.DOTALL,
+        )
+        m = block_re.search(html_str)
+        if not m:
+            return html_str
+        open_tag, body, close_tag = m.group(1), m.group(2), m.group(3)
+        safe = html.escape(value, quote=True)
+
+        if prop == "background-color":
+            open_tag = re.sub(r'\bbgcolor="[^"]*"', f'bgcolor="{safe}"', open_tag)
+            open_tag = self._CTA_BORDER_SHORTHAND_COLOR_RE.sub(rf"\g<1>{safe}", open_tag)
+        elif prop == "color":
+            body = re.sub(r'(?<!-)color:\s*[^;"]+', f"color:{safe}", body)
+        elif prop == "border-color":
+            open_tag = self._CTA_BORDER_SHORTHAND_COLOR_RE.sub(rf"\g<1>{safe}", open_tag)
+        elif prop == "border-width":
+            open_tag = self._CTA_BORDER_SHORTHAND_WIDTH_RE.sub(rf"\g<1>{safe}\g<2>", open_tag)
+        elif prop == "border-radius":
+            open_tag = re.sub(r'border-radius:\s*[^;"]+', f"border-radius:{safe}", open_tag)
+
+        return html_str[: m.start()] + open_tag + body + close_tag + html_str[m.end() :]
 
     _VML_ARCSIZE_RE = re.compile(r'arcsize="\d+%"')
 

@@ -1645,6 +1645,28 @@ def _typography_overrides(
     return overrides
 
 
+def _cta_overrides(btn: ButtonElement, target: str) -> list[TokenOverride]:
+    """Build CTA color/shape token overrides for a single button.
+
+    Shared by the single-CTA path (``target="_cta"``) and the cta-pair path
+    (``_cta_primary``/``_cta_secondary``) so the two cannot drift in which
+    button properties they emit. Colors are ``_HEX_COLOR_RE``-guarded against
+    CSS injection; numeric dimensions are coerced.
+    """
+    out: list[TokenOverride] = []
+    if btn.fill_color and _HEX_COLOR_RE.match(btn.fill_color):
+        out.append(TokenOverride("background-color", target, btn.fill_color))
+    if btn.text_color and _HEX_COLOR_RE.match(btn.text_color):
+        out.append(TokenOverride("color", target, btn.text_color))
+    if btn.border_radius is not None:
+        out.append(TokenOverride("border-radius", target, f"{btn.border_radius:.0f}px"))
+    if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
+        out.append(TokenOverride("border-color", target, btn.stroke_color))
+    if btn.stroke_weight is not None:
+        out.append(TokenOverride("border-width", target, f"{btn.stroke_weight:.0f}px"))
+    return out
+
+
 def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
     """Extract token overrides from section properties."""
     overrides: list[TokenOverride] = []
@@ -1763,18 +1785,21 @@ def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
     if len(padding_parts) == 4:
         overrides.append(TokenOverride("padding", "_cell", " ".join(padding_parts)))
 
-    # CTA button overrides from first button
+    # CTA button overrides.
     if section.buttons:
-        btn = section.buttons[0]
-        if btn.fill_color and _HEX_COLOR_RE.match(btn.fill_color):
-            overrides.append(TokenOverride("background-color", "_cta", btn.fill_color))
-        if btn.text_color and _HEX_COLOR_RE.match(btn.text_color):
-            overrides.append(TokenOverride("color", "_cta", btn.text_color))
-        if btn.border_radius is not None:
-            overrides.append(TokenOverride("border-radius", "_cta", f"{btn.border_radius:.0f}px"))
-        if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
-            overrides.append(TokenOverride("border-color", "_cta", btn.stroke_color))
-        if btn.stroke_weight is not None:
-            overrides.append(TokenOverride("border-width", "_cta", f"{btn.stroke_weight:.0f}px"))
+        # Single-CTA path keeps the _cta target (cta-button seed). Retained in
+        # the dual case too as a harmless no-op fallback: cta-pair routing only
+        # fires for EmailSectionType.CTA, so a non-cta-pair seed that happens to
+        # carry cta-btn/cta_url markers still gets buttons[0]'s color.
+        overrides.extend(_cta_overrides(section.buttons[0], "_cta"))
+        if len(section.buttons) >= 2:
+            # phase-53-b8-cta-pair-color-fidelity: the cta-pair seed renders two
+            # independently-styled buttons (class="cta" + data-slot=
+            # primary_url/secondary_url) that the _cta helpers do not match, so
+            # the _cta override above is a no-op there. Emit per-button overrides
+            # scoped to each button's class so the primary (filled) and secondary
+            # (outlined) buttons render in their own Figma colors.
+            overrides.extend(_cta_overrides(section.buttons[0], "_cta_primary"))
+            overrides.extend(_cta_overrides(section.buttons[1], "_cta_secondary"))
 
     return overrides
