@@ -41,7 +41,7 @@
 **Carry-forward:** target gate is advisory `xfail(strict=False)` over a per-block metric (`sections_count == len(match.matches)`) vs a band target — may not converge if Track C/D groups at render time; `regression_runner.py:113` still circular (advisory). Tracked: deferred-items `phase-53-a2-advisory-section-gate` → tighten at 53.1/D.
 **Plan:** `.agents/plans/53-converter-engine-fix.md` §4 Track A (A2).
 
-### Track B — Cheap, ship-now render fixes (B1–B8) `[Backend]` `[In Progress · 3/8 — B1, B5, B7 ✅]`
+### Track B — Cheap, ship-now render fixes (B1–B8) `[Backend]` `[✅ Done 2026-06-10 — B1–B8 complete, merged to main]`
 
 **What:** Eight small per-section fixes to today's shipped render output, in churn-minimizing order.
 **Why:** Each is a real defect in the live output, ≤1d, that the A2 gate finally sees. **B1 is the only fork-surviving fix** (the edited seeds also feed the DB component library); the rest die under fork-(b) but fix shipped output now.
@@ -51,7 +51,13 @@
 - **B1 ✅** (commit `7f299e6e`) — seed-literal cleanup; the one fork-surviving fix (edited seeds also feed the DB component library).
 - **B7 ✅** (commit pending) — dropped phantom `faq-accordion` slug → falls to `text-block` (has a slot-fill builder; `faq-list` does not, so a remap would render placeholder Q/A). Removed the now-dead `has_images` param from `_score_extended_candidates` + its callsite; updated `test_faq_question_answer_pairs`. **Baseline-neutral** — `faq-accordion` never fired on the 6 fixtures (no `expected.html` contained it), so no baseline regen needed. be-ship green (lint/mypy/pyright at baseline, 126 matcher tests, converter regression 68 passed).
 - **B5 ✅** (commit `4bc095ae`) — alt derivation: `_is_descriptive_alt`/`_derive_image_alt` stop the raw-`node_name` leak (`mj-image, (mjml:mj-image), (type: logo)`). Leak spanned **8** emission sites, not the 2 originally scoped — also the 4 `SlotFill(image_alt)` + 1 `SlotFill(logo_alt)` feeders + the `_fills_social` fallback. Descriptive name kept, else `Company logo`/`Content image`; never `alt=""`, **G3-neg untouched**. Also fixed `col-icon.html` linked-icon `alt=""`→`Feature icon` (unlabeled-link a11y bug). 0 empty/generic/leak alts across all 6 fixtures; baselines regen (alt-only diff, audit clean); golden-conformance + component suite green. Decision + execution note: `.agents/plans/53-b5-alt-derivation-decision.md`; deferred `phase-53-b5-decorative-empty-alt-vs-g3neg` **Tier-1 closed** (Tier-2 semantic alt → RC-E).
-- **Next:** B8 (multi-CTA, emit all `section.buttons`).
+- **B8 ✅** (PR #241, squash `7894ff03`) — multi-CTA routing: ≥2 buttons → `cta-pair` seed (`primary_*`/`secondary_*` slots); single button keeps `cta-button`.
+- **B2 ✅** (commit `c3f7fcd8`) — inner-table column builder: img/text/CTA rows wrapped in one `<table role="presentation">` via shared `_column_image_row`/`_column_cta_row`/`_wrap_column_table`; baselines 5–10 regen.
+- **B3 ✅** (commit `925d4e05`) — post-fill blank pass `_blank_unfilled_text_slots`; footer legally-required fields preserved (`_PRESERVE_UNFILLED_SLOTS`).
+- **B4 ✅** (commit `0bf96eda`) — footer de-truncation: depth-balanced `_find_matching_close` replaces the `(.*?)`+`count=1` that truncated nested `footer_content`.
+- **B6 ✅** (commit `02bb1b8e`) — clamp `width="640"`/`max-width:640px`/`width:640px` MSO widths to container; latent on corpus, unit-tested.
+- **B8 follow-up ✅** (commit `b50dcf13`) — per-button cta-pair color fidelity (`_cta_primary`/`_cta_secondary` overrides + block-scoped `_apply_cta_pair_override`); closed deferred-item `phase-53-b8-cta-pair-color-fidelity`.
+- **Merged to `main`** 2026-06-10 via `--no-ff` merge `f9787f2c` (full B2→B8 stack; merged-tree `make test` 8157 green). Residual deferred follow-ups: `phase-53-b8-{non-cta-multibutton-drop,fills-cta-slug-desync-vlm}`.
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track B (B1–B8 table with file:line). *(≈ 1 week total.)*
 
 ### Track C — Segmentation spike (C1, C2) `[Backend]` `[Plan Ready · SPIKE]`
