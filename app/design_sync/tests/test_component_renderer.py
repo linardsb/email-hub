@@ -533,6 +533,42 @@ class TestMsoWidths:
         result = r.render_section(match)
         assert 'width="700"' in result.html
 
+    # B6 (Mode D): clamp full-bleed 600/640 widths inside MSO blocks to the
+    # container. Seeds never emit 640 inside an MSO conditional, so the clamp
+    # is exercised here by calling _update_mso_widths directly.
+    def test_clamps_640_attr_to_container(self, renderer: ComponentRenderer) -> None:
+        html = '<!--[if mso]><table width="640" align="center"><tr><td><![endif]-->'
+        assert renderer._update_mso_widths(html, 600) == (
+            '<!--[if mso]><table width="600" align="center"><tr><td><![endif]-->'
+        )
+
+    def test_clamps_640_style_forms_to_container(self, renderer: ComponentRenderer) -> None:
+        html = '<!--[if mso]><table style="max-width: 640px;width:640px;"><![endif]-->'
+        out = renderer._update_mso_widths(html, 600)
+        assert "max-width: 600px" in out  # prefix + spacing preserved
+        assert "width:600px" in out
+        assert "640" not in out
+
+    def test_640_preserved_when_container_is_640(self, renderer: ComponentRenderer) -> None:
+        # Clamp target IS the container, so 640-in-640 is a no-op — this is
+        # what keeps the container=640 baselines (cases 6, 9) byte-identical.
+        html = '<!--[if mso]><table width="640" style="max-width:640px;"><![endif]-->'
+        assert renderer._update_mso_widths(html, 640) == html
+
+    def test_non_width_640_left_untouched(self, renderer: ComponentRenderer) -> None:
+        # height + URL digits that merely contain 640 must not be clamped.
+        html = (
+            '<!--[if mso]><img height="640" '
+            'src="https://x/lib/fe37117075640474741075/a.jpg"><![endif]-->'
+        )
+        assert renderer._update_mso_widths(html, 600) == html
+
+    def test_640_outside_mso_block_untouched(self, renderer: ComponentRenderer) -> None:
+        # MSO-scoping intact: a fixed-640 table outside any MSO conditional
+        # (the responsive main table) is left alone.
+        html = '<table width="640" style="max-width:640px;">x</table>'
+        assert renderer._update_mso_widths(html, 600) == html
+
 
 class TestDarkModeExtraction:
     def test_extracts_dark_mode_classes(self, renderer: ComponentRenderer) -> None:
@@ -689,9 +725,7 @@ class TestFooterContentNoTruncation:
     """Phase 53 B4: a footer_content <td> wrapping a nested table is filled
     whole, not truncated at the first inner </td> (Mode A2)."""
 
-    def test_footer_content_fill_replaces_whole_cell(
-        self, renderer: ComponentRenderer
-    ) -> None:
+    def test_footer_content_fill_replaces_whole_cell(self, renderer: ComponentRenderer) -> None:
         fill = "Acme Ltd legal line<br><br>Unsubscribe | Preferences"
         match = _make_match("email-footer", fills=[SlotFill("footer_content", fill)])
         result = renderer.render_section(match).html

@@ -1285,13 +1285,30 @@ class ComponentRenderer:
         return self._PLACEHOLDER_URL_RE.sub(r'\1=""', html_str)
 
     def _update_mso_widths(self, html_str: str, width: int) -> str:
-        """Update MSO conditional table widths to match container width."""
+        """Clamp MSO conditional table widths to the container width.
 
-        # Replace width="600" in MSO conditional blocks
-        # Only replace within <!--[if mso]> ... <![endif]--> blocks
+        Ghost tables and some seeds hardcode a full-bleed width of 600 or 640
+        — as a ``width="…"`` attribute or a ``[max-]width:…px`` style. Outlook
+        ignores ``max-width`` and honours the fixed width, so a 640 declaration
+        inside a narrower container overflows (Mode D). Rewrite both forms to
+        the container ``width``; only the full-bleed values 600/640 are touched
+        (never column sub-widths, ``height``, or URL digits). Scoped to
+        ``<!--[if mso]> … <![endif]-->`` blocks.
+        """
+
+        # Only rewrite within <!--[if mso]> ... <![endif]--> blocks.
         def _replace_mso_width(match: re.Match[str]) -> str:
             block = match.group(0)
-            return re.sub(r'width="600"', f'width="{width}"', block)
+            # Attribute form: width="600" / width="640".
+            block = re.sub(r'width="(?:600|640)"', f'width="{width}"', block)
+            # Style form: width:600px / width:640px / max-width:…px — the
+            # ``max-``/``min-`` prefix and any spacing are preserved.
+            block = re.sub(
+                r"(max-width:|width:)(\s*)(?:600|640)px",
+                rf"\g<1>\g<2>{width}px",
+                block,
+            )
+            return block
 
         return re.sub(
             r"<!--\[if mso\]>.*?<!\[endif\]-->",
