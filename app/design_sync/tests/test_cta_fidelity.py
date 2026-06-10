@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.design_sync.component_matcher import (
@@ -435,3 +437,68 @@ class TestDualCTAPair:
         assert "Primary button" not in html
         assert "Secondary button" not in html
         assert "example.com/link" not in html
+
+
+# ---------------------------------------------------------------------------
+# 17. Dual-CTA per-button color fidelity (phase-53-b8-cta-pair-color-fidelity)
+# ---------------------------------------------------------------------------
+
+
+class TestDualCTAColorFidelity:
+    """Each cta-pair button must render in its OWN Figma color, not the seed
+    default (#e84e0f).
+
+    Before this fix the renderer's ``_cta`` helpers matched only
+    ``class="cta-btn"``/``data-slot="cta_url"``, so the cta-pair seed
+    (``class="cta"`` + ``primary_url``/``secondary_url``) ignored every color
+    override and both buttons rendered the seed orange. The test exercises the
+    full ``match_section`` → ``render_section`` path and asserts per-button
+    *isolation* — a color must land in its own button block and be ABSENT from
+    the other's — which catches both a no-op (seed default survives) and a
+    global leak (one override paints both buttons).
+    """
+
+    _PRIMARY = "#ff0000"  # filled primary button fill
+    _SECONDARY = "#0000ff"  # outlined secondary button fill (paints its border)
+    _SEED_DEFAULT = "#e84e0f"
+
+    def _section(self) -> EmailSection:
+        return _make_section(
+            buttons=[
+                _button("Shop Now", url="https://example.com/shop", fill_color=self._PRIMARY),
+                _button("Learn More", url="https://example.com/learn", fill_color=self._SECONDARY),
+            ],
+        )
+
+    @staticmethod
+    def _block(html: str, class_name: str) -> str:
+        """Isolate one button's (non-nested) ``<table class="…cta-x…">…</table>``."""
+        m = re.search(
+            rf'<table\b[^>]*\bclass="[^"]*\b{class_name}\b[^"]*"[^>]*>.*?</table>',
+            html,
+            re.DOTALL,
+        )
+        assert m is not None, f"cta-pair output has no {class_name} button block"
+        return m.group(0)
+
+    def test_matcher_emits_per_button_color_overrides(self) -> None:
+        m = match_section(self._section(), 0)
+        by_key = {(o.target_class, o.css_property): o.value for o in m.token_overrides}
+        assert by_key.get(("_cta_primary", "background-color")) == self._PRIMARY
+        assert by_key.get(("_cta_secondary", "background-color")) == self._SECONDARY
+
+    def test_each_button_renders_its_own_color(self, renderer: ComponentRenderer) -> None:
+        html = renderer.render_section(match_section(self._section(), 0)).html
+        primary = self._block(html, "cta-primary")
+        secondary = self._block(html, "cta-secondary")
+
+        # The filled primary carries its fill on the bgcolor surface...
+        assert f'bgcolor="{self._PRIMARY}"' in primary
+        assert self._PRIMARY in primary
+        # ...the outlined secondary carries its fill on its border...
+        assert self._SECONDARY in secondary
+        # ...and neither button bleeds into the other (global-leak tripwire)...
+        assert self._SECONDARY not in primary
+        assert self._PRIMARY not in secondary
+        # ...and the primary no longer falls back to the seed default.
+        assert self._SEED_DEFAULT not in primary

@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
-from app.design_sync.component_renderer import ComponentRenderer
+from app.design_sync.component_renderer import (
+    ComponentRenderer,
+    _find_matching_close,
+    _is_blankable_text,
+)
 from app.design_sync.figma.layout_analyzer import (
     EmailSection,
     EmailSectionType,
@@ -527,6 +533,42 @@ class TestMsoWidths:
         result = r.render_section(match)
         assert 'width="700"' in result.html
 
+    # B6 (Mode D): clamp full-bleed 600/640 widths inside MSO blocks to the
+    # container. Seeds never emit 640 inside an MSO conditional, so the clamp
+    # is exercised here by calling _update_mso_widths directly.
+    def test_clamps_640_attr_to_container(self, renderer: ComponentRenderer) -> None:
+        html = '<!--[if mso]><table width="640" align="center"><tr><td><![endif]-->'
+        assert renderer._update_mso_widths(html, 600) == (
+            '<!--[if mso]><table width="600" align="center"><tr><td><![endif]-->'
+        )
+
+    def test_clamps_640_style_forms_to_container(self, renderer: ComponentRenderer) -> None:
+        html = '<!--[if mso]><table style="max-width: 640px;width:640px;"><![endif]-->'
+        out = renderer._update_mso_widths(html, 600)
+        assert "max-width: 600px" in out  # prefix + spacing preserved
+        assert "width:600px" in out
+        assert "640" not in out
+
+    def test_640_preserved_when_container_is_640(self, renderer: ComponentRenderer) -> None:
+        # Clamp target IS the container, so 640-in-640 is a no-op — this is
+        # what keeps the container=640 baselines (cases 6, 9) byte-identical.
+        html = '<!--[if mso]><table width="640" style="max-width:640px;"><![endif]-->'
+        assert renderer._update_mso_widths(html, 640) == html
+
+    def test_non_width_640_left_untouched(self, renderer: ComponentRenderer) -> None:
+        # height + URL digits that merely contain 640 must not be clamped.
+        html = (
+            '<!--[if mso]><img height="640" '
+            'src="https://x/lib/fe37117075640474741075/a.jpg"><![endif]-->'
+        )
+        assert renderer._update_mso_widths(html, 600) == html
+
+    def test_640_outside_mso_block_untouched(self, renderer: ComponentRenderer) -> None:
+        # MSO-scoping intact: a fixed-640 table outside any MSO conditional
+        # (the responsive main table) is left alone.
+        html = '<table width="640" style="max-width:640px;">x</table>'
+        assert renderer._update_mso_widths(html, 600) == html
+
 
 class TestDarkModeExtraction:
     def test_extracts_dark_mode_classes(self, renderer: ComponentRenderer) -> None:
@@ -592,3 +634,108 @@ class TestOutputStructure:
                 depth += line.count("<table") - line.count("</table")
                 max_depth = max(max_depth, depth)
             assert max_depth <= 5, f"{slug} has {max_depth} levels of table nesting"
+
+
+class TestBlankUnfilledTextSlots:
+    """Phase 53 B3: unfilled <td> text slots are blanked; structural slots kept.
+
+    Snapshot baselines also cover this, but they self-skip in CI (gitignored
+    `data/debug` fixtures), so these seed-template tests are the CI guard.
+    """
+
+    @staticmethod
+    def _td_inner(html_str: str, slot_id: str) -> str | None:
+        m = re.search(rf'<td\b[^>]*\bdata-slot="{slot_id}"[^>]*>(.*?)</td>', html_str, re.DOTALL)
+        return m.group(1).strip() if m else None
+
+    def test_unfilled_td_text_slot_blanked(self, renderer: ComponentRenderer) -> None:
+        # headline is filled; subtext gets no fill and must not leak its seed.
+        match = _make_match("hero-block", fills=[SlotFill("headline", "Summer Sale!")])
+        result = renderer.render_section(match)
+        assert self._td_inner(result.html, "subtext") == ""
+        assert "Summer Sale!" in result.html
+
+    def test_filled_td_slot_not_blanked(self, renderer: ComponentRenderer) -> None:
+        match = _make_match(
+            "hero-block",
+            fills=[SlotFill("headline", "Hi"), SlotFill("subtext", "There")],
+        )
+        result = renderer.render_section(match)
+        assert "There" in result.html
+
+    def test_divider_structural_slot_preserved(self, renderer: ComponentRenderer) -> None:
+        # divider_style wraps the visible <div class="divider-line"> — never blank.
+        result = renderer.render_section(_make_match("divider"))
+        assert 'class="divider-line"' in result.html
+
+    def test_footer_legal_fields_preserved(self, renderer: ComponentRenderer) -> None:
+        # _fills_footer never emits company_name/company_address; the seed text is
+        # legally required and must survive an empty fill set.
+        result = renderer.render_section(_make_match("footer"))
+        assert self._td_inner(result.html, "company_name")
+        assert self._td_inner(result.html, "company_address")
+
+    def test_cta_label_span_preserved(self, renderer: ComponentRenderer) -> None:
+        # <span data-slot="cta_text"> lives inside <a>; td-only scope leaves it
+        # intact (blanking would create an empty clickable link).
+        result = renderer.render_section(_make_match("article-card"))
+        cta = re.search(
+            r'<span\b[^>]*\bdata-slot="cta_text"[^>]*>(.*?)</span>',
+            result.html,
+            re.DOTALL,
+        )
+        assert cta is not None and cta.group(1).strip() != ""
+
+    def test_is_blankable_text_predicate(self) -> None:
+        assert _is_blankable_text("Section Heading") is True
+        assert _is_blankable_text("Line 1<br>Line 2") is True
+        assert _is_blankable_text("<strong>Bold</strong>") is True
+        assert _is_blankable_text('<div class="divider-line">&nbsp;</div>') is False
+        assert _is_blankable_text('<a href="#">Home</a>') is False
+        assert _is_blankable_text("&nbsp;") is False
+        assert _is_blankable_text("") is False
+
+
+class TestFindMatchingClose:
+    """Phase 53 B4: depth-balanced close-tag finder (CI guard, snapshot-free)."""
+
+    def test_nested_same_tag_returns_outer_close(self) -> None:
+        s = "<td>A<td>B</td>C</td>"
+        start = len("<td>")
+        idx = _find_matching_close(s, "td", start)
+        assert idx is not None
+        # the final (outer) </td>, not the first inner one
+        assert s[idx:] == "</td>"
+        assert s[start:idx] == "A<td>B</td>C"
+
+    def test_leaf_returns_own_close(self) -> None:
+        s = "<td>hello</td>"
+        assert _find_matching_close(s, "td", len("<td>")) == s.index("</td>")
+
+    def test_different_tag_nesting_ignored(self) -> None:
+        s = '<td>x<a href="#">y</a>z</td>'
+        idx = _find_matching_close(s, "td", len("<td>"))
+        assert idx is not None and s[idx:] == "</td>"
+
+    def test_unbalanced_returns_none(self) -> None:
+        assert _find_matching_close("<td>oops", "td", len("<td>")) is None
+
+
+class TestFooterContentNoTruncation:
+    """Phase 53 B4: a footer_content <td> wrapping a nested table is filled
+    whole, not truncated at the first inner </td> (Mode A2)."""
+
+    def test_footer_content_fill_replaces_whole_cell(self, renderer: ComponentRenderer) -> None:
+        fill = "Acme Ltd legal line<br><br>Unsubscribe | Preferences"
+        match = _make_match("email-footer", fills=[SlotFill("footer_content", fill)])
+        result = renderer.render_section(match).html
+        # The Figma-derived footer content survives in full…
+        assert "Acme Ltd legal line" in result
+        assert "Unsubscribe | Preferences" in result
+        # …and the seed scaffold it replaced is gone — these strings only
+        # survive when the fill truncates at the first nested </td>.
+        assert "123 Business Street" not in result
+        assert "2026 Company Name" not in result
+        # Structure stays balanced — truncation orphans closing tags.
+        assert result.count("<td") == result.count("</td>")
+        assert result.count("<table") == result.count("</table>")

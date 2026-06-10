@@ -19,6 +19,76 @@ _PLACEHOLDER_IN_OUTPUT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Opening tag of a text-content cell. Only <td> carries leaked text seed
+# literals (headings, body, captions). <span> CTA/link labels live inside an
+# <a> — blanking them would leave an empty clickable link, so they are left for
+# the CTA pass; <img>/<a>/<video>/<table> data-slots are structural. None of
+# those are blanked by the post-fill pass.
+_TEXT_SLOT_OPEN_RE = re.compile(r'<td\b[^>]*\bdata-slot="([^"]+)"[^>]*>')
+
+# Legally-required footer fields. When unfilled, keep their seed literal as a
+# compliance fallback instead of blanking to empty — design-system footer
+# injection (BrandRepair stage 8) overrides these downstream. Without this,
+# `_fills_footer` (which only emits `footer_content`) would leave
+# `company_name`/`company_address` unfilled and the blank pass would strip the
+# postal address / identity that CAN-SPAM and GDPR require.
+_PRESERVE_UNFILLED_SLOTS = frozenset(
+    {
+        "copyright",
+        "company_name",
+        "company_address",
+        "footer_content",
+        "unsub_text",
+    }
+)
+
+# Inline text-formatting tags that may legitimately appear inside a leaked text
+# seed (a bold word, a line break). Any *other* child element marks a structural
+# slot.
+_INLINE_FORMAT_TAG_RE = re.compile(
+    r"</?(?:br|strong|em|b|i|u|sub|sup|small)\b[^>]*>", re.IGNORECASE
+)
+
+
+def _is_blankable_text(inner: str) -> bool:
+    """Return True when ``inner`` is a bare text seed safe to blank.
+
+    A leaked seed literal is text — optionally with inline formatting. Strips
+    inline-format tags and ``&nbsp;`` padding; returns True only when visible
+    text remains and no structural child element (``<div>``, ``<table>``,
+    ``<a>``, ``<img>``, a nested data-slot) is present. Structural slots — the
+    divider line, nav links, the social row — keep their seed content because it
+    *is* the intended output, not a placeholder to strip.
+    """
+    without_inline = _INLINE_FORMAT_TAG_RE.sub("", inner)
+    if "<" in without_inline:
+        return False
+    return without_inline.replace("&nbsp;", "").strip() != ""
+
+
+def _find_matching_close(html_str: str, tag_name: str, start: int) -> int | None:
+    """Return the index of the ``</tag_name>`` closing the element at ``start``.
+
+    Counts nested same-tag depth. A footer ``<td>`` whose cell wraps a layout
+    ``<table>`` of ``<td>`` rows has nested same-tag children; a naive
+    ``.*?</td>`` match stops at the first inner ``</td>`` and truncates the cell
+    (Mode A2). This walks same-tag open/close tokens from ``start``, incrementing
+    depth on a start tag and decrementing on an end tag, and returns the index of
+    the end tag that brings depth back to zero. Returns ``None`` when the markup
+    is unbalanced.
+    """
+    depth = 1
+    token_re = re.compile(rf"<(/?){re.escape(tag_name)}\b[^>]*?(/?)>", re.DOTALL)
+    for match in token_re.finditer(html_str, start):
+        if match.group(1):  # closing tag: </tag>
+            depth -= 1
+            if depth == 0:
+                return match.start()
+        elif not match.group(2):  # opening start tag (not self-closing)
+            depth += 1
+    return None
+
+
 # Lazy-loaded to avoid circular imports
 _seed_cache: dict[str, dict[str, Any]] | None = None
 
@@ -588,6 +658,13 @@ class ComponentRenderer:
             else:
                 result = self._fill_text_slot(result, slot_id, fill)
 
+        # Post-fill blank pass (Mode A1): a text slot that received no fill keeps
+        # its seed literal otherwise. Generalize the event-card empty-fill
+        # behaviour so every component strips unfilled text seeds rather than
+        # leaking them into output.
+        filled_ids = {fill.slot_id for fill in fills}
+        result = self._blank_unfilled_text_slots(result, filled_ids)
+
         # Warn on known placeholder patterns surviving in output
         for m in _PLACEHOLDER_IN_OUTPUT_RE.finditer(result):
             logger.warning(
@@ -596,6 +673,44 @@ class ComponentRenderer:
                 component_slug=slug,
             )
 
+        return result
+
+    def _blank_unfilled_text_slots(self, html_str: str, filled_ids: set[str]) -> str:
+        """Empty the inner content of text slots that received no fill.
+
+        Subtracts the filled slot ids from the ``<td>`` text cells present in
+        the template and blanks each leftover, preserving the
+        ``<td data-slot="…"></td>`` element as a builder/ESP hook.
+
+        Never blanks:
+          * structural elements — only ``<td>`` text cells are considered, so
+            ``<img>`` (image), ``<a>`` (CTA/link) and ``<span>`` CTA-label
+            data-slots are left intact (the CTA pass owns those);
+          * structural slots whose seed content is a child element rather than
+            bare text — the divider line, nav links, the social row, or a
+            container wrapping nested ``data-slot`` children (see
+            :func:`_is_blankable_text`);
+          * legally-required footer fields (:data:`_PRESERVE_UNFILLED_SLOTS`).
+        """
+        result = html_str
+        seen: set[str] = set()
+        for match in _TEXT_SLOT_OPEN_RE.finditer(html_str):
+            slot_id = match.group(1)
+            if slot_id in seen:
+                continue
+            seen.add(slot_id)
+            if slot_id in filled_ids or slot_id in _PRESERVE_UNFILLED_SLOTS:
+                continue
+            inner_match = re.search(
+                rf'<td\b[^>]*\bdata-slot="{re.escape(slot_id)}"[^>]*>(.*?)</td>',
+                result,
+                flags=re.DOTALL,
+            )
+            if inner_match is None:
+                continue
+            if not _is_blankable_text(inner_match.group(1)):
+                continue
+            result = self._fill_text_slot(result, slot_id, SlotFill(slot_id, ""))
         return result
 
     def _fill_text_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
@@ -624,14 +739,14 @@ class ComponentRenderer:
             )
 
         tag_name = open_match.group(1)
-        # Step 2: match opening tag → content → matching closing tag
-        pattern = (
-            rf'(<{tag_name}\b[^>]*\bdata-slot="{re.escape(slot_id)}"[^>]*>)'
-            rf"(.*?)"
-            rf"(</{tag_name}>)"
-        )
-        replacement = rf"\g<1>{fill.value}\g<3>"
-        return re.sub(pattern, replacement, html_str, count=1, flags=re.DOTALL)
+        # Step 2: replace the cell content up to the *matching* closing tag,
+        # counting nested same-tag depth so a footer <td> wrapping a layout
+        # table of <td> rows isn't truncated at the first inner </td> (Mode A2).
+        content_start = open_match.end()
+        close_start = _find_matching_close(html_str, tag_name, content_start)
+        if close_start is None:
+            return html_str
+        return html_str[:content_start] + fill.value + html_str[close_start:]
 
     def _fill_image_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Update src (and optionally width/height/alt) on a data-slot image element."""
@@ -777,6 +892,12 @@ class ComponentRenderer:
                     result = self._replace_cta_strokecolor(result, val)
                 elif prop == "border-width":
                     result = self._replace_cta_css_prop(result, "border-width", val)
+            elif target in ("_cta_primary", "_cta_secondary"):
+                # phase-53-b8-cta-pair-color-fidelity: per-button overrides
+                # scoped to one cta-pair button block (class cta-primary /
+                # cta-secondary).
+                class_name = "cta-primary" if target == "_cta_primary" else "cta-secondary"
+                result = self._apply_cta_pair_override(result, class_name, prop, val)
 
         return result
 
@@ -1148,6 +1269,59 @@ class ComponentRenderer:
         safe = html.escape(color, quote=True)
         return self._CTA_STROKECOLOR_RE.sub(rf'\g<1>strokecolor="{safe}"', html_str)
 
+    # Per-button cta-pair override (phase-53-b8-cta-pair-color-fidelity).
+    # The cta-pair seed encodes button color as a bgcolor="" attribute (filled
+    # primary only) plus a `border:Npx solid <hex>` shorthand — not the
+    # `background-color:`/`border-color:` declarations the _cta helpers target.
+    _CTA_BORDER_SHORTHAND_COLOR_RE = re.compile(r"(border:\s*\d+px\s+solid\s+)#[0-9a-fA-F]{3,8}")
+    _CTA_BORDER_SHORTHAND_WIDTH_RE = re.compile(r"(border:\s*)\d+px(\s+solid)")
+
+    def _apply_cta_pair_override(
+        self, html_str: str, class_name: str, prop: str, value: str
+    ) -> str:
+        """Apply one color/shape override scoped to a single cta-pair button.
+
+        The cta-pair seed renders two buttons distinguished by ``class_name``
+        (``cta-primary``/``cta-secondary``); each is a self-contained,
+        non-nested ``<table class="…cta-x…">…</table>``. Replacements are
+        confined to that block so the primary and secondary buttons cannot
+        bleed into each other (a global ``re.sub`` would paint both).
+
+        Color surfaces per property:
+          * ``background-color`` → the ``bgcolor`` attribute (filled primary)
+            AND the ``border:Npx solid <hex>`` shorthand. The shorthand sync is
+            load-bearing: the outlined secondary has no ``bgcolor`` attribute,
+            so its border is the only surface carrying its fill color.
+          * ``color`` → text color on the inner ``<td>`` and ``<a>``.
+          * ``border-color`` / ``border-width`` → the border shorthand (emitted
+            after ``background-color`` so an explicit stroke wins the border).
+          * ``border-radius`` → the ``border-radius`` declaration.
+        """
+        block_re = re.compile(
+            rf'(<table\b[^>]*\bclass="[^"]*\b{re.escape(class_name)}\b[^"]*"[^>]*>)'
+            r"(.*?)(</table>)",
+            re.DOTALL,
+        )
+        m = block_re.search(html_str)
+        if not m:
+            return html_str
+        open_tag, body, close_tag = m.group(1), m.group(2), m.group(3)
+        safe = html.escape(value, quote=True)
+
+        if prop == "background-color":
+            open_tag = re.sub(r'\bbgcolor="[^"]*"', f'bgcolor="{safe}"', open_tag)
+            open_tag = self._CTA_BORDER_SHORTHAND_COLOR_RE.sub(rf"\g<1>{safe}", open_tag)
+        elif prop == "color":
+            body = re.sub(r'(?<!-)color:\s*[^;"]+', f"color:{safe}", body)
+        elif prop == "border-color":
+            open_tag = self._CTA_BORDER_SHORTHAND_COLOR_RE.sub(rf"\g<1>{safe}", open_tag)
+        elif prop == "border-width":
+            open_tag = self._CTA_BORDER_SHORTHAND_WIDTH_RE.sub(rf"\g<1>{safe}\g<2>", open_tag)
+        elif prop == "border-radius":
+            open_tag = re.sub(r'border-radius:\s*[^;"]+', f"border-radius:{safe}", open_tag)
+
+        return html_str[: m.start()] + open_tag + body + close_tag + html_str[m.end() :]
+
     _VML_ARCSIZE_RE = re.compile(r'arcsize="\d+%"')
 
     def _update_vml_arcsize(self, html_str: str, radius_val: str) -> str:
@@ -1170,13 +1344,30 @@ class ComponentRenderer:
         return self._PLACEHOLDER_URL_RE.sub(r'\1=""', html_str)
 
     def _update_mso_widths(self, html_str: str, width: int) -> str:
-        """Update MSO conditional table widths to match container width."""
+        """Clamp MSO conditional table widths to the container width.
 
-        # Replace width="600" in MSO conditional blocks
-        # Only replace within <!--[if mso]> ... <![endif]--> blocks
+        Ghost tables and some seeds hardcode a full-bleed width of 600 or 640
+        — as a ``width="…"`` attribute or a ``[max-]width:…px`` style. Outlook
+        ignores ``max-width`` and honours the fixed width, so a 640 declaration
+        inside a narrower container overflows (Mode D). Rewrite both forms to
+        the container ``width``; only the full-bleed values 600/640 are touched
+        (never column sub-widths, ``height``, or URL digits). Scoped to
+        ``<!--[if mso]> … <![endif]-->`` blocks.
+        """
+
+        # Only rewrite within <!--[if mso]> ... <![endif]--> blocks.
         def _replace_mso_width(match: re.Match[str]) -> str:
             block = match.group(0)
-            return re.sub(r'width="600"', f'width="{width}"', block)
+            # Attribute form: width="600" / width="640".
+            block = re.sub(r'width="(?:600|640)"', f'width="{width}"', block)
+            # Style form: width:600px / width:640px / max-width:…px — the
+            # ``max-``/``min-`` prefix and any spacing are preserved.
+            block = re.sub(
+                r"(max-width:|width:)(\s*)(?:600|640)px",
+                rf"\g<1>\g<2>{width}px",
+                block,
+            )
+            return block
 
         return re.sub(
             r"<!--\[if mso\]>.*?<!\[endif\]-->",
