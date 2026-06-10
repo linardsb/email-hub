@@ -448,7 +448,8 @@
       "id": "phase-53-b8-cta-pair-color-fidelity",
       "phase": "53",
       "title": "B8 cta-pair buttons render in seed-default color — the primary button's Figma color regresses vs the single-CTA path",
-      "status": "deferred",
+      "status": "closed",
+      "closed_commit": "b50dcf13",
       "severity": "known-bug",
       "introduced": "2026-06-06",
       "introduced_commit": "10e6e1e2",
@@ -461,7 +462,7 @@
       ],
       "symptom_if_broken": "A Figma CTA section with two buttons of distinct brand colors renders both as the seed-default orange in email output; the primary button in particular loses the color it would have had as a single CTA.",
       "closes_when": "_cta token-override extraction + apply support per-button color for cta-pair: either (a) the _CTA_*_RE templates also match primary_url/secondary_url + class=\"cta\", with _build_token_overrides emitting per-button overrides (e.g. _cta_primary/_cta_secondary target classes), or (b) the cta-pair seed is restructured to carry the cta-btn/cta_url markers the existing helpers target. Verified by a dual-CTA section with two distinct fill_colors rendering each button in its own color.",
-      "notes": "Discovered during B8 execution (2026-06-06). Knowingly-shipped regression: the user chose to ship cta-pair activation (zero current-fixture impact — no fixture has a CTA-typed section) for correct infra + the real-world dual-CTA case. Per-button color fidelity deferred as a larger change (new regexes + per-button override model). Related: phase-53-b8-non-cta-multibutton-drop."
+      "notes": "Discovered during B8 execution (2026-06-06). Knowingly-shipped regression: the user chose to ship cta-pair activation (zero current-fixture impact — no fixture has a CTA-typed section) for correct infra + the real-world dual-CTA case. Per-button color fidelity deferred as a larger change (new regexes + per-button override model). Related: phase-53-b8-non-cta-multibutton-drop. CLOSED 2026-06-10 (b50dcf13) via approach (a): added cta-primary/cta-secondary classes to the seed + a shared _cta_overrides() helper that, for >=2 buttons, emits per-button _cta_primary/_cta_secondary overrides applied by a block-scoped _apply_cta_pair_override() in component_renderer.py. Approach (b) alone was a dead end — the existing _cta helpers are global (re.sub, no count), so marking both buttons cta-btn would paint both the same color; distinct per-button color needs the scoped per-button model regardless. background-color paints the bgcolor attr + the border shorthand (the outlined secondary has no bgcolor, so its border is its only color surface; an explicit stroke override still wins via emission order). Guard: TestDualCTAColorFidelity (full match_section->render_section, per-block color isolation, proven RED pre-fix). Zero corpus impact (cases 5-10 byte-identical). Siblings phase-53-b8-non-cta-multibutton-drop / -fills-cta-slug-desync-vlm remain open."
     },
     {
       "id": "phase-53-b8-non-cta-multibutton-drop",
