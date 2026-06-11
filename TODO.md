@@ -236,9 +236,14 @@
 **Verify:** A written per-loop decision (activate/delete) + the rollout-measurement plan or the deletion list.
 **Plan:** ⏳ to be written — basis: `docs/agentic_rl_memory_handoff_findings.md` §3.1/§3.3 (per-component live-vs-inert tables + flag defaults) and §7.3.
 
-### 54.1 — PREREQUISITE: build the reward corpus `[Backend, Eval]` `[⏳ blocked on 54.0 = activate]`
+### 54.1 — PREREQUISITE: build the reward corpus `[Backend, Eval]` `[⏳ blocked on 54.0 = activate · 1/5 sub-items done]`
 
-**What:** Make the eval/reward corpus real before any online loop is enabled: commit (or seed) the gitignored `traces/` so a fresh deploy has `analysis.json` for `failure_warnings`; populate the empty/absent `{agent}_human_labels.jsonl` so judges are actually TPR/TNR-calibrated; set a small `EVAL__PRODUCTION_SAMPLE_RATE` to collect on-policy verdicts. ✅ The `tech-debt-03-memory-recall-dead-on-read` fix is **landed** (2026-06-11, `0b0313aa` — all 15 background/agent memory-op sites now open `get_system_db_context`; guarded by `app/tests/test_memory_recall_integration.py`); memory-dependent loops can now recall. ⏳ **Still TODO:** register `MemoryCompactionPoller` in `app/main.py` (decay/compaction never runs today — unbounded growth once writes are turned up).
+**What:** Make the eval/reward corpus real before any online loop is enabled. Sub-items:
+- `[⏳ TODO]` Commit (or seed) the gitignored `traces/` so a fresh deploy has `analysis.json` for `failure_warnings`.
+- `[⏳ TODO]` Populate the empty/absent `{agent}_human_labels.jsonl` so judges are actually TPR/TNR-calibrated.
+- `[⏳ TODO]` Set a small `EVAL__PRODUCTION_SAMPLE_RATE` to collect on-policy verdicts.
+- `[✅ Done 2026-06-11]` Land the `tech-debt-03-memory-recall-dead-on-read` fix (`0b0313aa` — all 15 background/agent memory-op sites now open `get_system_db_context`; recall reaches prompts; guarded by `app/tests/test_memory_recall_integration.py`).
+- `[⏳ TODO]` Register `MemoryCompactionPoller` in `app/main.py` — defined at `app/memory/compaction.py:60` but never instantiated, so decay/compaction never runs (unbounded growth once writes are turned up).
 **Why:** Enabling uncalibrated judges/loops on an empty corpus makes agent output **worse** — the reward signal is noise. Corpus first, always (findings doc §2.1/§2.4 anti-patterns).
 **Verify:** clean-worktree test — `get_failure_warnings()` injects a real KNOWN-FAILURE block into an agent prompt; judges hit TPR≥0.85 / TNR≥0.80 on the human-label set; a blueprint run injects a recalled memory (✅ proven by `app/tests/test_memory_recall_integration.py::test_blueprint_engine_recall_injects_memory` — RED before `0b0313aa`, GREEN after).
 **Plan:** ⏳ to be written.
