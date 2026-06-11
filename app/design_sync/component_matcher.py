@@ -578,7 +578,7 @@ def _build_slot_fills(
     }
     builder = builders.get(slug)
     if builder:
-        fills = builder(section, container_width, image_urls=image_urls)
+        fills = builder(section, container_width, image_urls=image_urls, slug=slug)
         _log_default_fills(slug, section, fills)
         return fills
     return []
@@ -1272,23 +1272,43 @@ def _fills_image_gallery(
 def _fills_cta(
     section: EmailSection,
     _cw: int,
+    *,
+    slug: str = "cta-button",
     **_kw: object,
 ) -> list[SlotFill]:
+    """Fill CTA-family slots, keyed on the seed's slug — not button count.
+
+    The chosen slug decides the slot set because the VLM fallback path can pick
+    a slug that disagrees with the button count (a count-keyed filler would
+    emit slots the seed doesn't have, silently dropping the labels).
+    """
     fills: list[SlotFill] = []
     buttons = section.buttons
-    if len(buttons) >= 2:
-        # B8: dual-CTA section → cta-pair seed (primary + secondary slots).
-        # Only the first two buttons are emitted; the seed has no slot for a
-        # third (email layout caps a button row at two).
-        primary, secondary = buttons[0], buttons[1]
-        fills.append(SlotFill("primary_text", _safe_text(primary.text)))
-        fills.append(SlotFill("primary_url", _safe_url(primary.url), slot_type="cta"))
-        fills.append(SlotFill("secondary_text", _safe_text(secondary.text)))
-        fills.append(SlotFill("secondary_url", _safe_url(secondary.url), slot_type="cta"))
+    if slug == "cta-pair":
+        # B8: cta-pair seed (primary + secondary slots). Only the first two
+        # buttons are emitted; the seed has no slot for a third (email layout
+        # caps a button row at two). With fewer than two buttons, empty fills
+        # blank the seed placeholders instead of leaking them.
+        primary = buttons[0] if buttons else None
+        secondary = buttons[1] if len(buttons) >= 2 else None
+        fills.append(SlotFill("primary_text", _safe_text(primary.text) if primary else ""))
+        fills.append(
+            SlotFill("primary_url", _safe_url(primary.url) if primary else "", slot_type="cta")
+        )
+        fills.append(SlotFill("secondary_text", _safe_text(secondary.text) if secondary else ""))
+        fills.append(
+            SlotFill(
+                "secondary_url", _safe_url(secondary.url) if secondary else "", slot_type="cta"
+            )
+        )
     elif buttons:
         btn = buttons[0]
-        fills.append(SlotFill("cta_text", _safe_text(btn.text)))
-        fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
+        if slug == "text-link":
+            fills.append(SlotFill("link_text", _safe_text(btn.text)))
+            fills.append(SlotFill("link_url", _safe_url(btn.url), slot_type="cta"))
+        else:
+            fills.append(SlotFill("cta_text", _safe_text(btn.text)))
+            fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
     return fills
 
 

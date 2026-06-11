@@ -1346,7 +1346,7 @@ class ComponentRenderer:
     def _update_mso_widths(self, html_str: str, width: int) -> str:
         """Clamp MSO conditional table widths to the container width.
 
-        Ghost tables and some seeds hardcode a full-bleed width of 600 or 640
+        Ghost tables and some seeds hardcode a full-bleed width of 600/640
         — as a ``width="…"`` attribute or a ``[max-]width:…px`` style. Outlook
         ignores ``max-width`` and honours the fixed width, so a 640 declaration
         inside a narrower container overflows (Mode D). Rewrite both forms to

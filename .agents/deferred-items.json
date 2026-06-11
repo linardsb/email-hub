@@ -486,7 +486,7 @@
       "id": "phase-53-b8-fills-cta-slug-desync-vlm",
       "phase": "53",
       "title": "_fills_cta keys on button count, not slug — can desync from routing on the VLM fallback path",
-      "status": "deferred",
+      "status": "closed",
       "severity": "speculative",
       "introduced": "2026-06-06",
       "introduced_commit": "10e6e1e2",
@@ -498,7 +498,8 @@
       ],
       "symptom_if_broken": "With DESIGN_SYNC__VLM_FALLBACK_ENABLED=true and a VLM-wired pipeline: a low-confidence non-CTA section reclassified by the VLM to a cta slug renders with empty/placeholder buttons ('Primary button'/'Secondary button' leak, or dropped labels).",
       "closes_when": "Either _fills_cta becomes slug-aware (thread the chosen slug into the filler and emit the slot set matching the seed), or the dispatch keeps cta-button/cta-pair on separate fillers. Verified: a section forced to slug 'cta-button' with 2 buttons emits cta_text/cta_url (not primary_/secondary_), and slug 'cta-pair' with 1 button does not leak pair placeholders.",
-      "notes": "Found by adversarial review during B8 execution (2026-06-06). DOUBLY UNREACHABLE today: (1) vlm_fallback_enabled defaults to False (app/core/config/design_sync.py:47), and (2) match_section_with_vlm_fallback has NO non-test callers — it is not wired into the live convert_document pipeline. CTA sections also return confidence 1.0, so even an enabled VLM fallback never fires for them; the only trigger is a low-confidence NON-CTA section the VLM reclassifies to a cta slug. Logged as speculative so it surfaces if/when VLM fallback is wired up. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-b8-non-cta-multibutton-drop."
+      "notes": "Found by adversarial review during B8 execution (2026-06-06). DOUBLY UNREACHABLE today: (1) vlm_fallback_enabled defaults to False (app/core/config/design_sync.py:47), and (2) match_section_with_vlm_fallback has NO non-test callers — it is not wired into the live convert_document pipeline. CTA sections also return confidence 1.0, so even an enabled VLM fallback never fires for them; the only trigger is a low-confidence NON-CTA section the VLM reclassifies to a cta slug. Logged as speculative so it surfaces if/when VLM fallback is wired up. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-b8-non-cta-multibutton-drop. CLOSED 2026-06-11 (commit 2bb6bdbf): _fills_cta now keys the slot set on the chosen slug threaded through _build_slot_fills (cta-pair → primary_*/secondary_* with empty fills blanking the seed when <2 buttons; text-link → link_text/link_url, fixing the same desync class found during preflight; other CTA slugs → cta_text/cta_url). Guard: TestFillsCtaSlugAware in test_cta_fidelity.py, 4/5 proven RED pre-fix. Cases 5-10 byte-identical.",
+      "closed_commit": "2bb6bdbf"
     }
   ],
   "tooling_followups": [

@@ -11,6 +11,7 @@ from app.design_sync.component_matcher import (
     SlotFill,
     TokenOverride,
     _build_column_fill_html,
+    _build_slot_fills,
     match_section,
 )
 from app.design_sync.component_renderer import ComponentRenderer
@@ -502,3 +503,78 @@ class TestDualCTAColorFidelity:
         assert self._PRIMARY not in secondary
         # ...and the primary no longer falls back to the seed default.
         assert self._SEED_DEFAULT not in primary
+
+
+# ---------------------------------------------------------------------------
+# 17. Slug-aware _fills_cta — slot set follows the chosen slug, not button
+# count (phase-53-b8-fills-cta-slug-desync-vlm). The VLM fallback path sets
+# the slug independently of button count, so a count-keyed filler can emit
+# slots the seed doesn't have.
+# ---------------------------------------------------------------------------
+
+
+class TestFillsCtaSlugAware:
+    def _two_buttons(self) -> EmailSection:
+        return _make_section(
+            buttons=[
+                _button("Shop Now", url="https://example.com/shop"),
+                _button("Learn More", url="https://example.com/learn"),
+            ],
+        )
+
+    def test_cta_button_slug_with_two_buttons_emits_single_slots(self) -> None:
+        """A VLM 'cta-button' pick for a 2-button section must fill the seed's
+        actual slots (cta_text/cta_url) from the primary button — not emit
+        pair slots that no-op against the cta-button seed."""
+        fills = _build_slot_fills("cta-button", self._two_buttons(), 600)
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["cta_text"].value == "Shop Now"
+        assert by_id["cta_url"].value == "https://example.com/shop"
+        assert "primary_text" not in by_id
+        assert "secondary_text" not in by_id
+
+    def test_cta_pair_slug_with_two_buttons_emits_pair_slots(self) -> None:
+        fills = _build_slot_fills("cta-pair", self._two_buttons(), 600)
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["primary_text"].value == "Shop Now"
+        assert by_id["secondary_text"].value == "Learn More"
+        assert "cta_text" not in by_id
+
+    def test_cta_pair_slug_with_one_button_blanks_secondary(self) -> None:
+        fills = _build_slot_fills(
+            "cta-pair",
+            _make_section(buttons=[_button("Shop Now", url="https://example.com/shop")]),
+            600,
+        )
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["primary_text"].value == "Shop Now"
+        assert by_id["secondary_text"].value == ""
+        assert by_id["secondary_url"].value == ""
+
+    def test_cta_pair_slug_with_one_button_no_placeholder_leak(
+        self, renderer: ComponentRenderer
+    ) -> None:
+        """Renderer-level guard: a cta-pair seed filled from a 1-button section
+        must not leak the seed's 'Secondary button' / placeholder-URL text."""
+        section = _make_section(buttons=[_button("Shop Now", url="https://example.com/shop")])
+        fills = _build_slot_fills("cta-pair", section, 600)
+        result = renderer.render_section(_make_match("cta-pair", fills=fills, section=section))
+        html = result.html
+        assert "Shop Now" in html
+        assert "https://example.com/shop" in html
+        assert "Primary button" not in html
+        assert "Secondary button" not in html
+        assert "example.com/link" not in html
+
+    def test_text_link_slug_emits_link_slots(self) -> None:
+        """text-link's seed uses link_text/link_url — cta_text/cta_url fills
+        would no-op against it (same desync class)."""
+        fills = _build_slot_fills(
+            "text-link",
+            _make_section(buttons=[_button("Read more", url="https://example.com/read")]),
+            600,
+        )
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["link_text"].value == "Read more"
+        assert by_id["link_url"].value == "https://example.com/read"
+        assert "cta_text" not in by_id
