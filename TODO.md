@@ -65,7 +65,9 @@
 
 **What:** Address the dominant structural defect — the converter cuts the wrong number of sections. **C1** emits a tagged band group (`RepeatingGroup`) when a multi-child wrapper is unwrapped; **C2** recurses single-child wrappers + absorbs `SPACER` pseudo-sections.
 **Why:** Segmentation drives perceived fidelity. C1 fixes the over-count (LEGO 17, slate 10 → 8); C2 fixes the under-count (Starbucks/maap/mammut). Run as a **spike** because the fix may be subsumed if fork-(b) wins at the gate.
-**Implementation:** **C1** — in `_expand_container_wrappers` (`app/design_sync/figma/layout_analyzer.py:540-576`) emit a tagged band group into the existing group-aware `_match_phase` / `render_repeating_group` path (`converter_service.py:610-638`; `component_renderer.py:514-528`); steer repeated cards to an `_inner`-bearing seed (`article-card`), not `text-block`. **C2** — recurse the single-child wrappers the `≥2` predicate leaves merged (`:584`); reuse `physical_card_detector.find_physical_card_in_subtree` (depth≤4), do NOT write a new walker.
+**Implementation:**
+- `[⏳ TODO]` **C1** — in `_expand_container_wrappers` (`app/design_sync/figma/layout_analyzer.py:540-576`) emit a tagged band group into the existing group-aware `_match_phase` / `render_repeating_group` path (`converter_service.py:610-638`; `component_renderer.py:514-528`); steer repeated cards to an `_inner`-bearing seed (`article-card`), not `text-block`.
+- `[⏳ TODO]` **C2** — recurse the single-child wrappers the `≥2` predicate leaves merged (`:584`); reuse `physical_card_detector.find_physical_card_in_subtree` (depth≤4), do NOT write a new walker.
 **Verify:** A1 ladder shows LEGO 17→8 with correctly nested bands; report the all-6 ladder + the residual cases fork-(b) would still beat. **Do NOT full-commit** — this feeds the 53.1 gate.
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track C (prereq: A1 confirms LEGO ~17).
 
@@ -73,7 +75,9 @@
 
 **What:** Re-export frames for cases 6/7/8/9/10 keyed by the node-ids the converter currently emits, so the pixel metric has an on-disk image map.
 **Why:** The emitted node-ids have no on-disk image map today (only case 5/maap binds) — this is the real blocker for a trustworthy *multi-fixture* fork decision.
-**Implementation:** Per case, either (a) live re-export keyed by current node-ids (needs the Figma file + a PAT), or (b) hand-map the semantic PNGs → node-ids. LEGO *structure* re-parses offline from `.agents/figma-cache/node_2833_1869.json`, but its *images* still need (a) or a ~24-PNG hand-map; perf/slate need live Figma.
+**Implementation:**
+- `[⏳ TODO]` Per case, either (a) live re-export keyed by current node-ids (needs the Figma file + a PAT), or (b) hand-map the semantic PNGs → node-ids.
+- `[⏳ TODO]` LEGO *structure* re-parses offline from `.agents/figma-cache/node_2833_1869.json`, but its *images* still need (a) or a ~24-PNG hand-map; perf/slate need live Figma.
 **Verify:** ≥2 fixtures (including an over-segmenter) resolve so the metric becomes gate-worthy.
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A4) — **needs USER / Figma access; begin before the gate.**
 
@@ -81,7 +85,10 @@
 
 **What:** Wire the (already-correct) fidelity metric to render case-5 HTML via Playwright and compare it against the reference PNG; land advisory in CI.
 **Why:** Closes the "can't measure" gap on at least one fixture. The metric code is correct (CIEDE2000 in LAB, MIN-aggregated, blur 0.0); only the wiring + a committed fixture are missing. *(= old 52.1-finish.)*
-**Implementation:** Promote `.tmpscratch/fidelity_case_scorer.WIP.py` + its test into `app/design_sync/`; commit case-5 `assets/` (6 PNGs) + the reference `…/for_converter_engine/maap/visual_design.png`; land the test-harness-only src-rewrite (`/assets/<node>.png` → `file://…/data/debug/5/assets/…`) before screenshot.
+**Implementation:**
+- `[⏳ TODO]` Promote `.tmpscratch/fidelity_case_scorer.WIP.py` + its test into `app/design_sync/`.
+- `[⏳ TODO]` Commit case-5 `assets/` (6 PNGs) + the reference `…/for_converter_engine/maap/visual_design.png`.
+- `[⏳ TODO]` Land the test-harness-only src-rewrite (`/assets/<node>.png` → `file://…/data/debug/5/assets/…`) before screenshot.
 **Verify:** Metric runs in CI on the committed case-5 fixture; stored as advisory. **Never a ship-gate** until ≥2 fixtures resolve (case 5 under-segments → yields *a* number, not the over-segmentation verdict).
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A3) — harness built but **uncommitted** in `.tmpscratch/*.WIP.py`.
 
@@ -89,7 +96,11 @@
 
 **What:** Capture data the ingest currently drops: composite alpha vs the real backdrop, gradient `node_id`, non-button strokes, AUTO/% line-height.
 **Why:** Correct under any Phase-53 engine; capturing now stops irreversible loss and unblocks the fork's renderer (render of the captured data lands in 53.3).
-**Implementation:** `app/design_sync/figma/service.py:265-291` `_rgba_to_hex_with_opacity` — composite against the real parent/section bg, not hard-coded `#FFFFFF` / `OPACITY_COMPOSITE_BG`. `app/design_sync/protocol.py` — add `node_id` to `ExtractedGradient` (+ `DocumentGradient`). Add a stroke field on `DocumentSection` / `DocumentImage` (already read at `figma/service.py:619`). Read `lineHeightPercent` / `lineHeightPercentFontSize` when `lineHeightPx` is absent.
+**Implementation:**
+- `[⏳ TODO]` `app/design_sync/figma/service.py:265-291` `_rgba_to_hex_with_opacity` — composite against the real parent/section bg, not hard-coded `#FFFFFF` / `OPACITY_COMPOSITE_BG`.
+- `[⏳ TODO]` `app/design_sync/protocol.py` — add `node_id` to `ExtractedGradient` (+ `DocumentGradient`).
+- `[⏳ TODO]` Add a stroke field on `DocumentSection` / `DocumentImage` (already read at `figma/service.py:619`).
+- `[⏳ TODO]` Read `lineHeightPercent` / `lineHeightPercentFontSize` when `lineHeightPx` is absent.
 **Verify:** Unit tests — translucent-over-color composites against the real bg; gradient carries `node_id`; bordered card keeps its stroke. (Render assertions land in 53.3.)
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track E + `.agents/plans/52-converter-foundation.md` §52.5.
 
@@ -97,7 +108,11 @@
 
 **What:** With the live metric + the Track C spike, choose the engine direction — **(a)** keep fixed-seed + Track C patch · **(b)** restore the recursive renderer · **(c)** per-frame raster — and write the chosen sub-plan.
 **Why:** Each option implies a different home for ingest render (RC-E) and the VLM loop, so it must be decided before any downstream engine build — on a real number, with segmentation as the explicit success criterion.
-**Implementation:** Re-run the fork spike on the committed fixtures with the live metric; record measured ΔE + effort per option; author the decision doc + the selected sub-plan. Recommended posture (audits' consensus, to ratify): A+B regardless; C as a spike; lean (b)-long-term + (c)-escape-hatch only if the metric + multi-fixture spike justify the weeks; never (c) as default.
+**Implementation:**
+- `[⏳ TODO]` Re-run the fork spike on the committed fixtures with the live metric.
+- `[⏳ TODO]` Record measured ΔE + effort per option.
+- `[⏳ TODO]` Author the decision doc + the selected sub-plan.
+- _Recommended posture (audits' consensus, to ratify): A+B regardless; C as a spike; lean (b)-long-term + (c)-escape-hatch only if the metric + multi-fixture spike justify the weeks; never (c) as default._
 **Verify:** Decision recorded; chosen fork's sub-plan written to `.agents/plans/`; stakeholder sign-off.
 **Plan:** procedure in `.agents/plans/53-converter-engine-fix.md` §Gate; **its output is a new sub-plan — ⏳ to be written here.** Unblocked by A3 (+ ideally A4) + the Track C spike.
 
@@ -105,7 +120,10 @@
 
 **What:** Build the engine direction chosen at 53.1 (the structural "for good" fix).
 **Why:** Closes the segmentation ceiling (and, for fork b/c, asymmetric columns / pixel fidelity).
-**Implementation:** **(a)** full-commit Track C across all 6 fixtures + a per-column-width override; **(b)** add a `convert_from_structure` tree-persistence entry, rebuild the recursive renderer re-wired to the live extracted helpers (NOT a verbatim restore — `d9132c7c` pre-extracted ~8 helpers into `shared/color.py`/`sanitizers.py`/`token_transforms.py`/`protocol.py`), rebuild the deleted ~4,490-LOC test corpus, keep `data-slot` hooks so editability survives; **(c)** wire raster only as a per-subtree fallback behind a reproducibility classifier.
+**Implementation:** (build only the fork chosen at 53.1)
+- `[⏳ TODO]` **(a)** full-commit Track C across all 6 fixtures + a per-column-width override.
+- `[⏳ TODO]` **(b)** add a `convert_from_structure` tree-persistence entry, rebuild the recursive renderer re-wired to the live extracted helpers (NOT a verbatim restore — `d9132c7c` pre-extracted ~8 helpers into `shared/color.py`/`sanitizers.py`/`token_transforms.py`/`protocol.py`), rebuild the deleted ~4,490-LOC test corpus, keep `data-slot` hooks so editability survives.
+- `[⏳ TODO]` **(c)** wire raster only as a per-subtree fallback behind a reproducibility classifier.
 **Verify:** A1 ladder + A3 metric improve vs the pre-fork baseline; `make converter-data-regression` green.
 **Plan:** ⏳ **NEEDS WRITING** — only the per-fork framing exists (`.agents/plans/53-converter-engine-fix.md` §Track D); the concrete sub-plan is authored at the 53.1 gate.
 
@@ -133,7 +151,9 @@
 
 **What:** Test that a brief created by user A cannot be read/updated/deleted by user B in the same org, via the route AND the repository.
 **Why:** Briefs are per-creator (not org-scoped) and that boundary is untested. Closes deferred entry `tech-debt-03-briefs-user-isolation-test`.
-**Implementation:** Create `app/briefs/tests/test_user_isolation.py` mirroring the pattern in `app/projects/tests/test_bola.py`; explicitly assert same-org-different-user as the contrast case.
+**Implementation:**
+- `[⏳ TODO]` Create `app/briefs/tests/test_user_isolation.py` mirroring the pattern in `app/projects/tests/test_bola.py`.
+- `[⏳ TODO]` Explicitly assert same-org-different-user as the contrast case.
 **Verify:** New test passes; route + repository layers both exercised; `make check` green; deferred entry flipped to `closed`.
 **Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.2.
 
@@ -141,7 +161,12 @@
 
 **What:** Resolve the misleading "passing" squawk advisory (plan recommends Option b — remove it, document manual review).
 **Why:** Squawk doesn't actually lint Python migrations, so the green CI check is false assurance. Closes `tech-debt-squawk-python-migrations`.
-**Implementation:** Remove the squawk hook from `.pre-commit-config.yaml:92-94`; drop the squawk job from `.github/workflows/ci.yml:243-272`; update/no-op the `migration-lint` Makefile target; strip `# squawk-ignore` comments; add manual-review guidance to `.claude/rules/architecture.md` or a new `.claude/docs/migration-safety.md`.
+**Implementation:**
+- `[⏳ TODO]` Remove the squawk hook from `.pre-commit-config.yaml:92-94`.
+- `[⏳ TODO]` Drop the squawk job from `.github/workflows/ci.yml:243-272`.
+- `[⏳ TODO]` Update/no-op the `migration-lint` Makefile target.
+- `[⏳ TODO]` Strip `# squawk-ignore` comments.
+- `[⏳ TODO]` Add manual-review guidance to `.claude/rules/architecture.md` or a new `.claude/docs/migration-safety.md`.
 **Verify:** No misleading advisory in CI; gap documented; `make check` green; deferred entry flipped.
 **Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.3.
 
@@ -149,7 +174,10 @@
 
 **What:** Constantize the (constantize) subset of `DesignSyncConfig` fields (61 today) — additive, no behavior change, no test deletion.
 **Why:** The config carries far more flags than warranted; PR-1 trims the constant-only set. Closes part of `tech-debt-19-design-sync-flag-cull-deeper`.
-**Implementation:** For each (constantize) field: move it to a `Final` constant in `app/design_sync/tuning.py`, update consumers, delete the config field; add a bounded-count regression test (`len(DesignSyncConfig.model_fields) <= 45`) in `app/core/tests/test_config_design_sync.py`. Do NOT touch (retire-feature) candidates this round.
+**Implementation:**
+- `[⏳ TODO]` For each (constantize) field: move it to a `Final` constant in `app/design_sync/tuning.py`, update consumers, delete the config field.
+- `[⏳ TODO]` Add a bounded-count regression test (`len(DesignSyncConfig.model_fields) <= 45`) in `app/core/tests/test_config_design_sync.py`.
+- _Constraint: do NOT touch (retire-feature) candidates this round._
 **Verify:** Field count 45–50 (~15–17 constantized); `make flag-audit` clean; `make check-full` green; a new deferred entry created for the PR-2 (retire-feature) follow-up.
 **Plan:** ✅ `.agents/plans/tech-debt-19-deferred-items-cleanup.md` §50.6.4. *(PR-2 = ⏳ plan + deferred entry to write when PR-1 ships.)*
 
@@ -157,7 +185,12 @@
 
 **What:** Rewrite the squash flow so the generated baseline contains `CreateTable` for every model (today its `upgrade()` body is empty `pass`).
 **Why:** The current squash autogenerates against the *populated* DB, so a fresh-DB bootstrap (CI, onboarding, DR) creates no schema and the app crashes. Closes known-bug `tech-debt-19-squash-empty-baseline` and unblocks 50.5.
-**Implementation:** Rewrite `scripts/squash-migrations-dryrun.sh` to use three throwaway containers (reference / autogenerate-target / validation) + an `op.create_table` count assertion + a `pg_dump` parity check; rewrite `scripts/squash-migrations.sh` to autogenerate against an ephemeral empty container (production untouched until the final stamp); update the runbook step 5 + remove its BLOCKED callout; flip the deferred entry; update `TECH_DEBT_AUDIT.md` F057 BLOCKED→READY.
+**Implementation:**
+- `[⏳ TODO]` Rewrite `scripts/squash-migrations-dryrun.sh` to use three throwaway containers (reference / autogenerate-target / validation) + an `op.create_table` count assertion + a `pg_dump` parity check.
+- `[⏳ TODO]` Rewrite `scripts/squash-migrations.sh` to autogenerate against an ephemeral empty container (production untouched until the final stamp).
+- `[⏳ TODO]` Update the runbook step 5 + remove its BLOCKED callout.
+- `[⏳ TODO]` Flip the deferred entry.
+- `[⏳ TODO]` Update `TECH_DEBT_AUDIT.md` F057 BLOCKED→READY.
 **Verify:** `bash scripts/squash-migrations-dryrun.sh` exits 0 end-to-end; `grep -c op.create_table` on the baseline == `len(Base.metadata.tables)`; schema diff empty; `make check-full` green.
 **Plan:** ✅ `.agents/plans/tech-debt-19-squash-multi-db-redesign.md`.
 
@@ -165,7 +198,11 @@
 
 **What:** Squash the ~46 alembic migrations to a single baseline during a maintenance window.
 **Why:** Reduce migration-chain weight. **DO NOT RUN `make db-squash` until 50.7 ships** — the current scripts + runbook share the empty-baseline design flaw (cutover succeeds deceptively; the next fresh-DB bootstrap crashes).
-**Implementation:** After 50.7: produce the consolidated baseline (`down_revision = None`), archive the historical migrations, drop the `2eb1d5b05ad3_merge_heads.py` artifact; maintenance-window cutover with snapshot rollback.
+**Implementation:** (after 50.7 ships — BLOCKED until then)
+- `[⏳ TODO]` Produce the consolidated baseline (`down_revision = None`).
+- `[⏳ TODO]` Archive the historical migrations.
+- `[⏳ TODO]` Drop the `2eb1d5b05ad3_merge_heads.py` artifact.
+- `[⏳ TODO]` Maintenance-window cutover with snapshot rollback.
 **Verify:** `alembic heads` single; `alembic upgrade head` clean on a fresh DB; existing prod DB applies the baseline as a no-op; operator postmortem in `docs/migrations/`.
 **Plan:** ⚠️ `.agents/plans/tech-debt-19-runbook-db-squash.md` + `scripts/squash-migrations-dryrun.sh` — **design-broken; must be redesigned by 50.7 before execution.**
 
@@ -179,7 +216,10 @@
 
 **What:** Pin the system prompt + safety constraints so they survive context-window slide / compaction across all blueprint-engine and agent-service operations.
 **Why:** OpenClaw-class fix — stops the in-band safety check disappearing mid-loop when context compacts.
-**Implementation:** `app/ai/security/safe_compaction.py` `PinnedPrompt` wrapper; integrate into `BaseAgentService.process` (all 9 agents inherit) + `BlueprintEngine` cross-node sliding; flag `SECURITY__SAFE_COMPACTION_ENABLED` (default true).
+**Implementation:**
+- `[⏳ TODO]` `app/ai/security/safe_compaction.py` `PinnedPrompt` wrapper.
+- `[⏳ TODO]` Integrate into `BaseAgentService.process` (all 9 agents inherit) + `BlueprintEngine` cross-node sliding.
+- `[⏳ TODO]` Flag `SECURITY__SAFE_COMPACTION_ENABLED` (default true).
 **Verify:** `app/ai/security/tests/test_safe_compaction.py` (~15 tests) incl. a property test (10k random compactions, safety-instruction count ≥1 in every output); `make eval-calibration-gate` no regression.
 **Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.2.
 
@@ -187,7 +227,10 @@
 
 **What:** A deterministic `SECURITY__AGENT_MAX_TOOL_CALLS` circuit breaker + structured per-step planning telemetry.
 **Why:** Completes the K_max trio with the existing run-seconds + token caps; bounds how far an agent can drift before a deterministic stop.
-**Implementation:** Counter in `BaseAgentService.process` raising `AgentKMaxExceededError` (new, in `app/ai/security/exceptions.py`); emit `ai.agent_planning_step` per `_execute_from` iteration (step_id + tool_call_count + cumulative_tokens + elapsed_ms); add a `bench_security_envelope` case to `make bench`.
+**Implementation:**
+- `[⏳ TODO]` Counter in `BaseAgentService.process` raising `AgentKMaxExceededError` (new, in `app/ai/security/exceptions.py`).
+- `[⏳ TODO]` Emit `ai.agent_planning_step` per `_execute_from` iteration (step_id + tool_call_count + cumulative_tokens + elapsed_ms).
+- `[⏳ TODO]` Add a `bench_security_envelope` case to `make bench`.
 **Verify:** `app/ai/security/tests/test_tool_call_cap.py` (at-cap / over-cap / per-agent-override) + telemetry assertions in `test_engine.py`.
 **Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.3.
 
@@ -195,7 +238,11 @@
 
 **What:** Convert the agent audit log to a chained-hash append-only structure + a replay-verification CLI.
 **Why:** The audit trail can no longer be silently rewritten; 51.7's `ai.agent_killed` entries become part of this chain (the dependency).
-**Implementation:** Extend `AgentAuditLog` (`app/ai/agents/audit.py`) with `prev_hash` + `entry_hash` columns (alembic migration); insert path computes `entry_hash = sha256(prev_hash || json(entry))` and rejects mismatch; `app/ai/agents/audit_chain.py::verify_chain()` + `python -m app.ai.agents.audit_chain verify` CLI; flag `SECURITY__AUDIT_CHAIN_ENABLED`.
+**Implementation:**
+- `[⏳ TODO]` Extend `AgentAuditLog` (`app/ai/agents/audit.py`) with `prev_hash` + `entry_hash` columns (alembic migration).
+- `[⏳ TODO]` Insert path computes `entry_hash = sha256(prev_hash || json(entry))` and rejects mismatch.
+- `[⏳ TODO]` `app/ai/agents/audit_chain.py::verify_chain()` + `python -m app.ai.agents.audit_chain verify` CLI.
+- `[⏳ TODO]` Flag `SECURITY__AUDIT_CHAIN_ENABLED`.
 **Verify:** `app/ai/agents/tests/test_audit_chain.py` — append 100 entries + verify; tamper row 50 → verify reports divergence at row 50.
 **Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.4.
 
@@ -203,7 +250,11 @@
 
 **What:** A declarative policy DSL (`DENY tool[internal_db_read] WHEN session.has(tool[outbound_network])`), evaluated per tool invocation, default-deny on ambiguity.
 **Why:** Replaces procedural enforcement scattered across agent services with explicit, auditable toxic-combination boundaries.
-**Implementation:** `app/ai/security/policy/` package — `dsl.py` (Lark grammar + `rules.yaml` loader), `evaluator.py` (`Evaluator.check(action, session_context) -> Decision`); wire into `BaseAgentService.process` as the pre-dispatch gate; ship 5–10 initial toxic-combination rules; flag `SECURITY__POLICY_DSL_ENABLED`.
+**Implementation:**
+- `[⏳ TODO]` `app/ai/security/policy/` package — `dsl.py` (Lark grammar + `rules.yaml` loader), `evaluator.py` (`Evaluator.check(action, session_context) -> Decision`).
+- `[⏳ TODO]` Wire into `BaseAgentService.process` as the pre-dispatch gate.
+- `[⏳ TODO]` Ship 5–10 initial toxic-combination rules.
+- `[⏳ TODO]` Flag `SECURITY__POLICY_DSL_ENABLED`.
 **Verify:** `app/ai/security/policy/tests/test_evaluator.py` (~25 tests, allow/deny/ambiguous) + an integration test through a real agent invocation.
 **Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.5.
 
@@ -211,7 +262,12 @@
 
 **What:** Require an external Ed25519 signature the agent cannot fabricate for irreversible / high-impact actions (first targets: ESP export, credential rotation).
 **Why:** A hard gate on irreversible operations the model can't satisfy on its own.
-**Implementation:** `app/ai/security/hitl.py` (`SignatureChallenge`, `verify_signature(action_id, signature, public_key)`); new `hitl_approvals` table + migration; backend gate checks the signature before dispatch; WebAuthn signature input in `cms/apps/web/src/components/approvals/approval-decision-bar.tsx`; config `SECURITY__HITL_REQUIRED_FOR` (default `["esp_export","credential_rotate"]`).
+**Implementation:**
+- `[⏳ TODO]` `app/ai/security/hitl.py` (`SignatureChallenge`, `verify_signature(action_id, signature, public_key)`).
+- `[⏳ TODO]` New `hitl_approvals` table + migration.
+- `[⏳ TODO]` Backend gate checks the signature before dispatch.
+- `[⏳ TODO]` WebAuthn signature input in `cms/apps/web/src/components/approvals/approval-decision-bar.tsx`.
+- `[⏳ TODO]` Config `SECURITY__HITL_REQUIRED_FOR` (default `["esp_export","credential_rotate"]`).
 **Verify:** `app/ai/security/tests/test_hitl.py` (~20 tests, valid/invalid/expired + agent-fabrication rejection); Playwright signature smoke (`approval-signature.spec.ts`).
 **Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.6.
 
@@ -219,7 +275,12 @@
 
 **What:** Move agent MCP tool execution into an isolated `services/tool-runner/` sidecar; out-of-band kill at the orchestrator layer.
 **Why:** Enforces toxic-combination limits at the OS boundary (not in-process); the kill works regardless of the agent's LLM state.
-**Implementation:** `services/tool-runner/` (`POST /execute`) with cgroup/CPU/network-egress limits + seccomp; reroute `app/mcp/tools/` invocations through an HTTP client to the sidecar; `app/ai/security/kill_switch.py::kill_agent()` SIGTERMs the sidecar + writes the `ai.agent_killed` chain entry (consumes 51.4); add the service to `docker-compose.yml`; flag `SECURITY__SANDBOXED_TOOLS_ENABLED` (default false until soak).
+**Implementation:**
+- `[⏳ TODO]` `services/tool-runner/` (`POST /execute`) with cgroup/CPU/network-egress limits + seccomp.
+- `[⏳ TODO]` Reroute `app/mcp/tools/` invocations through an HTTP client to the sidecar.
+- `[⏳ TODO]` `app/ai/security/kill_switch.py::kill_agent()` SIGTERMs the sidecar + writes the `ai.agent_killed` chain entry (consumes 51.4).
+- `[⏳ TODO]` Add the service to `docker-compose.yml`.
+- `[⏳ TODO]` Flag `SECURITY__SANDBOXED_TOOLS_ENABLED` (default false until soak).
 **Verify:** `services/tool-runner/tests/` + `app/mcp/tests/test_sandbox_dispatch.py`; manual kill drill — trigger mid-tool-call, sidecar terminates <1s + audit-chain entry recorded.
 **Plan:** ✅ `.agents/plans/51-agentic-security-hardening.md` §51.7 (blocked on 51.4).
 
