@@ -407,6 +407,13 @@ flags:
     removal_date: "2026-08-04"
     status: beta
 
+  - name: DESIGN_SYNC__BAND_GROUPING_ENABLED
+    description: Phase 53 Track C spike — regroup exploded-wrapper sections by parent_wrapper_id; feeds the 53.1 fork gate (default off)
+    owner: design-team
+    created: "2026-06-11"
+    removal_date: "2026-09-11"
+    status: alpha
+
   # ── Observability ───────────────────────────────────────────────────────────
   - name: OTEL__ENABLED
     description: OpenTelemetry instrumentation (FastAPI, SQLAlchemy, httpx) with OTLP export

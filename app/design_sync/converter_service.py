@@ -603,12 +603,23 @@ class DesignConverterService:
     ) -> MatchPhase:
         """Detect repeating sibling groups (Phase 49.1) and match sections to components."""
         from app.design_sync.component_matcher import match_all
-        from app.design_sync.sibling_detector import RepeatingGroup, detect_repeating_groups
+        from app.design_sync.sibling_detector import (
+            RepeatingGroup,
+            detect_repeating_groups,
+            group_by_wrapper,
+        )
 
         ds_settings = get_settings().design_sync
 
         grouped_sections: list[EmailSection | RepeatingGroup] = list(layout.sections)
-        if ds_settings.sibling_detection_enabled:
+        if ds_settings.band_grouping_enabled:
+            # Phase 53 C1: regroup exploded-wrapper children by their exact
+            # parent_wrapper_id band (preferred over similarity re-derivation).
+            grouped_sections = group_by_wrapper(
+                layout.sections,
+                absorb_spacers=ds_settings.band_grouping_absorb_spacers,
+            )
+        elif ds_settings.sibling_detection_enabled:
             grouped_sections = detect_repeating_groups(
                 layout.sections,
                 min_group_size=ds_settings.sibling_min_group,
@@ -900,9 +911,20 @@ class DesignConverterService:
                 hit_rate=round(cache_hit_rate, 2),
             )
 
+        # Phase 53 C1: when band grouping is on, report the band count — one per
+        # solo section, one per wrapper band — instead of the flat match count,
+        # so the ladder reflects bands. ``grouped_sections`` excludes injected
+        # spacing parts; ``section_parts`` would over-count them. Gated to keep
+        # the spike isolated from existing baselines.
+        rendered_count = (
+            len(match.grouped_sections)
+            if get_settings().design_sync.band_grouping_enabled
+            else len(match.matches)
+        )
+
         logger.info(
             "design_sync.component_converter_result",
-            sections_count=len(match.matches),
+            sections_count=rendered_count,
             warnings_count=len(render.warnings),
         )
 
@@ -910,13 +932,13 @@ class DesignConverterService:
         input_button_count = sum(len(s.buttons) for s in layout.sections)
         quality_warnings = run_quality_contracts(
             result_html,
-            input_section_count=len(match.matches),
+            input_section_count=rendered_count,
             input_button_count=input_button_count,
         )
 
         return ConversionResult(
             html=result_html,
-            sections_count=len(match.matches),
+            sections_count=rendered_count,
             warnings=render.warnings,
             layout=layout,
             compatibility_hints=compat.hints,

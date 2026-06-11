@@ -84,6 +84,15 @@ class DesignSyncConfig(BaseModel):
     sibling_detection_enabled: bool = True  # DESIGN_SYNC__SIBLING_DETECTION_ENABLED
     sibling_min_group: int = 2  # DESIGN_SYNC__SIBLING_MIN_GROUP
     sibling_similarity_threshold: float = 0.8  # DESIGN_SYNC__SIBLING_SIMILARITY_THRESHOLD
+    # Wrapper band grouping — Phase 53 Track C spike (default OFF; not committed).
+    # Regroup sections sharing a ``parent_wrapper_id`` (stamped by the wrapper
+    # unwrap pre-pass) back into one band, instead of re-deriving similarity.
+    # Design-agnostic: keys only on the exploded-wrapper id, never on any
+    # specific design. Measured via the A1 ladder; feeds the 53.1 fork gate.
+    band_grouping_enabled: bool = False  # DESIGN_SYNC__BAND_GROUPING_ENABLED
+    # When band grouping is on, drop SPACER-typed pseudo-sections inside a band
+    # (they render as padding, not their own row). Phase 53 Track C2.
+    band_grouping_absorb_spacers: bool = True  # DESIGN_SYNC__BAND_GROUPING_ABSORB_SPACERS
     # Per-email token scoping — scope to target frame subtree (Phase 49.6)
     token_scoping_enabled: bool = True  # DESIGN_SYNC__TOKEN_SCOPING_ENABLED
     # Design-sync → EmailTree bridge (Phase 49.8)
