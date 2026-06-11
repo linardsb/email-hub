@@ -1,5 +1,10 @@
 # Pre-commit hooks — run `pre-commit install` or `make install-hooks`
 # Docs: https://pre-commit.com
+#
+# These run at commit / commit-msg time. The full gate on push is handled by a
+# raw pre-push hook (scripts/ci-local-fallback.sh), installed by
+# `make install-hooks` — not by pre-commit, so a long `make check` run isn't
+# failed by unrelated file churn during the run.
 repos:
   # === General file hygiene ===
   - repo: https://github.com/pre-commit/pre-commit-hooks
