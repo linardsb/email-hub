@@ -157,7 +157,7 @@ class TestPersistOutcomeToMemory:
         run = _make_run(handoffs=[handoff])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch(
                 "app.knowledge.embedding.get_embedding_provider",
                 return_value=mock_embedding,
@@ -182,7 +182,7 @@ class TestPersistOutcomeToMemory:
         run = _make_run()
 
         with patch(
-            "app.core.database.get_db_context",
+            "app.core.scoped_db.get_system_db_context",
             side_effect=RuntimeError("DB unavailable"),
         ):
             # Should not raise
@@ -200,7 +200,7 @@ class TestPersistOutcomeToMemory:
         run = _make_run(handoffs=handoffs)
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -221,7 +221,7 @@ class TestPersistOutcomeToMemory:
         run = _make_run(handoffs=[])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),

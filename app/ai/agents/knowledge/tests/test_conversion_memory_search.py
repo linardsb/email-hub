@@ -38,7 +38,7 @@ class TestSearchConversionMemory:
         mock_service.recall = AsyncMock(return_value=[(mock_memory, 0.8)])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.ai.agents.knowledge.service.get_settings"),
@@ -58,7 +58,7 @@ class TestSearchConversionMemory:
         mock_service.recall = AsyncMock(return_value=[])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.ai.agents.knowledge.service.get_settings"),
@@ -86,7 +86,7 @@ class TestSearchConversionMemory:
         mock_service.recall = AsyncMock(return_value=[(mock_converter, 0.8), (mock_other, 0.7)])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.ai.agents.knowledge.service.get_settings"),
@@ -102,7 +102,7 @@ class TestSearchConversionMemory:
     @pytest.mark.asyncio
     async def test_handles_errors_gracefully(self) -> None:
         with patch(
-            "app.core.database.get_db_context",
+            "app.core.scoped_db.get_system_db_context",
             side_effect=RuntimeError("DB down"),
         ):
             results = await _search_conversion_memory("conversion", None)

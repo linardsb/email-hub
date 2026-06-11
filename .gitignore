@@ -160,3 +160,8 @@ email-templates/training_HTML/**/*.png
 # (force-added). Everything else stays out — pull from the design library
 # when needed and force-add specific files: git add -f email-templates/Icons/...
 email-templates/Icons/
+
+# Throwaway investigation scratch dirs (probes, WIP scorers, render dumps).
+# Also excluded from ruff (pyproject [tool.ruff] exclude) so they don't fail lint.
+.tmpscratch/
+.tmp_verify/

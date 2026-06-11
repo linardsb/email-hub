@@ -167,12 +167,12 @@ async def _search_conversion_memory(
     no memories found or service unavailable.
     """
     try:
-        from app.core.database import get_db_context
+        from app.core.scoped_db import get_system_db_context
         from app.knowledge.embedding import get_embedding_provider
         from app.memory.service import MemoryService
 
         settings = get_settings()
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(settings)
             service = MemoryService(db, embedding_provider)
             memories = await service.recall(

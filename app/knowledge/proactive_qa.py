@@ -164,7 +164,7 @@ async def _recall_component_warnings(
     but queries by component slugs instead of agent names.
     """
     from app.core.config import get_settings
-    from app.core.database import get_db_context
+    from app.core.scoped_db import get_system_db_context
     from app.knowledge.embedding import get_embedding_provider
     from app.memory.service import MemoryService
 
@@ -173,7 +173,7 @@ async def _recall_component_warnings(
     client_part = " ".join(client_ids[:5])
     query = f"failure_pattern component {slug_part} email client {client_part}"
 
-    async with get_db_context() as db:
+    async with get_system_db_context() as db:
         embedding_provider = get_embedding_provider(get_settings())
         service = MemoryService(db, embedding_provider)
         memories = await service.recall(

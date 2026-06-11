@@ -248,7 +248,7 @@ class TestPersistFailurePatterns:
         ]
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -270,7 +270,7 @@ class TestPersistFailurePatterns:
     @pytest.mark.asyncio()
     async def test_error_safe(self) -> None:
         with patch(
-            "app.core.database.get_db_context",
+            "app.core.scoped_db.get_system_db_context",
             side_effect=RuntimeError("DB unavailable"),
         ):
             # Should not raise
@@ -305,7 +305,7 @@ class TestPersistFailurePatterns:
         ]
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -397,7 +397,7 @@ class TestRecallFailurePatterns:
         )
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -423,7 +423,7 @@ class TestRecallFailurePatterns:
         mock_service.recall = AsyncMock(return_value=[(mock_memory, 0.8)])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -438,7 +438,7 @@ class TestRecallFailurePatterns:
     @pytest.mark.asyncio()
     async def test_recall_error_returns_empty(self) -> None:
         with patch(
-            "app.core.database.get_db_context",
+            "app.core.scoped_db.get_system_db_context",
             side_effect=RuntimeError("DB unavailable"),
         ):
             result = await recall_failure_patterns("scaffolder", ("outlook_2016",), project_id=1)
@@ -457,7 +457,7 @@ class TestRecallFailurePatterns:
         mock_service.recall = AsyncMock(return_value=[(mock_memory, 0.1)])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),

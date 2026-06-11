@@ -300,7 +300,7 @@ class ScaffolderPipeline:
         """
         try:
             from app.core.config import get_settings
-            from app.core.database import get_db_context
+            from app.core.scoped_db import get_system_db_context
             from app.knowledge.embedding import get_embedding_provider
             from app.memory.service import MemoryService
 
@@ -308,7 +308,7 @@ class ScaffolderPipeline:
             if not settings.design_sync.conversion_memory_enabled:
                 return None
 
-            async with get_db_context() as db:
+            async with get_system_db_context() as db:
                 embedding_provider = get_embedding_provider(settings)
                 service = MemoryService(db, embedding_provider)
                 memories = await service.recall(

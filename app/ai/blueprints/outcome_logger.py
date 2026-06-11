@@ -127,7 +127,7 @@ async def persist_outcome_to_memory(
     """
     try:
         from app.core.config import get_settings
-        from app.core.database import get_db_context
+        from app.core.scoped_db import get_system_db_context
         from app.knowledge.embedding import get_embedding_provider
         from app.memory.schemas import MemoryCreate
         from app.memory.service import MemoryService
@@ -137,7 +137,7 @@ async def persist_outcome_to_memory(
         # Determine the primary agent (first in chain)
         primary_agent = run._handoff_history[0].agent_name if run._handoff_history else "blueprint"
 
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             service = MemoryService(db, embedding_provider)
 

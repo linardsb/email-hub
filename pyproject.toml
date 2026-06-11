@@ -114,6 +114,8 @@ exclude = [
     ".claude/worktrees",
     "email-templates",
     ".semgrep",
+    ".tmpscratch",
+    ".tmp_verify",
 ]
 
 [tool.ruff.lint]
