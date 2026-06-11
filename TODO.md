@@ -57,7 +57,8 @@
 - **B4 ✅** (commit `0bf96eda`) — footer de-truncation: depth-balanced `_find_matching_close` replaces the `(.*?)`+`count=1` that truncated nested `footer_content`.
 - **B6 ✅** (commit `02bb1b8e`) — clamp `width="640"`/`max-width:640px`/`width:640px` MSO widths to container; latent on corpus, unit-tested.
 - **B8 follow-up ✅** (commit `b50dcf13`) — per-button cta-pair color fidelity (`_cta_primary`/`_cta_secondary` overrides + block-scoped `_apply_cta_pair_override`); closed deferred-item `phase-53-b8-cta-pair-color-fidelity`.
-- **Merged to `main`** 2026-06-10 via `--no-ff` merge `f9787f2c` (full B2→B8 stack; merged-tree `make test` 8157 green). Residual deferred follow-ups: `phase-53-b8-{non-cta-multibutton-drop,fills-cta-slug-desync-vlm}`.
+- **Merged to `main`** 2026-06-10 via `--no-ff` merge `f9787f2c` (full B2→B8 stack; merged-tree `make test` 8157 green).
+- **B8 follow-up ✅** (commit `2bb6bdbf`, merged `7d5692f0` 2026-06-11) — slug-aware `_fills_cta`: slot set keyed on the chosen slug threaded through `_build_slot_fills`, not button count (VLM fallback path could desync slug from fills); also fixed the same desync class on `text-link` (`link_text`/`link_url`); closed deferred-item `phase-53-b8-fills-cta-slug-desync-vlm`. Rider `e3c80a81` un-reds main's `make check` (`lint-numeric` false positive on B6's "600 or 640" docstring). Residual deferred follow-up: `phase-53-b8-non-cta-multibutton-drop`.
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track B (B1–B8 table with file:line). *(≈ 1 week total.)*
 
 ### Track C — Segmentation spike (C1, C2) `[Backend]` `[Plan Ready · SPIKE]`
