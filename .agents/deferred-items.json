@@ -469,7 +469,7 @@
       "id": "phase-53-b8-non-cta-multibutton-drop",
       "phase": "53",
       "title": "Non-CTA-typed multi-button sections still drop button 2+ — B8's cta-pair routing only fires on EmailSectionType.CTA",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-06-06",
       "introduced_commit": "10e6e1e2",
@@ -481,7 +481,8 @@
       ],
       "symptom_if_broken": "A content/hero/text-block section carrying 2+ buttons renders only the first; case 10 output lacks 'DISCOVER EIGER'. Any non-CTA-typed multi-button design loses buttons silently.",
       "closes_when": "Either the boundary/layout classifier types button-dominant multi-button sections as CTA (so B8's routing catches them), or the segmentation track splits/re-types case 10 sec#1 so both buttons render. Verified by case 10 rendered output containing BOTH 'SHOP THE COLLECTION' and 'DISCOVER EIGER EXTREME 6.0'.",
-      "notes": "Discovered during B8 execution (2026-06-06). B8 shipped as CTA-only cta-pair activation by user decision; this entry records that the literal 'emit all section.buttons' intent of B8's cited lines (_fills_hero/_fills_text_block/etc.) is NOT achievable for single-CTA-slot seeds, and the real instances are a classification problem. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-a2-advisory-section-gate."
+      "notes": "Discovered during B8 execution (2026-06-06). B8 shipped as CTA-only cta-pair activation by user decision; this entry records that the literal 'emit all section.buttons' intent of B8's cited lines (_fills_hero/_fills_text_block/etc.) is NOT achievable for single-CTA-slot seeds, and the real instances are a classification problem. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-a2-advisory-section-gate. CLOSED 2026-06-11 (commit 5d0b2bdb): the original 'classification/segmentation problem' framing was WRONG. LCA analysis of case 10 sec#1 showed it is a correctly-segmented single mj-column (mj-wrapper > mj-section > mj-column > [text, text, btn, btn]); the section count is right (case 7 -> 17, case 10 -> 14, unchanged), so this is a FILL bug, not segmentation. text-block has no 'CTA slot' — _fills_text_block appended buttons[0] as inline HTML into the body slot; the fix loops over every non-placeholder button. Also fixed the white-on-white the loop surfaced: outlined buttons (stroke present — case 10 text_color #010101 + stroke #FE5219; case 7 #000000) were forced color:#ffffff and rendered invisible; stroke-gated, they now emit their designed text_color + border (solid-fill buttons keep hardcoded white — see phase-53-b8-text-block-solid-cta-text-color). A2 ladder untouched (no count change). Guard: TestButtonInTextBlock.test_text_block_renders_all_buttons (RED pre-fix on button count AND colour). Baselines 7,10 regenerated (diff-audited intended-vs-structural); cases 5,6,8,9 byte-identical. Gates green: types 0, golden-conformance 26, design_sync+components 2691, make test 8163.",
+      "closed_commit": "5d0b2bdb"
     },
     {
       "id": "phase-53-b8-fills-cta-slug-desync-vlm",
@@ -501,6 +502,23 @@
       "closes_when": "Either _fills_cta becomes slug-aware (thread the chosen slug into the filler and emit the slot set matching the seed), or the dispatch keeps cta-button/cta-pair on separate fillers. Verified: a section forced to slug 'cta-button' with 2 buttons emits cta_text/cta_url (not primary_/secondary_), and slug 'cta-pair' with 1 button does not leak pair placeholders.",
       "notes": "Found by adversarial review during B8 execution (2026-06-06). DOUBLY UNREACHABLE today: (1) vlm_fallback_enabled defaults to False (app/core/config/design_sync.py:47), and (2) match_section_with_vlm_fallback has NO non-test callers — it is not wired into the live convert_document pipeline. CTA sections also return confidence 1.0, so even an enabled VLM fallback never fires for them; the only trigger is a low-confidence NON-CTA section the VLM reclassifies to a cta slug. Logged as speculative so it surfaces if/when VLM fallback is wired up. Related: phase-53-b8-cta-pair-color-fidelity, phase-53-b8-non-cta-multibutton-drop. CLOSED 2026-06-11 (commit 2bb6bdbf): _fills_cta now keys the slot set on the chosen slug threaded through _build_slot_fills (cta-pair → primary_*/secondary_* with empty fills blanking the seed when <2 buttons; text-link → link_text/link_url, fixing the same desync class found during preflight; other CTA slugs → cta_text/cta_url). Guard: TestFillsCtaSlugAware in test_cta_fidelity.py, 4/5 proven RED pre-fix. Cases 5-10 byte-identical.",
       "closed_commit": "2bb6bdbf"
+    },
+    {
+      "id": "phase-53-b8-text-block-solid-cta-text-color",
+      "phase": "53",
+      "title": "Solid-fill text-block CTAs hardcode white label text, ignoring ButtonElement.text_color",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-06-11",
+      "introduced_commit": "5d0b2bdb",
+      "summary": "_fills_text_block renders a CTA's inline <a> with color:#ffffff for solid-fill (non-stroked) buttons, ignoring the extracted ButtonElement.text_color. The phase-53-b8-non-cta-multibutton-drop fix deliberately gated the designed-text-colour + border path on stroke presence (the unambiguous 'outlined button' signal) because solid-fill text_color is often a Figma text-node default rather than visual intent. White-on-coloured is the conventional readable choice and matches intent for case 6 (white on #006241 green) and case 8 (white on #DB291B red). BUT case 5 (maap) 'Discover ->' is a solid #0066cc blue button whose extracted design text_color is #010101 (black) — we render white, diverging from the data. White vs black cannot be adjudicated without the design render (reference PNGs are not committed to git; plan §2.3).",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_fills_text_block (fg defaults to '#ffffff'; designed text_color used only when btn.stroke_color + btn.stroke_weight present)",
+        "data/debug/5 (case 5 'Discover ->': solid #0066cc fill, design text_color #010101, rendered white-on-blue)"
+      ],
+      "symptom_if_broken": "A solid-fill text-block CTA whose design specifies dark label text renders white-on-colour instead; case 5's button shows white text where the extracted design data says #010101. Low-contrast or wrong-colour labels on non-outlined buttons in real designs.",
+      "closes_when": "Visual verification (a committed design render or a VLM compare) resolves whether case 5's solid button is white- or dark-labelled; _fills_text_block either adopts text_color for solid buttons too, or documents white as the deliberate override. Verified by case 5's rendered label colour matching the confirmed design.",
+      "notes": "Deliberate scope boundary of the phase-53-b8-non-cta-multibutton-drop fix (commit 5d0b2bdb): outlined buttons (stroke) use designed text_color + border; solid buttons keep white. Recorded because the chosen white diverges from extracted data on case 5 and can't be adjudicated without a design render — blocked on the same asset re-export as plan §A3/§A4. Related: phase-53-b8-non-cta-multibutton-drop, phase-53-b8-cta-pair-color-fidelity."
     }
   ],
   "tooling_followups": [
