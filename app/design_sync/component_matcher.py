@@ -1087,25 +1087,48 @@ def _fills_text_block(
                 if body_parts:
                     fills.append(SlotFill("body", "<br><br>".join(body_parts)))
 
-    # Append CTA button HTML to body slot (text-block has no dedicated CTA slot)
-    if section.buttons:
-        btn = section.buttons[0]
-        if not _is_placeholder(btn.text):
-            btn_url = html.escape(_safe_url(btn.url))
-            bg = _safe_color(btn.fill_color, "#0066cc")
-            cta_html = (
-                f'<a href="{btn_url}" style="display:inline-block;'
-                f"padding:10px 24px;background-color:{bg};color:#ffffff;"
-                f"text-decoration:none;{_cta_label_typography(btn)}"
-                f'border-radius:4px;">{_safe_text(btn.text)}</a>'
-            )
-            # Append to existing body fill or create new one
-            body_fill = next((f for f in fills if f.slot_id == "body"), None)
-            if body_fill:
-                idx = fills.index(body_fill)
-                fills[idx] = SlotFill("body", body_fill.value + "\n" + cta_html)
-            else:
-                fills.append(SlotFill("body", cta_html))
+    # Append CTA button HTML to body slot (text-block has no dedicated CTA slot).
+    # Emit *every* button, not just buttons[0]: a content section can carry a
+    # stacked CTA pair (e.g. mammut case 10 "SHOP THE COLLECTION" + "DISCOVER
+    # EIGER EXTREME 6.0") inside one column, and taking only the first silently
+    # dropped the rest (phase-53-b8-non-cta-multibutton-drop). Render each with
+    # its designed text colour + stroke (the model carries both) so outlined
+    # buttons — white fill, dark text, coloured border — don't collapse to
+    # invisible white-on-white from a hardcoded color:#ffffff.
+    cta_parts: list[str] = []
+    for btn in section.buttons:
+        if _is_placeholder(btn.text):
+            continue
+        btn_url = html.escape(_safe_url(btn.url))
+        bg = _safe_color(btn.fill_color, "#0066cc")
+        # Solid-fill buttons keep white label text (the conventional readable
+        # choice). An *outlined* button — one carrying a stroke, e.g. white fill +
+        # dark label + coloured border — instead renders its designed text colour
+        # + border, so it doesn't collapse to invisible white-on-white from the
+        # hardcoded color:#ffffff. Stroke presence is the unambiguous outlined
+        # signal; solid buttons' text_color is left alone (often a Figma default).
+        fg = "#ffffff"
+        border = ""
+        if btn.stroke_color and btn.stroke_weight:
+            stroke = _safe_color(btn.stroke_color, "")
+            if stroke:
+                fg = _safe_color(btn.text_color, "#1a1a1a")
+                border = f"border:{max(1, round(btn.stroke_weight))}px solid {stroke};"
+        cta_parts.append(
+            f'<a href="{btn_url}" style="display:inline-block;'
+            f"padding:10px 24px;background-color:{bg};color:{fg};"
+            f"text-decoration:none;{_cta_label_typography(btn)}{border}"
+            f'border-radius:4px;">{_safe_text(btn.text)}</a>'
+        )
+    if cta_parts:
+        cta_html = "\n".join(cta_parts)
+        # Append to existing body fill or create new one
+        body_fill = next((f for f in fills if f.slot_id == "body"), None)
+        if body_fill:
+            idx = fills.index(body_fill)
+            fills[idx] = SlotFill("body", body_fill.value + "\n" + cta_html)
+        else:
+            fills.append(SlotFill("body", cta_html))
 
     return fills
 
