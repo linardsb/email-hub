@@ -57,7 +57,7 @@ async def test_persist_judge_verdict() -> None:
     mock_db.commit = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch("app.memory.service.MemoryService", return_value=mock_memory_svc),
     ):
@@ -99,7 +99,7 @@ async def test_aggregate_identifies_failing_criteria() -> None:
     mock_db = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch("app.memory.service.MemoryService", return_value=mock_memory_svc),
     ):
@@ -135,7 +135,7 @@ async def test_aggregate_ignores_small_samples() -> None:
     mock_db = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch("app.memory.service.MemoryService", return_value=mock_memory_svc),
     ):
@@ -156,7 +156,7 @@ async def test_aggregate_no_verdicts() -> None:
     mock_db = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch("app.memory.service.MemoryService", return_value=mock_memory_svc),
     ):
@@ -189,7 +189,7 @@ async def test_aggregate_above_threshold_no_patch() -> None:
     mock_db = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch("app.memory.service.MemoryService", return_value=mock_memory_svc),
     ):

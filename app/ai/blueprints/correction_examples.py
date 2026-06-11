@@ -32,7 +32,7 @@ async def store_correction_example(
     metadata.source="correction_example".
     """
     from app.core.config import get_settings
-    from app.core.database import get_db_context
+    from app.core.scoped_db import get_system_db_context
     from app.knowledge.embedding import get_embedding_provider
     from app.memory.schemas import MemoryCreate
     from app.memory.service import MemoryService
@@ -44,7 +44,7 @@ async def store_correction_example(
         f"CHECK: {check_name}"
     )
 
-    async with get_db_context() as db:
+    async with get_system_db_context() as db:
         embedding_provider = get_embedding_provider(get_settings())
         memory_service = MemoryService(db, embedding_provider)
         await memory_service.store(
@@ -86,14 +86,14 @@ async def recall_correction_examples(
         return []
 
     from app.core.config import get_settings
-    from app.core.database import get_db_context
+    from app.core.scoped_db import get_system_db_context
     from app.knowledge.embedding import get_embedding_provider
     from app.memory.service import MemoryService
 
     query = f"agent:{agent_name} failures: {'; '.join(qa_failures[:5])}"
 
     try:
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             memory_service = MemoryService(db, embedding_provider)
             memories = await memory_service.recall(

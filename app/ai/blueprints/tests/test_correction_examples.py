@@ -41,7 +41,7 @@ async def test_store_correction_example() -> None:
     mock_db.commit = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch(
             "app.memory.service.MemoryService",
@@ -99,7 +99,7 @@ async def test_recall_filters_by_source() -> None:
     mock_db = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch(
             "app.memory.service.MemoryService",
@@ -130,7 +130,7 @@ async def test_recall_respects_score_threshold() -> None:
     mock_db = AsyncMock()
 
     with (
-        patch("app.core.database.get_db_context") as mock_db_ctx,
+        patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
         patch("app.knowledge.embedding.get_embedding_provider"),
         patch(
             "app.ai.blueprints.correction_examples.MemoryService",

@@ -199,13 +199,13 @@ async def persist_failure_patterns(
 
     try:
         from app.core.config import get_settings
-        from app.core.database import get_db_context
+        from app.core.scoped_db import get_system_db_context
         from app.knowledge.embedding import get_embedding_provider
         from app.memory.schemas import MemoryCreate
         from app.memory.service import MemoryService
 
         stored = 0
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             service = MemoryService(db, embedding_provider)
 
@@ -349,7 +349,7 @@ async def recall_failure_patterns(
 
     try:
         from app.core.config import get_settings
-        from app.core.database import get_db_context
+        from app.core.scoped_db import get_system_db_context
         from app.knowledge.embedding import get_embedding_provider
         from app.memory.service import MemoryService
 
@@ -357,7 +357,7 @@ async def recall_failure_patterns(
         client_names = ", ".join(client_ids[:5])  # Cap query length
         query = f"failure_pattern {agent_name} QA failure email client {client_names}"
 
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             service = MemoryService(db, embedding_provider)
             memories = await service.recall(

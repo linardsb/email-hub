@@ -43,12 +43,12 @@ async def persist_judge_verdict(
     Each criterion result is stored separately so aggregation can group by criterion.
     """
     from app.core.config import get_settings
-    from app.core.database import get_db_context
+    from app.core.scoped_db import get_system_db_context
     from app.knowledge.embedding import get_embedding_provider
     from app.memory.schemas import MemoryCreate
     from app.memory.service import MemoryService
 
-    async with get_db_context() as db:
+    async with get_system_db_context() as db:
         embedding_provider = get_embedding_provider(get_settings())
         memory_service = MemoryService(db, embedding_provider)
 
@@ -94,12 +94,12 @@ async def aggregate_verdicts(
     >= MIN_VERDICT_SAMPLES samples.
     """
     from app.core.config import get_settings
-    from app.core.database import get_db_context
+    from app.core.scoped_db import get_system_db_context
     from app.knowledge.embedding import get_embedding_provider
     from app.memory.service import MemoryService
 
     try:
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             memory_service = MemoryService(db, embedding_provider)
 

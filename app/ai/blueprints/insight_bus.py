@@ -249,13 +249,13 @@ async def persist_insights(
 
     try:
         from app.core.config import get_settings
-        from app.core.database import get_db_context
+        from app.core.scoped_db import get_system_db_context
         from app.knowledge.embedding import get_embedding_provider
         from app.memory.schemas import MemoryCreate
         from app.memory.service import MemoryService
 
         stored = 0
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             service = MemoryService(db, embedding_provider)
 
@@ -327,14 +327,14 @@ async def recall_insights(
     """
     try:
         from app.core.config import get_settings
-        from app.core.database import get_db_context
+        from app.core.scoped_db import get_system_db_context
         from app.knowledge.embedding import get_embedding_provider
         from app.memory.service import MemoryService
 
         client_names = ", ".join((client_ids or ())[:5])
         query = f"cross_agent_insight {agent_name} email rendering {client_names}"
 
-        async with get_db_context() as db:
+        async with get_system_db_context() as db:
             embedding_provider = get_embedding_provider(get_settings())
             service = MemoryService(db, embedding_provider)
             memories = await service.recall(

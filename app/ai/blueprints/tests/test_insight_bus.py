@@ -263,7 +263,7 @@ class TestPersistInsights:
         insight = _make_insight()
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -296,7 +296,7 @@ class TestPersistInsights:
         insight = _make_insight(evidence_count=5, target_agents=("scaffolder",))
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -318,7 +318,7 @@ class TestPersistInsights:
         insight = _make_insight(target_agents=("scaffolder", "accessibility"))
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -341,7 +341,7 @@ class TestPersistInsights:
         insight = _make_insight(target_agents=("scaffolder", "code_reviewer"))
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -387,7 +387,7 @@ class TestRecallInsights:
         mock_service.recall = AsyncMock(return_value=[(mock_memory, 0.8), (mock_non_insight, 0.7)])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -409,7 +409,7 @@ class TestRecallInsights:
         mock_service.recall = AsyncMock(return_value=[])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -431,7 +431,7 @@ class TestRecallInsights:
         mock_service.recall = AsyncMock(return_value=[])
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
@@ -473,7 +473,7 @@ class TestRecallInsights:
         )
 
         with (
-            patch("app.core.database.get_db_context") as mock_db_ctx,
+            patch("app.core.scoped_db.get_system_db_context") as mock_db_ctx,
             patch("app.knowledge.embedding.get_embedding_provider"),
             patch("app.memory.service.MemoryService", return_value=mock_service),
             patch("app.core.config.get_settings"),
