@@ -482,11 +482,16 @@ cli: .cli-ensure ## Call an API endpoint via CLI (usage: make cli c="health")
 
 # === Security ===
 
-install-hooks: ## Install pre-commit hooks (format, lint, security, secrets, commit msg)
-	pip install pre-commit 2>/dev/null || pipx install pre-commit
-	pre-commit install --install-hooks
-	pre-commit install --hook-type commit-msg
-	@echo "Pre-commit hooks installed (pre-commit + commit-msg)."
+install-hooks: ## Install git hooks (pre-commit, commit-msg, pre-push CI fallback)
+	@command -v pre-commit >/dev/null 2>&1 && PC="pre-commit" || PC="uvx pre-commit"; \
+	$$PC install --install-hooks && \
+	$$PC install --hook-type commit-msg
+	@hook="$$(git rev-parse --git-path hooks)/pre-push"; \
+	printf '#!/usr/bin/env bash\n# Installed by `make install-hooks` — runs the local CI gate when\n# GitHub Actions is unavailable. See scripts/ci-local-fallback.sh.\nexec "$$(git rev-parse --show-toplevel)/scripts/ci-local-fallback.sh" "$$@"\n' > "$$hook"; \
+	chmod +x "$$hook"
+	@echo "Git hooks installed (pre-commit + commit-msg + raw pre-push CI fallback)."
+	@echo "On push, scripts/ci-local-fallback.sh runs 'make check' only when GitHub Actions is down."
+	@echo "Force with LOCAL_CI=1, skip with LOCAL_CI=0, or bypass with 'git push --no-verify'."
 
 security-check: ## Run security lint (Ruff Bandit rules)
 	uv run ruff check app/ --select=S --ignore=S311 --no-fix
