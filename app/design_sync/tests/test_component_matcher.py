@@ -767,6 +767,49 @@ class TestButtonInTextBlock:
         assert "<a " in body.value
         assert "Shop Now" in body.value
         assert "background-color:#0066cc" in body.value
+        # Solid-fill button (no stroke) keeps white label text and no border.
+        assert "color:#ffffff" in body.value
+        assert "border:" not in body.value
+
+    def test_text_block_renders_all_buttons(self) -> None:
+        """phase-53-b8-non-cta-multibutton-drop: a content/text-block section can
+        carry a stacked CTA pair in one column (mammut case 10). Every button must
+        render with its designed colours — not just buttons[0], and not collapsed
+        to invisible white-on-white from a hardcoded color:#ffffff. RED pre-fix on
+        both counts (only the first button survived; its colour was hardcoded).
+        """
+        s = _make_section(
+            EmailSectionType.CONTENT,
+            texts=[_text("Eiger Extreme", is_heading=True), _text("Body text")],
+            buttons=[
+                ButtonElement(
+                    node_id="b1",
+                    text="SHOP THE COLLECTION",
+                    fill_color="#FFFFFF",
+                    text_color="#010101",
+                    stroke_color="#FE5219",
+                    stroke_weight=1.0,
+                ),
+                ButtonElement(
+                    node_id="b2",
+                    text="DISCOVER EIGER EXTREME 6.0",
+                    fill_color="#FFFFFF",
+                    text_color="#010101",
+                    stroke_color="#FE5219",
+                    stroke_weight=1.0,
+                ),
+            ],
+        )
+        m = match_section(s, 0)
+        assert m.component_slug == "text-block"
+        body = next(f for f in m.slot_fills if f.slot_id == "body")
+        assert "SHOP THE COLLECTION" in body.value
+        assert "DISCOVER EIGER EXTREME 6.0" in body.value
+        assert body.value.count("<a ") == 2
+        # designed colours + stroke used, not collapsed to invisible white-on-white
+        assert "color:#010101" in body.value
+        assert "border:1px solid #FE5219" in body.value
+        assert "color:#ffffff" not in body.value
 
 
 class TestURLValidation:
