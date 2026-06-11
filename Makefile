@@ -483,9 +483,15 @@ cli: .cli-ensure ## Call an API endpoint via CLI (usage: make cli c="health")
 # === Security ===
 
 install-hooks: ## Install git hooks (pre-commit, commit-msg, pre-push CI fallback)
-	@command -v pre-commit >/dev/null 2>&1 && PC="pre-commit" || PC="uvx pre-commit"; \
-	$$PC install --install-hooks && \
-	$$PC install --hook-type commit-msg
+	@# Install pre-commit *persistently* (not ephemeral uvx) so the generated
+	@# hooks record a stable INSTALL_PYTHON that survives `uv cache` pruning.
+	@command -v pre-commit >/dev/null 2>&1 \
+		|| uv tool install pre-commit 2>/dev/null \
+		|| pipx install pre-commit 2>/dev/null \
+		|| pip install --user pre-commit
+	@export PATH="$$HOME/.local/bin:$$PATH"; \
+	pre-commit install --install-hooks && \
+	pre-commit install --hook-type commit-msg
 	@hook="$$(git rev-parse --git-path hooks)/pre-push"; \
 	printf '#!/usr/bin/env bash\n# Installed by `make install-hooks` — runs the local CI gate when\n# GitHub Actions is unavailable. See scripts/ci-local-fallback.sh.\nexec "$$(git rev-parse --show-toplevel)/scripts/ci-local-fallback.sh" "$$@"\n' > "$$hook"; \
 	chmod +x "$$hook"
