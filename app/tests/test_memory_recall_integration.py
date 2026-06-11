@@ -133,6 +133,7 @@ async def test_blueprint_engine_recall_injects_memory(
     so a bare instance is sufficient and avoids constructing a full
     `BlueprintDefinition`.
     """
+
     # Engine builds its provider via get_embedding_provider(get_settings());
     # the local import inside _recall_memories resolves this patched attr. A
     # typed factory (not a lambda) keeps the patched value fully typed for
