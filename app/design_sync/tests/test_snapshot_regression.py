@@ -25,11 +25,16 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 import yaml
+from _pytest.mark.structures import ParameterSet
 
 from app.design_sync.converter_service import ConversionResult, DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
 from app.design_sync.email_design_document import EmailDesignDocument
-from app.design_sync.tests.ladder_harness import load_target_sections
+from app.design_sync.tests.ladder_harness import (
+    SEMANTIC_UNDERCOUNT_CASES,
+    SEMANTIC_UNDERCOUNT_REASON,
+    load_target_sections,
+)
 from app.design_sync.visual_verify import (
     VerificationLoopResult,
     VerificationResult,
@@ -287,29 +292,36 @@ class TestSnapshotSanity:
         assert structure.file_name, f"Empty file_name in case {case_id}"
 
 
+def _section_count_params() -> list[ParameterSet]:
+    """Per-case strictness for the A2 target gate (Phase 53 D1.4)."""
+    return [
+        pytest.param(
+            cid,
+            marks=[pytest.mark.xfail(strict=False, reason=SEMANTIC_UNDERCOUNT_REASON)]
+            if cid in SEMANTIC_UNDERCOUNT_CASES
+            else [],
+        )
+        for cid in _get_active_case_ids()
+    ]
+
+
 @pytest.mark.snapshot
 class TestSnapshotSectionCount:
     """Rendered section count vs the *design* ``target_sections`` (the Phase 53 defect).
 
     Re-pinned from ``sections`` (= the converter's own current output, which made
     this a circular gate that passed *because* the converter mis-segments) to
-    ``target_sections`` (design truth). xfail/advisory: the converter currently
-    mis-segments several fixtures and this gate is meant to *see* that, not regress
-    on it. Output drift is independently caught by
+    ``target_sections`` (design truth). Per-case strictness since Phase 53 D1:
+    band grouping (default-on after the 53.1 gate) lands cases 7/8/9 exactly on
+    target — those run STRICT; the proven-semantic under-counters (5/6/10) stay
+    xfail until Track D3. Output drift is independently caught by
     ``TestSnapshotRegression.test_snapshot_matches`` (expected.html comparison); the
     full count ladder lives in the converter-data-regression suite
-    (``TestSectionLadder``). See .agents/plans/53-converter-engine-fix.md §Track A (A2).
+    (``TestSectionLadder``). See .agents/plans/53-converter-engine-fix.md §Track A (A2)
+    and .agents/plans/53-d-fork-a-execution.md §D1.
     """
 
-    @pytest.mark.xfail(
-        reason=(
-            "A2 (plan §Track A): gate re-pinned to design target_sections; the "
-            "converter mis-segments several fixtures (Phase 53). xfail means "
-            "measuring the defect, not regressing. Red here = the real defect."
-        ),
-        strict=False,
-    )
-    @pytest.mark.parametrize("case_id", _get_active_case_ids())
+    @pytest.mark.parametrize("case_id", _section_count_params())
     def test_section_count(self, case_id: str) -> None:
         target = load_target_sections().get(case_id)
         if target is None:

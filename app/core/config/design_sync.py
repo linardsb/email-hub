@@ -54,7 +54,9 @@ class DesignSyncConfig(BaseModel):
         0.7  # DESIGN_SYNC__VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD
     )
     vlm_classification_timeout: float = 15.0  # DESIGN_SYNC__VLM_CLASSIFICATION_TIMEOUT (seconds)
-    # VLM visual verification loop (Phase 47.2)
+    # VLM visual verification loop (Phase 47.2) — RETIRED at 53.4 (2026-06-12):
+    # stays default-off until the 2026-09-10 cull; reopen conditions in
+    # .agents/plans/53-4-vlm-retirement.md. Do not credit it in fidelity claims.
     vlm_verify_enabled: bool = False  # DESIGN_SYNC__VLM_VERIFY_ENABLED
     vlm_verify_model: str = ""  # DESIGN_SYNC__VLM_VERIFY_MODEL (empty = auto-resolve vision)
     vlm_verify_timeout: float = 30.0  # DESIGN_SYNC__VLM_VERIFY_TIMEOUT (seconds)
@@ -84,6 +86,26 @@ class DesignSyncConfig(BaseModel):
     sibling_detection_enabled: bool = True  # DESIGN_SYNC__SIBLING_DETECTION_ENABLED
     sibling_min_group: int = 2  # DESIGN_SYNC__SIBLING_MIN_GROUP
     sibling_similarity_threshold: float = 0.8  # DESIGN_SYNC__SIBLING_SIMILARITY_THRESHOLD
+    # Wrapper band grouping — Phase 53 Track C, default ON since the 53.1 fork
+    # gate ratified fork (a) (2026-06-12, .agents/plans/53-1-fork-decision.md).
+    # Regroup sections sharing a ``parent_wrapper_id`` (stamped by the wrapper
+    # unwrap pre-pass) back into one band, instead of re-deriving similarity.
+    # Design-agnostic: keys only on the exploded-wrapper id, never on any
+    # specific design. Env var is the kill switch; cull the flag once soaked
+    # (review by 2026-09-10 per `make flag-audit` lifecycle).
+    band_grouping_enabled: bool = True  # DESIGN_SYNC__BAND_GROUPING_ENABLED
+    # When band grouping is on, drop SPACER-typed pseudo-sections inside a band
+    # (they render as padding, not their own row). Phase 53 Track C2.
+    band_grouping_absorb_spacers: bool = True  # DESIGN_SYNC__BAND_GROUPING_ABSORB_SPACERS
+    # Semantic peel/keep seam — Phase 53 D3. Peel `mj-wrapper → single
+    # mj-section → N column` grandkids into their own sections when the
+    # content-scale heuristic reads them as cards (imagery / card-height)
+    # rather than an atomic stat/nav row. The under-count residual is SEMANTIC
+    # (53.1 gate) — this is the discriminator. Default ON since the D3
+    # follow-up shipped the same-row side-by-side composer (peel_row_id):
+    # counts land exact (maap 13, starbucks 9) AND the A3 pixel metric holds
+    # (maap full-image recovered, starbucks +0.042). Env var = kill switch.
+    semantic_peel_enabled: bool = True  # DESIGN_SYNC__SEMANTIC_PEEL_ENABLED
     # Per-email token scoping — scope to target frame subtree (Phase 49.6)
     token_scoping_enabled: bool = True  # DESIGN_SYNC__TOKEN_SCOPING_ENABLED
     # Design-sync → EmailTree bridge (Phase 49.8)

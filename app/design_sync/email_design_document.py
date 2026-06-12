@@ -25,6 +25,7 @@ from app.design_sync.figma.layout_analyzer import (
     EmailSectionType,
     ImagePlaceholder,
     TextBlock,
+    compute_column_width_fractions,
 )
 from app.design_sync.frame_rules import CornerRadiusSpec
 from app.design_sync.protocol import (
@@ -188,15 +189,19 @@ class DocumentGradient:
     angle: float
     stops: tuple[DocumentGradientStop, ...]
     fallback_hex: str
+    node_id: str | None = None  # source node, for per-section reattachment (52.5)
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "name": self.name,
             "type": self.type,
             "angle": self.angle,
             "stops": [s.to_json() for s in self.stops],
             "fallback_hex": self.fallback_hex,
         }
+        if self.node_id is not None:
+            d["node_id"] = self.node_id
+        return d
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> DocumentGradient:
@@ -206,6 +211,7 @@ class DocumentGradient:
             angle=data["angle"],
             stops=tuple(DocumentGradientStop.from_json(s) for s in data["stops"]),
             fallback_hex=data["fallback_hex"],
+            node_id=data.get("node_id"),
         )
 
 
@@ -340,6 +346,7 @@ class DocumentTokens:
                     angle=g.angle,
                     stops=tuple((s.hex, s.position) for s in g.stops),
                     fallback_hex=g.fallback_hex,
+                    node_id=g.node_id,
                 )
                 for g in self.gradients
             ],
@@ -376,6 +383,7 @@ class DocumentTokens:
                     angle=g.angle,
                     stops=tuple(DocumentGradientStop(hex=s[0], position=s[1]) for s in g.stops),
                     fallback_hex=g.fallback_hex,
+                    node_id=g.node_id,
                 )
                 for g in tokens.gradients
             ],
@@ -636,6 +644,9 @@ class DocumentImage:
     is_background: bool = False
     export_node_id: str | None = None
     corner_radius_spec: DocumentCornerRadiusSpec | None = None
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"node_id": self.node_id, "node_name": self.node_name}
@@ -649,6 +660,10 @@ class DocumentImage:
             d["export_node_id"] = self.export_node_id
         if self.corner_radius_spec is not None:
             d["corner_radius_spec"] = self.corner_radius_spec.to_json()
+        if self.stroke_color is not None:
+            d["stroke_color"] = self.stroke_color
+        if self.stroke_weight is not None:
+            d["stroke_weight"] = self.stroke_weight
         return d
 
     @classmethod
@@ -664,6 +679,8 @@ class DocumentImage:
             corner_radius_spec=(
                 DocumentCornerRadiusSpec.from_json(crs) if crs is not None else None
             ),
+            stroke_color=data.get("stroke_color"),
+            stroke_weight=data.get("stroke_weight"),
         )
 
     @classmethod
@@ -680,6 +697,8 @@ class DocumentImage:
                 if i.corner_radius_spec is not None
                 else None
             ),
+            stroke_color=i.stroke_color,
+            stroke_weight=i.stroke_weight,
         )
 
     def to_image_placeholder(self) -> ImagePlaceholder:
@@ -693,6 +712,8 @@ class DocumentImage:
             corner_radius_spec=(
                 self.corner_radius_spec.to_spec() if self.corner_radius_spec is not None else None
             ),
+            stroke_color=self.stroke_color,
+            stroke_weight=self.stroke_weight,
         )
 
 
@@ -962,6 +983,7 @@ class DocumentSection:
     type: str
     node_name: str | None = None
     y_position: float | None = None
+    x_position: float | None = None
     width: float | None = None
     height: float | None = None
     column_layout: str = "single"
@@ -994,6 +1016,11 @@ class DocumentSection:
     physical_card_signals: tuple[str, ...] = ()
     vlm_classification: str | None = None
     vlm_confidence: float | None = None
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
+    # D3 follow-up — same-row peel id (see EmailSection.peel_row_id).
+    peel_row_id: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"id": self.id, "type": self.type}
@@ -1001,6 +1028,10 @@ class DocumentSection:
             d["node_name"] = self.node_name
         if self.y_position is not None:
             d["y_position"] = self.y_position
+        if self.x_position is not None:
+            d["x_position"] = self.x_position
+        if self.peel_row_id is not None:
+            d["peel_row_id"] = self.peel_row_id
         if self.width is not None:
             d["width"] = self.width
         if self.height is not None:
@@ -1059,6 +1090,10 @@ class DocumentSection:
             d["vlm_classification"] = self.vlm_classification
         if self.vlm_confidence is not None:
             d["vlm_confidence"] = self.vlm_confidence
+        if self.stroke_color is not None:
+            d["stroke_color"] = self.stroke_color
+        if self.stroke_weight is not None:
+            d["stroke_weight"] = self.stroke_weight
         return d
 
     @classmethod
@@ -1069,6 +1104,8 @@ class DocumentSection:
             type=data["type"],
             node_name=data.get("node_name"),
             y_position=data.get("y_position"),
+            x_position=data.get("x_position"),
+            peel_row_id=data.get("peel_row_id"),
             width=data.get("width"),
             height=data.get("height"),
             column_layout=data.get("column_layout", "single"),
@@ -1100,16 +1137,22 @@ class DocumentSection:
             physical_card_signals=tuple(data.get("physical_card_signals", [])),
             vlm_classification=data.get("vlm_classification"),
             vlm_confidence=data.get("vlm_confidence"),
+            stroke_color=data.get("stroke_color"),
+            stroke_weight=data.get("stroke_weight"),
         )
 
     def to_email_section(self) -> EmailSection:
         """Bridge to the existing EmailSection dataclass."""
+        # A8 (Phase 53 D2): fractions are derived state — recompute from the
+        # round-tripped per-column widths instead of persisting a second copy.
         pad = self.padding
+        column_groups = [c.to_column_group() for c in self.columns]
         return EmailSection(
             section_type=EmailSectionType(self.type),
             node_id=self.id,
             node_name=self.node_name or "",
             y_position=self.y_position,
+            x_position=self.x_position,
             width=self.width,
             height=self.height,
             column_layout=ColumnLayout(self.column_layout),
@@ -1125,7 +1168,8 @@ class DocumentSection:
             padding_left=pad.left if pad else None,
             item_spacing=self.item_spacing,
             element_gaps=tuple(self.element_gaps),
-            column_groups=[c.to_column_group() for c in self.columns],
+            column_groups=column_groups,
+            column_width_fractions=compute_column_width_fractions(column_groups),
             classification_confidence=self.classification_confidence,
             vlm_classification=self.vlm_classification,
             vlm_confidence=self.vlm_confidence,
@@ -1142,6 +1186,9 @@ class DocumentSection:
             inner_card_fixed_width=self.inner_card_fixed_width,
             is_physical_card_surface=self.is_physical_card_surface,
             physical_card_signals=self.physical_card_signals,
+            stroke_color=self.stroke_color,
+            stroke_weight=self.stroke_weight,
+            peel_row_id=self.peel_row_id,
         )
 
     @classmethod
@@ -1168,6 +1215,8 @@ class DocumentSection:
             type=section.section_type.value,
             node_name=section.node_name or None,
             y_position=section.y_position,
+            x_position=section.x_position,
+            peel_row_id=section.peel_row_id,
             width=section.width,
             height=section.height,
             column_layout=section.column_layout.value,
@@ -1199,6 +1248,8 @@ class DocumentSection:
             physical_card_signals=section.physical_card_signals,
             vlm_classification=section.vlm_classification,
             vlm_confidence=section.vlm_confidence,
+            stroke_color=section.stroke_color,
+            stroke_weight=section.stroke_weight,
         )
 
 

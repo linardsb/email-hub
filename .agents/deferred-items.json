@@ -369,7 +369,7 @@
       "id": "phase-52.4b-per-run-typography-structural",
       "phase": "52.4",
       "title": "Per-run typography (remove first-heading/body break) needs per-node <td> anchors — structural sub-project",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-06-01",
       "introduced_commit": "144aba27",
@@ -379,27 +379,47 @@
         "app/design_sync/component_renderer.py (_image_ dispatch ~735-741)"
       ],
       "symptom_if_broken": "Multi-heading / multi-paragraph sections render every text run with the first run's font/size/weight/color — intra-section typographic hierarchy is flattened.",
-      "closes_when": "Per-node text <td> anchors + a _text_<node_id> override target land and every text node renders its own design typography (verified on a multi-heading fixture)."
+      "closes_when": "Per-node text <td> anchors + a _text_<node_id> override target land and every text node renders its own design typography (verified on a multi-heading fixture).",
+      "closed_commit": "8c5cffd7",
+      "notes": "Closed 2026-06-12 (Phase 53 Track E, RC-D-prime). _fills_text_block emits one <td data-node-id> anchor per body text (>=2), _build_token_overrides emits per-node _text_<node_id> typography, component_renderer dispatch arm upserts into the anchor (mirrors _image_<node_id>). Verified on fixtures: case 5 (Courier New 12px label vs Helvetica 16px paragraph), case 8 (12px #DA291C label vs 15px #FFFFFF body), case 10 (Helvetica vs Geist Mono) each render their own typography; baselines regenerated, ladder counts unchanged. Also fixed the per-side padding shorthand drop (partial paddings now emit padding-* longhands). style_runs untouched (wrong lever, per entry)."
     },
     {
       "id": "phase-53-a2-advisory-section-gate",
       "phase": "53",
-      "title": "A2 section-count gate is advisory (xfail strict=False) and its target metric is per-block, not band-derived",
+      "title": "A2 section-count target gate: strict for band-grouped cases (7/8/9) since D1; semantic under-counters (5/6/10) stay xfail until Track D3",
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-06-04",
       "introduced_commit": "f897a0fa",
-      "summary": "A2 un-circulared the section-count gate. TestSectionLadder.test_ladder_no_drift hard-pins the full count ladder (candidates/analyzed/rendered/bands + per-wrapper band descriptor) to data/debug/ladder_snapshot.json (drift gate, green today); test_rendered_matches_target + TestSnapshotSectionCount xfail rendered==target_sections (defect gate). Two concessions: (1) target gate is xfail(strict=False) so it enforces nothing and a converging case becomes a silent XPASS, not a CI signal; (2) the target metric is ConversionResult.sections_count == len(match.matches) (per-BLOCK) compared to a band-count target, so convergence post-fix is not guaranteed if Track C/D groups cards via render_repeating_group at render time instead of reducing the match count (LEGO: sections_count=17 vs analyzed=21 vs target 8 bands). regression_runner.py:113 also still reads the circular manifest.sections.count for advisory collect_metrics (left as-is).",
+      "summary": "A2 un-circulared the section-count gate. TestSectionLadder.test_ladder_no_drift hard-pins the full count ladder to data/debug/ladder_snapshot.json (drift gate, green); test_rendered_matches_target + TestSnapshotSectionCount assert rendered==target_sections (target gate). Of the two original concessions, D1 (2026-06-12) closed both for the over-segmenter class: (1) the target gate now runs STRICT for cases 7/8/9 — band grouping default-on lands them exactly on target, so a regression is a hard CI failure, no silent-XPASS window; (2) the per-block-vs-band metric is resolved by C1's band-derived count (converter_service.py rendered_count = len(match.grouped_sections) when band_grouping_enabled). REMAINING (the under-segmenter half): cases 5/6/10 stay xfail(strict=False) because their under-count is proven SEMANTIC (53.1 gate — mj-section → N mj-column = 1 vs N is decided by content meaning); the strictness split is keyed on SEMANTIC_UNDERCOUNT_CASES in ladder_harness.py. regression_runner.py:113 still reads manifest.sections.count for advisory collect_metrics (counts re-pinned to flag-on output in D1, still converter-current by construction). UPDATE 2026-06-12 (D3 ship): semantic_peel_enabled default ON with the same-row side-by-side composer (peel_row_id) — cases 5/6 land exact (13/9) and moved to the STRICT target gate in both suites; SEMANTIC_UNDERCOUNT_CASES is now {'10'} only. Remaining: mammut below-candidate residual (phase-53-d3-mammut-below-candidate-undercount) + the advisory collect_metrics circularity at regression_runner.py:113.",
       "code_refs": [
-        "app/design_sync/tests/test_converter_data_regression.py (TestSectionLadder — drift gate + target xfail)",
-        "app/design_sync/tests/test_snapshot_regression.py (TestSnapshotSectionCount — target xfail)",
-        "app/design_sync/tests/ladder_harness.py (compute_ladder/band_descriptor/load_ladder_snapshot)",
-        "app/design_sync/converter_service.py:919 (sections_count=len(match.matches) — per-block)",
-        "app/design_sync/tests/regression_runner.py:113 (still reads circular manifest.sections.count, advisory)"
+        "app/design_sync/tests/test_converter_data_regression.py (test_rendered_matches_target — per-case strict/xfail)",
+        "app/design_sync/tests/test_snapshot_regression.py (TestSnapshotSectionCount — per-case strict/xfail)",
+        "app/design_sync/tests/ladder_harness.py (SEMANTIC_UNDERCOUNT_CASES/SEMANTIC_UNDERCOUNT_REASON + compute_ladder/band_descriptor)",
+        "app/design_sync/converter_service.py:919-923 (rendered_count = len(match.grouped_sections) when band grouping on)",
+        "app/design_sync/tests/regression_runner.py:113 (reads manifest.sections.count, advisory)"
       ],
-      "symptom_if_broken": "Section-count gates stay green/xfail even when the converter converges to (or regresses from) the design target — no positive CI signal that a Track C/D segmentation fix actually closed the gap; or a forgotten ladder_snapshot.json commit silently drops the drift gate.",
-      "closes_when": "At the 53.1/D fork: the converter converges on the fixtures AND the target gate is tightened (strict=True, or a band-derived metric such as len(section_parts)/band_descriptor) so it positively asserts convergence; the regression_runner advisory metric is re-pinned or removed.",
-      "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). The drift gate is the load-bearing protection today; the target gate is only the headline-gap measure."
+      "symptom_if_broken": "A band-grouping regression on 7/8/9 fails CI hard (intended). For 5/6/10 the gap stays invisible-but-measured: xfail means no positive CI signal when a D3 fix converges a case — it XPASSes silently until the case is removed from SEMANTIC_UNDERCOUNT_CASES.",
+      "closes_when": "Track D3 (semantic peel/keep seam) ships or parks: each converging case among 5/6/10 is removed from SEMANTIC_UNDERCOUNT_CASES (flipping its target gates strict); if D3 parks, the residual is documented as the per-client honest ceiling (53.7) and this entry closes with that pointer.",
+      "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). PARTIAL CLOSE 2026-06-12 (Phase 53 D1, sub-plan .agents/plans/53-d-fork-a-execution.md §D1): over-segmenter half closed — band_grouping_enabled default-on, baselines 5/7/8/9/10 regenerated with intended-vs-structural diff audit (zero content loss, band re-nesting + band bgcolor fills + spacer-boundary shifts only), ladder snapshot regenerated (rendered now equals bands on all 6), target gates strict for 7/8/9 in BOTH suites. Under-segmenter half re-pointed at D3 per the 53.1 decision (.agents/plans/53-1-fork-decision.md). D3 spike landed 2026-06-12 (f632b8df, DESIGN_SYNC__SEMANTIC_PEEL_ENABLED default off): heuristic hits maap 13 + starbucks 9 exact without regressing 7/8/9 — ship/park gate pending; mammut's gap is a different shape (see phase-53-d3-mammut-below-candidate-undercount)."
+    },
+    {
+      "id": "phase-53-d3-mammut-below-candidate-undercount",
+      "phase": "53",
+      "title": "Mammut (case 10) under-counts below candidate level — not the single-child-wrapper shape, unreachable by the D3 peel",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-12",
+      "introduced_commit": "f632b8df",
+      "summary": "The D3 semantic peel closes maap (9→13) and starbucks (5→9) exactly, but mammut stays at 12 vs target 18. Its gap sits BELOW the candidate row: the raw tree's own band count is 12 (ladder candidates=12 vs target_sections=18), and a fixture survey found zero `mj-wrapper → single mj-section → ≥2 column` shapes in case 10 — so neither the constrained one-level peel nor a fork-(b) faithful tree walk surfaces the missing 6 sections. The hidden sections live deeper than one peel level or inside shapes the candidate grammar does not see; naive deep recursion was prototyped at the spike and REJECTED (over-segments: LEGO 8→18, maap 9→19, spike doc §C2b).",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py (_peelable_grandkids — the shape predicate that finds nothing in case 10)",
+        "app/design_sync/tests/ladder_harness.py (SEMANTIC_UNDERCOUNT_CASES — '10' stays xfail)",
+        "data/debug/manifest.yaml (case 10: sections 12 vs target_sections 18)"
+      ],
+      "symptom_if_broken": "Case 10's A2 target gate xfails forever (12 != 18) with no path to convergence; anyone enabling DESIGN_SYNC__SEMANTIC_PEEL_ENABLED expecting all under-segmenters to converge sees mammut unchanged and may misread the seam as broken.",
+      "closes_when": "Either the 53.7 honest-ceiling doc records the mammut residual as a known cap (with the per-client table pointing here), or a deeper actuator (depth-bounded peel with a stronger discriminator, or the 53.3/53.5 escape hatches) surfaces the hidden sections and case 10 converges on the ladder.",
+      "notes": "NOT a fork-(b) reopen trigger: the decision doc's reopen conditions are seed-grammar caps, and the candidates row proves the tree walk reproduces this under-count (53-1-fork-decision.md §finding 2)."
     },
     {
       "id": "tech-debt-03-memory-recall-dead-on-read",
@@ -520,6 +540,39 @@
       "symptom_if_broken": "A solid-fill text-block CTA whose design specifies dark label text renders white-on-colour instead; case 5's button shows white text where the extracted design data says #010101. Low-contrast or wrong-colour labels on non-outlined buttons in real designs.",
       "closes_when": "Visual verification (a committed design render or a VLM compare) resolves whether case 5's solid button is white- or dark-labelled; _fills_text_block either adopts text_color for solid buttons too, or documents white as the deliberate override. Verified by case 5's rendered label colour matching the confirmed design.",
       "notes": "Deliberate scope boundary of the phase-53-b8-non-cta-multibutton-drop fix (commit 5d0b2bdb): outlined buttons (stroke) use designed text_color + border; solid buttons keep white. Recorded because the chosen white diverges from extracted data on case 5 and can't be adjudicated without a design render — blocked on the same asset re-export as plan §A3/§A4. Related: phase-53-b8-non-cta-multibutton-drop, phase-53-b8-cta-pair-color-fidelity."
+    },
+    {
+      "id": "phase-53.7-typography-maxitems-cap",
+      "phase": "53.7",
+      "title": "email-design-document-v1.json caps tokens.typography at maxItems:200 — LEGO converter output emits 234, so validate() would reject a real document",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-06-12",
+      "introduced_commit": "33d20b9d",
+      "summary": "data/schemas/email-design-document-v1.json ($defs/tokens/properties/typography) caps the typography token array at 200 entries; converting LEGO (case 7) emits 234. Latent today because no converter path calls EmailDesignDocument.validate() (email_design_document.py:1379) — the schema only binds when something validates a persisted document. Surfaced in .agents/plans/53-converter-engine-fix.md §7 (risks) and formalized at the 53.7 close-out.",
+      "code_refs": [
+        "data/schemas/email-design-document-v1.json ($defs/tokens/properties/typography maxItems)",
+        "app/design_sync/email_design_document.py:1379 (validate())"
+      ],
+      "symptom_if_broken": "Any future feature that schema-validates a persisted EmailDesignDocument (import gate, API contract check, snapshot lint) hard-fails on typography-rich designs like LEGO with a maxItems violation — looking like a converter regression when it is a stale schema cap.",
+      "closes_when": "The cap is raised (or typography tokens deduped below it) AND EmailDesignDocument.validate() passes on case-7 converter output, guarded by a test that validates a real fixture document."
+    },
+    {
+      "id": "phase-53.7-asset-reexport-prerequisite",
+      "phase": "53.7",
+      "title": "Fixture image assets are local-only (gitignored) — fresh clones and CI cannot reproduce the A3 pixel metric beyond case 5",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-12",
+      "introduced_commit": "7894ff03",
+      "summary": "A4 resolved every emitted node-id to an on-disk assets/<id>.png for all 6 fixtures via scripts/export-case-assets.py (Figma image API, scale=2; bookkeeping in .agents/figma-cache/exports.json), but data/debug/*/assets/ stays gitignored — only case 5's PNGs (+ rendered_w600.png) are committed. A fresh clone or CI must re-run the export script with a FIGMA_TOKEN to score any other fixture; this is the same same-input variance class plan §A1 warned about — surfaced at A4, not resolved.",
+      "code_refs": [
+        "scripts/export-case-assets.py",
+        ".gitignore (data/debug/*/* allowlist — case-5 fixtures only)",
+        "app/design_sync/fidelity_case_scorer.py (CI scores committed case-5 PNGs only)"
+      ],
+      "symptom_if_broken": "A3 advisory numbers quietly become single-fixture (case 5, an under-segmenter) on any machine without a prior local export — fork/regression judgments made on them over-weight one fixture class; a future gate wired to multi-fixture scores fails on fresh checkouts with missing-asset errors.",
+      "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI."
     }
   ],
   "tooling_followups": [

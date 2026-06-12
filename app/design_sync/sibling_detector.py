@@ -132,6 +132,78 @@ def detect_repeating_groups(
     return result
 
 
+def group_by_wrapper(
+    sections: list[EmailSection],
+    *,
+    absorb_spacers: bool = True,
+) -> list[EmailSection | RepeatingGroup]:
+    """Group consecutive sections sharing a ``parent_wrapper_id`` into bands.
+
+    Phase 53 Track C1. Unlike :func:`detect_repeating_groups` — which re-derives
+    structural similarity and is defeated by the alternating image/text card
+    explosion a coloured wrapper produces — this uses the EXACT band membership
+    ``_expand_container_wrappers`` already stamped at explosion time: every
+    section carrying the same ``parent_wrapper_id`` came from one wrapper and is
+    therefore one band.
+
+    Design-agnostic: keys only on the wrapper id the unwrap pre-pass recorded,
+    never on any specific design. A wrapper that exploded into a single section
+    (``parent_wrapper_id`` set but no sibling) passes through as a solo section;
+    sections with no ``parent_wrapper_id`` pass through unchanged.
+
+    When ``absorb_spacers`` is set (Track C2), SPACER/DIVIDER pseudo-sections
+    inside a band are dropped — they describe inter-card padding, not their own
+    rendered row. A band's wrapper fill (``container_bg``) becomes the band
+    background.
+
+    NOTE (spike finding): grouping is unconditional on wrapper membership — a
+    band is one visual unit regardless of whether its children are similar.
+    Requiring similarity to group was prototyped (Track C2) and rejected: it
+    splits LEGO's heterogeneous-but-single colour bands (content/content/footer
+    under one wrapper), which must render as one section. The under-segmenter
+    fix needs the opposite policy on the same signal — see the report / 53.1.
+    """
+    result: list[EmailSection | RepeatingGroup] = []
+    i = 0
+    n = len(sections)
+    while i < n:
+        wid = sections[i].parent_wrapper_id
+        if wid is None:
+            result.append(sections[i])
+            i += 1
+            continue
+
+        run: list[EmailSection] = []
+        j = i
+        while j < n and sections[j].parent_wrapper_id == wid:
+            run.append(sections[j])
+            j += 1
+
+        members = [s for s in run if s.section_type not in _SKIP_TYPES] if absorb_spacers else run
+
+        if len(members) >= 2:
+            result.append(
+                RepeatingGroup(
+                    sections=members,
+                    container_bgcolor=members[0].container_bg,
+                    group_confidence=1.0,
+                )
+            )
+            logger.info(
+                "sibling.wrapper_band_grouped",
+                wrapper_id=wid,
+                section_count=len(members),
+                absorbed=len(run) - len(members),
+            )
+        else:
+            # Single real child (or all-spacer band) — emit the surviving
+            # sections individually so nothing is lost.
+            result.extend(members or run)
+        i = j
+
+    return result
+
+
 def _compute_signature(section: EmailSection) -> SiblingSignature:
     height_bucket = int((section.height if section.height is not None else 0) // 20)
     return SiblingSignature(

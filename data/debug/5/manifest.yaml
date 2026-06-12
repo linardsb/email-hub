@@ -2,6 +2,6 @@ name: maap-kask
 figma_node: "2833-1623"
 description: "MAAP x KASK — 13-section email (hero, products, nav, dark footer)"
 sections:
-  count: 11
+  count: 9
   tolerance: 1
 patterns: []

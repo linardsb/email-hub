@@ -692,7 +692,7 @@ class TestArticleCardGuard:
 
 
 class TestMultiParagraphBody:
-    """Bug 53: Multiple body texts are separated by <br><br>."""
+    """Bug 53 / RC-D-prime: multi-text bodies render one <td> anchor per node."""
 
     def test_multiple_body_paragraphs(self) -> None:
         s = _make_section(
@@ -706,7 +706,7 @@ class TestMultiParagraphBody:
         m = match_section(s, 0)
         body = next(f for f in m.slot_fills if f.slot_id == "body")
         assert "<p " not in body.value
-        assert "<br><br>" in body.value
+        assert body.value.count("<td data-node-id=") == 2
         assert "First paragraph" in body.value
         assert "Second paragraph" in body.value
 
@@ -726,6 +726,101 @@ class TestMultiParagraphBody:
         assert "Para 1" in body.value
         assert "Para 2" in body.value
         assert "<br><br>" in body.value
+
+
+class TestPerNodeTypography:
+    """RC-D-prime (phase-52.4b): every body text node keeps its own typography."""
+
+    @staticmethod
+    def _two_body_section() -> EmailSection:
+        return _make_section(
+            EmailSectionType.CONTENT,
+            texts=[
+                TextBlock(node_id="h1", content="Heading", is_heading=True),
+                TextBlock(
+                    node_id="p1",
+                    content="First paragraph",
+                    font_family="Georgia",
+                    font_size=18.0,
+                    font_weight=700,
+                    line_height=24.0,
+                    text_color="#111111",
+                ),
+                TextBlock(
+                    node_id="p2",
+                    content="Second paragraph",
+                    font_family="Arial",
+                    font_size=14.0,
+                    font_weight=400,
+                    line_height=20.0,
+                    text_color="#666666",
+                ),
+            ],
+        )
+
+    def test_per_node_anchors_carry_distinct_node_ids(self) -> None:
+        m = match_section(self._two_body_section(), 0)
+        body = next(f for f in m.slot_fills if f.slot_id == "body")
+        assert '<td data-node-id="p1"' in body.value
+        assert '<td data-node-id="p2"' in body.value
+        assert "<br><br>" not in body.value
+
+    def test_per_node_overrides_carry_each_nodes_typography(self) -> None:
+        m = match_section(self._two_body_section(), 0)
+        by_target: dict[str, dict[str, str]] = {}
+        for o in m.token_overrides:
+            by_target.setdefault(o.target_class, {})[o.css_property] = o.value
+        assert by_target["_text_p1"] == {
+            "font-family": "Georgia",
+            "font-size": "18.0px",
+            "color": "#111111",
+            "font-weight": "700",
+            "line-height": "24px",
+        }
+        assert by_target["_text_p2"] == {
+            "font-family": "Arial",
+            "font-size": "14.0px",
+            "color": "#666666",
+            "font-weight": "400",
+            "line-height": "20px",
+        }
+
+    def test_single_body_text_keeps_plain_fill(self) -> None:
+        s = _make_section(
+            EmailSectionType.CONTENT,
+            texts=[
+                _text("Heading", is_heading=True),
+                _text("Only paragraph"),
+            ],
+        )
+        m = match_section(s, 0)
+        body = next(f for f in m.slot_fills if f.slot_id == "body")
+        assert body.value == "Only paragraph"
+        assert not any(o.target_class.startswith("_text_") for o in m.token_overrides)
+
+    def test_partial_padding_emits_per_side_longhands(self) -> None:
+        s = _make_section(
+            EmailSectionType.CONTENT,
+            texts=[_text("Hello")],
+            padding_top=24.0,
+            padding_bottom=32.0,
+        )
+        m = match_section(s, 0)
+        cell = [(o.css_property, o.value) for o in m.token_overrides if o.target_class == "_cell"]
+        assert cell == [("padding-top", "24px"), ("padding-bottom", "32px")]
+
+    def test_full_padding_keeps_shorthand(self) -> None:
+        s = _make_section(
+            EmailSectionType.CONTENT,
+            texts=[_text("Hello")],
+            padding_top=10.0,
+            padding_right=20.0,
+            padding_bottom=30.0,
+            padding_left=40.0,
+        )
+        m = match_section(s, 0)
+        cell = [(o.css_property, o.value) for o in m.token_overrides if o.target_class == "_cell"]
+        assert cell == [("padding", "10px 20px 30px 40px")]
 
 
 class TestPlaceholderSuppression:

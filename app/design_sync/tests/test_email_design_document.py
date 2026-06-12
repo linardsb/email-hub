@@ -33,6 +33,7 @@ from app.design_sync.figma.layout_analyzer import (
     ColumnLayout,
     EmailSectionType,
 )
+from app.design_sync.protocol import ExtractedGradient, ExtractedTokens
 
 # ── Factories ──
 
@@ -647,3 +648,99 @@ class TestDocumentEndpoints:
     def test_from_json_empty_dict_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="Malformed EmailDesignDocument"):
             EmailDesignDocument.from_json({})
+
+
+# ── Lossless Capture Tests (Phase 52.5) ──
+
+
+class TestLosslessCapture:
+    """Phase 52.5 — stroke + gradient node_id survive JSON round-trip and bridges."""
+
+    def test_section_and_image_stroke_roundtrip(self) -> None:
+        section = DocumentSection(
+            id="s1",
+            type="content",
+            stroke_color="#112233",
+            stroke_weight=2.0,
+            images=[
+                DocumentImage(
+                    node_id="i1", node_name="img", stroke_color="#445566", stroke_weight=1.0
+                )
+            ],
+        )
+        restored = DocumentSection.from_json(section.to_json())
+        assert restored.stroke_color == "#112233"
+        assert restored.stroke_weight == 2.0
+        assert restored.images[0].stroke_color == "#445566"
+        assert restored.images[0].stroke_weight == 1.0
+
+    def test_section_stroke_bridges_email_section(self) -> None:
+        section = DocumentSection(
+            id="s1",
+            type="content",
+            stroke_color="#112233",
+            stroke_weight=2.0,
+            images=[
+                DocumentImage(
+                    node_id="i1", node_name="img", stroke_color="#445566", stroke_weight=1.0
+                )
+            ],
+        )
+        email = section.to_email_section()
+        assert email.stroke_color == "#112233"
+        assert email.stroke_weight == 2.0
+        assert email.images[0].stroke_color == "#445566"
+        back = DocumentSection.from_email_section(email)
+        assert back.stroke_color == "#112233"
+        assert back.stroke_weight == 2.0
+        assert back.images[0].stroke_weight == 1.0
+
+    def test_peel_row_fields_roundtrip_and_bridge(self) -> None:
+        """D3 follow-up — x_position + peel_row_id survive JSON and both bridges."""
+        section = DocumentSection(
+            id="s1",
+            type="content",
+            x_position=293.0,
+            peel_row_id="2833:1641:r0",
+        )
+        restored = DocumentSection.from_json(section.to_json())
+        assert restored.x_position == 293.0
+        assert restored.peel_row_id == "2833:1641:r0"
+        email = restored.to_email_section()
+        assert email.x_position == 293.0
+        assert email.peel_row_id == "2833:1641:r0"
+        back = DocumentSection.from_email_section(email)
+        assert back.x_position == 293.0
+        assert back.peel_row_id == "2833:1641:r0"
+
+    def test_gradient_node_id_roundtrip(self) -> None:
+        gradient = DocumentGradient(
+            name="hero-grad",
+            type="linear",
+            angle=180.0,
+            stops=(
+                DocumentGradientStop(hex="#FF0000", position=0.0),
+                DocumentGradientStop(hex="#0000FF", position=1.0),
+            ),
+            fallback_hex="#800080",
+            node_id="5:99",
+        )
+        restored = DocumentGradient.from_json(gradient.to_json())
+        assert restored.node_id == "5:99"
+
+    def test_gradient_node_id_bridges_extracted_tokens(self) -> None:
+        extracted = ExtractedTokens(
+            gradients=[
+                ExtractedGradient(
+                    name="hero-grad",
+                    type="linear",
+                    angle=180.0,
+                    stops=(("#FF0000", 0.0), ("#0000FF", 1.0)),
+                    fallback_hex="#800080",
+                    node_id="5:99",
+                )
+            ]
+        )
+        doc_tokens = DocumentTokens.from_extracted_tokens(extracted)
+        assert doc_tokens.gradients[0].node_id == "5:99"
+        assert doc_tokens.to_extracted_tokens().gradients[0].node_id == "5:99"

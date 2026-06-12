@@ -603,12 +603,23 @@ class DesignConverterService:
     ) -> MatchPhase:
         """Detect repeating sibling groups (Phase 49.1) and match sections to components."""
         from app.design_sync.component_matcher import match_all
-        from app.design_sync.sibling_detector import RepeatingGroup, detect_repeating_groups
+        from app.design_sync.sibling_detector import (
+            RepeatingGroup,
+            detect_repeating_groups,
+            group_by_wrapper,
+        )
 
         ds_settings = get_settings().design_sync
 
         grouped_sections: list[EmailSection | RepeatingGroup] = list(layout.sections)
-        if ds_settings.sibling_detection_enabled:
+        if ds_settings.band_grouping_enabled:
+            # Phase 53 C1: regroup exploded-wrapper children by their exact
+            # parent_wrapper_id band (preferred over similarity re-derivation).
+            grouped_sections = group_by_wrapper(
+                layout.sections,
+                absorb_spacers=ds_settings.band_grouping_absorb_spacers,
+            )
+        elif ds_settings.sibling_detection_enabled:
             grouped_sections = detect_repeating_groups(
                 layout.sections,
                 min_group_size=ds_settings.sibling_min_group,
@@ -757,6 +768,7 @@ class DesignConverterService:
             ds_settings.custom_component_enabled and ds_settings.custom_component_max_per_email > 0
         )
         rendered_group_ids: set[int] = set()
+        rendered_peel_rows: set[str] = set()
 
         renderer = ComponentRenderer(container_width=container_width)
         renderer.load()
@@ -794,6 +806,45 @@ class DesignConverterService:
                     rendered_group.images,
                 )
                 continue
+
+            # Phase 53 D3 follow-up — peeled same-row siblings compose into one
+            # horizontal row (they each still count as a section; the A2 gate
+            # reads grouped_sections, which this does not touch).
+            peel_row_id = m.section.peel_row_id
+            if peel_row_id is not None:
+                if peel_row_id in rendered_peel_rows:
+                    continue
+                rendered_peel_rows.add(peel_row_id)
+                row_matches = [mm for mm in match.matches if mm.section.peel_row_id == peel_row_id]
+                if len(row_matches) > 1:
+                    # Left-to-right by design x — the global y-sort can flip
+                    # near-equal-y siblings.
+                    row_matches.sort(
+                        key=lambda mm: (
+                            mm.section.x_position if mm.section.x_position is not None else 0.0
+                        )
+                    )
+                    row_rendered = [renderer.render_section(mm) for mm in row_matches]
+                    row = renderer.render_peel_row([mm.section for mm in row_matches], row_rendered)
+                    section_parts.append(row.html)
+                    all_images.extend(row.images)
+                    miss_count += len(row_matches)
+                    self._store_section_cache(
+                        cache,
+                        connection_id,
+                        section_hashes,
+                        row_matches[0].section.node_id,
+                        row.html,
+                        row.images,
+                    )
+                    last_spacing = row_matches[-1].spacing_after
+                    if last_spacing and last_spacing > 0:
+                        section_parts.append(
+                            _SPACER_TEMPLATE.format(width=container_width, h=int(last_spacing))
+                        )
+                    continue
+                # Singleton row id (defensive — stamping requires >1 member):
+                # fall through to the solo render below.
 
             node_id = m.section.node_id
             cached_entry = cached_entries.get(node_id)
@@ -900,9 +951,20 @@ class DesignConverterService:
                 hit_rate=round(cache_hit_rate, 2),
             )
 
+        # Phase 53 C1: when band grouping is on, report the band count — one per
+        # solo section, one per wrapper band — instead of the flat match count,
+        # so the ladder reflects bands. ``grouped_sections`` excludes injected
+        # spacing parts; ``section_parts`` would over-count them. Gated to keep
+        # the spike isolated from existing baselines.
+        rendered_count = (
+            len(match.grouped_sections)
+            if get_settings().design_sync.band_grouping_enabled
+            else len(match.matches)
+        )
+
         logger.info(
             "design_sync.component_converter_result",
-            sections_count=len(match.matches),
+            sections_count=rendered_count,
             warnings_count=len(render.warnings),
         )
 
@@ -910,13 +972,13 @@ class DesignConverterService:
         input_button_count = sum(len(s.buttons) for s in layout.sections)
         quality_warnings = run_quality_contracts(
             result_html,
-            input_section_count=len(match.matches),
+            input_section_count=rendered_count,
             input_button_count=input_button_count,
         )
 
         return ConversionResult(
             html=result_html,
-            sections_count=len(match.matches),
+            sections_count=rendered_count,
             warnings=render.warnings,
             layout=layout,
             compatibility_hints=compat.hints,

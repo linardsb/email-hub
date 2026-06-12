@@ -9,6 +9,7 @@ import pytest
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
 from app.design_sync.component_renderer import (
     ComponentRenderer,
+    RenderedSection,
     _find_matching_close,
     _is_blankable_text,
 )
@@ -379,6 +380,125 @@ class TestTokenOverrideExpansion:
         assert "color:#112233" in result.html
 
 
+class TestRenderPeelRow:
+    """D3 follow-up: peeled same-row siblings compose side-by-side."""
+
+    @staticmethod
+    def _section(node_id: str, *, x: float, width: float) -> EmailSection:
+        return EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id=node_id,
+            node_name=f"card {node_id}",
+            x_position=x,
+            width=width,
+            peel_row_id="wrap:r0",
+            container_bg="#AA1733",
+        )
+
+    @staticmethod
+    def _rendered(node_id: str) -> RenderedSection:
+        return RenderedSection(
+            html=f"<table><tr><td>card {node_id}</td></tr></table>",
+            component_slug="article-card",
+            section_idx=0,
+            dark_mode_classes=(f"dm-{node_id}",),
+            images=[{"node_id": node_id, "src": f"/assets/{node_id}.png"}],
+        )
+
+    def test_widths_scale_to_container(self, renderer: ComponentRenderer) -> None:
+        """maap shape: 272 + 8 + 272 design px scale proportionally into 600."""
+        sections = [
+            self._section("a", x=0, width=272.0),
+            self._section("gut", x=272, width=8.0),
+            self._section("b", x=280, width=272.0),
+        ]
+        rendered = [self._rendered(s.node_id) for s in sections]
+        row = renderer.render_peel_row(sections, rendered)
+        assert 'data-peel-row="wrap:r0"' in row.html
+        # 272/552*600 ≈ 296, 8/552*600 ≈ 9, last absorbs rounding → 600 total
+        assert '<td width="296" valign="top">' in row.html
+        assert '<td width="9" valign="top">' in row.html
+        assert '<td width="295" valign="top">' in row.html
+        assert "max-width: 296px" in row.html
+        assert "card a" in row.html and "card b" in row.html
+
+    def test_band_bg_and_member_merge(self, renderer: ComponentRenderer) -> None:
+        sections = [
+            self._section("a", x=0, width=300.0),
+            self._section("b", x=300, width=300.0),
+        ]
+        rendered = [self._rendered(s.node_id) for s in sections]
+        row = renderer.render_peel_row(sections, rendered)
+        assert 'bgcolor="#AA1733"' in row.html
+        assert "background-color:#AA1733;" in row.html
+        assert row.dark_mode_classes == ("dm-a", "dm-b")
+        assert [img["node_id"] for img in row.images] == ["a", "b"]
+        # members render in given order inside inline-block column divs
+        assert row.html.index("card a") < row.html.index("card b")
+        assert row.html.count('class="column"') == 2
+
+
+class TestTextNodeOverrides:
+    """RC-D-prime: _text_<node_id> overrides land on per-node <td> anchors."""
+
+    _ANCHORS = (
+        '<td data-slot="body" style="font-size:16px;color:#555;">'
+        '<table role="presentation"><tr>'
+        '<td data-node-id="p1" style="mso-line-height-rule:exactly;">One</td></tr>'
+        '<tr><td data-node-id="p2" style="mso-line-height-rule:exactly;">Two</td></tr>'
+        "</table></td>"
+    )
+
+    def test_each_anchor_gets_its_own_typography(self, renderer: ComponentRenderer) -> None:
+        overrides = [
+            TokenOverride("font-size", "_text_p1", "18.0px"),
+            TokenOverride("color", "_text_p1", "#111111"),
+            TokenOverride("font-size", "_text_p2", "14.0px"),
+            TokenOverride("color", "_text_p2", "#666666"),
+        ]
+        result = renderer._apply_token_overrides(self._ANCHORS, overrides)
+        assert (
+            '<td data-node-id="p1" style="mso-line-height-rule:exactly;font-size:18.0px;color:#111111;">'
+            in result
+        )
+        assert (
+            '<td data-node-id="p2" style="mso-line-height-rule:exactly;font-size:14.0px;color:#666666;">'
+            in result
+        )
+        # The shared body slot's own style is untouched
+        assert 'data-slot="body" style="font-size:16px;color:#555;"' in result
+
+    def test_line_height_does_not_clobber_mso_rule(self, renderer: ComponentRenderer) -> None:
+        overrides = [TokenOverride("line-height", "_text_p1", "24px")]
+        result = renderer._apply_token_overrides(self._ANCHORS, overrides)
+        assert "mso-line-height-rule:exactly;line-height:24px;" in result
+
+    def test_replaces_existing_declaration(self, renderer: ComponentRenderer) -> None:
+        html_str = '<td data-node-id="p1" style="font-size:12px;">One</td>'
+        overrides = [TokenOverride("font-size", "_text_p1", "20.0px")]
+        result = renderer._apply_token_overrides(html_str, overrides)
+        assert result == '<td data-node-id="p1" style="font-size:20.0px;">One</td>'
+
+    def test_img_with_same_node_id_untouched(self, renderer: ComponentRenderer) -> None:
+        html_str = (
+            '<img data-node-id="p1" style="border:0;" src="x.png" alt="">'
+            '<td data-node-id="p1" style="">One</td>'
+        )
+        overrides = [TokenOverride("color", "_text_p1", "#111111")]
+        result = renderer._apply_token_overrides(html_str, overrides)
+        assert '<img data-node-id="p1" style="border:0;"' in result
+        assert '<td data-node-id="p1" style="color:#111111;">' in result
+
+    def test_cell_padding_longhand_upserts_into_first_td(self, renderer: ComponentRenderer) -> None:
+        html_str = '<table><tr><td style="padding:32px 24px;">Content</td></tr></table>'
+        overrides = [
+            TokenOverride("padding-top", "_cell", "24px"),
+            TokenOverride("padding-bottom", "_cell", "8px"),
+        ]
+        result = renderer._apply_token_overrides(html_str, overrides)
+        assert 'style="padding:32px 24px;padding-top:24px;padding-bottom:8px;"' in result
+
+
 class TestCtaScopedOverrides:
     """_cta token overrides must only touch CTA elements, not adjacent HTML.
 
@@ -739,3 +859,85 @@ class TestFooterContentNoTruncation:
         # Structure stays balanced — truncation orphans closing tags.
         assert result.count("<td") == result.count("</td>")
         assert result.count("<table") == result.count("</table>")
+
+
+class TestColumnWidthFractions:
+    """A8 (Phase 53 D2): column seed widths rewritten from measured fractions."""
+
+    @staticmethod
+    def _column_match(slug: str, fractions: tuple[float, ...]) -> ComponentMatch:
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="frame_1",
+            node_name="Columns",
+            column_width_fractions=fractions,
+        )
+        return ComponentMatch(
+            section_idx=0,
+            section=section,
+            component_slug=slug,
+            slot_fills=[],
+            token_overrides=[],
+        )
+
+    def test_asymmetric_two_column_widths(self, renderer: ComponentRenderer) -> None:
+        """A 2:1 split rewrites both the MSO <td> and the div max-width surfaces."""
+        match = self._column_match("column-layout-2", (2 / 3, 1 / 3))
+        result = renderer.render_section(match).html
+        assert '<td width="400" valign="top">' in result
+        assert '<td width="200" valign="top">' in result
+        assert '<td width="300" valign="top">' not in result
+        assert "max-width: 400px" in result
+        assert "max-width: 200px" in result
+        assert "max-width: 300px" not in result
+
+    def test_widths_sum_preserved_with_rounding(self, renderer: ComponentRenderer) -> None:
+        """The last column absorbs rounding so the seed's total never drifts."""
+        match = self._column_match("column-layout-3", (0.55, 0.27, 0.18))
+        result = renderer.render_section(match).html
+        widths = [int(w) for w in re.findall(r'<td width="(\d+)" valign="top">', result)]
+        assert len(widths) == 3
+        assert sum(widths) == 600
+        assert widths == [330, 162, 108]
+
+    def test_equal_within_tolerance_is_byte_stable(self, renderer: ComponentRenderer) -> None:
+        """Near-equal fractions render byte-identically to the no-fractions seed."""
+        baseline = renderer.render_section(self._column_match("column-layout-2", ())).html
+        nudged = renderer.render_section(self._column_match("column-layout-2", (0.52, 0.48))).html
+        assert nudged == baseline
+
+    def test_count_mismatch_is_no_op(self, renderer: ComponentRenderer) -> None:
+        """Fraction count != seed column count leaves the seed untouched."""
+        baseline = renderer.render_section(self._column_match("column-layout-2", ())).html
+        mismatched = renderer.render_section(
+            self._column_match("column-layout-2", (0.5, 0.3, 0.2))
+        ).html
+        assert mismatched == baseline
+
+    def test_non_column_slug_untouched(self, renderer: ComponentRenderer) -> None:
+        """Fractions on a non-column component are ignored."""
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="frame_1",
+            node_name="TestSection",
+            column_width_fractions=(0.7, 0.3),
+        )
+        with_fractions = renderer.render_section(
+            ComponentMatch(
+                section_idx=0,
+                section=section,
+                component_slug="text-block",
+                slot_fills=[],
+                token_overrides=[],
+            )
+        ).html
+        baseline = renderer.render_section(_make_match("text-block")).html
+        assert with_fractions == baseline
+
+    def test_mso_and_div_surfaces_agree(self, renderer: ComponentRenderer) -> None:
+        """MSO ghost-td widths and div max-widths carry identical values."""
+        match = self._column_match("column-layout-2", (0.75, 0.25))
+        result = renderer.render_section(match).html
+        td_widths = re.findall(r'<td width="(\d+)" valign="top">', result)
+        div_widths = re.findall(r'class="column"[^>]*?max-width:\s*(\d+)px', result)
+        assert td_widths == div_widths == ["450", "150"]

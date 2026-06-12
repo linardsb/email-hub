@@ -50,6 +50,25 @@ _CASE_IDS = ("5", "6", "7", "8", "9", "10")
 # after an INTENDED converter change:  python -m app.design_sync.tests.ladder_harness --write
 LADDER_SNAPSHOT_PATH = _DEBUG_DIR / "ladder_snapshot.json"
 
+# Cases whose remaining target gap is the PROVEN-SEMANTIC under-count (53.1 gate,
+# .agents/plans/53-1-fork-decision.md): the ``mj-section → N mj-column`` split is
+# decided by content meaning, not structure — no structural rule exists. Track D3
+# (semantic peel/keep seam) is the only path; remove each case from this set (its
+# A2 target gates then run strict) as it converges. Shared by both A2 target gates
+# (test_converter_data_regression / test_snapshot_regression — Phase 53 D1.4).
+# Cases 5/6 left this set when the D3 peel shipped default-on with the same-row
+# side-by-side composer (2026-06-12). Case 10 (mammut) stays: its gap sits BELOW
+# the candidate row — see deferred phase-53-d3-mammut-below-candidate-undercount.
+SEMANTIC_UNDERCOUNT_CASES = frozenset({"10"})
+
+SEMANTIC_UNDERCOUNT_REASON = (
+    "A2: rendered section count under-counts the design target for a SEMANTIC "
+    "reason BELOW the candidate row — unreachable by the D3 peel and by a "
+    "fork-(b) tree walk alike (deferred "
+    "phase-53-d3-mammut-below-candidate-undercount); no current path to "
+    "convergence — see docs/converter-fidelity-ceiling.md §4."
+)
+
 
 # ── target_sections source ───────────────────────────────────────
 # NOTE: the *design target* lives ONLY in the top-level data/debug/manifest.yaml

@@ -9,6 +9,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
+from app.design_sync.figma.layout_analyzer import EmailSection
 from app.design_sync.sibling_detector import RepeatingGroup
 
 logger = get_logger(__name__)
@@ -64,6 +65,24 @@ def _is_blankable_text(inner: str) -> bool:
     if "<" in without_inline:
         return False
     return without_inline.replace("&nbsp;", "").strip() != ""
+
+
+# A8 (Phase 53 D2) — the two width surfaces a column seed hardcodes per column:
+# the MSO ghost-table ``<td width="N" valign="top"`` and the inline-block
+# ``<div class="column" … max-width: Npx``. Rewritten together from measured
+# design fractions so Outlook and modern clients can't diverge.
+_COLUMN_TD_WIDTH_RE = re.compile(r'(<td width=")(\d+)(" valign="top")')
+_COLUMN_DIV_MAXWIDTH_RE = re.compile(r'(<div class="column"[^>]*?max-width:\s*)(\d+)(px)')
+# Fractions within this absolute deviation of equal keep the seed's equal
+# widths (existing equal-column baselines stay byte-stable).
+_COLUMN_FRACTION_TOLERANCE = 0.05
+
+
+def _distribute_widths(total: int, fractions: tuple[float, ...]) -> list[int]:
+    """Split ``total`` px by fractions; the last column absorbs rounding."""
+    widths = [int(total * f) for f in fractions[:-1]]
+    widths.append(total - sum(widths))
+    return widths
 
 
 def _find_matching_close(html_str: str, tag_name: str, start: int) -> int | None:
@@ -320,6 +339,8 @@ _TYPOGRAPHY_PROPS = (
     "text-transform",
     "text-decoration",
 )
+# RC-D-prime (phase-52.4b) — properties a _text_<node_id> override may carry.
+_TEXT_NODE_STYLE_PROPS = (*_TYPOGRAPHY_PROPS, "font-family", "font-size", "color", "text-align")
 _HEADING_PROP_RE: dict[str, _PropRegexSet] = {
     prop: _prop_regex_set(prop, slot_alt=_HEADING_SLOTS, class_alt=_HEADING_CLASS_ALT)
     for prop in _TYPOGRAPHY_PROPS
@@ -485,6 +506,9 @@ class ComponentRenderer:
         # 3. Update MSO table widths to match container width
         result_html = self._update_mso_widths(result_html, self._container_width)
 
+        # 3b. A8 (Phase 53 D2): per-column widths from measured design fractions
+        result_html = self._apply_column_width_fractions(result_html, match)
+
         # 4. Strip remaining placeholder URLs
         result_html = self._strip_placeholder_urls(result_html)
 
@@ -517,6 +541,79 @@ class ComponentRenderer:
         if not self._loaded:
             self.load()
         return [self.render_section(m) for m in matches]
+
+    def render_peel_row(
+        self,
+        sections: list[EmailSection],
+        rendered_items: list[RenderedSection],
+    ) -> RenderedSection:
+        """Compose peeled same-row siblings side-by-side (Phase 53 D3 follow-up).
+
+        Peeled grandkids each COUNT as their own section (A2 target gate), but
+        the design lays them out horizontally — stacking them full-width was
+        the measured maap pixel regression. Mirrors the column seeds' hybrid
+        pattern (column-layout-2.html): MSO ghost-table cells give Outlook real
+        columns; inline-block divs let narrow clients stack naturally. Cell
+        widths scale each card's design width into the container.
+        """
+        container = self._container_width
+        widths = [s.width if s.width and s.width > 0 else 0.0 for s in sections]
+        total = sum(widths)
+        if total > 0:
+            cell_widths = [round(container * w / total) for w in widths]
+        else:
+            cell_widths = [container // len(sections)] * len(sections)
+        # Last cell absorbs rounding drift (A8 precedent).
+        cell_widths[-1] = container - sum(cell_widths[:-1])
+
+        row_id = html.escape(sections[0].peel_row_id or "", quote=True)
+        bg = sections[0].container_bg
+        bg_style = f" background-color:{bg};" if bg else ""
+        bgcolor_attr = f' bgcolor="{bg}"' if bg else ""
+
+        parts: list[str] = []
+        for i, (cell_width, item) in enumerate(zip(cell_widths, rendered_items, strict=True)):
+            if i == 0:
+                parts.append(
+                    f'<!--[if mso]>\n<table role="presentation" width="{container}" '
+                    'align="center" cellpadding="0" cellspacing="0" border="0" '
+                    'style="border-collapse: collapse; mso-table-lspace: 0pt; '
+                    f'mso-table-rspace: 0pt;"><tr><td width="{cell_width}" valign="top">\n'
+                    "<![endif]-->"
+                )
+            else:
+                parts.append(
+                    f'<!--[if mso]>\n</td><td width="{cell_width}" valign="top">\n<![endif]-->'
+                )
+            parts.append(
+                f'<div class="column" style="display: inline-block; '
+                f'max-width: {cell_width}px; width: 100%; vertical-align: top;">\n'
+                f"{item.html}\n</div>"
+            )
+        parts.append("<!--[if mso]>\n</td></tr></table>\n<![endif]-->")
+
+        body = "\n".join(parts)
+        row_html = (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            f'border="0" data-peel-row="{row_id}" style="border-collapse: collapse; '
+            'mso-table-lspace: 0pt; mso-table-rspace: 0pt;">\n<tr>\n'
+            f'<td{bgcolor_attr} style="font-size: 0; text-align: center; '
+            f'padding: 0;{bg_style} mso-line-height-rule: exactly;">\n'
+            f"{body}\n</td>\n</tr>\n</table>"
+        )
+
+        images: list[dict[str, str]] = []
+        dark_classes: list[str] = []
+        for item in rendered_items:
+            images.extend(item.images)
+            dark_classes.extend(item.dark_mode_classes)
+        return RenderedSection(
+            html=row_html,
+            component_slug="peel-row",
+            section_idx=rendered_items[0].section_idx,
+            dark_mode_classes=tuple(dict.fromkeys(dark_classes)),
+            images=images,
+        )
 
     def render_repeating_group(
         self,
@@ -854,6 +951,9 @@ class ComponentRenderer:
             ):
                 node_id = target[len("_image_") :]
                 result = self._apply_image_corner_radius(result, node_id, prop, val)
+            elif target.startswith("_text_") and prop in _TEXT_NODE_STYLE_PROPS:
+                node_id = target[len("_text_") :]
+                result = self._apply_text_node_style(result, node_id, prop, val)
             elif target == "_heading" and prop == "font-family":
                 result = self._replace_heading_font(result, val)
             elif target == "_heading" and prop == "color":
@@ -873,8 +973,14 @@ class ComponentRenderer:
             elif target in ("_heading", "_body") and prop in _TYPOGRAPHY_PROPS:
                 result = self._apply_typography_prop(result, target, prop, val)
             elif target == "_cell":
-                # Replace padding on the first td with padding
-                result = self._replace_first_css_prop(result, prop, val)
+                if prop == "padding":
+                    # Replace padding on the first td with padding
+                    result = self._replace_first_css_prop(result, prop, val)
+                else:
+                    # RC-D-prime per-side longhand — seeds carry only the padding:
+                    # shorthand, so replace-only would silently no-op; an
+                    # upserted longhand wins for its side and leaves the rest.
+                    result = self._upsert_first_td_css_prop(result, prop, val)
             elif target == "_cta":
                 if prop == "background-color":
                     result = self._replace_cta_background_color(result, val)
@@ -1185,6 +1291,60 @@ class ComponentRenderer:
         )
         return result
 
+    @staticmethod
+    def _upsert_style_decl(body: str, prop: str, safe_val: str) -> str:
+        """Replace ``prop`` in a style-attribute body, or append it.
+
+        The lookbehind keeps compound names apart: ``color`` must not match
+        inside ``background-color``, nor ``line-height`` inside
+        ``mso-line-height-rule``.
+        """
+        prop_in_style = re.compile(rf'(?<![-\w]){re.escape(prop)}:\s*[^;"]+;?')
+        if prop_in_style.search(body):
+            return prop_in_style.sub(f"{prop}:{safe_val};", body, count=1)
+        sep = "" if (body == "" or body.rstrip().endswith(";")) else ";"
+        return f"{body}{sep}{prop}:{safe_val};"
+
+    def _apply_text_node_style(self, html_str: str, node_id: str, prop: str, value: str) -> str:
+        """Upsert one typography declaration into ``<td data-node-id="X">`` (RC-D-prime).
+
+        Mirrors the ``_image_<node_id>`` arm: the matcher stamps one per-node
+        ``<td>`` anchor per body text, and each ``_text_<node_id>`` override
+        lands on its own anchor so every text node keeps its own design
+        typography. ``<img>`` tags carry the same attribute and are excluded
+        by matching ``<td`` only.
+        """
+        safe_val = html.escape(value, quote=True)
+        safe_node = re.escape(node_id)
+        td_tag = re.compile(rf'<td\b[^>]*\bdata-node-id="{safe_node}"[^>]*>')
+        style_decl = re.compile(r'(style=")([^"]*)(")')
+
+        def _merge_into_td(m: re.Match[str]) -> str:
+            tag = m.group(0)
+            sm = style_decl.search(tag)
+            if sm is None:
+                return re.sub(r"(>)\Z", rf' style="{prop}:{safe_val};"\g<1>', tag, count=1)
+            new_body = self._upsert_style_decl(sm.group(2), prop, safe_val)
+            return tag[: sm.start(2)] + new_body + tag[sm.end(2) :]
+
+        return td_tag.sub(_merge_into_td, html_str)
+
+    _FIRST_TD_STYLE_RE = re.compile(r'(<td\b[^>]*\bstyle=")([^"]*)(")')
+
+    def _upsert_first_td_css_prop(self, html_str: str, prop: str, value: str) -> str:
+        """Upsert a CSS declaration into the first ``<td>``'s style attribute.
+
+        Carries the ``_cell`` per-side padding longhands (RC-D-prime): appended
+        after the seed's ``padding:`` shorthand, a longhand wins for its side
+        while the shorthand keeps supplying the others.
+        """
+        m = self._FIRST_TD_STYLE_RE.search(html_str)
+        if m is None:
+            return html_str
+        safe_val = html.escape(value, quote=True)
+        new_body = self._upsert_style_decl(m.group(2), prop, safe_val)
+        return html_str[: m.start(2)] + new_body + html_str[m.end(2) :]
+
     _CTA_LINK_COLOR_RE = re.compile(
         r'(<a\b[^>]*data-slot="cta_url"[^>]*style="[^"]*?)(?<!background-)color:\s*[^;"]+(;?)'
     )
@@ -1375,6 +1535,45 @@ class ComponentRenderer:
             html_str,
             flags=re.DOTALL,
         )
+
+    def _apply_column_width_fractions(self, html_str: str, match: ComponentMatch) -> str:
+        """Rewrite column seed widths from measured design fractions (A8, 53 D2).
+
+        Column seeds hardcode equal per-column widths. When the analyzer
+        measured an asymmetric split, redistribute the seed's own width total
+        (sum of its ghost-``<td>`` widths) by the fractions, on both the MSO
+        ghost ``<td width`` and the inline-block div ``max-width`` surfaces.
+
+        Equal-within-tolerance fractions are a no-op so existing equal-column
+        baselines stay byte-stable. Any count mismatch between fractions and
+        either surface is also a no-op — both surfaces rewrite together or not
+        at all, so MSO and non-MSO widths cannot diverge.
+        """
+        fractions = match.section.column_width_fractions
+        if not match.component_slug.startswith("column-layout") or not fractions:
+            return html_str
+
+        equal = 1.0 / len(fractions)
+        if all(abs(f - equal) <= _COLUMN_FRACTION_TOLERANCE for f in fractions):
+            return html_str
+
+        td_matches = list(_COLUMN_TD_WIDTH_RE.finditer(html_str))
+        div_matches = list(_COLUMN_DIV_MAXWIDTH_RE.finditer(html_str))
+        if len(td_matches) != len(fractions) or len(div_matches) != len(fractions):
+            return html_str
+
+        total = sum(int(m.group(2)) for m in td_matches)
+        widths = _distribute_widths(total, fractions)
+
+        def _rewrite(pattern: re.Pattern[str], source: str) -> str:
+            counter = iter(widths)
+
+            def _sub(m: re.Match[str]) -> str:
+                return f"{m.group(1)}{next(counter)}{m.group(3)}"
+
+            return pattern.sub(_sub, source)
+
+        return _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
 
     def _add_annotations(self, html_str: str, match: ComponentMatch) -> str:
         """Add builder annotations for visual builder sync."""

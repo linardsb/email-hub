@@ -101,6 +101,9 @@ class ImagePlaceholder:
     export_node_id: str | None = None  # Frame node to export (includes bg fills)
     # Rule 10 (Phase 50.5) — per-corner radii from rectangleCornerRadii.
     corner_radius_spec: CornerRadiusSpec | None = None
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
 
 @dataclass(frozen=True)
@@ -163,6 +166,10 @@ class EmailSection:
     node_id: str
     node_name: str
     y_position: float | None = None
+    # D3 follow-up — design-space x of the source frame. Needed to order
+    # peeled same-row siblings left-to-right (their y values can differ by a
+    # few px, so the global y-sort alone may flip them).
+    x_position: float | None = None
     width: float | None = None
     height: float | None = None
     column_layout: ColumnLayout = ColumnLayout.SINGLE
@@ -179,6 +186,11 @@ class EmailSection:
     item_spacing: float | None = None
     element_gaps: tuple[float, ...] = ()
     column_groups: list[ColumnGroup] = field(default_factory=list[ColumnGroup])
+    # A8 (Phase 53 D2) — normalized per-column width fractions measured from
+    # the design's column frames; ``()`` when any column width is missing.
+    # The renderer redistributes the column seed's per-<td>/div widths by
+    # these so asymmetric splits aren't forced to equal-width columns.
+    column_width_fractions: tuple[float, ...] = ()
     classification_confidence: float | None = None
     vlm_classification: str | None = None
     vlm_confidence: float | None = None
@@ -211,6 +223,13 @@ class EmailSection:
     # ``physical_card_signals`` records which heuristics fired (telemetry).
     is_physical_card_surface: bool = False
     physical_card_signals: tuple[str, ...] = ()
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
+    # D3 follow-up — peeled same-row siblings share a row id so the renderer
+    # composes them side-by-side (the design lays them out horizontally) while
+    # each still COUNTS as its own section for the A2 target gate.
+    peel_row_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -319,7 +338,7 @@ def analyze_layout(
 
     # Determine overall width from the widest top-level frame
     overall_width = max(
-        (node.width for node, _, _ in candidates if node.width is not None),
+        (node.width for node, _, _, _ in candidates if node.width is not None),
         default=None,
     )
 
@@ -331,7 +350,7 @@ def analyze_layout(
         if vlm_classifications
         else 0.0
     )
-    for idx, (node, container_bg, parent_wrapper_id) in enumerate(candidates):
+    for idx, (node, container_bg, parent_wrapper_id, peel_row_id) in enumerate(candidates):
         section_type, classification_confidence = _classify_section(
             node,
             convention,
@@ -412,7 +431,7 @@ def analyze_layout(
         if ds_cfg.physical_card_detection_enabled:
             if inner_bg is not None:
                 sibling_radii = collect_sibling_radii(
-                    [n for n, _, _ in candidates],
+                    [n for n, _, _, _ in candidates],
                     exclude_node_id=node.id,
                 )
                 detection = detect_physical_card_surface(
@@ -437,6 +456,7 @@ def analyze_layout(
                 node_id=node.id,
                 node_name=node.name,
                 y_position=node.y,
+                x_position=node.x,
                 width=node.width,
                 height=node.height,
                 column_layout=col_layout,
@@ -451,6 +471,7 @@ def analyze_layout(
                 padding_left=node.padding_left,
                 item_spacing=node.item_spacing,
                 column_groups=col_groups,
+                column_width_fractions=compute_column_width_fractions(col_groups),
                 classification_confidence=classification_confidence,
                 vlm_classification=vlm_type_str,
                 vlm_confidence=vlm_conf,
@@ -463,6 +484,9 @@ def analyze_layout(
                 inner_card_fixed_width=inner_card_fixed_width,
                 is_physical_card_surface=is_physical_card_surface,
                 physical_card_signals=physical_card_signals,
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
+                peel_row_id=peel_row_id,
             )
         )
 
@@ -540,7 +564,7 @@ def _get_section_candidates(page: DesignNode) -> list[DesignNode]:
 def _expand_container_wrappers(
     candidates: list[DesignNode],
     naming: NamingConvention,
-) -> list[tuple[DesignNode, str | None, str | None]]:
+) -> list[tuple[DesignNode, str | None, str | None, str | None]]:
     """Wrapper unwrap pre-pass (Phase 50.3, Gap 1).
 
     A ``mj-wrapper`` (or any FRAME with a coloured fill plus ≥2 ``mj-section``
@@ -559,21 +583,70 @@ def _expand_container_wrappers(
     ``None`` so existing downstream code sees the same shape it always has.
     """
     if naming != NamingConvention.MJML:
-        return [(node, None, None) for node in candidates]
+        return [(node, None, None, None) for node in candidates]
 
     if not get_settings().design_sync.wrapper_unwrap_enabled:
-        return [(node, None, None) for node in candidates]
+        return [(node, None, None, None) for node in candidates]
 
-    expanded: list[tuple[DesignNode, str | None, str | None]] = []
+    peel_enabled = get_settings().design_sync.semantic_peel_enabled
+
+    expanded: list[tuple[DesignNode, str | None, str | None, str | None]] = []
     for node in candidates:
         if _is_container_wrapper(node):
             wrapper_bg = node.fill_color
             for child in node.children:
                 if _is_section_child(child):
-                    expanded.append((child, wrapper_bg, node.id))
+                    expanded.append((child, wrapper_bg, node.id, None))
+        elif peel_enabled and (grandkids := _peelable_grandkids(node)) is not None:
+            # Phase 53 D3: constrained one-level peel. Grandkids surface as
+            # solo sections (no parent_wrapper_id — they must COUNT as
+            # sections, not regroup into one band); the wrapper fill still
+            # propagates so card surfaces keep their background. Same-row
+            # siblings share a peel_row_id so the renderer can compose them
+            # side-by-side without collapsing the section count.
+            rows = _peel_rows(grandkids)
+            logger.info(
+                "design_sync.semantic_peel_applied",
+                wrapper_id=node.id,
+                peeled_count=len(grandkids),
+                row_count=len(rows),
+            )
+            for row_idx, row in enumerate(rows):
+                row_id = f"{node.id}:r{row_idx}" if len(row) > 1 else None
+                for grandkid in row:
+                    expanded.append((grandkid, node.fill_color, None, row_id))
         else:
-            expanded.append((node, None, None))
+            expanded.append((node, None, None, None))
     return expanded
+
+
+def _peel_rows(grandkids: list[DesignNode]) -> list[list[DesignNode]]:
+    """Group peeled grandkids into visual rows by y-proximity, left-to-right.
+
+    Same-row members can sit a few px apart in y (observed 6px on the
+    starbucks card pair), so rows close over ``_Y_TOLERANCE`` against the
+    row's first member rather than requiring exact y equality.
+    """
+    ordered = sorted(
+        grandkids,
+        key=lambda g: (
+            g.y if g.y is not None else 0.0,
+            g.x if g.x is not None else 0.0,
+        ),
+    )
+    rows: list[list[DesignNode]] = []
+    for grandkid in ordered:
+        gy = grandkid.y if grandkid.y is not None else 0.0
+        if rows:
+            head = rows[-1][0]
+            hy = head.y if head.y is not None else 0.0
+            if abs(gy - hy) <= _Y_TOLERANCE:
+                rows[-1].append(grandkid)
+                continue
+        rows.append([grandkid])
+    for row in rows:
+        row.sort(key=lambda g: g.x if g.x is not None else 0.0)
+    return rows
 
 
 def _is_container_wrapper(node: DesignNode) -> bool:
@@ -582,6 +655,65 @@ def _is_container_wrapper(node: DesignNode) -> bool:
         return False
     section_children = [c for c in node.children if _is_section_child(c)]
     return len(section_children) >= 2
+
+
+# Column height below which an image-free grandkid row reads as one atomic
+# data row (stat numbers, fine print) rather than content cards. Sits between
+# observed stat rows (~30px) and the smallest peel-worthy content row
+# (icon+label nav, ~64px); content-scale, never fixture-keyed.
+_PEEL_MIN_CARD_HEIGHT = 48.0
+
+
+def _peelable_grandkids(node: DesignNode) -> list[DesignNode] | None:
+    """Constrained one-level peel target check (Phase 53 D3, spike §C2b).
+
+    The under-segmenter shape is ``mj-wrapper → single mj-section → N column
+    grandkids``: the ≥2-section-child unwrap predicate sees one direct child,
+    so the grandkid cards never surface. By MJML semantics that shape is ONE
+    section — whether it should instead count as N sections is decided by what
+    the columns *mean* (53.1 gate: proven semantic, no structural rule).
+
+    Returns the grandkid frames when the wrapper matches the shape AND the
+    content-scale heuristic classifies them as content cards (``peel``);
+    ``None`` for keep or any shape mismatch.
+    """
+    name_lower = (node.name or "").lower()
+    if "mj-wrapper" not in name_lower:
+        return None
+    section_children = [c for c in node.children if _is_section_child(c)]
+    if len(section_children) != 1:
+        return None
+    child = section_children[0]
+    grandkids = [g for g in child.children if g.type in _FRAME_TYPES]
+    if len(grandkids) < 2:
+        return None
+    if not _grandkids_are_cards(grandkids):
+        return None
+    return grandkids
+
+
+def _grandkids_are_cards(grandkids: list[DesignNode]) -> bool:
+    """Content-scale peel/keep discriminator (Phase 53 D3).
+
+    ``peel`` (True) when any column carries imagery or card-scale height —
+    product cards, icon+label nav items, image+text feature cards. ``keep``
+    (False) when every column is a short, image-free text cell: that reads as
+    one atomic data row (stat numbers), which MJML semantics already count
+    correctly as a single section.
+    """
+    for grandkid in grandkids:
+        if _subtree_has_image(grandkid):
+            return True
+        if grandkid.height is not None and grandkid.height >= _PEEL_MIN_CARD_HEIGHT:
+            return True
+    return False
+
+
+def _subtree_has_image(node: DesignNode) -> bool:
+    """True when the subtree contains any IMAGE node."""
+    if node.type == DesignNodeType.IMAGE:
+        return True
+    return any(_subtree_has_image(c) for c in node.children)
 
 
 def _is_section_child(node: DesignNode) -> bool:
@@ -1029,6 +1161,23 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
     return groups
 
 
+def compute_column_width_fractions(groups: list[ColumnGroup]) -> tuple[float, ...]:
+    """Normalize measured column widths into fractions summing to 1.0.
+
+    A8 (Phase 53 D2): returns ``()`` unless every column has a positive
+    measured width — missing data falls back to the seed's equal widths.
+    """
+    if len(groups) < 2:
+        return ()
+    widths: list[float] = []
+    for group in groups:
+        if group.width is None or group.width <= 0:
+            return ()
+        widths.append(group.width)
+    total = sum(widths)
+    return tuple(w / total for w in widths)
+
+
 def _detect_position_columns(node: DesignNode) -> list[ColumnGroup]:
     """Position-based column detection (Y-grouping, deterministic)."""
     frame_children = [
@@ -1131,6 +1280,8 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 width=node.width,
                 height=node.height,
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
     elif node.type == DesignNodeType.FRAME and node.image_ref:
@@ -1143,6 +1294,8 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 height=node.height,
                 is_background=True,
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
         # Still recurse into children (frame has content over the bg)
@@ -1165,6 +1318,9 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 height=node.height,
                 export_node_id=node.id,  # Export the frame, not just the image fill
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
+                # Border lives on the wrapper frame (like Rule 10's radii)
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
     else:

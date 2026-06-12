@@ -15,6 +15,7 @@ from app.design_sync.sibling_detector import (
     _compute_signature,
     _signature_similarity,
     detect_repeating_groups,
+    group_by_wrapper,
 )
 
 
@@ -305,3 +306,115 @@ class TestConfig:
 
         assert len(result) == 5
         assert all(isinstance(r, EmailSection) for r in result)
+
+
+def _wrapped_section(
+    *,
+    node_id: str,
+    parent_wrapper_id: str | None,
+    container_bg: str | None = None,
+    section_type: EmailSectionType = EmailSectionType.CONTENT,
+    images: list[ImagePlaceholder] | None = None,
+) -> EmailSection:
+    """An EmailSection carrying the band tags the wrapper unwrap pre-pass stamps."""
+    return EmailSection(
+        section_type=section_type,
+        node_id=node_id,
+        node_name="Section",
+        texts=[_text()],
+        images=images or [],
+        buttons=[],
+        column_layout=ColumnLayout.SINGLE,
+        column_count=1,
+        height=200,
+        bg_color=None,
+        column_groups=[],
+        container_bg=container_bg,
+        parent_wrapper_id=parent_wrapper_id,
+    )
+
+
+class TestGroupByWrapper:
+    """Phase 53 C1/C2 — band grouping by exact parent_wrapper_id."""
+
+    def test_shared_wrapper_id_collapses_to_one_band(self) -> None:
+        sections = [
+            _wrapped_section(node_id="a", parent_wrapper_id="w1", container_bg="#AA1733"),
+            _wrapped_section(node_id="b", parent_wrapper_id="w1", container_bg="#AA1733"),
+            _wrapped_section(node_id="c", parent_wrapper_id="w1", container_bg="#AA1733"),
+        ]
+        result = group_by_wrapper(sections)
+        assert len(result) == 1
+        band = result[0]
+        assert isinstance(band, RepeatingGroup)
+        assert len(band.sections) == 3
+        assert band.container_bgcolor == "#AA1733"
+
+    def test_no_wrapper_id_passes_through_solo(self) -> None:
+        sections = [
+            _wrapped_section(node_id="a", parent_wrapper_id=None),
+            _wrapped_section(node_id="b", parent_wrapper_id=None),
+        ]
+        result = group_by_wrapper(sections)
+        assert len(result) == 2
+        assert all(isinstance(r, EmailSection) for r in result)
+
+    def test_single_member_wrapper_stays_solo(self) -> None:
+        sections = [_wrapped_section(node_id="a", parent_wrapper_id="w1")]
+        result = group_by_wrapper(sections)
+        assert len(result) == 1
+        assert isinstance(result[0], EmailSection)
+
+    def test_distinct_wrapper_ids_form_distinct_bands(self) -> None:
+        sections = [
+            _wrapped_section(node_id="a", parent_wrapper_id="w1"),
+            _wrapped_section(node_id="b", parent_wrapper_id="w1"),
+            _wrapped_section(node_id="c", parent_wrapper_id="w2"),
+            _wrapped_section(node_id="d", parent_wrapper_id="w2"),
+        ]
+        result = group_by_wrapper(sections)
+        assert len(result) == 2
+        assert all(isinstance(r, RepeatingGroup) for r in result)
+
+    def test_spacer_absorbed_inside_band(self) -> None:
+        sections = [
+            _wrapped_section(node_id="a", parent_wrapper_id="w1"),
+            _wrapped_section(
+                node_id="sp", parent_wrapper_id="w1", section_type=EmailSectionType.SPACER
+            ),
+            _wrapped_section(node_id="b", parent_wrapper_id="w1"),
+        ]
+        result = group_by_wrapper(sections, absorb_spacers=True)
+        assert len(result) == 1
+        band = result[0]
+        assert isinstance(band, RepeatingGroup)
+        # SPACER dropped — only the two real cards remain as rendered rows.
+        assert [s.node_id for s in band.sections] == ["a", "b"]
+
+    def test_spacer_retained_when_absorb_off(self) -> None:
+        sections = [
+            _wrapped_section(node_id="a", parent_wrapper_id="w1"),
+            _wrapped_section(
+                node_id="sp", parent_wrapper_id="w1", section_type=EmailSectionType.SPACER
+            ),
+            _wrapped_section(node_id="b", parent_wrapper_id="w1"),
+        ]
+        result = group_by_wrapper(sections, absorb_spacers=False)
+        band = result[0]
+        assert isinstance(band, RepeatingGroup)
+        assert len(band.sections) == 3
+
+    def test_heterogeneous_band_still_groups(self) -> None:
+        # A coloured wrapper holding content + content + footer is ONE visual
+        # band and must collapse to one section regardless of dissimilarity
+        # (the LEGO wrapper-2040 case). Grouping keys on membership, not shape.
+        sections = [
+            _wrapped_section(node_id="a", parent_wrapper_id="w1"),
+            _wrapped_section(node_id="b", parent_wrapper_id="w1", images=[_image()]),
+            _wrapped_section(
+                node_id="c", parent_wrapper_id="w1", section_type=EmailSectionType.FOOTER
+            ),
+        ]
+        result = group_by_wrapper(sections)
+        assert len(result) == 1
+        assert isinstance(result[0], RepeatingGroup)

@@ -9,6 +9,7 @@ import pytest
 from app.design_sync.brief_generator import generate_brief
 from app.design_sync.diagnose.report import load_structure_from_json
 from app.design_sync.figma.layout_analyzer import (
+    ColumnGroup,
     ColumnLayout,
     DesignLayoutDescription,
     EmailSectionType,
@@ -17,6 +18,7 @@ from app.design_sync.figma.layout_analyzer import (
     _detect_content_hierarchy,
     _has_large_image_child,
     analyze_layout,
+    compute_column_width_fractions,
 )
 from app.design_sync.protocol import (
     DesignFileStructure,
@@ -1750,3 +1752,376 @@ class TestNestedPhysicalCardDetection:
         assert layout.sections.index(card_section) == 19
         assert "barcode_child" in card_section.physical_card_signals
         assert "distinct_corner_radius" in card_section.physical_card_signals
+
+
+# ── Stroke Capture (Phase 52.5) ──
+
+
+class TestStrokeCapture:
+    """Non-button strokes survive into EmailSection / ImagePlaceholder."""
+
+    def test_bordered_section_and_image_keep_stroke(self) -> None:
+        structure = DesignFileStructure(
+            file_name="Bordered Card",
+            pages=[
+                DesignNode(
+                    id="page1",
+                    name="Email",
+                    type=DesignNodeType.PAGE,
+                    children=[
+                        DesignNode(
+                            id="f1",
+                            name="Content Section",
+                            type=DesignNodeType.FRAME,
+                            x=0,
+                            y=0,
+                            width=600,
+                            height=200,
+                            stroke_color="#112233",
+                            stroke_weight=2.0,
+                            children=[
+                                DesignNode(
+                                    id="img1",
+                                    name="product",
+                                    type=DesignNodeType.IMAGE,
+                                    x=20,
+                                    y=20,
+                                    width=200,
+                                    height=100,
+                                    stroke_color="#445566",
+                                    stroke_weight=1.0,
+                                ),
+                                DesignNode(
+                                    id="t1",
+                                    name="body",
+                                    type=DesignNodeType.TEXT,
+                                    x=20,
+                                    y=140,
+                                    width=560,
+                                    height=16,
+                                    text_content="Bordered card body",
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        layout = analyze_layout(structure)
+        assert len(layout.sections) == 1
+        section = layout.sections[0]
+        assert section.stroke_color == "#112233"
+        assert section.stroke_weight == 2.0
+        assert len(section.images) == 1
+        assert section.images[0].stroke_color == "#445566"
+        assert section.images[0].stroke_weight == 1.0
+
+
+class TestColumnWidthFractions:
+    """A8 (Phase 53 D2): normalized column width fractions on EmailSection."""
+
+    def test_normalizes_asymmetric_widths(self) -> None:
+        groups = [
+            ColumnGroup(column_idx=1, node_id="a", node_name="A", width=400.0),
+            ColumnGroup(column_idx=2, node_id="b", node_name="B", width=200.0),
+        ]
+        assert compute_column_width_fractions(groups) == pytest.approx((2 / 3, 1 / 3))  # pyright: ignore[reportUnknownMemberType]
+
+    def test_missing_width_returns_empty(self) -> None:
+        groups = [
+            ColumnGroup(column_idx=1, node_id="a", node_name="A", width=400.0),
+            ColumnGroup(column_idx=2, node_id="b", node_name="B", width=None),
+        ]
+        assert compute_column_width_fractions(groups) == ()
+
+    def test_zero_width_returns_empty(self) -> None:
+        groups = [
+            ColumnGroup(column_idx=1, node_id="a", node_name="A", width=0.0),
+            ColumnGroup(column_idx=2, node_id="b", node_name="B", width=200.0),
+        ]
+        assert compute_column_width_fractions(groups) == ()
+
+    def test_single_column_returns_empty(self) -> None:
+        groups = [ColumnGroup(column_idx=1, node_id="a", node_name="A", width=600.0)]
+        assert compute_column_width_fractions(groups) == ()
+
+    def test_analyze_layout_surfaces_fractions(self) -> None:
+        """End-to-end: a 400/200 horizontal split lands on the EmailSection."""
+        # Sibling header keeps the page from unwrapping the row frame itself
+        # into per-child section candidates.
+        header = DesignNode(
+            id="hdr",
+            name="Header",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=80,
+            children=[_make_text_node("th", "Header text")],
+        )
+        row = DesignNode(
+            id="row",
+            name="columns",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=100,
+            width=600,
+            height=200,
+            layout_mode="HORIZONTAL",
+            children=[
+                DesignNode(
+                    id="a",
+                    name="Left",
+                    type=DesignNodeType.FRAME,
+                    x=0,
+                    y=0,
+                    width=400,
+                    height=200,
+                    children=[_make_text_node("ta", "Left column")],
+                ),
+                DesignNode(
+                    id="b",
+                    name="Right",
+                    type=DesignNodeType.FRAME,
+                    x=400,
+                    y=0,
+                    width=200,
+                    height=200,
+                    children=[_make_text_node("tb", "Right column")],
+                ),
+            ],
+        )
+        structure = _make_section_structure([header, row])
+        layout = analyze_layout(structure)
+        sections = [s for s in layout.sections if s.column_count == 2]
+        assert len(sections) == 1
+        assert sections[0].column_width_fractions == pytest.approx((2 / 3, 1 / 3))  # pyright: ignore[reportUnknownMemberType]
+
+
+class TestSemanticPeel:
+    """D3 (Phase 53): constrained one-level peel behind DESIGN_SYNC__SEMANTIC_PEEL_ENABLED."""
+
+    @staticmethod
+    def _column(node_id: str, *, height: float, with_image: bool, width: float = 200) -> DesignNode:
+        children: list[DesignNode] = [
+            _make_text_node(f"{node_id}-t", f"Text {node_id}"),
+        ]
+        if with_image:
+            children.append(
+                DesignNode(
+                    id=f"{node_id}-img",
+                    name="card-image",
+                    type=DesignNodeType.IMAGE,
+                    x=0,
+                    y=0,
+                    width=width,
+                    height=height / 2,
+                )
+            )
+        return DesignNode(
+            id=node_id,
+            name="mj-column",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=width,
+            height=height,
+            children=children,
+        )
+
+    @classmethod
+    def _single_section_wrapper(
+        cls, *, column_height: float, with_images: bool, n_columns: int = 2
+    ) -> DesignNode:
+        columns = [
+            cls._column(f"col{i}", height=column_height, with_image=with_images)
+            for i in range(n_columns)
+        ]
+        section = DesignNode(
+            id="sec1",
+            name="mj-section",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=column_height + 20,
+            children=columns,
+        )
+        return DesignNode(
+            id="wrap1",
+            name="mj-wrapper",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=100,
+            width=600,
+            height=column_height + 60,
+            fill_color="#AA1733",
+            children=[section],
+        )
+
+    def test_card_columns_peel(self) -> None:
+        """Image-bearing columns classify as cards → grandkids returned."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=232, with_images=True)
+        grandkids = _peelable_grandkids(wrapper)
+        assert grandkids is not None
+        assert [g.id for g in grandkids] == ["col0", "col1"]
+
+    def test_tall_imageless_columns_peel(self) -> None:
+        """Card-scale height alone (no imagery) classifies as cards."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=64, with_images=False)
+        assert _peelable_grandkids(wrapper) is not None
+
+    def test_short_stat_row_keeps(self) -> None:
+        """Short image-free columns read as one atomic data row → keep."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=30, with_images=False)
+        assert _peelable_grandkids(wrapper) is None
+
+    def test_non_wrapper_name_is_not_peelable(self) -> None:
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=232, with_images=True)
+        from dataclasses import replace
+
+        renamed = replace(wrapper, name="content-frame")
+        assert _peelable_grandkids(renamed) is None
+
+    def test_multi_section_wrapper_is_not_peelable(self) -> None:
+        """≥2 section children belong to the existing unwrap pre-pass, not the peel."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=232, with_images=True)
+        from dataclasses import replace
+
+        second = replace(wrapper.children[0], id="sec2")
+        two_sections = replace(wrapper, children=[wrapper.children[0], second])
+        assert _peelable_grandkids(two_sections) is None
+
+    def test_flag_off_keeps_single_section(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.core.config import get_settings
+
+        monkeypatch.setattr(get_settings().design_sync, "semantic_peel_enabled", False)
+        structure = self._structure_with_wrapper()
+        layout = analyze_layout(structure)
+        assert all(s.node_id != "col0" for s in layout.sections)
+
+    def test_flag_on_peels_grandkids_as_solo_sections(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Peeled grandkids surface as sections: wrapper fill propagated, no band id."""
+        from app.core.config import get_settings
+
+        monkeypatch.setattr(get_settings().design_sync, "semantic_peel_enabled", True)
+        structure = self._structure_with_wrapper()
+        layout = analyze_layout(structure)
+        peeled = [s for s in layout.sections if s.node_id in ("col0", "col1")]
+        assert len(peeled) == 2
+        for s in peeled:
+            assert s.container_bg == "#AA1733"
+            assert s.parent_wrapper_id is None
+            # D3 follow-up: same-row siblings share a peel row id
+            assert s.peel_row_id == "wrap1:r0"
+
+    @classmethod
+    def _structure_with_wrapper(cls) -> DesignFileStructure:
+        header = DesignNode(
+            id="hdr",
+            name="mj-section",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=80,
+            children=[_make_text_node("th", "Header text")],
+        )
+        wrapper = cls._single_section_wrapper(column_height=232, with_images=True)
+        return _make_section_structure([header, wrapper])
+
+
+class TestPeelRows:
+    """D3 follow-up: ``_peel_rows`` groups peeled grandkids into visual rows."""
+
+    @staticmethod
+    def _card(node_id: str, *, x: float, y: float, width: float = 200) -> DesignNode:
+        return DesignNode(
+            id=node_id,
+            name="mj-column",
+            type=DesignNodeType.FRAME,
+            x=x,
+            y=y,
+            width=width,
+            height=232,
+            children=[
+                DesignNode(
+                    id=f"{node_id}-img",
+                    name="card-image",
+                    type=DesignNodeType.IMAGE,
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=116,
+                )
+            ],
+        )
+
+    def test_groups_near_y_and_orders_by_x(self) -> None:
+        """Starbucks shape: same visual row, y differs by 6px, right card first."""
+        from app.design_sync.figma.layout_analyzer import _peel_rows
+
+        right = self._card("right", x=300, y=4341)
+        left = self._card("left", x=0, y=4347)
+        rows = _peel_rows([right, left])
+        assert len(rows) == 1
+        assert [g.id for g in rows[0]] == ["left", "right"]
+
+    def test_splits_distinct_rows(self) -> None:
+        from app.design_sync.figma.layout_analyzer import _peel_rows
+
+        a = self._card("a", x=0, y=100)
+        b = self._card("b", x=300, y=100)
+        c = self._card("c", x=0, y=500)
+        rows = _peel_rows([c, b, a])
+        assert [[g.id for g in row] for row in rows] == [["a", "b"], ["c"]]
+
+    def test_singleton_row_gets_no_row_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Stacked grandkids (one per row) surface without a peel_row_id."""
+        from app.core.config import get_settings
+        from app.design_sync.figma.layout_analyzer import (
+            NamingConvention,
+            _expand_container_wrappers,
+        )
+
+        monkeypatch.setattr(get_settings().design_sync, "semantic_peel_enabled", True)
+        stacked = DesignNode(
+            id="wrapS",
+            name="mj-wrapper",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=600,
+            fill_color="#AA1733",
+            children=[
+                DesignNode(
+                    id="secS",
+                    name="mj-section",
+                    type=DesignNodeType.FRAME,
+                    x=0,
+                    y=0,
+                    width=600,
+                    height=560,
+                    children=[
+                        self._card("top", x=0, y=0),
+                        self._card("bottom", x=0, y=300),
+                    ],
+                )
+            ],
+        )
+        expanded = _expand_container_wrappers([stacked], NamingConvention.MJML)
+        by_id = {node.id: row_id for node, _, _, row_id in expanded}
+        assert by_id == {"top": None, "bottom": None}

@@ -4,6 +4,8 @@
 **Method:** 5-stage parallel audit (Figma sync · conversion · assembly · build · fidelity-measurement) with adversarial per-finding verification. 29 agents, ~1.93M tokens. The synthesis agent crashed on a structured-output error; this report is reconstructed from the 4 completed stage-audits + 21 verified verdicts (14 confirmed in-production root causes). Findings below were each re-checked against code at the cited `file:line`.
 
 > **⚠️ RE-AUDIT UPDATE (2026-05-30, workflow `wf_fa48d17b-6ea`, 23 agents).** A second forensic pass verified every root cause below at `file:line` and found **two this audit missed** plus **two it got wrong**. See the **"Re-audit verification & corrections"** appendix at the end. Headline: the single highest-ROI defect is **not** listed below — a serializer bridge (`email_design_document.py:695/743`) does `getattr(t,"text_color",None)` against a field named `color`, so **every text color is nulled before the converter runs**, and the same reader drops `text_align`/`url`/`border_radius`/`corner_radius_spec`/stroke on every path. That bridge — not "lossy ingest" — is why the shipped Phase 49/50 fidelity logic is **built, enabled-by-default, and inert**. The fix is sequenced as **Phase 52 (foundation) + Phase 53 (engine)** in `TODO.md`; full plan in `.agents/plans/52-converter-foundation.md`.
+>
+> **⚠️ STATUS UPDATE (2026-06-12, Phase 53.7).** This audit is a **historical diagnosis** — most root causes below have since been fixed; do not cite the present-tense claims as current state. See the **"Status as of 2026-06-12"** appendix at the end for the per-root-cause disposition, and `docs/converter-fidelity-ceiling.md` for the document of record on what the converter can and cannot reproduce today.
 
 ---
 
@@ -143,3 +145,20 @@ Image crop/fit (`scaleMode`/`imageTransform`) never read; node rotation dropped;
 ### Reconciliation vs `.agents/plans/50-converter-fidelity-master.md`
 
 Promoting Rules 1–11 + composite slots **decorates** the confirmed ceiling rather than removing it, and is itself **neutered by RC-B** (the bridge nulls the inputs those rules consume). No phase in the master plan addresses RC-B, RC-E (ingest effects/gradient/opacity), or RC-F (the broken metric), and its 85→99% Success-Metrics ladder is computed by the very metric this audit invalidates — treat it as an unfalsifiable projection. The operative roadmap is now **Phase 52 (foundation) + Phase 53 (engine)** in `TODO.md`; the master plan's 50–53 labels are superseded.
+
+---
+
+## Status as of 2026-06-12 (Phase 53.7 close-out — do not read the body above as current)
+
+Per-root-cause disposition after Phase 52 (foundation) + Phase 53 Tracks A–D and the Track E items shipped to date:
+
+| Root cause above | Disposition |
+|---|---|
+| **RC-A / RC-B — serializer bridge nulls/drops fidelity fields** | **FIXED** (Phase 52 foundation). Phase 49/50 logic is no longer inert; D2 later caught and fixed one recurrence of the same class (`column_width_fractions` dropped at the bridge, `e20f7ad7`). |
+| **#1 — fixed-seed converter mis-segments (the dominant structural defect)** | **FIXED for the over-segmenters, flagged for 2 of 3 under-segmenters.** Band grouping default-on (D1 `50c691b2`): LEGO/perf/slate render exactly on target, strict-gated. maap/starbucks close exactly under `DESIGN_SYNC__SEMANTIC_PEEL_ENABLED` (D3 spike, default off, ship/park gate open). Mammut 12 vs 18 is a below-candidate residual with **no current path** (`phase-53-d3-mammut-below-candidate-undercount`). A8 (D2) closes the asymmetric-column gap this audit attributed to seed structure. |
+| **#2 — first-element-only token allowlist; weight/line-height/spacing never emitted** | **FIXED.** 52.4 emits the typography trio + transform/decoration; RC-D-prime (`8c5cffd7`, 2026-06-12) ends first-text-wins entirely — per-node `<td data-node-id>` anchors + `_text_<node_id>` overrides give every body text node its own typography; partial paddings now emit per-side longhands. Closed `phase-52.4b-per-run-typography-structural`. |
+| **#3 — VLM verify→correct loop triple-dead** | **STILL TRUE.** Now an explicit decision item (TODO.md 53.4: revive or honestly RETIRE; the correction applicator remains property-only and the internal metric still returns 1.0 on empty input). No fidelity credit is claimed for it anywhere. |
+| **#4 — lossy ingest** | **PARTIALLY FIXED** per the re-audit's three-way taxonomy: parsed-then-dropped-at-bridge → fixed (RC-B); captured-but-never-emitted → fixed (52.4 + RC-D-prime); never-parsed → **capture** landed in 52.5 (`a6d2afa1`: real-backdrop alpha compositing, gradient `node_id`, non-button strokes, AUTO/% line-height) but **render** is still open (53.3: effects/blendMode, crop, rotation, z-order; 53.5: decorative vectors). |
+| **#5 — fidelity metric color-blind, off, circular** | **REPLACED.** A3 (`3c1ba9f7`): CIEDE2000 in LAB, MIN-aggregated, blur 0.0, advisory in CI on committed case-5 fixtures (full_image 0.867 · section_min 0.642 · section_median 0.887); all 6 fixtures resolve locally since A4 (assets gitignored — `phase-53.7-asset-reexport-prerequisite`). The circular manifest gate is un-circulared (A2/D1): re-pinned to `target_sections`, strict for cases 7/8/9, semantic xfails tracked in `phase-53-a2-advisory-section-gate`. Still gmail_web-only and **never a ship gate**. |
+
+Current document of record: `docs/converter-fidelity-ceiling.md` (per-client ceiling, cannot-reproduce list, measured ladder/metric state, residual tracker).

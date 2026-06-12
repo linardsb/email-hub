@@ -69,6 +69,8 @@ class RawFigmaTextStyle(TypedDict, total=False):
     fontSize: float
     fontWeight: float
     lineHeightPx: float
+    lineHeightPercent: float  # legacy: % of the font's default line height
+    lineHeightPercentFontSize: float  # % of font size
     # letterSpacing / hyperlink / fills are checked with isinstance at the use
     # site — keep as Any/list[Any] so the runtime guards remain "necessary"
     # under pyright strict mode.

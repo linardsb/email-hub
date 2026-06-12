@@ -123,7 +123,7 @@ def _validate_hyperlink(raw: Any) -> str | None:
 
 
 def _extract_stroke(
-    node_data: RawFigmaNode, node_opacity: float
+    node_data: RawFigmaNode, node_opacity: float, bg_hex: str = "#FFFFFF"
 ) -> tuple[str | None, float | None]:
     """Extract first SOLID stroke color and weight from a Figma node."""
     raw_strokes = node_data.get("strokes", [])
@@ -145,6 +145,7 @@ def _extract_stroke(
             float(c_d.get("b", 0)),
             fill_alpha=float(c_d.get("a", 1.0)),
             node_opacity=node_opacity,
+            bg_hex=bg_hex,
         )
         weight = _float_or_none(node_data.get("strokeWeight"))
         return hex_val, weight
@@ -455,6 +456,7 @@ class _TextProps(NamedTuple):
     font_size: float | None
     font_weight: int | None
     line_height_px: float | None
+    line_height_relative: float | None
     letter_spacing_px: float | None
     text_transform: str | None
     text_decoration: str | None
@@ -476,6 +478,7 @@ def _parse_text_props(node_data: RawFigmaNode, node_type: DesignNodeType) -> _Te
             font_size=None,
             font_weight=None,
             line_height_px=None,
+            line_height_relative=None,
             letter_spacing_px=None,
             text_transform=None,
             text_decoration=None,
@@ -494,6 +497,7 @@ def _parse_text_props(node_data: RawFigmaNode, node_type: DesignNodeType) -> _Te
     font_size: float | None = None
     font_weight: int | None = None
     line_height_px: float | None = None
+    line_height_relative: float | None = None
     letter_spacing_px: float | None = None
     text_transform: str | None = None
     text_decoration: str | None = None
@@ -508,6 +512,16 @@ def _parse_text_props(node_data: RawFigmaNode, node_type: DesignNodeType) -> _Te
         font_weight = int(raw_fw) if isinstance(raw_fw, (int, float)) else None
         raw_lh = style.get("lineHeightPx")
         line_height_px = float(raw_lh) if isinstance(raw_lh, (int, float)) else None
+        if line_height_px is None:
+            # AUTO/% line height (52.5): prefer percent-of-font-size, fall back
+            # to legacy percent-of-default (1.2 ≈ "normal", matching the
+            # _walk_for_typography convention).
+            raw_pfs = style.get("lineHeightPercentFontSize")
+            raw_pct = style.get("lineHeightPercent")
+            if isinstance(raw_pfs, (int, float)):
+                line_height_relative = round(float(raw_pfs) / 100, 3)
+            elif isinstance(raw_pct, (int, float)):
+                line_height_relative = round(float(raw_pct) / 100 * 1.2, 3)
         letter_spacing_px = _parse_letter_spacing(
             style, font_size if font_size is not None else 16.0
         )
@@ -532,6 +546,7 @@ def _parse_text_props(node_data: RawFigmaNode, node_type: DesignNodeType) -> _Te
         font_size=font_size,
         font_weight=font_weight,
         line_height_px=line_height_px,
+        line_height_relative=line_height_relative,
         letter_spacing_px=letter_spacing_px,
         text_transform=text_transform,
         text_decoration=text_decoration,
@@ -555,8 +570,12 @@ def _parse_visual_props(
     node_data: RawFigmaNode,
     node_type: DesignNodeType,
     node_opacity: float,
+    bg_hex: str = "#FFFFFF",
 ) -> _VisualProps:
     """Extract fills (color/image), strokes, and hyperlink decoration.
+
+    ``bg_hex`` is the nearest ancestor's resolved fill — translucent fills and
+    strokes composite against it instead of assuming a white backdrop (52.5).
 
     May reclassify ``node_type`` to ``IMAGE`` if a VECTOR/RECTANGLE node
     carries an IMAGE fill. The resolved type comes back in
@@ -608,6 +627,7 @@ def _parse_visual_props(
                 float(c_d.get("b", 0)),
                 fill_alpha=float(c_d.get("a", 1.0)),
                 node_opacity=node_opacity,
+                bg_hex=bg_hex,
             )
             if resolved_node_type == DesignNodeType.TEXT:
                 text_color = hex_val
@@ -616,7 +636,7 @@ def _parse_visual_props(
             break
 
     # Strokes
-    stroke_color, stroke_weight = _extract_stroke(node_data, node_opacity)
+    stroke_color, stroke_weight = _extract_stroke(node_data, node_opacity, bg_hex=bg_hex)
 
     return _VisualProps(
         fill_color=fill_color,
@@ -1289,6 +1309,10 @@ class FigmaDesignSyncService:
         if seen_stroke_hex is None:
             seen_stroke_hex = set()
 
+        # Children composite against this node's own solid fill when it has one,
+        # otherwise inherit the ancestor backdrop (52.5).
+        child_bg = bg_hex
+
         # Fills — extract all gradient midpoints, then topmost visible solid
         fills_list = node_d.get("fills", [])
         if fills_list:
@@ -1331,6 +1355,7 @@ class FigmaDesignSyncService:
                                     angle=angle,
                                     stops=tuple(parsed_stops),
                                     fallback_hex=fallback,
+                                    node_id=str(node_d.get("id", "")) or None,
                                 )
                             )
 
@@ -1361,6 +1386,8 @@ class FigmaDesignSyncService:
                 if hex_val not in seen_hex:
                     seen_hex.add(hex_val)
                     colors.append(ExtractedColor(name=hex_val, hex=hex_val, opacity=fill_alpha))
+                # Children composite against this node's resolved fill (52.5)
+                child_bg = hex_val
                 break  # Topmost visible solid only
 
         # Strokes — separate list
@@ -1398,7 +1425,7 @@ class FigmaDesignSyncService:
                 depth + 1,
                 stroke_colors=stroke_colors,
                 seen_stroke_hex=seen_stroke_hex,
-                bg_hex=bg_hex,
+                bg_hex=child_bg,
                 gradients=gradients,
             )
 
@@ -1527,25 +1554,34 @@ class FigmaDesignSyncService:
         node_data: RawFigmaNode,
         current_depth: int,
         max_depth: int | None,
+        parent_bg: str = "#FFFFFF",
     ) -> DesignNode:
-        """Recursively parse a Figma node into a DesignNode."""
+        """Recursively parse a Figma node into a DesignNode.
+
+        ``parent_bg`` is the nearest ancestor's resolved fill — threaded down
+        so translucent fills composite against the real backdrop (52.5).
+        """
         raw_type = str(node_data.get("type", "UNKNOWN"))
         node_type = _FIGMA_NODE_TYPE_MAP.get(raw_type, DesignNodeType.OTHER)
         node_opacity = float(node_data["opacity"]) if "opacity" in node_data else 1.0
 
         layout = _parse_layout_props(node_data, raw_type)
         text = _parse_text_props(node_data, node_type)
-        visual = _parse_visual_props(node_data, node_type, node_opacity)
+        visual = _parse_visual_props(node_data, node_type, node_opacity, bg_hex=parent_bg)
         node_type = visual.resolved_node_type  # apply IMAGE reclassification
 
         children: list[DesignNode] = []
         effective_max = max_depth if max_depth is not None else _MAX_PARSE_DEPTH
         if current_depth < effective_max:
+            child_bg = visual.fill_color if visual.fill_color is not None else parent_bg
             for child_data in node_data.get("children", []):
                 if isinstance(child_data, dict):
                     children.append(
                         self._parse_node(
-                            cast(RawFigmaNode, child_data), current_depth + 1, max_depth
+                            cast(RawFigmaNode, child_data),
+                            current_depth + 1,
+                            max_depth,
+                            parent_bg=child_bg,
                         )
                     )
 
@@ -1572,6 +1608,7 @@ class FigmaDesignSyncService:
             font_size=text.font_size,
             font_weight=text.font_weight,
             line_height_px=text.line_height_px,
+            line_height_relative=text.line_height_relative,
             letter_spacing_px=text.letter_spacing_px,
             text_transform=text.text_transform,
             text_decoration=text.text_decoration,
