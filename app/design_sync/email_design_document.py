@@ -1133,7 +1133,12 @@ class DocumentSection:
 
     def to_email_section(self) -> EmailSection:
         """Bridge to the existing EmailSection dataclass."""
+        # A8 (Phase 53 D2): fractions are derived state — recompute from the
+        # round-tripped per-column widths instead of persisting a second copy.
+        from app.design_sync.figma.layout_analyzer import compute_column_width_fractions
+
         pad = self.padding
+        column_groups = [c.to_column_group() for c in self.columns]
         return EmailSection(
             section_type=EmailSectionType(self.type),
             node_id=self.id,
@@ -1154,7 +1159,8 @@ class DocumentSection:
             padding_left=pad.left if pad else None,
             item_spacing=self.item_spacing,
             element_gaps=tuple(self.element_gaps),
-            column_groups=[c.to_column_group() for c in self.columns],
+            column_groups=column_groups,
+            column_width_fractions=compute_column_width_fractions(column_groups),
             classification_confidence=self.classification_confidence,
             vlm_classification=self.vlm_classification,
             vlm_confidence=self.vlm_confidence,

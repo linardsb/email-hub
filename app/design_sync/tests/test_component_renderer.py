@@ -739,3 +739,85 @@ class TestFooterContentNoTruncation:
         # Structure stays balanced — truncation orphans closing tags.
         assert result.count("<td") == result.count("</td>")
         assert result.count("<table") == result.count("</table>")
+
+
+class TestColumnWidthFractions:
+    """A8 (Phase 53 D2): column seed widths rewritten from measured fractions."""
+
+    @staticmethod
+    def _column_match(slug: str, fractions: tuple[float, ...]) -> ComponentMatch:
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="frame_1",
+            node_name="Columns",
+            column_width_fractions=fractions,
+        )
+        return ComponentMatch(
+            section_idx=0,
+            section=section,
+            component_slug=slug,
+            slot_fills=[],
+            token_overrides=[],
+        )
+
+    def test_asymmetric_two_column_widths(self, renderer: ComponentRenderer) -> None:
+        """A 2:1 split rewrites both the MSO <td> and the div max-width surfaces."""
+        match = self._column_match("column-layout-2", (2 / 3, 1 / 3))
+        result = renderer.render_section(match).html
+        assert '<td width="400" valign="top">' in result
+        assert '<td width="200" valign="top">' in result
+        assert '<td width="300" valign="top">' not in result
+        assert "max-width: 400px" in result
+        assert "max-width: 200px" in result
+        assert "max-width: 300px" not in result
+
+    def test_widths_sum_preserved_with_rounding(self, renderer: ComponentRenderer) -> None:
+        """The last column absorbs rounding so the seed's total never drifts."""
+        match = self._column_match("column-layout-3", (0.55, 0.27, 0.18))
+        result = renderer.render_section(match).html
+        widths = [int(w) for w in re.findall(r'<td width="(\d+)" valign="top">', result)]
+        assert len(widths) == 3
+        assert sum(widths) == 600
+        assert widths == [330, 162, 108]
+
+    def test_equal_within_tolerance_is_byte_stable(self, renderer: ComponentRenderer) -> None:
+        """Near-equal fractions render byte-identically to the no-fractions seed."""
+        baseline = renderer.render_section(self._column_match("column-layout-2", ())).html
+        nudged = renderer.render_section(self._column_match("column-layout-2", (0.52, 0.48))).html
+        assert nudged == baseline
+
+    def test_count_mismatch_is_no_op(self, renderer: ComponentRenderer) -> None:
+        """Fraction count != seed column count leaves the seed untouched."""
+        baseline = renderer.render_section(self._column_match("column-layout-2", ())).html
+        mismatched = renderer.render_section(
+            self._column_match("column-layout-2", (0.5, 0.3, 0.2))
+        ).html
+        assert mismatched == baseline
+
+    def test_non_column_slug_untouched(self, renderer: ComponentRenderer) -> None:
+        """Fractions on a non-column component are ignored."""
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="frame_1",
+            node_name="TestSection",
+            column_width_fractions=(0.7, 0.3),
+        )
+        with_fractions = renderer.render_section(
+            ComponentMatch(
+                section_idx=0,
+                section=section,
+                component_slug="text-block",
+                slot_fills=[],
+                token_overrides=[],
+            )
+        ).html
+        baseline = renderer.render_section(_make_match("text-block")).html
+        assert with_fractions == baseline
+
+    def test_mso_and_div_surfaces_agree(self, renderer: ComponentRenderer) -> None:
+        """MSO ghost-td widths and div max-widths carry identical values."""
+        match = self._column_match("column-layout-2", (0.75, 0.25))
+        result = renderer.render_section(match).html
+        td_widths = re.findall(r'<td width="(\d+)" valign="top">', result)
+        div_widths = re.findall(r'class="column"[^>]*?max-width:\s*(\d+)px', result)
+        assert td_widths == div_widths == ["450", "150"]

@@ -9,6 +9,7 @@ import pytest
 from app.design_sync.brief_generator import generate_brief
 from app.design_sync.diagnose.report import load_structure_from_json
 from app.design_sync.figma.layout_analyzer import (
+    ColumnGroup,
     ColumnLayout,
     DesignLayoutDescription,
     EmailSectionType,
@@ -17,6 +18,7 @@ from app.design_sync.figma.layout_analyzer import (
     _detect_content_hierarchy,
     _has_large_image_child,
     analyze_layout,
+    compute_column_width_fractions,
 )
 from app.design_sync.protocol import (
     DesignFileStructure,
@@ -1813,3 +1815,84 @@ class TestStrokeCapture:
         assert len(section.images) == 1
         assert section.images[0].stroke_color == "#445566"
         assert section.images[0].stroke_weight == 1.0
+
+
+class TestColumnWidthFractions:
+    """A8 (Phase 53 D2): normalized column width fractions on EmailSection."""
+
+    def test_normalizes_asymmetric_widths(self) -> None:
+        groups = [
+            ColumnGroup(column_idx=1, node_id="a", node_name="A", width=400.0),
+            ColumnGroup(column_idx=2, node_id="b", node_name="B", width=200.0),
+        ]
+        assert compute_column_width_fractions(groups) == pytest.approx((2 / 3, 1 / 3))  # pyright: ignore[reportUnknownMemberType]
+
+    def test_missing_width_returns_empty(self) -> None:
+        groups = [
+            ColumnGroup(column_idx=1, node_id="a", node_name="A", width=400.0),
+            ColumnGroup(column_idx=2, node_id="b", node_name="B", width=None),
+        ]
+        assert compute_column_width_fractions(groups) == ()
+
+    def test_zero_width_returns_empty(self) -> None:
+        groups = [
+            ColumnGroup(column_idx=1, node_id="a", node_name="A", width=0.0),
+            ColumnGroup(column_idx=2, node_id="b", node_name="B", width=200.0),
+        ]
+        assert compute_column_width_fractions(groups) == ()
+
+    def test_single_column_returns_empty(self) -> None:
+        groups = [ColumnGroup(column_idx=1, node_id="a", node_name="A", width=600.0)]
+        assert compute_column_width_fractions(groups) == ()
+
+    def test_analyze_layout_surfaces_fractions(self) -> None:
+        """End-to-end: a 400/200 horizontal split lands on the EmailSection."""
+        # Sibling header keeps the page from unwrapping the row frame itself
+        # into per-child section candidates.
+        header = DesignNode(
+            id="hdr",
+            name="Header",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=80,
+            children=[_make_text_node("th", "Header text")],
+        )
+        row = DesignNode(
+            id="row",
+            name="columns",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=100,
+            width=600,
+            height=200,
+            layout_mode="HORIZONTAL",
+            children=[
+                DesignNode(
+                    id="a",
+                    name="Left",
+                    type=DesignNodeType.FRAME,
+                    x=0,
+                    y=0,
+                    width=400,
+                    height=200,
+                    children=[_make_text_node("ta", "Left column")],
+                ),
+                DesignNode(
+                    id="b",
+                    name="Right",
+                    type=DesignNodeType.FRAME,
+                    x=400,
+                    y=0,
+                    width=200,
+                    height=200,
+                    children=[_make_text_node("tb", "Right column")],
+                ),
+            ],
+        )
+        structure = _make_section_structure([header, row])
+        layout = analyze_layout(structure)
+        sections = [s for s in layout.sections if s.column_count == 2]
+        assert len(sections) == 1
+        assert sections[0].column_width_fractions == pytest.approx((2 / 3, 1 / 3))  # pyright: ignore[reportUnknownMemberType]

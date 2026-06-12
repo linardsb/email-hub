@@ -66,6 +66,24 @@ def _is_blankable_text(inner: str) -> bool:
     return without_inline.replace("&nbsp;", "").strip() != ""
 
 
+# A8 (Phase 53 D2) — the two width surfaces a column seed hardcodes per column:
+# the MSO ghost-table ``<td width="N" valign="top"`` and the inline-block
+# ``<div class="column" … max-width: Npx``. Rewritten together from measured
+# design fractions so Outlook and modern clients can't diverge.
+_COLUMN_TD_WIDTH_RE = re.compile(r'(<td width=")(\d+)(" valign="top")')
+_COLUMN_DIV_MAXWIDTH_RE = re.compile(r'(<div class="column"[^>]*?max-width:\s*)(\d+)(px)')
+# Fractions within this absolute deviation of equal keep the seed's equal
+# widths (existing equal-column baselines stay byte-stable).
+_COLUMN_FRACTION_TOLERANCE = 0.05
+
+
+def _distribute_widths(total: int, fractions: tuple[float, ...]) -> list[int]:
+    """Split ``total`` px by fractions; the last column absorbs rounding."""
+    widths = [int(total * f) for f in fractions[:-1]]
+    widths.append(total - sum(widths))
+    return widths
+
+
 def _find_matching_close(html_str: str, tag_name: str, start: int) -> int | None:
     """Return the index of the ``</tag_name>`` closing the element at ``start``.
 
@@ -484,6 +502,9 @@ class ComponentRenderer:
 
         # 3. Update MSO table widths to match container width
         result_html = self._update_mso_widths(result_html, self._container_width)
+
+        # 3b. A8 (Phase 53 D2): per-column widths from measured design fractions
+        result_html = self._apply_column_width_fractions(result_html, match)
 
         # 4. Strip remaining placeholder URLs
         result_html = self._strip_placeholder_urls(result_html)
@@ -1375,6 +1396,45 @@ class ComponentRenderer:
             html_str,
             flags=re.DOTALL,
         )
+
+    def _apply_column_width_fractions(self, html_str: str, match: ComponentMatch) -> str:
+        """Rewrite column seed widths from measured design fractions (A8, 53 D2).
+
+        Column seeds hardcode equal per-column widths. When the analyzer
+        measured an asymmetric split, redistribute the seed's own width total
+        (sum of its ghost-``<td>`` widths) by the fractions, on both the MSO
+        ghost ``<td width`` and the inline-block div ``max-width`` surfaces.
+
+        Equal-within-tolerance fractions are a no-op so existing equal-column
+        baselines stay byte-stable. Any count mismatch between fractions and
+        either surface is also a no-op — both surfaces rewrite together or not
+        at all, so MSO and non-MSO widths cannot diverge.
+        """
+        fractions = match.section.column_width_fractions
+        if not match.component_slug.startswith("column-layout") or not fractions:
+            return html_str
+
+        equal = 1.0 / len(fractions)
+        if all(abs(f - equal) <= _COLUMN_FRACTION_TOLERANCE for f in fractions):
+            return html_str
+
+        td_matches = list(_COLUMN_TD_WIDTH_RE.finditer(html_str))
+        div_matches = list(_COLUMN_DIV_MAXWIDTH_RE.finditer(html_str))
+        if len(td_matches) != len(fractions) or len(div_matches) != len(fractions):
+            return html_str
+
+        total = sum(int(m.group(2)) for m in td_matches)
+        widths = _distribute_widths(total, fractions)
+
+        def _rewrite(pattern: re.Pattern[str], source: str) -> str:
+            counter = iter(widths)
+
+            def _sub(m: re.Match[str]) -> str:
+                return f"{m.group(1)}{next(counter)}{m.group(3)}"
+
+            return pattern.sub(_sub, source)
+
+        return _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
 
     def _add_annotations(self, html_str: str, match: ComponentMatch) -> str:
         """Add builder annotations for visual builder sync."""

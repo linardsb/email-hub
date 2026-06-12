@@ -182,6 +182,11 @@ class EmailSection:
     item_spacing: float | None = None
     element_gaps: tuple[float, ...] = ()
     column_groups: list[ColumnGroup] = field(default_factory=list[ColumnGroup])
+    # A8 (Phase 53 D2) — normalized per-column width fractions measured from
+    # the design's column frames; ``()`` when any column width is missing.
+    # The renderer redistributes the column seed's per-<td>/div widths by
+    # these so asymmetric splits aren't forced to equal-width columns.
+    column_width_fractions: tuple[float, ...] = ()
     classification_confidence: float | None = None
     vlm_classification: str | None = None
     vlm_confidence: float | None = None
@@ -457,6 +462,7 @@ def analyze_layout(
                 padding_left=node.padding_left,
                 item_spacing=node.item_spacing,
                 column_groups=col_groups,
+                column_width_fractions=compute_column_width_fractions(col_groups),
                 classification_confidence=classification_confidence,
                 vlm_classification=vlm_type_str,
                 vlm_confidence=vlm_conf,
@@ -1035,6 +1041,23 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
             )
         )
     return groups
+
+
+def compute_column_width_fractions(groups: list[ColumnGroup]) -> tuple[float, ...]:
+    """Normalize measured column widths into fractions summing to 1.0.
+
+    A8 (Phase 53 D2): returns ``()`` unless every column has a positive
+    measured width — missing data falls back to the seed's equal widths.
+    """
+    if len(groups) < 2:
+        return ()
+    widths: list[float] = []
+    for group in groups:
+        if group.width is None or group.width <= 0:
+            return ()
+        widths.append(group.width)
+    total = sum(widths)
+    return tuple(w / total for w in widths)
 
 
 def _detect_position_columns(node: DesignNode) -> list[ColumnGroup]:
