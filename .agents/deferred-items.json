@@ -369,7 +369,7 @@
       "id": "phase-52.4b-per-run-typography-structural",
       "phase": "52.4",
       "title": "Per-run typography (remove first-heading/body break) needs per-node <td> anchors — structural sub-project",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-06-01",
       "introduced_commit": "144aba27",
@@ -379,7 +379,9 @@
         "app/design_sync/component_renderer.py (_image_ dispatch ~735-741)"
       ],
       "symptom_if_broken": "Multi-heading / multi-paragraph sections render every text run with the first run's font/size/weight/color — intra-section typographic hierarchy is flattened.",
-      "closes_when": "Per-node text <td> anchors + a _text_<node_id> override target land and every text node renders its own design typography (verified on a multi-heading fixture)."
+      "closes_when": "Per-node text <td> anchors + a _text_<node_id> override target land and every text node renders its own design typography (verified on a multi-heading fixture).",
+      "closed_commit": "8c5cffd7",
+      "notes": "Closed 2026-06-12 (Phase 53 Track E, RC-D-prime). _fills_text_block emits one <td data-node-id> anchor per body text (>=2), _build_token_overrides emits per-node _text_<node_id> typography, component_renderer dispatch arm upserts into the anchor (mirrors _image_<node_id>). Verified on fixtures: case 5 (Courier New 12px label vs Helvetica 16px paragraph), case 8 (12px #DA291C label vs 15px #FFFFFF body), case 10 (Helvetica vs Geist Mono) each render their own typography; baselines regenerated, ladder counts unchanged. Also fixed the per-side padding shorthand drop (partial paddings now emit padding-* longhands). style_runs untouched (wrong lever, per entry)."
     },
     {
       "id": "phase-53-a2-advisory-section-gate",
