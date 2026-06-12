@@ -108,6 +108,10 @@ htmlcov/
 #   - actual-with-fixes.html       converter durable before/after record (V1 plan)
 #   - structure.json               DesignFileStructure input (Phase 53 A1 ladder substrate)
 #   - tokens.json                  ExtractedTokens input (Phase 53 A1 ladder substrate)
+#   - rendered_w600.png            committed converter render for the advisory pixel
+#                                  metric (Phase 53 A3; recipe: render_case_png)
+#   - assets/<node>.png            node-keyed image assets, allowlisted per case below
+#                                  (Phase 53 A3 — only the srcs the case HTML emits)
 # design.png and design_meta.json are intentionally IGNORED — they are
 # regenerable Figma exports (app/design_sync/service.py:229,
 # diagnose/extract.py:146/316), not durable curated fixtures.
@@ -119,6 +123,17 @@ data/debug/*/*
 !data/debug/*/actual-with-fixes.html
 !data/debug/*/structure.json
 !data/debug/*/tokens.json
+!data/debug/*/rendered_w600.png
+# Case 5 (maap): the 6 node-keyed assets its expected.html emits — committed so
+# the advisory pixel metric's rendered fixture is regenerable (Phase 53 A3).
+!data/debug/5/assets/
+data/debug/5/assets/*
+!data/debug/5/assets/2833_1628.png
+!data/debug/5/assets/2833_1645.png
+!data/debug/5/assets/2833_1652.png
+!data/debug/5/assets/2833_1731.png
+!data/debug/5/assets/2833_1734.png
+!data/debug/5/assets/2833_1737.png
 
 # Top-level debug hygiene (F063)
 *.zip
@@ -154,6 +169,9 @@ email-templates/reframe.png
 email-templates/reframe-assets/email-full.png
 email-templates/game_recap/game_recap.png
 email-templates/training_HTML/**/*.png
+# Exception: the case-5 design reference scored by the advisory pixel metric
+# (Phase 53 A3) — a curated fixture, not a regenerable preview.
+!email-templates/training_HTML/for_converter_engine/maap/visual_design.png
 
 # Icons/ source library (~305 MB / 10,416 files). Only the 309 SVGs
 # referenced by cms/apps/web/scripts/generate-icons.mjs are committed

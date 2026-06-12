@@ -20,6 +20,11 @@ repos:
       - id: check-merge-conflict
       - id: check-added-large-files
         args: [--maxkb=500]
+        # Curated pixel-metric fixtures (Phase 53 A3) are deliberately large:
+        # node-keyed case assets + rendered render fixtures + design reference
+        # exports must stay byte-identical to the Figma/import pipeline, so
+        # they cannot be recompressed under the cap.
+        exclude: ^(data/debug/\d+/(assets/[^/]+\.png|rendered_w600\.png)|email-templates/training_HTML/for_converter_engine/[^/]+/[^/]+\.png)$
       - id: detect-private-key
       - id: no-commit-to-branch
         args: [--branch, main]
