@@ -540,6 +540,39 @@
       "symptom_if_broken": "A solid-fill text-block CTA whose design specifies dark label text renders white-on-colour instead; case 5's button shows white text where the extracted design data says #010101. Low-contrast or wrong-colour labels on non-outlined buttons in real designs.",
       "closes_when": "Visual verification (a committed design render or a VLM compare) resolves whether case 5's solid button is white- or dark-labelled; _fills_text_block either adopts text_color for solid buttons too, or documents white as the deliberate override. Verified by case 5's rendered label colour matching the confirmed design.",
       "notes": "Deliberate scope boundary of the phase-53-b8-non-cta-multibutton-drop fix (commit 5d0b2bdb): outlined buttons (stroke) use designed text_color + border; solid buttons keep white. Recorded because the chosen white diverges from extracted data on case 5 and can't be adjudicated without a design render — blocked on the same asset re-export as plan §A3/§A4. Related: phase-53-b8-non-cta-multibutton-drop, phase-53-b8-cta-pair-color-fidelity."
+    },
+    {
+      "id": "phase-53.7-typography-maxitems-cap",
+      "phase": "53.7",
+      "title": "email-design-document-v1.json caps tokens.typography at maxItems:200 — LEGO converter output emits 234, so validate() would reject a real document",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-06-12",
+      "introduced_commit": "33d20b9d",
+      "summary": "data/schemas/email-design-document-v1.json ($defs/tokens/properties/typography) caps the typography token array at 200 entries; converting LEGO (case 7) emits 234. Latent today because no converter path calls EmailDesignDocument.validate() (email_design_document.py:1379) — the schema only binds when something validates a persisted document. Surfaced in .agents/plans/53-converter-engine-fix.md §7 (risks) and formalized at the 53.7 close-out.",
+      "code_refs": [
+        "data/schemas/email-design-document-v1.json ($defs/tokens/properties/typography maxItems)",
+        "app/design_sync/email_design_document.py:1379 (validate())"
+      ],
+      "symptom_if_broken": "Any future feature that schema-validates a persisted EmailDesignDocument (import gate, API contract check, snapshot lint) hard-fails on typography-rich designs like LEGO with a maxItems violation — looking like a converter regression when it is a stale schema cap.",
+      "closes_when": "The cap is raised (or typography tokens deduped below it) AND EmailDesignDocument.validate() passes on case-7 converter output, guarded by a test that validates a real fixture document."
+    },
+    {
+      "id": "phase-53.7-asset-reexport-prerequisite",
+      "phase": "53.7",
+      "title": "Fixture image assets are local-only (gitignored) — fresh clones and CI cannot reproduce the A3 pixel metric beyond case 5",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-12",
+      "introduced_commit": "7894ff03",
+      "summary": "A4 resolved every emitted node-id to an on-disk assets/<id>.png for all 6 fixtures via scripts/export-case-assets.py (Figma image API, scale=2; bookkeeping in .agents/figma-cache/exports.json), but data/debug/*/assets/ stays gitignored — only case 5's PNGs (+ rendered_w600.png) are committed. A fresh clone or CI must re-run the export script with a FIGMA_TOKEN to score any other fixture; this is the same same-input variance class plan §A1 warned about — surfaced at A4, not resolved.",
+      "code_refs": [
+        "scripts/export-case-assets.py",
+        ".gitignore (data/debug/*/* allowlist — case-5 fixtures only)",
+        "app/design_sync/fidelity_case_scorer.py (CI scores committed case-5 PNGs only)"
+      ],
+      "symptom_if_broken": "A3 advisory numbers quietly become single-fixture (case 5, an under-segmenter) on any machine without a prior local export — fork/regression judgments made on them over-weight one fixture class; a future gate wired to multi-fixture scores fails on fresh checkouts with missing-asset errors.",
+      "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI."
     }
   ],
   "tooling_followups": [
