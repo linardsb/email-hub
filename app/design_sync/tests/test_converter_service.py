@@ -94,6 +94,7 @@ def _make_document(section_count: int = 2) -> EmailDesignDocument:
 def _set_design_sync_flags(
     monkeypatch: pytest.MonkeyPatch,
     *,
+    band_grouping_enabled: bool | None = None,
     sibling_detection_enabled: bool | None = None,
     tree_bridge_enabled: bool | None = None,
     vlm_verify_enabled: bool | None = None,
@@ -102,6 +103,8 @@ def _set_design_sync_flags(
     from app.core.config import get_settings
 
     ds = get_settings().design_sync
+    if band_grouping_enabled is not None:
+        monkeypatch.setattr(ds, "band_grouping_enabled", band_grouping_enabled)
     if sibling_detection_enabled is not None:
         monkeypatch.setattr(ds, "sibling_detection_enabled", sibling_detection_enabled)
     if tree_bridge_enabled is not None:
@@ -178,8 +181,14 @@ class TestSiblingDetectionBranches:
     def test_sibling_detection_enabled_invokes_detector(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Flag on → `detect_repeating_groups` is called once per conversion."""
-        _set_design_sync_flags(monkeypatch, sibling_detection_enabled=True)
+        """Flag on → `detect_repeating_groups` is called once per conversion.
+
+        Band grouping (default-on since Phase 53 D1) takes priority in
+        `_match_phase`, so the sibling branch is only reachable with it off.
+        """
+        _set_design_sync_flags(
+            monkeypatch, band_grouping_enabled=False, sibling_detection_enabled=True
+        )
         # Patch the call site (`from app.design_sync.sibling_detector import ...`
         # is inside `_match_phase`, so we patch the source module).
         with patch(
@@ -193,8 +202,14 @@ class TestSiblingDetectionBranches:
     def test_sibling_detection_disabled_skips_detector(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Flag off → detector untouched; sections pass through flat."""
-        _set_design_sync_flags(monkeypatch, sibling_detection_enabled=False)
+        """Flag off → detector untouched; sections pass through flat.
+
+        Band grouping pinned off so the skip is attributable to the sibling
+        flag, not to band grouping pre-empting the branch.
+        """
+        _set_design_sync_flags(
+            monkeypatch, band_grouping_enabled=False, sibling_detection_enabled=False
+        )
         with patch(
             "app.design_sync.sibling_detector.detect_repeating_groups",
         ) as detect_mock:

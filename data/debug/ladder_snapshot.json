@@ -4,7 +4,7 @@
     "target": 13,
     "candidates": 9,
     "analyzed": 11,
-    "rendered": 11,
+    "rendered": 9,
     "bands": 9,
     "band_desc": "wrappers[1692=3] solo=8",
     "bags": [
@@ -122,7 +122,7 @@
     "target": 8,
     "candidates": 8,
     "analyzed": 21,
-    "rendered": 17,
+    "rendered": 8,
     "bands": 8,
     "band_desc": "wrappers[1897=4, 1941=8, 2040=4] solo=5",
     "bags": [
@@ -259,7 +259,7 @@
     "target": 10,
     "candidates": 10,
     "analyzed": 11,
-    "rendered": 11,
+    "rendered": 10,
     "bands": 10,
     "band_desc": "wrappers[2277=2] solo=9",
     "bags": [
@@ -336,7 +336,7 @@
     "target": 8,
     "candidates": 8,
     "analyzed": 11,
-    "rendered": 10,
+    "rendered": 8,
     "bands": 8,
     "band_desc": "wrappers[2084=4] solo=7",
     "bags": [
@@ -413,7 +413,7 @@
     "target": 18,
     "candidates": 12,
     "analyzed": 17,
-    "rendered": 14,
+    "rendered": 12,
     "bands": 12,
     "band_desc": "wrappers[1175=2, 1240=5] solo=10",
     "bags": [

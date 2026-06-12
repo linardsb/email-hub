@@ -2,6 +2,6 @@ name: slate-newsletter
 figma_node: "2833-2073"
 description: "Slate Newsletter — 8-section newsletter (dual hero, image-grid, dividers, social)"
 sections:
-  count: 10
+  count: 8
   tolerance: 1
 patterns: []

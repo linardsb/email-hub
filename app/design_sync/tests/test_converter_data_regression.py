@@ -21,10 +21,13 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
+from _pytest.mark.structures import ParameterSet
 from lxml import etree
 
 from app.design_sync.converter_service import ConversionResult
 from app.design_sync.tests.ladder_harness import (
+    SEMANTIC_UNDERCOUNT_CASES,
+    SEMANTIC_UNDERCOUNT_REASON,
     LadderRow,
     compute_all_ladders,
     discover_ladder_case_ids,
@@ -251,11 +254,13 @@ class TestSectionLadder:
       ``data/debug/ladder_snapshot.json``. Catches ANY segmentation/render drift.
       Regen after an *intended* change (then re-verify expected.html):
       ``python -m app.design_sync.tests.ladder_harness --write``.
-    - ``test_rendered_matches_target`` (xfail/advisory): the rendered top-level
-      section count must equal the design ``target_sections``. EXPECTED to fail
-      where the converter mis-segments (Phase 53). Red = the real defect surfacing.
+    - ``test_rendered_matches_target`` (module-level, per-case strictness): the
+      rendered top-level section count must equal the design ``target_sections``.
+      STRICT for the cases band grouping lands exactly (7/8/9 — Phase 53 D1);
+      xfail for the proven-semantic under-counters (5/6/10) until Track D3.
 
-    See .agents/plans/53-converter-engine-fix.md §Track A (A2).
+    See .agents/plans/53-converter-engine-fix.md §Track A (A2) and
+    .agents/plans/53-d-fork-a-execution.md §D1.
     """
 
     def test_ladder_no_drift(self, case_id: str) -> None:
@@ -278,24 +283,31 @@ class TestSectionLadder:
             f"`python -m app.design_sync.tests.ladder_harness --write`."
         )
 
-    @pytest.mark.xfail(
-        reason=(
-            "A2: rendered section count vs design target_sections. The converter "
-            "mis-segments several fixtures (Phase 53) — xfail means the gate is "
-            "measuring the dominant defect, not regressing. Red = the real defect "
-            "surfacing. See .agents/plans/53-converter-engine-fix.md §Track A (A2)."
-        ),
-        strict=False,
-    )
-    def test_rendered_matches_target(self, case_id: str) -> None:
-        row = _actual_ladders().get(case_id)
-        if row is None:
-            pytest.skip(f"{case_id}: missing structure.json/tokens.json")
-        if row.target is None:
-            pytest.skip(f"{case_id}: no design target_sections")
-        assert row.rendered == row.target, (
-            f"Case {case_id}: rendered {row.rendered} sections != design target {row.target}"
+
+def _target_gate_params() -> list[ParameterSet]:
+    """Per-case strictness for the A2 target gate (Phase 53 D1.4)."""
+    return [
+        pytest.param(
+            cid,
+            marks=[pytest.mark.xfail(strict=False, reason=SEMANTIC_UNDERCOUNT_REASON)]
+            if cid in SEMANTIC_UNDERCOUNT_CASES
+            else [],
         )
+        for cid in discover_ladder_case_ids()
+    ]
+
+
+@pytest.mark.parametrize("case_id", _target_gate_params())
+def test_rendered_matches_target(case_id: str) -> None:
+    """A2 target gate: rendered top-level section count == design ``target_sections``."""
+    row = _actual_ladders().get(case_id)
+    if row is None:
+        pytest.skip(f"{case_id}: missing structure.json/tokens.json")
+    if row.target is None:
+        pytest.skip(f"{case_id}: no design target_sections")
+    assert row.rendered == row.target, (
+        f"Case {case_id}: rendered {row.rendered} sections != design target {row.target}"
+    )
 
 
 class TestRequiredContent:
