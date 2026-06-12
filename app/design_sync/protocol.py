@@ -60,6 +60,7 @@ class ExtractedGradient:
     angle: float  # degrees, 0-360 (linear only)
     stops: tuple[tuple[str, float], ...]  # (hex_color, position 0.0-1.0)
     fallback_hex: str  # midpoint solid for Outlook
+    node_id: str | None = None  # source node, for per-section reattachment (52.5)
 
 
 @dataclass(frozen=True)
@@ -134,6 +135,7 @@ class DesignNode:
     font_size: float | None = None
     font_weight: int | None = None
     line_height_px: float | None = None
+    line_height_relative: float | None = None  # AUTO/% line height as multiplier (52.5)
     letter_spacing_px: float | None = None
     text_transform: str | None = None  # uppercase|lowercase|capitalize|None (TEXT nodes only)
     text_decoration: str | None = None  # underline|line-through|None (TEXT nodes only)

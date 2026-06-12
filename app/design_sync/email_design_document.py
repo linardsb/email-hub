@@ -188,15 +188,19 @@ class DocumentGradient:
     angle: float
     stops: tuple[DocumentGradientStop, ...]
     fallback_hex: str
+    node_id: str | None = None  # source node, for per-section reattachment (52.5)
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "name": self.name,
             "type": self.type,
             "angle": self.angle,
             "stops": [s.to_json() for s in self.stops],
             "fallback_hex": self.fallback_hex,
         }
+        if self.node_id is not None:
+            d["node_id"] = self.node_id
+        return d
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> DocumentGradient:
@@ -206,6 +210,7 @@ class DocumentGradient:
             angle=data["angle"],
             stops=tuple(DocumentGradientStop.from_json(s) for s in data["stops"]),
             fallback_hex=data["fallback_hex"],
+            node_id=data.get("node_id"),
         )
 
 
@@ -340,6 +345,7 @@ class DocumentTokens:
                     angle=g.angle,
                     stops=tuple((s.hex, s.position) for s in g.stops),
                     fallback_hex=g.fallback_hex,
+                    node_id=g.node_id,
                 )
                 for g in self.gradients
             ],
@@ -376,6 +382,7 @@ class DocumentTokens:
                     angle=g.angle,
                     stops=tuple(DocumentGradientStop(hex=s[0], position=s[1]) for s in g.stops),
                     fallback_hex=g.fallback_hex,
+                    node_id=g.node_id,
                 )
                 for g in tokens.gradients
             ],
@@ -636,6 +643,9 @@ class DocumentImage:
     is_background: bool = False
     export_node_id: str | None = None
     corner_radius_spec: DocumentCornerRadiusSpec | None = None
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"node_id": self.node_id, "node_name": self.node_name}
@@ -649,6 +659,10 @@ class DocumentImage:
             d["export_node_id"] = self.export_node_id
         if self.corner_radius_spec is not None:
             d["corner_radius_spec"] = self.corner_radius_spec.to_json()
+        if self.stroke_color is not None:
+            d["stroke_color"] = self.stroke_color
+        if self.stroke_weight is not None:
+            d["stroke_weight"] = self.stroke_weight
         return d
 
     @classmethod
@@ -664,6 +678,8 @@ class DocumentImage:
             corner_radius_spec=(
                 DocumentCornerRadiusSpec.from_json(crs) if crs is not None else None
             ),
+            stroke_color=data.get("stroke_color"),
+            stroke_weight=data.get("stroke_weight"),
         )
 
     @classmethod
@@ -680,6 +696,8 @@ class DocumentImage:
                 if i.corner_radius_spec is not None
                 else None
             ),
+            stroke_color=i.stroke_color,
+            stroke_weight=i.stroke_weight,
         )
 
     def to_image_placeholder(self) -> ImagePlaceholder:
@@ -693,6 +711,8 @@ class DocumentImage:
             corner_radius_spec=(
                 self.corner_radius_spec.to_spec() if self.corner_radius_spec is not None else None
             ),
+            stroke_color=self.stroke_color,
+            stroke_weight=self.stroke_weight,
         )
 
 
@@ -994,6 +1014,9 @@ class DocumentSection:
     physical_card_signals: tuple[str, ...] = ()
     vlm_classification: str | None = None
     vlm_confidence: float | None = None
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"id": self.id, "type": self.type}
@@ -1059,6 +1082,10 @@ class DocumentSection:
             d["vlm_classification"] = self.vlm_classification
         if self.vlm_confidence is not None:
             d["vlm_confidence"] = self.vlm_confidence
+        if self.stroke_color is not None:
+            d["stroke_color"] = self.stroke_color
+        if self.stroke_weight is not None:
+            d["stroke_weight"] = self.stroke_weight
         return d
 
     @classmethod
@@ -1100,6 +1127,8 @@ class DocumentSection:
             physical_card_signals=tuple(data.get("physical_card_signals", [])),
             vlm_classification=data.get("vlm_classification"),
             vlm_confidence=data.get("vlm_confidence"),
+            stroke_color=data.get("stroke_color"),
+            stroke_weight=data.get("stroke_weight"),
         )
 
     def to_email_section(self) -> EmailSection:
@@ -1142,6 +1171,8 @@ class DocumentSection:
             inner_card_fixed_width=self.inner_card_fixed_width,
             is_physical_card_surface=self.is_physical_card_surface,
             physical_card_signals=self.physical_card_signals,
+            stroke_color=self.stroke_color,
+            stroke_weight=self.stroke_weight,
         )
 
     @classmethod
@@ -1199,6 +1230,8 @@ class DocumentSection:
             physical_card_signals=section.physical_card_signals,
             vlm_classification=section.vlm_classification,
             vlm_confidence=section.vlm_confidence,
+            stroke_color=section.stroke_color,
+            stroke_weight=section.stroke_weight,
         )
 
 

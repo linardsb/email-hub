@@ -1750,3 +1750,66 @@ class TestNestedPhysicalCardDetection:
         assert layout.sections.index(card_section) == 19
         assert "barcode_child" in card_section.physical_card_signals
         assert "distinct_corner_radius" in card_section.physical_card_signals
+
+
+# ── Stroke Capture (Phase 52.5) ──
+
+
+class TestStrokeCapture:
+    """Non-button strokes survive into EmailSection / ImagePlaceholder."""
+
+    def test_bordered_section_and_image_keep_stroke(self) -> None:
+        structure = DesignFileStructure(
+            file_name="Bordered Card",
+            pages=[
+                DesignNode(
+                    id="page1",
+                    name="Email",
+                    type=DesignNodeType.PAGE,
+                    children=[
+                        DesignNode(
+                            id="f1",
+                            name="Content Section",
+                            type=DesignNodeType.FRAME,
+                            x=0,
+                            y=0,
+                            width=600,
+                            height=200,
+                            stroke_color="#112233",
+                            stroke_weight=2.0,
+                            children=[
+                                DesignNode(
+                                    id="img1",
+                                    name="product",
+                                    type=DesignNodeType.IMAGE,
+                                    x=20,
+                                    y=20,
+                                    width=200,
+                                    height=100,
+                                    stroke_color="#445566",
+                                    stroke_weight=1.0,
+                                ),
+                                DesignNode(
+                                    id="t1",
+                                    name="body",
+                                    type=DesignNodeType.TEXT,
+                                    x=20,
+                                    y=140,
+                                    width=560,
+                                    height=16,
+                                    text_content="Bordered card body",
+                                ),
+                            ],
+                        )
+                    ],
+                )
+            ],
+        )
+        layout = analyze_layout(structure)
+        assert len(layout.sections) == 1
+        section = layout.sections[0]
+        assert section.stroke_color == "#112233"
+        assert section.stroke_weight == 2.0
+        assert len(section.images) == 1
+        assert section.images[0].stroke_color == "#445566"
+        assert section.images[0].stroke_weight == 1.0

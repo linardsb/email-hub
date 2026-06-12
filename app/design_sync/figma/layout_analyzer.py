@@ -101,6 +101,9 @@ class ImagePlaceholder:
     export_node_id: str | None = None  # Frame node to export (includes bg fills)
     # Rule 10 (Phase 50.5) — per-corner radii from rectangleCornerRadii.
     corner_radius_spec: CornerRadiusSpec | None = None
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
 
 @dataclass(frozen=True)
@@ -211,6 +214,9 @@ class EmailSection:
     # ``physical_card_signals`` records which heuristics fired (telemetry).
     is_physical_card_surface: bool = False
     physical_card_signals: tuple[str, ...] = ()
+    # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
 
 @dataclass(frozen=True)
@@ -463,6 +469,8 @@ def analyze_layout(
                 inner_card_fixed_width=inner_card_fixed_width,
                 is_physical_card_surface=is_physical_card_surface,
                 physical_card_signals=physical_card_signals,
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
 
@@ -1131,6 +1139,8 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 width=node.width,
                 height=node.height,
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
     elif node.type == DesignNodeType.FRAME and node.image_ref:
@@ -1143,6 +1153,8 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 height=node.height,
                 is_background=True,
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
         # Still recurse into children (frame has content over the bg)
@@ -1165,6 +1177,9 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 height=node.height,
                 export_node_id=node.id,  # Export the frame, not just the image fill
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
+                # Border lives on the wrapper frame (like Rule 10's radii)
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
             )
         )
     else:

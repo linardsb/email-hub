@@ -1301,6 +1301,182 @@ class TestOpacityCompositing:
         assert _gradient_midpoint_hex(stops) is None
 
 
+# ── Lossless Capture Tests (Phase 52.5) ──
+
+
+class TestLosslessCapture:
+    """Phase 52.5 — real-backdrop compositing, gradient node_id, AUTO/% line-height."""
+
+    @pytest.fixture
+    def figma_service(self) -> FigmaDesignSyncService:
+        return FigmaDesignSyncService()
+
+    def _solid_fill(self, r: float, g: float, b: float, a: float = 1.0) -> dict[str, Any]:
+        return {"type": "SOLID", "color": {"r": r, "g": g, "b": b, "a": a}}
+
+    def test_translucent_child_composites_against_parent_fill(
+        self, figma_service: FigmaDesignSyncService
+    ) -> None:
+        # 50% black over a red parent → #800000 (was #808080 vs hard-coded white)
+        node_data = cast(
+            RawFigmaNode,
+            {
+                "id": "1:1",
+                "type": "FRAME",
+                "fills": [self._solid_fill(1, 0, 0)],
+                "children": [
+                    {
+                        "id": "1:2",
+                        "type": "FRAME",
+                        "fills": [self._solid_fill(0, 0, 0, a=0.5)],
+                        "children": [],
+                    }
+                ],
+            },
+        )
+        node = figma_service._parse_node(node_data, current_depth=0, max_depth=None)
+        assert node.fill_color == "#FF0000"
+        assert node.children[0].fill_color == "#800000"
+
+    def test_translucent_stroke_composites_against_parent_fill(
+        self, figma_service: FigmaDesignSyncService
+    ) -> None:
+        node_data = cast(
+            RawFigmaNode,
+            {
+                "id": "1:1",
+                "type": "FRAME",
+                "fills": [self._solid_fill(1, 0, 0)],
+                "children": [
+                    {
+                        "id": "1:2",
+                        "type": "FRAME",
+                        "strokes": [self._solid_fill(0, 0, 0, a=0.5)],
+                        "strokeWeight": 2,
+                        "children": [],
+                    }
+                ],
+            },
+        )
+        node = figma_service._parse_node(node_data, current_depth=0, max_depth=None)
+        assert node.children[0].stroke_color == "#800000"
+        assert node.children[0].stroke_weight == 2.0
+
+    def test_grandchild_inherits_nearest_ancestor_fill(
+        self, figma_service: FigmaDesignSyncService
+    ) -> None:
+        # Middle frame has no fill — grandchild composites against the root's red
+        node_data = cast(
+            RawFigmaNode,
+            {
+                "id": "1:1",
+                "type": "FRAME",
+                "fills": [self._solid_fill(1, 0, 0)],
+                "children": [
+                    {
+                        "id": "1:2",
+                        "type": "GROUP",
+                        "children": [
+                            {
+                                "id": "1:3",
+                                "type": "FRAME",
+                                "fills": [self._solid_fill(0, 0, 0, a=0.5)],
+                                "children": [],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        node = figma_service._parse_node(node_data, current_depth=0, max_depth=None)
+        assert node.children[0].children[0].fill_color == "#800000"
+
+    def test_token_walk_composites_against_ancestor_fill(
+        self, figma_service: FigmaDesignSyncService
+    ) -> None:
+        file_data: dict[str, Any] = {
+            "document": {
+                "children": [
+                    {
+                        "type": "FRAME",
+                        "fills": [self._solid_fill(1, 0, 0)],
+                        "children": [
+                            {
+                                "type": "FRAME",
+                                "fills": [self._solid_fill(0, 0, 0, a=0.5)],
+                                "children": [],
+                            }
+                        ],
+                    }
+                ]
+            }
+        }
+        colors, _, _ = figma_service._parse_colors(file_data, {})
+        hexes = {c.hex for c in colors}
+        assert "#FF0000" in hexes
+        assert "#800000" in hexes
+
+    def test_gradient_carries_node_id(self, figma_service: FigmaDesignSyncService) -> None:
+        file_data: dict[str, Any] = {
+            "document": {
+                "children": [
+                    {
+                        "id": "5:99",
+                        "type": "FRAME",
+                        "name": "Hero",
+                        "fills": [
+                            {
+                                "type": "GRADIENT_LINEAR",
+                                "gradientStops": [
+                                    {"color": {"r": 1, "g": 0, "b": 0, "a": 1}, "position": 0},
+                                    {"color": {"r": 0, "g": 0, "b": 1, "a": 1}, "position": 1},
+                                ],
+                            }
+                        ],
+                        "children": [],
+                    }
+                ]
+            }
+        }
+        _, _, gradients = figma_service._parse_colors(file_data, {})
+        assert len(gradients) == 1
+        assert gradients[0].node_id == "5:99"
+
+    def _parse_text_node(
+        self, figma_service: FigmaDesignSyncService, style: dict[str, Any]
+    ) -> DesignNode:
+        node_data = cast(
+            RawFigmaNode,
+            {"id": "2:1", "type": "TEXT", "characters": "Hello", "style": style},
+        )
+        return figma_service._parse_node(node_data, current_depth=0, max_depth=None)
+
+    def test_line_height_percent_font_size_captured(
+        self, figma_service: FigmaDesignSyncService
+    ) -> None:
+        node = self._parse_text_node(
+            figma_service, {"fontSize": 16, "lineHeightPercentFontSize": 150}
+        )
+        assert node.line_height_px is None
+        assert node.line_height_relative == 1.5
+
+    def test_line_height_legacy_percent_captured(
+        self, figma_service: FigmaDesignSyncService
+    ) -> None:
+        # AUTO (100% of default) → 1.2 multiplier, matching _walk_for_typography
+        node = self._parse_text_node(figma_service, {"fontSize": 16, "lineHeightPercent": 100})
+        assert node.line_height_px is None
+        assert node.line_height_relative == 1.2
+
+    def test_line_height_px_takes_priority(self, figma_service: FigmaDesignSyncService) -> None:
+        node = self._parse_text_node(
+            figma_service,
+            {"fontSize": 16, "lineHeightPx": 24, "lineHeightPercentFontSize": 150},
+        )
+        assert node.line_height_px == 24.0
+        assert node.line_height_relative is None
+
+
 # ── Figma Variables API Tests ──
 
 
