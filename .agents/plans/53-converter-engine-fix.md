@@ -139,6 +139,8 @@ This is the real blocker for a trustworthy fork decision. The converter's emitte
 
 **Output:** a 53.1 decision doc + the chosen sub-plan. **Recommended posture (the audits' consensus, for the user to ratify):** Track A+B regardless; run Track C as a spike; lean toward **(b) long-term with (c) as a per-subtree escape hatch** *only if* the metric + multi-fixture spike confirm it beats the Track-C patch by enough to justify 2.5-4 weeks. Explicitly **not (c) as the default engine** (kills editability/ESP hooks; PNGs 0.64-2.4 MB blow the file-size gate + Gmail 102 KB clip).
 
+**Status (2026-06-12): ✅ GATE CLOSED — fork (a) chosen and user-ratified same day.** Decision doc: `.agents/plans/53-1-fork-decision.md`; sub-plan: `.agents/plans/53-d-fork-a-execution.md`. Fresh same-day measurements (A1 ladder off/on + A3 live pixel metric on **all 6** fixtures off/on): C1+C2a closes the over-segmenters **exact** (LEGO 8, slate 8, perf 10); the pixel metric does not discriminate forks (full-image Δ ≤ +0.013); the under-count is semantic and **fork-(b) also fails it by construction** (candidates row 9/5/12 vs targets 13/9/18) — refuting this table's "(b) closes segmentation: Yes by construction" for the under-count class. (b) declined with explicit reopen conditions (seed-grammar caps, metric-attributed); (c) ratified as per-subtree escape hatch only. Residual routed to a semantic peel/keep classification seam (sub-plan D3), not an engine rebuild.
+
 ---
 
 ### TRACK D — Execute the chosen fork *(the structural "for good" fix)* — `[53.2]`
