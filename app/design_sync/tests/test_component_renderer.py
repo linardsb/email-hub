@@ -379,6 +379,67 @@ class TestTokenOverrideExpansion:
         assert "color:#112233" in result.html
 
 
+class TestTextNodeOverrides:
+    """RC-D-prime: _text_<node_id> overrides land on per-node <td> anchors."""
+
+    _ANCHORS = (
+        '<td data-slot="body" style="font-size:16px;color:#555;">'
+        '<table role="presentation"><tr>'
+        '<td data-node-id="p1" style="mso-line-height-rule:exactly;">One</td></tr>'
+        '<tr><td data-node-id="p2" style="mso-line-height-rule:exactly;">Two</td></tr>'
+        "</table></td>"
+    )
+
+    def test_each_anchor_gets_its_own_typography(self, renderer: ComponentRenderer) -> None:
+        overrides = [
+            TokenOverride("font-size", "_text_p1", "18.0px"),
+            TokenOverride("color", "_text_p1", "#111111"),
+            TokenOverride("font-size", "_text_p2", "14.0px"),
+            TokenOverride("color", "_text_p2", "#666666"),
+        ]
+        result = renderer._apply_token_overrides(self._ANCHORS, overrides)
+        assert (
+            '<td data-node-id="p1" style="mso-line-height-rule:exactly;font-size:18.0px;color:#111111;">'
+            in result
+        )
+        assert (
+            '<td data-node-id="p2" style="mso-line-height-rule:exactly;font-size:14.0px;color:#666666;">'
+            in result
+        )
+        # The shared body slot's own style is untouched
+        assert 'data-slot="body" style="font-size:16px;color:#555;"' in result
+
+    def test_line_height_does_not_clobber_mso_rule(self, renderer: ComponentRenderer) -> None:
+        overrides = [TokenOverride("line-height", "_text_p1", "24px")]
+        result = renderer._apply_token_overrides(self._ANCHORS, overrides)
+        assert "mso-line-height-rule:exactly;line-height:24px;" in result
+
+    def test_replaces_existing_declaration(self, renderer: ComponentRenderer) -> None:
+        html_str = '<td data-node-id="p1" style="font-size:12px;">One</td>'
+        overrides = [TokenOverride("font-size", "_text_p1", "20.0px")]
+        result = renderer._apply_token_overrides(html_str, overrides)
+        assert result == '<td data-node-id="p1" style="font-size:20.0px;">One</td>'
+
+    def test_img_with_same_node_id_untouched(self, renderer: ComponentRenderer) -> None:
+        html_str = (
+            '<img data-node-id="p1" style="border:0;" src="x.png" alt="">'
+            '<td data-node-id="p1" style="">One</td>'
+        )
+        overrides = [TokenOverride("color", "_text_p1", "#111111")]
+        result = renderer._apply_token_overrides(html_str, overrides)
+        assert '<img data-node-id="p1" style="border:0;"' in result
+        assert '<td data-node-id="p1" style="color:#111111;">' in result
+
+    def test_cell_padding_longhand_upserts_into_first_td(self, renderer: ComponentRenderer) -> None:
+        html_str = '<table><tr><td style="padding:32px 24px;">Content</td></tr></table>'
+        overrides = [
+            TokenOverride("padding-top", "_cell", "24px"),
+            TokenOverride("padding-bottom", "_cell", "8px"),
+        ]
+        result = renderer._apply_token_overrides(html_str, overrides)
+        assert 'style="padding:32px 24px;padding-top:24px;padding-bottom:8px;"' in result
+
+
 class TestCtaScopedOverrides:
     """_cta token overrides must only touch CTA elements, not adjacent HTML.
 

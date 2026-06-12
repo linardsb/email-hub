@@ -338,6 +338,8 @@ _TYPOGRAPHY_PROPS = (
     "text-transform",
     "text-decoration",
 )
+# RC-D-prime (phase-52.4b) — properties a _text_<node_id> override may carry.
+_TEXT_NODE_STYLE_PROPS = (*_TYPOGRAPHY_PROPS, "font-family", "font-size", "color", "text-align")
 _HEADING_PROP_RE: dict[str, _PropRegexSet] = {
     prop: _prop_regex_set(prop, slot_alt=_HEADING_SLOTS, class_alt=_HEADING_CLASS_ALT)
     for prop in _TYPOGRAPHY_PROPS
@@ -875,6 +877,9 @@ class ComponentRenderer:
             ):
                 node_id = target[len("_image_") :]
                 result = self._apply_image_corner_radius(result, node_id, prop, val)
+            elif target.startswith("_text_") and prop in _TEXT_NODE_STYLE_PROPS:
+                node_id = target[len("_text_") :]
+                result = self._apply_text_node_style(result, node_id, prop, val)
             elif target == "_heading" and prop == "font-family":
                 result = self._replace_heading_font(result, val)
             elif target == "_heading" and prop == "color":
@@ -894,8 +899,14 @@ class ComponentRenderer:
             elif target in ("_heading", "_body") and prop in _TYPOGRAPHY_PROPS:
                 result = self._apply_typography_prop(result, target, prop, val)
             elif target == "_cell":
-                # Replace padding on the first td with padding
-                result = self._replace_first_css_prop(result, prop, val)
+                if prop == "padding":
+                    # Replace padding on the first td with padding
+                    result = self._replace_first_css_prop(result, prop, val)
+                else:
+                    # RC-D-prime per-side longhand — seeds carry only the padding:
+                    # shorthand, so replace-only would silently no-op; an
+                    # upserted longhand wins for its side and leaves the rest.
+                    result = self._upsert_first_td_css_prop(result, prop, val)
             elif target == "_cta":
                 if prop == "background-color":
                     result = self._replace_cta_background_color(result, val)
@@ -1205,6 +1216,60 @@ class ComponentRenderer:
             result,
         )
         return result
+
+    @staticmethod
+    def _upsert_style_decl(body: str, prop: str, safe_val: str) -> str:
+        """Replace ``prop`` in a style-attribute body, or append it.
+
+        The lookbehind keeps compound names apart: ``color`` must not match
+        inside ``background-color``, nor ``line-height`` inside
+        ``mso-line-height-rule``.
+        """
+        prop_in_style = re.compile(rf'(?<![-\w]){re.escape(prop)}:\s*[^;"]+;?')
+        if prop_in_style.search(body):
+            return prop_in_style.sub(f"{prop}:{safe_val};", body, count=1)
+        sep = "" if (body == "" or body.rstrip().endswith(";")) else ";"
+        return f"{body}{sep}{prop}:{safe_val};"
+
+    def _apply_text_node_style(self, html_str: str, node_id: str, prop: str, value: str) -> str:
+        """Upsert one typography declaration into ``<td data-node-id="X">`` (RC-D-prime).
+
+        Mirrors the ``_image_<node_id>`` arm: the matcher stamps one per-node
+        ``<td>`` anchor per body text, and each ``_text_<node_id>`` override
+        lands on its own anchor so every text node keeps its own design
+        typography. ``<img>`` tags carry the same attribute and are excluded
+        by matching ``<td`` only.
+        """
+        safe_val = html.escape(value, quote=True)
+        safe_node = re.escape(node_id)
+        td_tag = re.compile(rf'<td\b[^>]*\bdata-node-id="{safe_node}"[^>]*>')
+        style_decl = re.compile(r'(style=")([^"]*)(")')
+
+        def _merge_into_td(m: re.Match[str]) -> str:
+            tag = m.group(0)
+            sm = style_decl.search(tag)
+            if sm is None:
+                return re.sub(r"(>)\Z", rf' style="{prop}:{safe_val};"\g<1>', tag, count=1)
+            new_body = self._upsert_style_decl(sm.group(2), prop, safe_val)
+            return tag[: sm.start(2)] + new_body + tag[sm.end(2) :]
+
+        return td_tag.sub(_merge_into_td, html_str)
+
+    _FIRST_TD_STYLE_RE = re.compile(r'(<td\b[^>]*\bstyle=")([^"]*)(")')
+
+    def _upsert_first_td_css_prop(self, html_str: str, prop: str, value: str) -> str:
+        """Upsert a CSS declaration into the first ``<td>``'s style attribute.
+
+        Carries the ``_cell`` per-side padding longhands (RC-D-prime): appended
+        after the seed's ``padding:`` shorthand, a longhand wins for its side
+        while the shorthand keeps supplying the others.
+        """
+        m = self._FIRST_TD_STYLE_RE.search(html_str)
+        if m is None:
+            return html_str
+        safe_val = html.escape(value, quote=True)
+        new_body = self._upsert_style_decl(m.group(2), prop, safe_val)
+        return html_str[: m.start(2)] + new_body + html_str[m.end(2) :]
 
     _CTA_LINK_COLOR_RE = re.compile(
         r'(<a\b[^>]*data-slot="cta_url"[^>]*style="[^"]*?)(?<!background-)color:\s*[^;"]+(;?)'

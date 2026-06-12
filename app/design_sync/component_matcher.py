@@ -1050,6 +1050,79 @@ def _fills_full_width_image(
     return fills
 
 
+def _body_slot_texts(section: EmailSection) -> list[TextBlock]:
+    """Text nodes destined for the text-block body slot, placeholders excluded.
+
+    Single source of the body-slot membership rule, shared by
+    ``_fills_text_block`` (structure) and ``_build_token_overrides``
+    (per-node typography targets) so anchor emission and ``_text_<node_id>``
+    targeting cannot drift.
+    """
+    groups = section.child_content_groups
+    if groups:
+        return _bodies_from_groups(groups)
+    bodies = [b for b in _body_texts(section.texts) if not _is_placeholder(b.content)]
+    if bodies:
+        return bodies
+    if _first_heading(section.texts) is None and section.texts:
+        # All texts are headings — first fills the heading slot, rest are body
+        return [t for t in section.texts[1:] if not _is_placeholder(t.content)]
+    return []
+
+
+def _per_node_body_texts(section: EmailSection) -> list[TextBlock]:
+    """Body texts that get per-node ``<td data-node-id>`` anchors (RC-D-prime).
+
+    Only multi-text bodies anchor per node — a single body text keeps the
+    plain string fill, where the shared ``_body`` target already carries that
+    text's typography. Column layouts render through ``_build_column_fills``
+    and never see these anchors.
+    """
+    if section.column_layout != ColumnLayout.SINGLE:
+        return []
+    texts = _body_slot_texts(section)
+    return texts if len(texts) >= 2 else []
+
+
+def _paragraph_gap(text: TextBlock) -> int:
+    """Vertical gap below a per-node text row, standing in for ``<br><br>``.
+
+    The joined form rendered one empty line between nodes, whose height is
+    the line-height in effect at the break — approximate it from the node's
+    own metrics, falling back to a conventional paragraph gap.
+    """
+    if text.line_height:
+        return round(text.line_height)
+    if text.font_size:
+        return round(text.font_size * 1.2)
+    return 16
+
+
+def _per_node_body_html(texts: list[TextBlock]) -> str:
+    """Render body texts as one ``<td data-node-id>`` anchor per node (RC-D-prime).
+
+    The nested table replaces the ``'<br><br>'.join`` so each node is an
+    addressable element for its ``_text_<node_id>`` override target. Inner
+    cells carry ``mso-line-height-rule:exactly`` plus an explicit
+    inter-paragraph gap; the typography itself arrives via the overrides.
+    """
+    rows: list[str] = []
+    last = len(texts) - 1
+    for i, text in enumerate(texts):
+        pad = f"padding:0 0 {_paragraph_gap(text)}px 0;" if i < last else ""
+        node = html.escape(text.node_id, quote=True)
+        rows.append(
+            f'<tr><td data-node-id="{node}" '
+            f'style="{pad}mso-line-height-rule:exactly;">'
+            f"{_safe_text(text.content)}</td></tr>"
+        )
+    return (
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+        + "".join(rows)
+        + "</table>"
+    )
+
+
 def _fills_text_block(
     section: EmailSection,
     _cw: int,
@@ -1060,32 +1133,28 @@ def _fills_text_block(
 
     if groups:
         all_headings = _headings_from_groups(groups)
-        all_bodies = _bodies_from_groups(groups)
         if all_headings:
             fills.append(SlotFill("heading", _safe_text(all_headings[0].content)))
-        if all_bodies:
-            body_parts = [_safe_text(b.content) for b in all_bodies]
-            fills.append(SlotFill("body", "<br><br>".join(body_parts)))
     else:
         heading = _first_heading(section.texts)
         if heading:
             fills.append(SlotFill("heading", _safe_text(heading.content)))
-        bodies = _body_texts(section.texts)
-        if bodies:
-            body_parts = [_safe_text(b.content) for b in bodies if not _is_placeholder(b.content)]
-            if body_parts:
-                fills.append(SlotFill("body", "<br><br>".join(body_parts)))
-        elif not heading and section.texts:
+        elif section.texts and not _body_texts(section.texts):
             # All texts are headings — use first as heading, rest as body
             fills.append(SlotFill("heading", _safe_text(section.texts[0].content)))
-            if len(section.texts) > 1:
-                body_parts = [
-                    _safe_text(t.content)
-                    for t in section.texts[1:]
-                    if not _is_placeholder(t.content)
-                ]
-                if body_parts:
-                    fills.append(SlotFill("body", "<br><br>".join(body_parts)))
+
+    body_blocks = _body_slot_texts(section)
+    if body_blocks:
+        per_node = _per_node_body_texts(section)
+        if per_node:
+            # RC-D-prime (phase-52.4b): per-node anchors instead of the
+            # '<br><br>'.join, which flattened every run onto the first
+            # body's typography (last-write-wins on the shared _body class).
+            fills.append(SlotFill("body", _per_node_body_html(per_node)))
+        else:
+            fills.append(
+                SlotFill("body", "<br><br>".join(_safe_text(b.content) for b in body_blocks))
+            )
 
     # Append CTA button HTML to body slot (text-block has no dedicated CTA slot).
     # Emit *every* button, not just buttons[0]: a content section can carry a
@@ -1688,6 +1757,41 @@ def _typography_overrides(
     return overrides
 
 
+def _text_node_overrides(text: TextBlock) -> list[TokenOverride]:
+    """Emit one node's own typography onto its ``_text_<node_id>`` anchor.
+
+    RC-D-prime (phase-52.4b): pairs with the per-node ``<td data-node-id>``
+    anchors from ``_per_node_body_html``. Validation and formatting mirror
+    the shared-target blocks in ``_build_token_overrides`` byte-for-byte so
+    the per-node and first-text paths cannot drift.
+    """
+    target = f"_text_{text.node_id}"
+    out: list[TokenOverride] = []
+    if text.font_family:
+        out.append(TokenOverride("font-family", target, text.font_family))
+    if text.font_size:
+        out.append(TokenOverride("font-size", target, f"{text.font_size}px"))
+    if text.text_color and _HEX_COLOR_RE.match(text.text_color):
+        out.append(TokenOverride("color", target, text.text_color))
+    align = text.text_align.lower() if text.text_align else None
+    if align in ("left", "center", "right", "justify"):
+        out.append(TokenOverride("text-align", target, align))
+    if text.font_weight is not None:
+        out.append(TokenOverride("font-weight", target, str(text.font_weight)))
+    if text.line_height is not None:
+        out.append(TokenOverride("line-height", target, f"{round(text.line_height)}px"))
+    if text.letter_spacing is not None and text.letter_spacing != 0.0:
+        out.append(TokenOverride("letter-spacing", target, f"{text.letter_spacing:.2f}px"))
+    if text.text_transform is not None and text.text_transform.lower() in _ALLOWED_TEXT_TRANSFORM:
+        out.append(TokenOverride("text-transform", target, text.text_transform.lower()))
+    if (
+        text.text_decoration is not None
+        and text.text_decoration.lower() in _ALLOWED_TEXT_DECORATION
+    ):
+        out.append(TokenOverride("text-decoration", target, text.text_decoration.lower()))
+    return out
+
+
 def _cta_overrides(btn: ButtonElement, target: str) -> list[TokenOverride]:
     """Build CTA color/shape token overrides for a single button.
 
@@ -1814,19 +1918,31 @@ def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
     overrides.extend(_typography_overrides(section.texts, is_heading=True, target="_heading"))
     overrides.extend(_typography_overrides(section.texts, is_heading=False, target="_body"))
 
-    # Padding overrides
-    padding_parts: list[str] = []
-    if section.padding_top is not None:
-        padding_parts.append(f"{int(section.padding_top)}px")
-    if section.padding_right is not None:
-        padding_parts.append(f"{int(section.padding_right)}px")
-    if section.padding_bottom is not None:
-        padding_parts.append(f"{int(section.padding_bottom)}px")
-    if section.padding_left is not None:
-        padding_parts.append(f"{int(section.padding_left)}px")
+    # RC-D-prime (phase-52.4b) — per-node typography. _fills_text_block emits one
+    # <td data-node-id> anchor per body text when a section carries ≥2; these
+    # overrides give each node its own typography instead of flattening every
+    # run onto the first body's values. The first-match blocks above keep
+    # styling the seed's shared heading/body slots.
+    for text in _per_node_body_texts(section):
+        overrides.extend(_text_node_overrides(text))
 
-    if len(padding_parts) == 4:
-        overrides.append(TokenOverride("padding", "_cell", " ".join(padding_parts)))
+    # Padding overrides — 4-side shorthand when fully specified; per-side
+    # longhands otherwise (RC-D-prime: the all-or-nothing shorthand silently
+    # dropped partial padding, and a <4-part join would mis-assign sides).
+    sides = (
+        ("padding-top", section.padding_top),
+        ("padding-right", section.padding_right),
+        ("padding-bottom", section.padding_bottom),
+        ("padding-left", section.padding_left),
+    )
+    present = [(prop, val) for prop, val in sides if val is not None]
+    if len(present) == 4:
+        overrides.append(
+            TokenOverride("padding", "_cell", " ".join(f"{int(val)}px" for _, val in present))
+        )
+    else:
+        for prop, val in present:
+            overrides.append(TokenOverride(prop, "_cell", f"{int(val)}px"))
 
     # CTA button overrides.
     if section.buttons:
