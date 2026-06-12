@@ -578,6 +578,8 @@ def _expand_container_wrappers(
     if not get_settings().design_sync.wrapper_unwrap_enabled:
         return [(node, None, None) for node in candidates]
 
+    peel_enabled = get_settings().design_sync.semantic_peel_enabled
+
     expanded: list[tuple[DesignNode, str | None, str | None]] = []
     for node in candidates:
         if _is_container_wrapper(node):
@@ -585,6 +587,13 @@ def _expand_container_wrappers(
             for child in node.children:
                 if _is_section_child(child):
                     expanded.append((child, wrapper_bg, node.id))
+        elif peel_enabled and (grandkids := _peelable_grandkids(node)) is not None:
+            # Phase 53 D3: constrained one-level peel. Grandkids surface as
+            # solo sections (no parent_wrapper_id — they must COUNT as
+            # sections, not regroup into one band); the wrapper fill still
+            # propagates so card surfaces keep their background.
+            for grandkid in grandkids:
+                expanded.append((grandkid, node.fill_color, None))
         else:
             expanded.append((node, None, None))
     return expanded
@@ -596,6 +605,65 @@ def _is_container_wrapper(node: DesignNode) -> bool:
         return False
     section_children = [c for c in node.children if _is_section_child(c)]
     return len(section_children) >= 2
+
+
+# Column height below which an image-free grandkid row reads as one atomic
+# data row (stat numbers, fine print) rather than content cards. Sits between
+# observed stat rows (~30px) and the smallest peel-worthy content row
+# (icon+label nav, ~64px); content-scale, never fixture-keyed.
+_PEEL_MIN_CARD_HEIGHT = 48.0
+
+
+def _peelable_grandkids(node: DesignNode) -> list[DesignNode] | None:
+    """Constrained one-level peel target check (Phase 53 D3, spike §C2b).
+
+    The under-segmenter shape is ``mj-wrapper → single mj-section → N column
+    grandkids``: the ≥2-section-child unwrap predicate sees one direct child,
+    so the grandkid cards never surface. By MJML semantics that shape is ONE
+    section — whether it should instead count as N sections is decided by what
+    the columns *mean* (53.1 gate: proven semantic, no structural rule).
+
+    Returns the grandkid frames when the wrapper matches the shape AND the
+    content-scale heuristic classifies them as content cards (``peel``);
+    ``None`` for keep or any shape mismatch.
+    """
+    name_lower = (node.name or "").lower()
+    if "mj-wrapper" not in name_lower:
+        return None
+    section_children = [c for c in node.children if _is_section_child(c)]
+    if len(section_children) != 1:
+        return None
+    child = section_children[0]
+    grandkids = [g for g in child.children if g.type in _FRAME_TYPES]
+    if len(grandkids) < 2:
+        return None
+    if not _grandkids_are_cards(grandkids):
+        return None
+    return grandkids
+
+
+def _grandkids_are_cards(grandkids: list[DesignNode]) -> bool:
+    """Content-scale peel/keep discriminator (Phase 53 D3).
+
+    ``peel`` (True) when any column carries imagery or card-scale height —
+    product cards, icon+label nav items, image+text feature cards. ``keep``
+    (False) when every column is a short, image-free text cell: that reads as
+    one atomic data row (stat numbers), which MJML semantics already count
+    correctly as a single section.
+    """
+    for grandkid in grandkids:
+        if _subtree_has_image(grandkid):
+            return True
+        if grandkid.height is not None and grandkid.height >= _PEEL_MIN_CARD_HEIGHT:
+            return True
+    return False
+
+
+def _subtree_has_image(node: DesignNode) -> bool:
+    """True when the subtree contains any IMAGE node."""
+    if node.type == DesignNodeType.IMAGE:
+        return True
+    return any(_subtree_has_image(c) for c in node.children)
 
 
 def _is_section_child(node: DesignNode) -> bool:

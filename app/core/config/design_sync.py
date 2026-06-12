@@ -95,6 +95,12 @@ class DesignSyncConfig(BaseModel):
     # When band grouping is on, drop SPACER-typed pseudo-sections inside a band
     # (they render as padding, not their own row). Phase 53 Track C2.
     band_grouping_absorb_spacers: bool = True  # DESIGN_SYNC__BAND_GROUPING_ABSORB_SPACERS
+    # Semantic peel/keep seam — Phase 53 D3 spike (default OFF; flag-off output
+    # byte-identical). Peel `mj-wrapper → single mj-section → N column` grandkids
+    # into their own sections when the content-scale heuristic reads them as
+    # cards (imagery / card-height) rather than an atomic stat/nav row. The
+    # under-count residual is SEMANTIC (53.1 gate) — this is the discriminator.
+    semantic_peel_enabled: bool = False  # DESIGN_SYNC__SEMANTIC_PEEL_ENABLED
     # Per-email token scoping — scope to target frame subtree (Phase 49.6)
     token_scoping_enabled: bool = True  # DESIGN_SYNC__TOKEN_SCOPING_ENABLED
     # Design-sync → EmailTree bridge (Phase 49.8)

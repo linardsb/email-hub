@@ -1896,3 +1896,146 @@ class TestColumnWidthFractions:
         sections = [s for s in layout.sections if s.column_count == 2]
         assert len(sections) == 1
         assert sections[0].column_width_fractions == pytest.approx((2 / 3, 1 / 3))  # pyright: ignore[reportUnknownMemberType]
+
+
+class TestSemanticPeel:
+    """D3 (Phase 53): constrained one-level peel behind DESIGN_SYNC__SEMANTIC_PEEL_ENABLED."""
+
+    @staticmethod
+    def _column(node_id: str, *, height: float, with_image: bool, width: float = 200) -> DesignNode:
+        children: list[DesignNode] = [
+            _make_text_node(f"{node_id}-t", f"Text {node_id}"),
+        ]
+        if with_image:
+            children.append(
+                DesignNode(
+                    id=f"{node_id}-img",
+                    name="card-image",
+                    type=DesignNodeType.IMAGE,
+                    x=0,
+                    y=0,
+                    width=width,
+                    height=height / 2,
+                )
+            )
+        return DesignNode(
+            id=node_id,
+            name="mj-column",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=width,
+            height=height,
+            children=children,
+        )
+
+    @classmethod
+    def _single_section_wrapper(
+        cls, *, column_height: float, with_images: bool, n_columns: int = 2
+    ) -> DesignNode:
+        columns = [
+            cls._column(f"col{i}", height=column_height, with_image=with_images)
+            for i in range(n_columns)
+        ]
+        section = DesignNode(
+            id="sec1",
+            name="mj-section",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=column_height + 20,
+            children=columns,
+        )
+        return DesignNode(
+            id="wrap1",
+            name="mj-wrapper",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=100,
+            width=600,
+            height=column_height + 60,
+            fill_color="#AA1733",
+            children=[section],
+        )
+
+    def test_card_columns_peel(self) -> None:
+        """Image-bearing columns classify as cards → grandkids returned."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=232, with_images=True)
+        grandkids = _peelable_grandkids(wrapper)
+        assert grandkids is not None
+        assert [g.id for g in grandkids] == ["col0", "col1"]
+
+    def test_tall_imageless_columns_peel(self) -> None:
+        """Card-scale height alone (no imagery) classifies as cards."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=64, with_images=False)
+        assert _peelable_grandkids(wrapper) is not None
+
+    def test_short_stat_row_keeps(self) -> None:
+        """Short image-free columns read as one atomic data row → keep."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=30, with_images=False)
+        assert _peelable_grandkids(wrapper) is None
+
+    def test_non_wrapper_name_is_not_peelable(self) -> None:
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=232, with_images=True)
+        from dataclasses import replace
+
+        renamed = replace(wrapper, name="content-frame")
+        assert _peelable_grandkids(renamed) is None
+
+    def test_multi_section_wrapper_is_not_peelable(self) -> None:
+        """≥2 section children belong to the existing unwrap pre-pass, not the peel."""
+        from app.design_sync.figma.layout_analyzer import _peelable_grandkids
+
+        wrapper = self._single_section_wrapper(column_height=232, with_images=True)
+        from dataclasses import replace
+
+        second = replace(wrapper.children[0], id="sec2")
+        two_sections = replace(wrapper, children=[wrapper.children[0], second])
+        assert _peelable_grandkids(two_sections) is None
+
+    def test_flag_off_keeps_single_section(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.core.config import get_settings
+
+        monkeypatch.setattr(get_settings().design_sync, "semantic_peel_enabled", False)
+        structure = self._structure_with_wrapper()
+        layout = analyze_layout(structure)
+        assert all(s.node_id != "col0" for s in layout.sections)
+
+    def test_flag_on_peels_grandkids_as_solo_sections(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Peeled grandkids surface as sections: wrapper fill propagated, no band id."""
+        from app.core.config import get_settings
+
+        monkeypatch.setattr(get_settings().design_sync, "semantic_peel_enabled", True)
+        structure = self._structure_with_wrapper()
+        layout = analyze_layout(structure)
+        peeled = [s for s in layout.sections if s.node_id in ("col0", "col1")]
+        assert len(peeled) == 2
+        for s in peeled:
+            assert s.container_bg == "#AA1733"
+            assert s.parent_wrapper_id is None
+
+    @classmethod
+    def _structure_with_wrapper(cls) -> DesignFileStructure:
+        header = DesignNode(
+            id="hdr",
+            name="mj-section",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=80,
+            children=[_make_text_node("th", "Header text")],
+        )
+        wrapper = cls._single_section_wrapper(column_height=232, with_images=True)
+        return _make_section_structure([header, wrapper])

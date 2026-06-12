@@ -408,10 +408,17 @@ flags:
     status: beta
 
   - name: DESIGN_SYNC__BAND_GROUPING_ENABLED
-    description: Phase 53 Track C spike — regroup exploded-wrapper sections by parent_wrapper_id; feeds the 53.1 fork gate (default off)
+    description: Phase 53 Track C/D1 — regroup exploded-wrapper sections by parent_wrapper_id. Default ON since the 53.1 fork-(a) ratification (2026-06-12); env var is the kill switch, cull after soak
     owner: design-team
     created: "2026-06-11"
     removal_date: "2026-09-11"
+    status: beta
+
+  - name: DESIGN_SYNC__SEMANTIC_PEEL_ENABLED
+    description: Phase 53 D3 spike — peel single-section wrapper grandkid columns into own sections when the content-scale heuristic reads them as cards (default off; ship/park decision pending on spike numbers)
+    owner: design-team
+    created: "2026-06-12"
+    removal_date: "2026-09-12"
     status: alpha
 
   # ── Observability ───────────────────────────────────────────────────────────
