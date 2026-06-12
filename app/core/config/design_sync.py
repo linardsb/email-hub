@@ -54,7 +54,9 @@ class DesignSyncConfig(BaseModel):
         0.7  # DESIGN_SYNC__VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD
     )
     vlm_classification_timeout: float = 15.0  # DESIGN_SYNC__VLM_CLASSIFICATION_TIMEOUT (seconds)
-    # VLM visual verification loop (Phase 47.2)
+    # VLM visual verification loop (Phase 47.2) — RETIRED at 53.4 (2026-06-12):
+    # stays default-off until the 2026-09-10 cull; reopen conditions in
+    # .agents/plans/53-4-vlm-retirement.md. Do not credit it in fidelity claims.
     vlm_verify_enabled: bool = False  # DESIGN_SYNC__VLM_VERIFY_ENABLED
     vlm_verify_model: str = ""  # DESIGN_SYNC__VLM_VERIFY_MODEL (empty = auto-resolve vision)
     vlm_verify_timeout: float = 30.0  # DESIGN_SYNC__VLM_VERIFY_TIMEOUT (seconds)

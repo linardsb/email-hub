@@ -421,6 +421,13 @@ flags:
     removal_date: "2026-09-12"
     status: alpha
 
+  - name: DESIGN_SYNC__VLM_VERIFY_ENABLED
+    description: RETIRED (Phase 53.4, 2026-06-12) — VLM render→compare→correct loop; never ran on the default path, applicator is property-only, internal metric false-perfects on empty input. Stays off until cull; reopen conditions in .agents/plans/53-4-vlm-retirement.md
+    owner: design-team
+    created: "2026-06-12"
+    removal_date: "2026-09-10"
+    status: deprecated
+
   # ── Observability ───────────────────────────────────────────────────────────
   - name: OTEL__ENABLED
     description: OpenTelemetry instrumentation (FastAPI, SQLAlchemy, httpx) with OTLP export
