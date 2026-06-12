@@ -20,7 +20,7 @@
 
 > **Operative plan:** `.agents/plans/53-converter-engine-fix.md` (2026-06-02) — supersedes the old linear `53.1–53.7`, the `52-converter-foundation.md §"Phase 53"` outline, and the `50-converter-fidelity-master.md` 50–53 labels + its 85→99% ladder. The Phase-52 foundation is **shipped** (serializer bridge un-inert RC-A/B, typography/align/CTA/radius overrides incl. 52.4a/b/c/d, `_fix_text_contrast` scoping — see docs/TODO-completed.md). What remains is **measurement + the engine fork**, sequenced by dependency.
 >
-> **Diagnosis (per the plan's re-audit — not independently re-confirmed here):** segmentation (wrong section counts) is the dominant *structural* defect (5/6 fixtures); the fidelity metric is **circular + inverted** until fixture assets resolve; only **case 5 (maap)** binds on disk. Express progress by **defect-class closure, not a fidelity %**.
+> **Diagnosis (per the plan's re-audit — not independently re-confirmed here):** segmentation (wrong section counts) is the dominant *structural* defect (5/6 fixtures); the fidelity metric is **circular + inverted** until fixture assets resolve ~~(only case 5/maap bound)~~ — assets resolved for all 6 cases via §A4 (2026-06-12); the metric itself still needs §A3 wiring. Express progress by **defect-class closure, not a fidelity %**.
 >
 > **Execution order:** A1 → A2 → Track B → Track C → A4 → A3 → 52.5 → **53.1 (gate)** → D → Track E.
 
@@ -74,15 +74,16 @@
 **Verify:** A1 ladder shows LEGO 17→8 with correctly nested bands; report the all-6 ladder + the residual cases fork-(b) would still beat. **Do NOT full-commit** — this feeds the 53.1 gate. ✅ done.
 **Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §Track C (prereq: A1 confirms LEGO ~17). Spike result: `docs/phase-53-track-c-spike.md`.
 
-### A4 — Figma node-id-keyed re-export (cases 6–10) `[Backend · USER action]` `[Plan Ready · long pole — start early]`
+### A4 — Figma node-id-keyed re-export (cases 6–10) `[Backend · USER action]` `[✅ Done — verified 2026-06-12 (export pre-existed; plan premise was stale)]`
 
 **What:** Re-export frames for cases 6/7/8/9/10 keyed by the node-ids the converter currently emits, so the pixel metric has an on-disk image map.
-**Why:** The emitted node-ids have no on-disk image map today (only case 5/maap binds) — this is the real blocker for a trustworthy *multi-fixture* fork decision.
+**Why:** The emitted node-ids had no on-disk image map (only case 5/maap bound) — the real blocker for a trustworthy *multi-fixture* fork decision.
 **Implementation:**
-- `[⏳ TODO]` Per case, either (a) live re-export keyed by current node-ids (needs the Figma file + a PAT), or (b) hand-map the semantic PNGs → node-ids.
-- `[⏳ TODO]` LEGO *structure* re-parses offline from `.agents/figma-cache/node_2833_1869.json`, but its *images* still need (a) or a ~24-PNG hand-map; perf/slate need live Figma.
-**Verify:** ≥2 fixtures (including an over-segmenter) resolve so the metric becomes gate-worthy.
-**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A4) — **needs USER / Figma access; begin before the gate.**
+- `[✅ Done]` Path (a) executed via `scripts/export-case-assets.py` (shipped PR #241 `7894ff03`): reads emitted node-ids from each case's `expected.html`, renders via the Figma image API (file `VUlWjZGAEVZr3mK1EawsYR`, scale=2 — byte-identical to the import pipeline on case 5); bookkeeping in `.agents/figma-cache/exports.json`. Ran locally: cases 6/10 assets Apr 24, cases 7/8/9 Jun 3.
+- `[✅ n/a]` The (b) hand-map fallback and LEGO cache-reparse became moot — live export covered all cases including LEGO images.
+**Result (verified 2026-06-12):** fresh `run_case_conversion()` per case → every emitted node-id resolves to `assets/<id : → _>.png` for **all of cases 5–10** (`missing=0`; LEGO 22/22 — the over-segmenter). Verify criterion (≥2 fixtures incl. an over-segmenter) exceeded; **§A3 multi-fixture wiring unblocked**. Caveats: assets are **gitignored** (`data/debug/*/*`) → local-only, CI can't run the pixel metric until they're committed or re-exported in CI with a `FIGMA_TOKEN` (decision open, surfaced at A3); LEGO's reference image keeps the known `viaual_design.png` typo. Status block: `.agents/plans/53-converter-engine-fix.md` §A4.
+**Verify:** ≥2 fixtures (including an over-segmenter) resolve so the metric becomes gate-worthy. ✅ all 6 resolve.
+**Plan:** ✅ `.agents/plans/53-converter-engine-fix.md` §4 Track A (A4).
 
 ### A3 — Case-5 pixel metric, advisory `[Backend]` `[Plan Ready]`
 
