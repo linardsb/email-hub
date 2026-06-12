@@ -25,6 +25,7 @@ from app.design_sync.figma.layout_analyzer import (
     EmailSectionType,
     ImagePlaceholder,
     TextBlock,
+    compute_column_width_fractions,
 )
 from app.design_sync.frame_rules import CornerRadiusSpec
 from app.design_sync.protocol import (
@@ -1135,8 +1136,6 @@ class DocumentSection:
         """Bridge to the existing EmailSection dataclass."""
         # A8 (Phase 53 D2): fractions are derived state — recompute from the
         # round-tripped per-column widths instead of persisting a second copy.
-        from app.design_sync.figma.layout_analyzer import compute_column_width_fractions
-
         pad = self.padding
         column_groups = [c.to_column_group() for c in self.columns]
         return EmailSection(
