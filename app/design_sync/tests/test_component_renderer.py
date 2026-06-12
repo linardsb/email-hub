@@ -431,7 +431,9 @@ class TestRenderPeelRow:
         row = renderer.render_peel_row(sections, rendered)
         assert 'bgcolor="#AA1733"' in row.html
         assert "background-color:#AA1733;" in row.html
-        assert row.dark_mode_classes == ("dm-a", "dm-b")
+        # Row container carries the dark-mode inversion hook (Track 41.3)
+        assert 'class="bgcolor-AA1733"' in row.html
+        assert row.dark_mode_classes == ("bgcolor-AA1733", "dm-a", "dm-b")
         assert [img["node_id"] for img in row.images] == ["a", "b"]
         # members render in given order inside inline-block column divs
         assert row.html.index("card a") < row.html.index("card b")

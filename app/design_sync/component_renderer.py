@@ -592,10 +592,17 @@ class ComponentRenderer:
             )
         parts.append("<!--[if mso]>\n</td></tr></table>\n<![endif]-->")
 
+        # Dark-mode hook for the row container — same inversion contract as the
+        # repeating-group band (Track 41.3): without the class the row bg would
+        # stay light in dark mode while its member cards flip.
+        container_dm_class = f"bgcolor-{bg.lstrip('#').upper()}" if bg else ""
+        class_attr = f' class="{container_dm_class}"' if container_dm_class else ""
+
         body = "\n".join(parts)
         row_html = (
-            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
-            f'border="0" data-peel-row="{row_id}" style="border-collapse: collapse; '
+            f'<table role="presentation"{class_attr} width="100%" cellpadding="0" '
+            f'cellspacing="0" border="0" data-peel-row="{row_id}" '
+            'style="border-collapse: collapse; '
             'mso-table-lspace: 0pt; mso-table-rspace: 0pt;">\n<tr>\n'
             f'<td{bgcolor_attr} style="font-size: 0; text-align: center; '
             f'padding: 0;{bg_style} mso-line-height-rule: exactly;">\n'
@@ -604,6 +611,8 @@ class ComponentRenderer:
 
         images: list[dict[str, str]] = []
         dark_classes: list[str] = []
+        if container_dm_class:
+            dark_classes.append(container_dm_class)
         for item in rendered_items:
             images.extend(item.images)
             dark_classes.extend(item.dark_mode_classes)

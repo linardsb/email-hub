@@ -824,6 +824,22 @@ class DesignConverterService:
                             mm.section.x_position if mm.section.x_position is not None else 0.0
                         )
                     )
+                    # Cache read-back mirrors the group path: the composed row
+                    # is stored under the first member's node id below. The
+                    # spacer is not part of the stored html, so re-append it.
+                    row_cached = cached_entries.get(row_matches[0].section.node_id)
+                    if row_cached is not None:
+                        section_parts.append(row_cached.html)
+                        all_images.extend(row_cached.images)
+                        hit_count += len(row_matches)
+                        cached_spacing = row_matches[-1].spacing_after
+                        if cached_spacing and cached_spacing > 0:
+                            section_parts.append(
+                                _SPACER_TEMPLATE.format(
+                                    width=container_width, h=int(cached_spacing)
+                                )
+                            )
+                        continue
                     row_rendered = [renderer.render_section(mm) for mm in row_matches]
                     row = renderer.render_peel_row([mm.section for mm in row_matches], row_rendered)
                     section_parts.append(row.html)
