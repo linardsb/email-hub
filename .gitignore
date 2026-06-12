@@ -165,3 +165,6 @@ email-templates/Icons/
 # Also excluded from ruff (pyproject [tool.ruff] exclude) so they don't fail lint.
 .tmpscratch/
 .tmp_verify/
+
+# Local-only active backlog (kept out of the repo; history preserved up to 85345c97)
+/TODO.md
