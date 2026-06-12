@@ -2024,6 +2024,8 @@ class TestSemanticPeel:
         for s in peeled:
             assert s.container_bg == "#AA1733"
             assert s.parent_wrapper_id is None
+            # D3 follow-up: same-row siblings share a peel row id
+            assert s.peel_row_id == "wrap1:r0"
 
     @classmethod
     def _structure_with_wrapper(cls) -> DesignFileStructure:
@@ -2039,3 +2041,87 @@ class TestSemanticPeel:
         )
         wrapper = cls._single_section_wrapper(column_height=232, with_images=True)
         return _make_section_structure([header, wrapper])
+
+
+class TestPeelRows:
+    """D3 follow-up: ``_peel_rows`` groups peeled grandkids into visual rows."""
+
+    @staticmethod
+    def _card(node_id: str, *, x: float, y: float, width: float = 200) -> DesignNode:
+        return DesignNode(
+            id=node_id,
+            name="mj-column",
+            type=DesignNodeType.FRAME,
+            x=x,
+            y=y,
+            width=width,
+            height=232,
+            children=[
+                DesignNode(
+                    id=f"{node_id}-img",
+                    name="card-image",
+                    type=DesignNodeType.IMAGE,
+                    x=x,
+                    y=y,
+                    width=width,
+                    height=116,
+                )
+            ],
+        )
+
+    def test_groups_near_y_and_orders_by_x(self) -> None:
+        """Starbucks shape: same visual row, y differs by 6px, right card first."""
+        from app.design_sync.figma.layout_analyzer import _peel_rows
+
+        right = self._card("right", x=300, y=4341)
+        left = self._card("left", x=0, y=4347)
+        rows = _peel_rows([right, left])
+        assert len(rows) == 1
+        assert [g.id for g in rows[0]] == ["left", "right"]
+
+    def test_splits_distinct_rows(self) -> None:
+        from app.design_sync.figma.layout_analyzer import _peel_rows
+
+        a = self._card("a", x=0, y=100)
+        b = self._card("b", x=300, y=100)
+        c = self._card("c", x=0, y=500)
+        rows = _peel_rows([c, b, a])
+        assert [[g.id for g in row] for row in rows] == [["a", "b"], ["c"]]
+
+    def test_singleton_row_gets_no_row_id(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Stacked grandkids (one per row) surface without a peel_row_id."""
+        from app.core.config import get_settings
+        from app.design_sync.figma.layout_analyzer import (
+            NamingConvention,
+            _expand_container_wrappers,
+        )
+
+        monkeypatch.setattr(get_settings().design_sync, "semantic_peel_enabled", True)
+        stacked = DesignNode(
+            id="wrapS",
+            name="mj-wrapper",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=600,
+            height=600,
+            fill_color="#AA1733",
+            children=[
+                DesignNode(
+                    id="secS",
+                    name="mj-section",
+                    type=DesignNodeType.FRAME,
+                    x=0,
+                    y=0,
+                    width=600,
+                    height=560,
+                    children=[
+                        self._card("top", x=0, y=0),
+                        self._card("bottom", x=0, y=300),
+                    ],
+                )
+            ],
+        )
+        expanded = _expand_container_wrappers([stacked], NamingConvention.MJML)
+        by_id = {node.id: row_id for node, _, _, row_id in expanded}
+        assert by_id == {"top": None, "bottom": None}

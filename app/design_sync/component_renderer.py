@@ -9,6 +9,7 @@ from typing import Any
 
 from app.core.logging import get_logger
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
+from app.design_sync.figma.layout_analyzer import EmailSection
 from app.design_sync.sibling_detector import RepeatingGroup
 
 logger = get_logger(__name__)
@@ -540,6 +541,79 @@ class ComponentRenderer:
         if not self._loaded:
             self.load()
         return [self.render_section(m) for m in matches]
+
+    def render_peel_row(
+        self,
+        sections: list[EmailSection],
+        rendered_items: list[RenderedSection],
+    ) -> RenderedSection:
+        """Compose peeled same-row siblings side-by-side (Phase 53 D3 follow-up).
+
+        Peeled grandkids each COUNT as their own section (A2 target gate), but
+        the design lays them out horizontally — stacking them full-width was
+        the measured maap pixel regression. Mirrors the column seeds' hybrid
+        pattern (column-layout-2.html): MSO ghost-table cells give Outlook real
+        columns; inline-block divs let narrow clients stack naturally. Cell
+        widths scale each card's design width into the container.
+        """
+        container = self._container_width
+        widths = [s.width if s.width and s.width > 0 else 0.0 for s in sections]
+        total = sum(widths)
+        if total > 0:
+            cell_widths = [round(container * w / total) for w in widths]
+        else:
+            cell_widths = [container // len(sections)] * len(sections)
+        # Last cell absorbs rounding drift (A8 precedent).
+        cell_widths[-1] = container - sum(cell_widths[:-1])
+
+        row_id = html.escape(sections[0].peel_row_id or "", quote=True)
+        bg = sections[0].container_bg
+        bg_style = f" background-color:{bg};" if bg else ""
+        bgcolor_attr = f' bgcolor="{bg}"' if bg else ""
+
+        parts: list[str] = []
+        for i, (cell_width, item) in enumerate(zip(cell_widths, rendered_items, strict=True)):
+            if i == 0:
+                parts.append(
+                    f'<!--[if mso]>\n<table role="presentation" width="{container}" '
+                    'align="center" cellpadding="0" cellspacing="0" border="0" '
+                    'style="border-collapse: collapse; mso-table-lspace: 0pt; '
+                    f'mso-table-rspace: 0pt;"><tr><td width="{cell_width}" valign="top">\n'
+                    "<![endif]-->"
+                )
+            else:
+                parts.append(
+                    f'<!--[if mso]>\n</td><td width="{cell_width}" valign="top">\n<![endif]-->'
+                )
+            parts.append(
+                f'<div class="column" style="display: inline-block; '
+                f'max-width: {cell_width}px; width: 100%; vertical-align: top;">\n'
+                f"{item.html}\n</div>"
+            )
+        parts.append("<!--[if mso]>\n</td></tr></table>\n<![endif]-->")
+
+        body = "\n".join(parts)
+        row_html = (
+            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+            f'border="0" data-peel-row="{row_id}" style="border-collapse: collapse; '
+            'mso-table-lspace: 0pt; mso-table-rspace: 0pt;">\n<tr>\n'
+            f'<td{bgcolor_attr} style="font-size: 0; text-align: center; '
+            f'padding: 0;{bg_style} mso-line-height-rule: exactly;">\n'
+            f"{body}\n</td>\n</tr>\n</table>"
+        )
+
+        images: list[dict[str, str]] = []
+        dark_classes: list[str] = []
+        for item in rendered_items:
+            images.extend(item.images)
+            dark_classes.extend(item.dark_mode_classes)
+        return RenderedSection(
+            html=row_html,
+            component_slug="peel-row",
+            section_idx=rendered_items[0].section_idx,
+            dark_mode_classes=tuple(dict.fromkeys(dark_classes)),
+            images=images,
+        )
 
     def render_repeating_group(
         self,

@@ -415,11 +415,11 @@ flags:
     status: beta
 
   - name: DESIGN_SYNC__SEMANTIC_PEEL_ENABLED
-    description: Phase 53 D3 spike — peel single-section wrapper grandkid columns into own sections when the content-scale heuristic reads them as cards (default off; ship/park decision pending on spike numbers)
+    description: Phase 53 D3 — peel single-section wrapper grandkid columns into own sections when the content-scale heuristic reads them as cards. Default ON since 2026-06-12 (same-row siblings compose side-by-side via peel_row_id; counts exact + A3 holds); env var is the kill switch, cull after soak
     owner: design-team
     created: "2026-06-12"
     removal_date: "2026-09-12"
-    status: alpha
+    status: beta
 
   - name: DESIGN_SYNC__VLM_VERIFY_ENABLED
     description: RETIRED (Phase 53.4, 2026-06-12) — VLM render→compare→correct loop; never ran on the default path, applicator is property-only, internal metric false-perfects on empty input. Stays off until cull; reopen conditions in .agents/plans/53-4-vlm-retirement.md

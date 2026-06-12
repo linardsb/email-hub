@@ -50,8 +50,8 @@ Section-count ladder (`data/debug/ladder_snapshot.json`, A2 target gate):
 
 | Case | Fixture | Rendered | Target | Gate |
 |---|---|---|---|---|
-| 5 | maap | 9 (13 with peel flag — **exact**) | 13 | xfail (semantic, peel ship/park gate open) |
-| 6 | starbucks | 5 (9 with peel flag — **exact**) | 9 | xfail (semantic, peel ship/park gate open) |
+| 5 | maap | **13** | 13 | **strict** |
+| 6 | starbucks | **9** | 9 | **strict** |
 | 7 | LEGO | **8** | 8 | **strict** |
 | 8 | performance_reimagined | **10** | 10 | **strict** |
 | 9 | slate | **8** | 8 | **strict** |
@@ -59,10 +59,12 @@ Section-count ladder (`data/debug/ladder_snapshot.json`, A2 target gate):
 
 - Band grouping (`DESIGN_SYNC__BAND_GROUPING_ENABLED`) default **ON** since D1 (`50c691b2`);
   env var is the kill switch, cull by 2026-09-10.
-- Semantic peel (`DESIGN_SYNC__SEMANTIC_PEEL_ENABLED`, D3 `f632b8df`) default **OFF**;
-  flips maap/starbucks to exact. Ship/park is an open user gate: counts exact and starbucks
-  full-image +0.018, but maap −0.026 (peeled side-by-side cards render stacked;
-  section_median rises 0.870→0.917).
+- Semantic peel (`DESIGN_SYNC__SEMANTIC_PEEL_ENABLED`, D3 `f632b8df`) default **ON** since
+  2026-06-12: the D3 follow-up composes peeled same-row siblings side-by-side (one
+  `peel_row_id` per visual row; MSO ghost cells + inline-block columns) while each card
+  still counts as its own section. A3 verdict: maap full-image fully recovered
+  (0.8789 vs 0.8788 flag-off; the stacked spike was −0.026), starbucks full-image
+  **+0.042**; cases 7/9/10 byte-identical.
 - A3 pixel metric (CIEDE2000 in LAB, MIN-aggregated, blur 0.0): **advisory only, never a
   ship gate.** CI scores committed case-5 fixtures (first trustworthy numbers at `3c1ba9f7`:
   full_image 0.867 · section_min 0.642 · section_median 0.887); all 6 fixtures resolve
@@ -77,7 +79,7 @@ Section-count ladder (`data/debug/ladder_snapshot.json`, A2 target gate):
 | Residual | Tracker | State |
 |---|---|---|
 | **Mammut below-candidate under-count (12 vs 18).** The gap sits below the candidate row (raw-tree bands = 12); zero peelable `wrapper → single section → ≥2 column` shapes exist in case 10, so neither the D3 one-level peel **nor a fork-(b) faithful tree walk** reaches the missing 6 sections. Naive deep recursion was prototyped and REJECTED (over-segments: LEGO 8→18, maap 9→19). | `phase-53-d3-mammut-below-candidate-undercount` (deferred-items) | Open — needs a content-aware deep-segmentation seam; no current path to convergence |
-| A2 semantic under-count gate: cases 5/6/10 xfail, keyed on `SEMANTIC_UNDERCOUNT_CASES` (`ladder_harness.py`); advisory `collect_metrics` still reads converter-current counts (`regression_runner.py:113`) | `phase-53-a2-advisory-section-gate` (deferred-items) | Partially closed (strict for 7/8/9 since D1); 5/6 close if the D3 peel ships |
+| A2 semantic under-count gate: only case 10 still xfails (`SEMANTIC_UNDERCOUNT_CASES = {"10"}`); advisory `collect_metrics` still reads converter-current counts (`regression_runner.py:113`) | `phase-53-a2-advisory-section-gate` (deferred-items) | Strict for 5/6/7/8/9 since the D3 ship (2026-06-12); only the mammut residual + the advisory-metrics circularity remain |
 | Typography schema cap: `email-design-document-v1.json` `tokens.typography maxItems:200` vs LEGO's 234 emitted entries — latent because the converter path never calls `EmailDesignDocument.validate()` | `phase-53.7-typography-maxitems-cap` (deferred-items) | Open — fix before schema-validating any persisted document |
 | Asset re-export prerequisite: `data/debug/*/assets/` are gitignored; a fresh clone must re-run `scripts/export-case-assets.py` with a `FIGMA_TOKEN`; CI runs the pixel metric on case 5's committed PNGs only | `phase-53.7-asset-reexport-prerequisite` (deferred-items) | Open — same variance class §A1 warned about; surfaced, not resolved |
 | VLM verify→correct loop: dead on the default path (`vlm_verify_enabled=False`; correction applicator is property-only — cannot add/remove/reorder/merge sections; internal metric returns 1.0 on empty input) | **53.4 — RETIRED 2026-06-12** (`.agents/plans/53-4-vlm-retirement.md`) | Flag deprecated, cull 2026-09-10; reopen conditions documented; `vlm_fallback_enabled` (matcher classification) unaffected |

@@ -3,10 +3,10 @@
     "name": "maap-kask",
     "target": 13,
     "candidates": 9,
-    "analyzed": 11,
-    "rendered": 9,
-    "bands": 9,
-    "band_desc": "wrappers[1692=3] solo=8",
+    "analyzed": 15,
+    "rendered": 13,
+    "bands": 13,
+    "band_desc": "wrappers[1692=3] solo=12",
     "bags": [
       [
         "mj-wrapper",
@@ -21,9 +21,21 @@
         1
       ],
       [
-        "mj-wrapper",
-        2,
-        2,
+        "mj-column",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        0,
+        0,
+        0
+      ],
+      [
+        "mj-column",
+        1,
+        1,
         0
       ],
       [
@@ -63,9 +75,21 @@
         4
       ],
       [
-        "mj-wrapper",
+        "mj-column",
         0,
-        3,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        0,
+        1,
         0
       ],
       [
@@ -80,10 +104,10 @@
     "name": "starbucks-pumpkin-spice",
     "target": 9,
     "candidates": 5,
-    "analyzed": 5,
-    "rendered": 5,
-    "bands": 5,
-    "band_desc": "solo=5",
+    "analyzed": 9,
+    "rendered": 9,
+    "bands": 9,
+    "band_desc": "solo=9",
     "bags": [
       [
         "mj-wrapper",
@@ -98,15 +122,39 @@
         1
       ],
       [
-        "mj-wrapper",
+        "mj-column",
         2,
-        1,
+        0,
         1
       ],
       [
-        "mj-wrapper",
-        4,
-        4,
+        "mj-column",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        1,
+        1,
+        0
+      ],
+      [
+        "mj-column",
+        1,
+        1,
         0
       ],
       [

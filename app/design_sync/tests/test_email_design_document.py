@@ -695,6 +695,24 @@ class TestLosslessCapture:
         assert back.stroke_weight == 2.0
         assert back.images[0].stroke_weight == 1.0
 
+    def test_peel_row_fields_roundtrip_and_bridge(self) -> None:
+        """D3 follow-up — x_position + peel_row_id survive JSON and both bridges."""
+        section = DocumentSection(
+            id="s1",
+            type="content",
+            x_position=293.0,
+            peel_row_id="2833:1641:r0",
+        )
+        restored = DocumentSection.from_json(section.to_json())
+        assert restored.x_position == 293.0
+        assert restored.peel_row_id == "2833:1641:r0"
+        email = restored.to_email_section()
+        assert email.x_position == 293.0
+        assert email.peel_row_id == "2833:1641:r0"
+        back = DocumentSection.from_email_section(email)
+        assert back.x_position == 293.0
+        assert back.peel_row_id == "2833:1641:r0"
+
     def test_gradient_node_id_roundtrip(self) -> None:
         gradient = DocumentGradient(
             name="hero-grad",

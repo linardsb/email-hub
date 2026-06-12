@@ -204,6 +204,8 @@
         },
         "node_name": { "type": ["string", "null"], "default": null, "maxLength": 200 },
         "y_position": { "type": ["number", "null"], "default": null },
+        "x_position": { "type": ["number", "null"], "default": null },
+        "peel_row_id": { "type": ["string", "null"], "default": null, "maxLength": 120 },
         "width": { "type": ["number", "null"], "default": null },
         "height": { "type": ["number", "null"], "default": null },
         "column_layout": {

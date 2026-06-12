@@ -166,6 +166,10 @@ class EmailSection:
     node_id: str
     node_name: str
     y_position: float | None = None
+    # D3 follow-up — design-space x of the source frame. Needed to order
+    # peeled same-row siblings left-to-right (their y values can differ by a
+    # few px, so the global y-sort alone may flip them).
+    x_position: float | None = None
     width: float | None = None
     height: float | None = None
     column_layout: ColumnLayout = ColumnLayout.SINGLE
@@ -222,6 +226,10 @@ class EmailSection:
     # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
     stroke_color: str | None = None
     stroke_weight: float | None = None
+    # D3 follow-up — peeled same-row siblings share a row id so the renderer
+    # composes them side-by-side (the design lays them out horizontally) while
+    # each still COUNTS as its own section for the A2 target gate.
+    peel_row_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -330,7 +338,7 @@ def analyze_layout(
 
     # Determine overall width from the widest top-level frame
     overall_width = max(
-        (node.width for node, _, _ in candidates if node.width is not None),
+        (node.width for node, _, _, _ in candidates if node.width is not None),
         default=None,
     )
 
@@ -342,7 +350,7 @@ def analyze_layout(
         if vlm_classifications
         else 0.0
     )
-    for idx, (node, container_bg, parent_wrapper_id) in enumerate(candidates):
+    for idx, (node, container_bg, parent_wrapper_id, peel_row_id) in enumerate(candidates):
         section_type, classification_confidence = _classify_section(
             node,
             convention,
@@ -423,7 +431,7 @@ def analyze_layout(
         if ds_cfg.physical_card_detection_enabled:
             if inner_bg is not None:
                 sibling_radii = collect_sibling_radii(
-                    [n for n, _, _ in candidates],
+                    [n for n, _, _, _ in candidates],
                     exclude_node_id=node.id,
                 )
                 detection = detect_physical_card_surface(
@@ -448,6 +456,7 @@ def analyze_layout(
                 node_id=node.id,
                 node_name=node.name,
                 y_position=node.y,
+                x_position=node.x,
                 width=node.width,
                 height=node.height,
                 column_layout=col_layout,
@@ -477,6 +486,7 @@ def analyze_layout(
                 physical_card_signals=physical_card_signals,
                 stroke_color=node.stroke_color,
                 stroke_weight=node.stroke_weight,
+                peel_row_id=peel_row_id,
             )
         )
 
@@ -554,7 +564,7 @@ def _get_section_candidates(page: DesignNode) -> list[DesignNode]:
 def _expand_container_wrappers(
     candidates: list[DesignNode],
     naming: NamingConvention,
-) -> list[tuple[DesignNode, str | None, str | None]]:
+) -> list[tuple[DesignNode, str | None, str | None, str | None]]:
     """Wrapper unwrap pre-pass (Phase 50.3, Gap 1).
 
     A ``mj-wrapper`` (or any FRAME with a coloured fill plus ≥2 ``mj-section``
@@ -573,30 +583,70 @@ def _expand_container_wrappers(
     ``None`` so existing downstream code sees the same shape it always has.
     """
     if naming != NamingConvention.MJML:
-        return [(node, None, None) for node in candidates]
+        return [(node, None, None, None) for node in candidates]
 
     if not get_settings().design_sync.wrapper_unwrap_enabled:
-        return [(node, None, None) for node in candidates]
+        return [(node, None, None, None) for node in candidates]
 
     peel_enabled = get_settings().design_sync.semantic_peel_enabled
 
-    expanded: list[tuple[DesignNode, str | None, str | None]] = []
+    expanded: list[tuple[DesignNode, str | None, str | None, str | None]] = []
     for node in candidates:
         if _is_container_wrapper(node):
             wrapper_bg = node.fill_color
             for child in node.children:
                 if _is_section_child(child):
-                    expanded.append((child, wrapper_bg, node.id))
+                    expanded.append((child, wrapper_bg, node.id, None))
         elif peel_enabled and (grandkids := _peelable_grandkids(node)) is not None:
             # Phase 53 D3: constrained one-level peel. Grandkids surface as
             # solo sections (no parent_wrapper_id — they must COUNT as
             # sections, not regroup into one band); the wrapper fill still
-            # propagates so card surfaces keep their background.
-            for grandkid in grandkids:
-                expanded.append((grandkid, node.fill_color, None))
+            # propagates so card surfaces keep their background. Same-row
+            # siblings share a peel_row_id so the renderer can compose them
+            # side-by-side without collapsing the section count.
+            rows = _peel_rows(grandkids)
+            logger.info(
+                "design_sync.semantic_peel_applied",
+                wrapper_id=node.id,
+                peeled_count=len(grandkids),
+                row_count=len(rows),
+            )
+            for row_idx, row in enumerate(rows):
+                row_id = f"{node.id}:r{row_idx}" if len(row) > 1 else None
+                for grandkid in row:
+                    expanded.append((grandkid, node.fill_color, None, row_id))
         else:
-            expanded.append((node, None, None))
+            expanded.append((node, None, None, None))
     return expanded
+
+
+def _peel_rows(grandkids: list[DesignNode]) -> list[list[DesignNode]]:
+    """Group peeled grandkids into visual rows by y-proximity, left-to-right.
+
+    Same-row members can sit a few px apart in y (observed 6px on the
+    starbucks card pair), so rows close over ``_Y_TOLERANCE`` against the
+    row's first member rather than requiring exact y equality.
+    """
+    ordered = sorted(
+        grandkids,
+        key=lambda g: (
+            g.y if g.y is not None else 0.0,
+            g.x if g.x is not None else 0.0,
+        ),
+    )
+    rows: list[list[DesignNode]] = []
+    for grandkid in ordered:
+        gy = grandkid.y if grandkid.y is not None else 0.0
+        if rows:
+            head = rows[-1][0]
+            hy = head.y if head.y is not None else 0.0
+            if abs(gy - hy) <= _Y_TOLERANCE:
+                rows[-1].append(grandkid)
+                continue
+        rows.append([grandkid])
+    for row in rows:
+        row.sort(key=lambda g: g.x if g.x is not None else 0.0)
+    return rows
 
 
 def _is_container_wrapper(node: DesignNode) -> bool:

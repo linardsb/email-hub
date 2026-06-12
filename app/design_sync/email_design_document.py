@@ -983,6 +983,7 @@ class DocumentSection:
     type: str
     node_name: str | None = None
     y_position: float | None = None
+    x_position: float | None = None
     width: float | None = None
     height: float | None = None
     column_layout: str = "single"
@@ -1018,6 +1019,8 @@ class DocumentSection:
     # Non-button border (52.5) — captured losslessly; rendering lands in 53.3.
     stroke_color: str | None = None
     stroke_weight: float | None = None
+    # D3 follow-up — same-row peel id (see EmailSection.peel_row_id).
+    peel_row_id: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"id": self.id, "type": self.type}
@@ -1025,6 +1028,10 @@ class DocumentSection:
             d["node_name"] = self.node_name
         if self.y_position is not None:
             d["y_position"] = self.y_position
+        if self.x_position is not None:
+            d["x_position"] = self.x_position
+        if self.peel_row_id is not None:
+            d["peel_row_id"] = self.peel_row_id
         if self.width is not None:
             d["width"] = self.width
         if self.height is not None:
@@ -1097,6 +1104,8 @@ class DocumentSection:
             type=data["type"],
             node_name=data.get("node_name"),
             y_position=data.get("y_position"),
+            x_position=data.get("x_position"),
+            peel_row_id=data.get("peel_row_id"),
             width=data.get("width"),
             height=data.get("height"),
             column_layout=data.get("column_layout", "single"),
@@ -1143,6 +1152,7 @@ class DocumentSection:
             node_id=self.id,
             node_name=self.node_name or "",
             y_position=self.y_position,
+            x_position=self.x_position,
             width=self.width,
             height=self.height,
             column_layout=ColumnLayout(self.column_layout),
@@ -1178,6 +1188,7 @@ class DocumentSection:
             physical_card_signals=self.physical_card_signals,
             stroke_color=self.stroke_color,
             stroke_weight=self.stroke_weight,
+            peel_row_id=self.peel_row_id,
         )
 
     @classmethod
@@ -1204,6 +1215,8 @@ class DocumentSection:
             type=section.section_type.value,
             node_name=section.node_name or None,
             y_position=section.y_position,
+            x_position=section.x_position,
+            peel_row_id=section.peel_row_id,
             width=section.width,
             height=section.height,
             column_layout=section.column_layout.value,

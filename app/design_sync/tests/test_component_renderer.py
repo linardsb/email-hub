@@ -9,6 +9,7 @@ import pytest
 from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
 from app.design_sync.component_renderer import (
     ComponentRenderer,
+    RenderedSection,
     _find_matching_close,
     _is_blankable_text,
 )
@@ -377,6 +378,64 @@ class TestTokenOverrideExpansion:
         result = renderer.render_section(match)
         assert "Georgia, serif" in result.html
         assert "color:#112233" in result.html
+
+
+class TestRenderPeelRow:
+    """D3 follow-up: peeled same-row siblings compose side-by-side."""
+
+    @staticmethod
+    def _section(node_id: str, *, x: float, width: float) -> EmailSection:
+        return EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id=node_id,
+            node_name=f"card {node_id}",
+            x_position=x,
+            width=width,
+            peel_row_id="wrap:r0",
+            container_bg="#AA1733",
+        )
+
+    @staticmethod
+    def _rendered(node_id: str) -> RenderedSection:
+        return RenderedSection(
+            html=f"<table><tr><td>card {node_id}</td></tr></table>",
+            component_slug="article-card",
+            section_idx=0,
+            dark_mode_classes=(f"dm-{node_id}",),
+            images=[{"node_id": node_id, "src": f"/assets/{node_id}.png"}],
+        )
+
+    def test_widths_scale_to_container(self, renderer: ComponentRenderer) -> None:
+        """maap shape: 272 + 8 + 272 design px scale proportionally into 600."""
+        sections = [
+            self._section("a", x=0, width=272.0),
+            self._section("gut", x=272, width=8.0),
+            self._section("b", x=280, width=272.0),
+        ]
+        rendered = [self._rendered(s.node_id) for s in sections]
+        row = renderer.render_peel_row(sections, rendered)
+        assert 'data-peel-row="wrap:r0"' in row.html
+        # 272/552*600 ≈ 296, 8/552*600 ≈ 9, last absorbs rounding → 600 total
+        assert '<td width="296" valign="top">' in row.html
+        assert '<td width="9" valign="top">' in row.html
+        assert '<td width="295" valign="top">' in row.html
+        assert "max-width: 296px" in row.html
+        assert "card a" in row.html and "card b" in row.html
+
+    def test_band_bg_and_member_merge(self, renderer: ComponentRenderer) -> None:
+        sections = [
+            self._section("a", x=0, width=300.0),
+            self._section("b", x=300, width=300.0),
+        ]
+        rendered = [self._rendered(s.node_id) for s in sections]
+        row = renderer.render_peel_row(sections, rendered)
+        assert 'bgcolor="#AA1733"' in row.html
+        assert "background-color:#AA1733;" in row.html
+        assert row.dark_mode_classes == ("dm-a", "dm-b")
+        assert [img["node_id"] for img in row.images] == ["a", "b"]
+        # members render in given order inside inline-block column divs
+        assert row.html.index("card a") < row.html.index("card b")
+        assert row.html.count('class="column"') == 2
 
 
 class TestTextNodeOverrides:

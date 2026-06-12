@@ -768,6 +768,7 @@ class DesignConverterService:
             ds_settings.custom_component_enabled and ds_settings.custom_component_max_per_email > 0
         )
         rendered_group_ids: set[int] = set()
+        rendered_peel_rows: set[str] = set()
 
         renderer = ComponentRenderer(container_width=container_width)
         renderer.load()
@@ -805,6 +806,45 @@ class DesignConverterService:
                     rendered_group.images,
                 )
                 continue
+
+            # Phase 53 D3 follow-up — peeled same-row siblings compose into one
+            # horizontal row (they each still count as a section; the A2 gate
+            # reads grouped_sections, which this does not touch).
+            peel_row_id = m.section.peel_row_id
+            if peel_row_id is not None:
+                if peel_row_id in rendered_peel_rows:
+                    continue
+                rendered_peel_rows.add(peel_row_id)
+                row_matches = [mm for mm in match.matches if mm.section.peel_row_id == peel_row_id]
+                if len(row_matches) > 1:
+                    # Left-to-right by design x — the global y-sort can flip
+                    # near-equal-y siblings.
+                    row_matches.sort(
+                        key=lambda mm: (
+                            mm.section.x_position if mm.section.x_position is not None else 0.0
+                        )
+                    )
+                    row_rendered = [renderer.render_section(mm) for mm in row_matches]
+                    row = renderer.render_peel_row([mm.section for mm in row_matches], row_rendered)
+                    section_parts.append(row.html)
+                    all_images.extend(row.images)
+                    miss_count += len(row_matches)
+                    self._store_section_cache(
+                        cache,
+                        connection_id,
+                        section_hashes,
+                        row_matches[0].section.node_id,
+                        row.html,
+                        row.images,
+                    )
+                    last_spacing = row_matches[-1].spacing_after
+                    if last_spacing and last_spacing > 0:
+                        section_parts.append(
+                            _SPACER_TEMPLATE.format(width=container_width, h=int(last_spacing))
+                        )
+                    continue
+                # Singleton row id (defensive — stamping requires >1 member):
+                # fall through to the solo render below.
 
             node_id = m.section.node_id
             cached_entry = cached_entries.get(node_id)

@@ -56,13 +56,17 @@ LADDER_SNAPSHOT_PATH = _DEBUG_DIR / "ladder_snapshot.json"
 # (semantic peel/keep seam) is the only path; remove each case from this set (its
 # A2 target gates then run strict) as it converges. Shared by both A2 target gates
 # (test_converter_data_regression / test_snapshot_regression — Phase 53 D1.4).
-SEMANTIC_UNDERCOUNT_CASES = frozenset({"5", "6", "10"})
+# Cases 5/6 left this set when the D3 peel shipped default-on with the same-row
+# side-by-side composer (2026-06-12). Case 10 (mammut) stays: its gap sits BELOW
+# the candidate row — see deferred phase-53-d3-mammut-below-candidate-undercount.
+SEMANTIC_UNDERCOUNT_CASES = frozenset({"10"})
 
 SEMANTIC_UNDERCOUNT_REASON = (
     "A2: rendered section count under-counts the design target for a SEMANTIC "
-    "reason — the mj-section → N mj-column split is decided by content meaning, "
-    "not structure (53.1 gate). Closes via Track D3 (semantic peel/keep seam), "
-    "see .agents/plans/53-d-fork-a-execution.md §D3."
+    "reason BELOW the candidate row — unreachable by the D3 peel and by a "
+    "fork-(b) tree walk alike (deferred "
+    "phase-53-d3-mammut-below-candidate-undercount); no current path to "
+    "convergence — see docs/converter-fidelity-ceiling.md §4."
 )
 
 
