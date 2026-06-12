@@ -399,7 +399,25 @@
       ],
       "symptom_if_broken": "A band-grouping regression on 7/8/9 fails CI hard (intended). For 5/6/10 the gap stays invisible-but-measured: xfail means no positive CI signal when a D3 fix converges a case — it XPASSes silently until the case is removed from SEMANTIC_UNDERCOUNT_CASES.",
       "closes_when": "Track D3 (semantic peel/keep seam) ships or parks: each converging case among 5/6/10 is removed from SEMANTIC_UNDERCOUNT_CASES (flipping its target gates strict); if D3 parks, the residual is documented as the per-client honest ceiling (53.7) and this entry closes with that pointer.",
-      "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). PARTIAL CLOSE 2026-06-12 (Phase 53 D1, sub-plan .agents/plans/53-d-fork-a-execution.md §D1): over-segmenter half closed — band_grouping_enabled default-on, baselines 5/7/8/9/10 regenerated with intended-vs-structural diff audit (zero content loss, band re-nesting + band bgcolor fills + spacer-boundary shifts only), ladder snapshot regenerated (rendered now equals bands on all 6), target gates strict for 7/8/9 in BOTH suites. Under-segmenter half re-pointed at D3 per the 53.1 decision (.agents/plans/53-1-fork-decision.md)."
+      "notes": "Deliberate per plan §A2 risk line ('land as advisory/xfail first'). PARTIAL CLOSE 2026-06-12 (Phase 53 D1, sub-plan .agents/plans/53-d-fork-a-execution.md §D1): over-segmenter half closed — band_grouping_enabled default-on, baselines 5/7/8/9/10 regenerated with intended-vs-structural diff audit (zero content loss, band re-nesting + band bgcolor fills + spacer-boundary shifts only), ladder snapshot regenerated (rendered now equals bands on all 6), target gates strict for 7/8/9 in BOTH suites. Under-segmenter half re-pointed at D3 per the 53.1 decision (.agents/plans/53-1-fork-decision.md). D3 spike landed 2026-06-12 (f632b8df, DESIGN_SYNC__SEMANTIC_PEEL_ENABLED default off): heuristic hits maap 13 + starbucks 9 exact without regressing 7/8/9 — ship/park gate pending; mammut's gap is a different shape (see phase-53-d3-mammut-below-candidate-undercount)."
+    },
+    {
+      "id": "phase-53-d3-mammut-below-candidate-undercount",
+      "phase": "53",
+      "title": "Mammut (case 10) under-counts below candidate level — not the single-child-wrapper shape, unreachable by the D3 peel",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-12",
+      "introduced_commit": "f632b8df",
+      "summary": "The D3 semantic peel closes maap (9→13) and starbucks (5→9) exactly, but mammut stays at 12 vs target 18. Its gap sits BELOW the candidate row: the raw tree's own band count is 12 (ladder candidates=12 vs target_sections=18), and a fixture survey found zero `mj-wrapper → single mj-section → ≥2 column` shapes in case 10 — so neither the constrained one-level peel nor a fork-(b) faithful tree walk surfaces the missing 6 sections. The hidden sections live deeper than one peel level or inside shapes the candidate grammar does not see; naive deep recursion was prototyped at the spike and REJECTED (over-segments: LEGO 8→18, maap 9→19, spike doc §C2b).",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py (_peelable_grandkids — the shape predicate that finds nothing in case 10)",
+        "app/design_sync/tests/ladder_harness.py (SEMANTIC_UNDERCOUNT_CASES — '10' stays xfail)",
+        "data/debug/manifest.yaml (case 10: sections 12 vs target_sections 18)"
+      ],
+      "symptom_if_broken": "Case 10's A2 target gate xfails forever (12 != 18) with no path to convergence; anyone enabling DESIGN_SYNC__SEMANTIC_PEEL_ENABLED expecting all under-segmenters to converge sees mammut unchanged and may misread the seam as broken.",
+      "closes_when": "Either the 53.7 honest-ceiling doc records the mammut residual as a known cap (with the per-client table pointing here), or a deeper actuator (depth-bounded peel with a stronger discriminator, or the 53.3/53.5 escape hatches) surfaces the hidden sections and case 10 converges on the ladder.",
+      "notes": "NOT a fork-(b) reopen trigger: the decision doc's reopen conditions are seed-grammar caps, and the candidates row proves the tree walk reproduces this under-count (53-1-fork-decision.md §finding 2)."
     },
     {
       "id": "tech-debt-03-memory-recall-dead-on-read",
