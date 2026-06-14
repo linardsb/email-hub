@@ -218,9 +218,14 @@ class BriefService:
         if item is None:
             raise BriefItemNotFoundError(f"Brief item {item_id} not found")
 
-        # BOLA: check connection access
+        # BOLA: the item is fetched unscoped; the connection's created_by_id
+        # filter is the ownership gate. A missing connection means the item
+        # belongs to another user — deny (mirrors list_items_for_connection /
+        # sync_connection). Falling through here leaked items across creators.
         conn = await self._repo.get_connection(item.connection_id)
-        if conn is not None and conn.project_id is not None:
+        if conn is None:
+            raise BriefItemNotFoundError(f"Brief item {item_id} not found")
+        if conn.project_id is not None:
             await self._verify_access(conn.project_id, user)
 
         return BriefDetailResponse.model_validate(item, from_attributes=True)

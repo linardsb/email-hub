@@ -244,7 +244,7 @@
       "id": "tech-debt-03-briefs-user-isolation-test",
       "phase": "tech-debt-03",
       "title": "Briefs need a user-isolation (BOLA-by-creator) regression test, not org-isolation",
-      "status": "deferred",
+      "status": "closed",
       "severity": "soft",
       "introduced": "2026-05-10",
       "summary": "The cross-entity tenant-isolation harness (closed in tech-debt-03-tenant-isolation-regression-harness) parametrizes briefs as xfail(strict=False) because briefs are scoped by creator (BOLA-by-creator), not by org. The org-isolation pattern in test_no_cross_org_read does not apply: two users in the same org could still leak each other’s briefs. A user-isolation variant — same org, different creators, GET-by-id and list must filter by user — is needed for the same fail-loud net the other entities now have.",
@@ -254,7 +254,28 @@
       ],
       "symptom_if_broken": "A repo or route change drops creator-based filtering on briefs; one user in an org reads another user’s briefs and no regression test catches it (only the existing scoped_access fail-loud covers the missing-filter shape — not user-id-scoped leaks within an org).",
       "closes_when": "A test like test_no_cross_user_read_briefs lands under app/tests/, seeds two users in the SAME org, has user1 create a brief, asserts user2 cannot GET it by id and that user2’s list excludes it. Wire it into the integration harness alongside test_no_cross_org_read.",
+      "closed_note": "Closed by app/tests/test_briefs_user_isolation.py — same-org two-user integration test asserting (1) repository get_connection returns None for a non-owner, (2) GET /connections list excludes another user's rows, (3) GET /connections/{id}/items, POST /connections/sync, and GET /items/{id} all 404 for a non-owner. Building the test surfaced a live fail-open BOLA leak: GET /api/v1/briefs/items/{id} returned another user's item because get_item_with_details is unscoped and get_item_detail's connection guard fell through when get_connection returned None for the non-owner. Fixed in app/briefs/service.py (raise BriefItemNotFoundError when conn is None, mirroring list_items_for_connection/sync_connection). Red→green proof runs in CI's integration job (make test-integration; docker-gated, unavailable at authoring time). closed_commit pending commit.",
+      "follow_up": "Sibling unscoped read found while authoring: import_items → get_items_by_ids (app/briefs/repository.py:209) has no created_by_id filter; a user may import another user's brief items (only destination-project access is verified). Out of this entry's closes_when scope — filed as tech-debt-03-briefs-import-items-unscoped-read.",
       "notes": "Out of scope for tech-debt/03-tenant-iso-harness per that plan §“Out of scope”."
+    },
+    {
+      "id": "tech-debt-03-briefs-import-items-unscoped-read",
+      "phase": "tech-debt-03",
+      "title": "import_items reads brief items unscoped (get_items_by_ids has no owner filter) — cross-user BOLA",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-03-20",
+      "introduced_commit": "4e70fc96",
+      "summary": "BriefService.import_items fetches source items via BriefRepository.get_items_by_ids, which runs select(BriefItem).where(BriefItem.id.in_(ids)) with no ownership scoping. Brief ownership is item -> connection_id -> BriefConnection.created_by_id, and get_connection already applies scoped_access creator filtering — but get_items_by_ids bypasses it entirely. import_items only calls _verify_access on the DESTINATION project; it never verifies the caller owns the SOURCE items. Found while authoring app/tests/test_briefs_user_isolation.py, sibling to the get_item_detail fail-open fixed in the same branch. Current blast radius is limited: import_items today only resolves the project, logs, and returns ImportResponse(project_id) — it does not yet copy item content/resources/attachments. The missing gate becomes a real cross-user data leak the moment import is implemented to persist source content.",
+      "code_refs": [
+        "app/briefs/repository.py:209 (get_items_by_ids — unscoped select, no connection-owner filter)",
+        "app/briefs/service.py:235 (import_items — only _verify_access on destination project)",
+        "app/briefs/routes.py:135 (POST /api/v1/briefs/import — import_items endpoint)"
+      ],
+      "symptom_if_broken": "A user supplies brief_item_ids owned by another creator (same or different org) to POST import; the items resolve with no ownership 404 and, once import persists content, another user's brief items/resources/attachments land in the caller's project. No regression test catches the cross-user read.",
+      "closes_when": "get_items_by_ids (or import_items before consuming its result) scopes by the caller's ownership — join BriefItem.connection -> BriefConnection.created_by_id via scoped_access, mirroring get_connection — so non-owned IDs are dropped/404'd, AND a test in app/tests/test_briefs_user_isolation.py asserts user2 cannot import user1's brief items.",
+      "fix_sketch": "Add an owner/scope param to get_items_by_ids and apply .join(BriefConnection).where(BriefConnection.created_by_id == access.user_id) when scoped_access is active; then in import_items raise BriefItemNotFoundError if the returned set doesn't cover every requested id (mirror the get_item_detail fix shape).",
+      "notes": "Follow-up from tech-debt-03-briefs-user-isolation-test (see that entry's follow_up field)."
     },
     {
       "id": "tech-debt-03-memory-isolation-embedding-stub",

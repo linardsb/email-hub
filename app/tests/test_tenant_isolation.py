@@ -33,7 +33,9 @@ because their repos are documented tenant-exempt (see their respective
 `repository.py` module docstrings).
 
 Briefs stay as `xfail(strict=False)` — they're BOLA-by-creator, not
-org-scoped. A user-isolation variant is tracked separately.
+org-scoped, so the org-isolation pattern below doesn't apply. Their
+same-org, different-creator variant lives in
+`app/tests/test_briefs_user_isolation.py`.
 """
 
 from __future__ import annotations
@@ -189,8 +191,9 @@ async def client() -> AsyncClient:
             id="briefs",
             marks=pytest.mark.xfail(
                 strict=False,
-                reason="briefs are BOLA-by-creator (not org-scoped); needs a "
-                "user-isolation variant rather than the org-isolation pattern below",
+                reason="briefs are BOLA-by-creator (not org-scoped); the "
+                "user-isolation variant lives in test_briefs_user_isolation.py, "
+                "not the org-isolation pattern below",
             ),
         ),
         pytest.param("approvals", id="approvals"),
