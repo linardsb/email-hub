@@ -70,7 +70,7 @@ constraint-dependencies = [
     "litellm>=1.83.0",
     "onnx>=1.21.0",
     "pip>=26.1",
-    "pypdf>=6.10.2",
+    "pypdf>=6.13.3",
 ]
 
 [project.optional-dependencies]
