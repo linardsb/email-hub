@@ -25,6 +25,11 @@ updates:
       # Pinned by cognee → fastapi-users (==0.0.20). Skip patch/minor bumps
       # so Dependabot stops attempting unsatisfiable upgrades.
       - dependency-name: "python-multipart"
+      # Pinned by cognee[graph] (cognee depends on structlog<26). Resolver
+      # fails any major bump, which was surfacing as a recurring "Dependabot
+      # Updates" job failure. Revisit when cognee relaxes its constraint.
+      - dependency-name: "structlog"
+        update-types: ["version-update:semver-major"]
 
   # Mock ESP sidecar (pip / requirements.txt)
   - package-ecosystem: "pip"

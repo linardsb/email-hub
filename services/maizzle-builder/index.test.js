@@ -157,3 +157,37 @@ describe('compileMjml', () => {
     expect(mjmlVersion).toMatch(/^\d+\.\d+\.\d+/);
   });
 });
+
+// Guards the Maizzle 6 build/preview render path. Maizzle 6 replaced the
+// monolithic render() (now Vue-SFC oriented) with standalone transformers;
+// the sidecar composes inlineCss + minify (build) and inlineCss + format
+// (preview). CI does not boot the sidecar, so these assert the transformer
+// contract the /build and /preview handlers depend on.
+describe('Maizzle 6 CSS transformers (build/preview render path)', () => {
+  let inlineCss, minify, format;
+
+  beforeAll(async () => {
+    const mod = await import('@maizzle/framework');
+    inlineCss = mod.inlineCss;
+    minify = mod.minify;
+    format = mod.format;
+  });
+
+  it('inlines a <style> rule onto matching elements (build path)', () => {
+    const html = `<!DOCTYPE html><html><head><style>.x{color:red}</style></head><body><table role="presentation"><tr><td class="x">Hi</td></tr></table></body></html>`;
+    const out = minify(inlineCss(html), { collapseWhitespace: true, removeComments: true });
+    expect(out).toMatch(/<td[^>]*style="[^"]*color:\s*red/);
+  });
+
+  it('preserves MSO conditional comments through minify', () => {
+    const html = `<!DOCTYPE html><html><head><style>.x{color:red}</style></head><body><!--[if mso]><table><tr><td>mso</td></tr></table><![endif]--><table role="presentation"><tr><td class="x">Hi</td></tr></table></body></html>`;
+    const out = minify(inlineCss(html), { collapseWhitespace: true, removeComments: true });
+    expect(out).toContain('<!--[if mso]>');
+  });
+
+  it('inlines + prettifies without throwing (preview path)', async () => {
+    const html = `<!DOCTYPE html><html><head><style>.x{color:red}</style></head><body><table role="presentation"><tr><td class="x">Hi</td></tr></table></body></html>`;
+    const out = await format(inlineCss(html));
+    expect(out).toMatch(/<td[^>]*style="[^"]*color:\s*red/);
+  });
+});

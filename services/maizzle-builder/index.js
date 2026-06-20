@@ -9,7 +9,7 @@
  */
 
 import express from "express";
-import { render } from "@maizzle/framework";
+import { inlineCss, minify, format } from "@maizzle/framework";
 import postcss from "postcss";
 import emailOptimize, { loadOntology } from "./postcss-email-optimize.js";
 import { transform } from "lightningcss";
@@ -132,7 +132,7 @@ app.get("/health", (_req, res) => {
 
 app.post("/build", async (req, res) => {
   const start = Date.now();
-  const { source, config = {}, production = false, target_clients } = req.body;
+  const { source, production = false, target_clients } = req.body;
   if (!source) return res.status(400).json({ error: "source is required" });
 
   try {
@@ -177,16 +177,16 @@ app.post("/build", async (req, res) => {
       return;
     }
 
-    const maizzleConfig = { ...config, build: { content: [], ...(config.build || {}) } };
+    // Maizzle 6 replaced the monolithic render() (now Vue-SFC oriented) with
+    // standalone transformers. The sidecar only needs CSS inlining + minify on
+    // already-assembled HTML, so compose those directly. Non-production builds
+    // skip inlining, matching the old default render() behaviour.
+    let compiled = html;
     if (production) {
-      maizzleConfig.inlineCSS = { enabled: true };
-      maizzleConfig.prettify = false;
-      maizzleConfig.minify = { collapseWhitespace: true, removeComments: true };
+      compiled = minify(inlineCss(html), { collapseWhitespace: true, removeComments: true });
     }
-
-    const rendered = await render(html, { maizzle: maizzleConfig });
     res.json({
-      html: rendered.html,
+      html: compiled,
       build_time_ms: Date.now() - start,
       passthrough: false,
       ...(optimization && { optimization }),
@@ -199,7 +199,7 @@ app.post("/build", async (req, res) => {
 
 app.post("/preview", async (req, res) => {
   const start = Date.now();
-  const { source, config = {}, target_clients } = req.body;
+  const { source, target_clients } = req.body;
   if (!source) return res.status(400).json({ error: "source is required" });
 
   try {
@@ -243,9 +243,9 @@ app.post("/preview", async (req, res) => {
       return;
     }
 
-    const rendered = await render(html, { maizzle: { ...config, inlineCSS: { enabled: true }, prettify: true } });
+    const compiled = await format(inlineCss(html));
     res.json({
-      html: rendered.html,
+      html: compiled,
       build_time_ms: Date.now() - start,
       passthrough: false,
       ...(optimization && { optimization }),
