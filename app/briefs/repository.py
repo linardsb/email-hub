@@ -207,7 +207,17 @@ class BriefRepository:
         return result.scalar_one_or_none()
 
     async def get_items_by_ids(self, item_ids: list[int]) -> list[BriefItem]:
-        result = await self.db.execute(select(BriefItem).where(BriefItem.id.in_(item_ids)))
+        """Fetch items by id, scoped to the caller's own connections (BOLA).
+
+        Mirrors `list_items`: non-admins only see items whose connection they
+        created. Without this filter `import_items` would resolve another
+        user's brief items by id.
+        """
+        access = scoped_access(self.db)
+        stmt = select(BriefItem).join(BriefConnection).where(BriefItem.id.in_(item_ids))
+        if access.project_ids is not None:
+            stmt = stmt.where(BriefConnection.created_by_id == access.user_id)
+        result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     # ── Resources & Attachments ──

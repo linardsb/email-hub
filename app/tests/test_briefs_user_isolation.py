@@ -25,6 +25,8 @@ TRUNCATE-per-test). Without ``TEST_DATABASE__URL`` the module collect-skips.
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -188,3 +190,43 @@ async def test_get_item_detail_denies_other_user(
 
     owner_resp = await client.get(f"/api/v1/briefs/items/{item.id}", headers=auth_header(user1))
     assert owner_resp.status_code == 200, owner_resp.text  # control
+
+
+async def test_repository_get_items_by_ids_filters_by_creator(
+    db: AsyncSession, same_org_two_users: tuple[SeededUser, SeededUser]
+) -> None:
+    """Repository layer: get_items_by_ids must drop items the caller doesn't own.
+
+    Backs the import BOLA fix — `import_items` resolves source items through this
+    method, so an unscoped result would let a user import another user's items.
+    """
+    user1, user2 = same_org_two_users
+    _conn, item = await _seed_brief(db, user1)
+
+    owner_repo = BriefRepository(_scope(db, user1))
+    assert [i.id for i in await owner_repo.get_items_by_ids([item.id])] == [item.id]  # control
+
+    nonowner_repo = BriefRepository(_scope(db, user2))
+    assert await nonowner_repo.get_items_by_ids([item.id]) == []  # the boundary
+
+
+async def test_import_items_denies_other_user(
+    db: AsyncSession, client: AsyncClient, same_org_two_users: tuple[SeededUser, SeededUser]
+) -> None:
+    """Route layer: POST /import must not resolve another user's brief items.
+
+    Same request body for both users, with a guaranteed-nonexistent project so
+    no import actually runs. The status split is the proof: user2 is blocked at
+    the item-ownership gate (404, before the project lookup), while user1 clears
+    that gate and only then fails the project lookup (422). A pre-fix unscoped
+    read would have let user2 resolve the item and 422 alongside user1.
+    """
+    user1, user2 = same_org_two_users
+    _conn, item = await _seed_brief(db, user1)
+    body = {"brief_item_ids": [item.id], "project_name": f"no-such-project-{uuid.uuid4().hex}"}
+
+    resp = await client.post("/api/v1/briefs/import", json=body, headers=auth_header(user2))
+    assert resp.status_code == 404, resp.text
+
+    owner_resp = await client.post("/api/v1/briefs/import", json=body, headers=auth_header(user1))
+    assert owner_resp.status_code == 422, owner_resp.text  # control: cleared the item gate

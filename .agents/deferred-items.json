@@ -262,7 +262,9 @@
       "id": "tech-debt-03-briefs-import-items-unscoped-read",
       "phase": "tech-debt-03",
       "title": "import_items reads brief items unscoped (get_items_by_ids has no owner filter) — cross-user BOLA",
-      "status": "deferred",
+      "status": "closed",
+      "closed_date": "2026-06-21",
+      "closed_commit": "fix/briefs-bola-user-isolation",
       "severity": "known-bug",
       "introduced": "2026-03-20",
       "introduced_commit": "4e70fc96",
@@ -275,6 +277,7 @@
       "symptom_if_broken": "A user supplies brief_item_ids owned by another creator (same or different org) to POST import; the items resolve with no ownership 404 and, once import persists content, another user's brief items/resources/attachments land in the caller's project. No regression test catches the cross-user read.",
       "closes_when": "get_items_by_ids (or import_items before consuming its result) scopes by the caller's ownership — join BriefItem.connection -> BriefConnection.created_by_id via scoped_access, mirroring get_connection — so non-owned IDs are dropped/404'd, AND a test in app/tests/test_briefs_user_isolation.py asserts user2 cannot import user1's brief items.",
       "fix_sketch": "Add an owner/scope param to get_items_by_ids and apply .join(BriefConnection).where(BriefConnection.created_by_id == access.user_id) when scoped_access is active; then in import_items raise BriefItemNotFoundError if the returned set doesn't cover every requested id (mirror the get_item_detail fix shape).",
+      "closed_note": "Closed by scoping BriefRepository.get_items_by_ids to the caller's own connections (app/briefs/repository.py — join BriefConnection + created_by_id == access.user_id when scoped_access is active, mirroring list_items) plus a full-coverage guard in BriefService.import_items (app/briefs/service.py — raise BriefItemNotFoundError when the owner-scoped result doesn't cover every requested id via len(items) != len(set(brief_item_ids)), so non-owned/missing ids 404 instead of being silently dropped; mirrors the get_item_detail fix). import_items is the only caller of get_items_by_ids. The fix_sketch's owner/scope param was not used — every other BriefRepository method reads scoped_access(self.db) internally, so the param would have been inconsistent. Tests: app/tests/test_briefs_user_isolation.py adds test_repository_get_items_by_ids_filters_by_creator (non-owner scope returns []) and test_import_items_denies_other_user (POST /import — user2 404 at the item-ownership gate, user1 422 at the project lookup, same body); app/briefs/tests/test_service.py adds TestImportItems.test_missing_or_nonowned_ids_raise_not_found (service-guard unit, runs without a DB). Repo SQL scoping proof runs in CI's integration job (make test-integration; docker-gated, collect-skips locally at authoring time). closed_commit records the branch ref (the feature branch is squash-merged to main, so the eventual main SHA differs), matching the other closed entries in this ledger.",
       "notes": "Follow-up from tech-debt-03-briefs-user-isolation-test (see that entry's follow_up field)."
     },
     {
@@ -594,6 +597,24 @@
       ],
       "symptom_if_broken": "A3 advisory numbers quietly become single-fixture (case 5, an under-segmenter) on any machine without a prior local export — fork/regression judgments made on them over-weight one fixture class; a future gate wired to multi-fixture scores fails on fresh checkouts with missing-asset errors.",
       "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI."
+    },
+    {
+      "id": "flags-2026-06-15-batch-reschedule",
+      "phase": "44.3",
+      "title": "26 off-by-default feature flags rescheduled 2026-06-15 → 2026-09-15 (graduate-or-kill pending per owner team)",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-21",
+      "introduced_commit": "pending commit",
+      "summary": "A 34-flag batch (created ~2026-03-16) shared removal_date 2026-06-15, which slipped 6 days and hard-errored flag-audit (make check), blocking all pushes via the local CI fallback. Investigation (config introspection) found all 34 are default-OFF alpha/beta — none is default-on/shipped, so there is no clean 'graduate by removal' subset. 8 hard-blocker flags (external dep / infra / cost) were reclassified to permanent opt-in (removal_date: null + permanent_reason). The remaining 26 in-house, off-by-default capabilities were rescheduled to 2026-09-15 as this tracked deferral — each still needs an owner-team graduate-or-kill decision. NOT a silent date bump: recorded here with owners.",
+      "code_refs": [
+        "feature-flags.yaml (26 entries at removal_date 2026-09-15)",
+        "scripts/flag-audit.py (PAST_REMOVAL_DATE gate)",
+        "scripts/ci-local-fallback.sh (pre-push gate runs make check → flag-audit when GitHub Actions is unavailable)"
+      ],
+      "symptom_if_broken": "The 2026-09-15 date slips again and the same 26 flags hard-error flag-audit, re-blocking pushes. Or a flag is graduated in code (default-on) without updating its manifest entry, so manifest drifts from reality.",
+      "closes_when": "Each of the 26 flags is resolved by 2026-09-15: graduated (config default → True, manifest status → ga, removal_date → null + permanent_reason) or removed (flag + gated branches deleted, manifest entry dropped). Owners — ai-team (19: AI__ADAPTIVE_ROUTING/VISUAL_QA/VISUAL_QA_AUTOFIX/TOKEN_BUDGET/PROMPT_STORE/COST_GOVERNOR/MULTIMODAL_CONTEXT, KNOWLEDGE__CRAG/ROUTER/MULTI_REP, BLUEPRINT__CHECKPOINTS/RECOVERY_LEDGER/CORRECTION_EXAMPLES/JUDGE_AGGREGATION/CONFIDENCE_CALIBRATION/INSIGHT_PROPAGATION, CORRECTION_TRACKER, SKILL_EXTRACTION, VARIANTS); qa-team (4: QA_OUTLOOK_ANALYZER, QA_DELIVERABILITY, QA_GMAIL_PREDICTOR, QA_BIMI); platform-team (2: EMAIL_ENGINE__CSS_COMPILER, EMAIL_ENGINE__SCHEMA_INJECTION); design-team (1: DESIGN_SYNC__FIDELITY).",
+      "notes": "Sibling action in the same change: 8 flags reclassified to permanent opt-in (VOICE, COGNEE, COGNEE__PREFETCH, RENDERING__SCREENSHOTS, RENDERING__VISUAL_DIFF, DESIGN_SYNC__PENPOT, COLLAB_WS__CRDT, QA_CHAOS__RESILIENCE_CHECK). Surfaced while unblocking the briefs import BOLA push (tech-debt-03-briefs-import-items-unscoped-read)."
     }
   ],
   "tooling_followups": [
