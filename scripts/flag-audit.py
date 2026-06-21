@@ -2,8 +2,11 @@
 """Feature flag lifecycle audit (Phase 44.3).
 
 Compares feature-flags.yaml manifest against .env.example and the
-``app/core/config`` package. Warns on flags >90 days without a removal
-plan, errors on >180 days.
+``app/core/config`` package. Lifecycle debt (a past removal_date, or an old
+flag with no removal plan) is advisory — it WARNS so it stays visible without
+hard-blocking unrelated pushes on calendar rot. The only hard error is a flag
+present in source but unregistered in the manifest (the pusher's own change).
+Enforce graduation via an owned/scheduled job, not the pre-push gate.
 """
 
 from __future__ import annotations
@@ -195,11 +198,15 @@ def audit(
             removal_date = date.fromisoformat(str(removal))
             if removal_date < today and status != "deprecated":
                 days_past = (today - removal_date).days
+                # Lifecycle rot is advisory: a flag whose removal_date has
+                # passed shouldn't hard-block whoever pushes next (the debt is
+                # rarely theirs). Warn so it stays visible; enforce graduation
+                # via an owned/scheduled job, not every contributor's push.
                 findings.append(
                     Finding(
                         name,
                         "PAST_REMOVAL_DATE",
-                        "error",
+                        "warn",
                         f"Removal date {removal} has passed ({days_past}d ago)",
                     )
                 )
@@ -207,11 +214,12 @@ def audit(
             # No removal date — permanent_reason required for old flags
             reason = entry.get("permanent_reason")
             if not reason and age_days > ERROR_THRESHOLD_DAYS:
+                # Same rot policy as PAST_REMOVAL_DATE: advisory, not blocking.
                 findings.append(
                     Finding(
                         name,
                         "NO_REMOVAL_PLAN_180D",
-                        "error",
+                        "warn",
                         f"Flag is {age_days}d old with no removal_date or permanent_reason",
                     )
                 )
