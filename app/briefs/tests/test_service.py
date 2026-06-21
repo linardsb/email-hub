@@ -181,6 +181,23 @@ class TestGetItemDetail:
             await service.get_item_detail(99, user)
 
 
+class TestImportItems:
+    @pytest.mark.asyncio
+    async def test_missing_or_nonowned_ids_raise_not_found(self, service: BriefService) -> None:
+        """get_items_by_ids is owner-scoped, so non-owned/missing ids are absent.
+
+        An incomplete result must 404 (mirrors get_item_detail) rather than
+        silently importing only the owned subset. Raises before the project
+        lookup, so no DB query is mocked.
+        """
+        # Two ids requested, owner-scoped repo returns only one → coverage gap.
+        service._repo.get_items_by_ids = AsyncMock(return_value=[_make_item(item_id=1)])
+        user = _make_user()
+
+        with pytest.raises(BriefItemNotFoundError):
+            await service.import_items([1, 2], "Summer Campaign", user)
+
+
 class TestSyncItems:
     @pytest.mark.asyncio
     async def test_sync_upserts_items(self, service: BriefService) -> None:
