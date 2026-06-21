@@ -597,6 +597,24 @@
       ],
       "symptom_if_broken": "A3 advisory numbers quietly become single-fixture (case 5, an under-segmenter) on any machine without a prior local export — fork/regression judgments made on them over-weight one fixture class; a future gate wired to multi-fixture scores fails on fresh checkouts with missing-asset errors.",
       "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI."
+    },
+    {
+      "id": "flags-2026-06-15-batch-reschedule",
+      "phase": "44.3",
+      "title": "26 off-by-default feature flags rescheduled 2026-06-15 → 2026-09-15 (graduate-or-kill pending per owner team)",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-06-21",
+      "introduced_commit": "pending commit",
+      "summary": "A 34-flag batch (created ~2026-03-16) shared removal_date 2026-06-15, which slipped 6 days and hard-errored flag-audit (make check), blocking all pushes via the local CI fallback. Investigation (config introspection) found all 34 are default-OFF alpha/beta — none is default-on/shipped, so there is no clean 'graduate by removal' subset. 8 hard-blocker flags (external dep / infra / cost) were reclassified to permanent opt-in (removal_date: null + permanent_reason). The remaining 26 in-house, off-by-default capabilities were rescheduled to 2026-09-15 as this tracked deferral — each still needs an owner-team graduate-or-kill decision. NOT a silent date bump: recorded here with owners.",
+      "code_refs": [
+        "feature-flags.yaml (26 entries at removal_date 2026-09-15)",
+        "scripts/flag-audit.py (PAST_REMOVAL_DATE gate)",
+        "scripts/ci-local-fallback.sh (pre-push gate runs make check → flag-audit when GitHub Actions is unavailable)"
+      ],
+      "symptom_if_broken": "The 2026-09-15 date slips again and the same 26 flags hard-error flag-audit, re-blocking pushes. Or a flag is graduated in code (default-on) without updating its manifest entry, so manifest drifts from reality.",
+      "closes_when": "Each of the 26 flags is resolved by 2026-09-15: graduated (config default → True, manifest status → ga, removal_date → null + permanent_reason) or removed (flag + gated branches deleted, manifest entry dropped). Owners — ai-team (19: AI__ADAPTIVE_ROUTING/VISUAL_QA/VISUAL_QA_AUTOFIX/TOKEN_BUDGET/PROMPT_STORE/COST_GOVERNOR/MULTIMODAL_CONTEXT, KNOWLEDGE__CRAG/ROUTER/MULTI_REP, BLUEPRINT__CHECKPOINTS/RECOVERY_LEDGER/CORRECTION_EXAMPLES/JUDGE_AGGREGATION/CONFIDENCE_CALIBRATION/INSIGHT_PROPAGATION, CORRECTION_TRACKER, SKILL_EXTRACTION, VARIANTS); qa-team (4: QA_OUTLOOK_ANALYZER, QA_DELIVERABILITY, QA_GMAIL_PREDICTOR, QA_BIMI); platform-team (2: EMAIL_ENGINE__CSS_COMPILER, EMAIL_ENGINE__SCHEMA_INJECTION); design-team (1: DESIGN_SYNC__FIDELITY).",
+      "notes": "Sibling action in the same change: 8 flags reclassified to permanent opt-in (VOICE, COGNEE, COGNEE__PREFETCH, RENDERING__SCREENSHOTS, RENDERING__VISUAL_DIFF, DESIGN_SYNC__PENPOT, COLLAB_WS__CRDT, QA_CHAOS__RESILIENCE_CHECK). Surfaced while unblocking the briefs import BOLA push (tech-debt-03-briefs-import-items-unscoped-read)."
     }
   ],
   "tooling_followups": [

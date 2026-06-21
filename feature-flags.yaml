@@ -16,49 +16,49 @@ flags:
     description: Adaptive model tier routing with per-agent success tracking
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: AI__VISUAL_QA_ENABLED
     description: Visual QA agent for screenshot-based defect detection
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: AI__VISUAL_QA_AUTOFIX_ENABLED
     description: Visual QA auto-fix — applies corrections from VLM findings
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   - name: AI__TOKEN_BUDGET_ENABLED
     description: Token budget management for prompt/response allocation
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: AI__PROMPT_STORE_ENABLED
     description: Prompt template store for versioned prompt management
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: AI__COST_GOVERNOR_ENABLED
     description: Cost governance — budget limits and overspend prevention
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: AI__MULTIMODAL_CONTEXT_ENABLED
     description: Multimodal agent context protocol (images, audio in prompts)
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   # ── Knowledge ───────────────────────────────────────────────────────────────
@@ -81,21 +81,21 @@ flags:
     description: CRAG validation loop for RAG answer grounding
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: KNOWLEDGE__ROUTER_ENABLED
     description: Query router for knowledge search strategy selection
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: KNOWLEDGE__MULTI_REP_ENABLED
     description: Multi-representation indexing for knowledge documents
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: KNOWLEDGE__PROACTIVE_QA_ENABLED
@@ -118,8 +118,9 @@ flags:
     description: Chaos resilience scoring — quantifies template robustness
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Optional testing tool; must be explicitly enabled per deployment (mirrors QA_CHAOS__ENABLED)"
 
   - name: QA_PROPERTY_TESTING__ENABLED
     description: Property-based email invariant testing (Hypothesis)
@@ -133,28 +134,28 @@ flags:
     description: Outlook Word-engine dependency analyzer
     owner: qa-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: QA_DELIVERABILITY__ENABLED
     description: Deliverability prediction scoring (ISP-aware analysis)
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: QA_GMAIL_PREDICTOR__ENABLED
     description: Gmail AI summary prediction for inbox preview
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   - name: QA_BIMI__ENABLED
     description: BIMI readiness check (SVG logo, DMARC, VMC)
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: QA_META_EVAL__ENABLED
@@ -169,15 +170,17 @@ flags:
     description: Cross-client screenshot capture via headless browser
     owner: platform-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in capability; requires headless-browser infrastructure not provisioned in shared envs (mirrors RENDERING__SANDBOX)"
 
   - name: RENDERING__VISUAL_DIFF_ENABLED
     description: Visual diff regression detection (pixel comparison)
     owner: platform-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Depends on RENDERING__SCREENSHOTS_ENABLED (headless-browser infra); off by default"
 
   - name: RENDERING__CONFIDENCE_ENABLED
     description: Rendering confidence scoring per email client
@@ -208,15 +211,17 @@ flags:
     description: Cognee knowledge graph integration
     owner: ai-team
     created: "2026-03-10"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Optional integration; requires an external Cognee knowledge-graph service"
 
   - name: COGNEE__PREFETCH_ENABLED
     description: Knowledge graph pre-query for agent context enrichment
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Depends on COGNEE__ENABLED (external service); off by default"
 
   # ── Change Detection ────────────────────────────────────────────────────────
   - name: CHANGE_DETECTION__ENABLED
@@ -232,8 +237,9 @@ flags:
     description: Penpot design tool integration
     owner: design-team
     created: "2026-03-18"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Optional integration; requires an external Penpot instance (mirrors DESIGN_SYNC__FIGMA_WEBHOOK)"
 
   - name: DESIGN_SYNC__CONVERTER_ENABLED
     description: Provider-agnostic design-to-email converter
@@ -263,7 +269,7 @@ flags:
     description: SSIM visual fidelity scoring (Figma vs rendered HTML)
     owner: design-team
     created: "2026-03-27"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: DESIGN_SYNC__FIGMA_WEBHOOK_ENABLED
@@ -442,8 +448,9 @@ flags:
     description: Voice brief input pipeline (speech-to-brief)
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in capability; requires an external speech-to-text provider, off by default"
 
   # ── MCP ─────────────────────────────────────────────────────────────────────
   - name: MCP__ENABLED
@@ -474,14 +481,14 @@ flags:
     description: CSS compiler for target-client-specific optimization
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: EMAIL_ENGINE__SCHEMA_INJECTION_ENABLED
     description: Schema.org structured data injection in emails
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   # ── Blueprint ───────────────────────────────────────────────────────────────
@@ -489,42 +496,42 @@ flags:
     description: Opt-in checkpoint persistence for blueprint runs
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: BLUEPRINT__RECOVERY_LEDGER_ENABLED
     description: Adaptive recovery routing from outcome history
     owner: ai-team
     created: "2026-03-24"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   - name: BLUEPRINT__CORRECTION_EXAMPLES_ENABLED
     description: Few-shot correction examples injected on agent retries
     owner: ai-team
     created: "2026-03-24"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   - name: BLUEPRINT__JUDGE_AGGREGATION_ENABLED
     description: Judge verdict aggregation for prompt patching
     owner: ai-team
     created: "2026-03-24"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   - name: BLUEPRINT__CONFIDENCE_CALIBRATION_ENABLED
     description: Per-agent confidence calibration from judge verdicts
     owner: ai-team
     created: "2026-03-24"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   - name: BLUEPRINT__INSIGHT_PROPAGATION_ENABLED
     description: Cross-agent insight propagation between pipeline nodes
     owner: ai-team
     created: "2026-03-27"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   # ── Collaboration ───────────────────────────────────────────────────────────
@@ -540,8 +547,9 @@ flags:
     description: CRDT protocol for conflict-free real-time sync
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-06-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Depends on COLLAB_WS__ENABLED (real-time WebSocket/Redis infra); off by default"
 
   # ── Platform Ecosystem ──────────────────────────────────────────────────────
   - name: TOLGEE__ENABLED
@@ -580,7 +588,7 @@ flags:
     description: Automatic skill extraction from uploaded templates
     owner: ai-team
     created: "2026-03-18"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   - name: TEMPLATES__UPLOAD_ENABLED
@@ -595,7 +603,7 @@ flags:
     description: Multi-variant A/B campaign assembly
     owner: ai-team
     created: "2026-03-19"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: beta
 
   # ── Infrastructure ──────────────────────────────────────────────────────────
@@ -635,7 +643,7 @@ flags:
     description: Correction pattern tracking for agent self-improvement
     owner: ai-team
     created: "2026-03-27"
-    removal_date: "2026-06-15"
+    removal_date: "2026-09-15"
     status: alpha
 
   # ── Security ────────────────────────────────────────────────────────────────
