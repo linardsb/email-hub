@@ -262,7 +262,9 @@
       "id": "tech-debt-03-briefs-import-items-unscoped-read",
       "phase": "tech-debt-03",
       "title": "import_items reads brief items unscoped (get_items_by_ids has no owner filter) — cross-user BOLA",
-      "status": "deferred",
+      "status": "closed",
+      "closed_date": "2026-06-21",
+      "closed_commit": "fix/briefs-bola-user-isolation",
       "severity": "known-bug",
       "introduced": "2026-03-20",
       "introduced_commit": "4e70fc96",
@@ -275,6 +277,7 @@
       "symptom_if_broken": "A user supplies brief_item_ids owned by another creator (same or different org) to POST import; the items resolve with no ownership 404 and, once import persists content, another user's brief items/resources/attachments land in the caller's project. No regression test catches the cross-user read.",
       "closes_when": "get_items_by_ids (or import_items before consuming its result) scopes by the caller's ownership — join BriefItem.connection -> BriefConnection.created_by_id via scoped_access, mirroring get_connection — so non-owned IDs are dropped/404'd, AND a test in app/tests/test_briefs_user_isolation.py asserts user2 cannot import user1's brief items.",
       "fix_sketch": "Add an owner/scope param to get_items_by_ids and apply .join(BriefConnection).where(BriefConnection.created_by_id == access.user_id) when scoped_access is active; then in import_items raise BriefItemNotFoundError if the returned set doesn't cover every requested id (mirror the get_item_detail fix shape).",
+      "closed_note": "Closed by scoping BriefRepository.get_items_by_ids to the caller's own connections (app/briefs/repository.py — join BriefConnection + created_by_id == access.user_id when scoped_access is active, mirroring list_items) plus a full-coverage guard in BriefService.import_items (app/briefs/service.py — raise BriefItemNotFoundError when the owner-scoped result doesn't cover every requested id via len(items) != len(set(brief_item_ids)), so non-owned/missing ids 404 instead of being silently dropped; mirrors the get_item_detail fix). import_items is the only caller of get_items_by_ids. The fix_sketch's owner/scope param was not used — every other BriefRepository method reads scoped_access(self.db) internally, so the param would have been inconsistent. Tests: app/tests/test_briefs_user_isolation.py adds test_repository_get_items_by_ids_filters_by_creator (non-owner scope returns []) and test_import_items_denies_other_user (POST /import — user2 404 at the item-ownership gate, user1 422 at the project lookup, same body); app/briefs/tests/test_service.py adds TestImportItems.test_missing_or_nonowned_ids_raise_not_found (service-guard unit, runs without a DB). Repo SQL scoping proof runs in CI's integration job (make test-integration; docker-gated, collect-skips locally at authoring time). closed_commit records the branch ref (the feature branch is squash-merged to main, so the eventual main SHA differs), matching the other closed entries in this ledger.",
       "notes": "Follow-up from tech-debt-03-briefs-user-isolation-test (see that entry's follow_up field)."
     },
     {

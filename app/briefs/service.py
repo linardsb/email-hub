@@ -236,9 +236,13 @@ class BriefService:
         self, brief_item_ids: list[int], project_name: str, user: User
     ) -> ImportResponse:
         """Import brief items into a project (find by name)."""
+        # BOLA: get_items_by_ids is owner-scoped, so non-owned/missing ids are
+        # absent from the result. Require full coverage of the requested set —
+        # a non-owned id must 404, not be silently dropped (mirrors
+        # get_item_detail). set() dedups repeated ids in the request.
         items = await self._repo.get_items_by_ids(brief_item_ids)
-        if not items:
-            raise BriefValidationError("No valid brief items found for the given IDs")
+        if len(items) != len(set(brief_item_ids)):
+            raise BriefItemNotFoundError("One or more brief items not found")
 
         # Find project by exact name
         from sqlalchemy import select
