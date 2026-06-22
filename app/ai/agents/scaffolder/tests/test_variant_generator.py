@@ -273,26 +273,6 @@ class TestVariantServiceValidation:
     """Test ScaffolderService.generate_variants config validation."""
 
     @pytest.mark.asyncio
-    async def test_disabled_setting_raises(self) -> None:
-        """Variants disabled in settings -> error."""
-        from unittest.mock import MagicMock, patch
-
-        from app.ai.agents.scaffolder.schemas import VariantRequest
-
-        mock_settings = MagicMock()
-        mock_settings.variants.enabled = False
-        mock_settings.variants.max_variants = 5
-
-        with patch("app.ai.agents.scaffolder.service.get_settings", return_value=mock_settings):
-            from app.ai.agents.scaffolder.service import ScaffolderService
-
-            svc = ScaffolderService()
-            with pytest.raises(AIExecutionError):
-                await svc.generate_variants(
-                    VariantRequest(brief="Test brief for campaign", variant_count=3)
-                )
-
-    @pytest.mark.asyncio
     async def test_exceeds_max_raises(self) -> None:
         """variant_count > max_variants -> error."""
         from unittest.mock import MagicMock, patch
@@ -300,7 +280,6 @@ class TestVariantServiceValidation:
         from app.ai.agents.scaffolder.schemas import VariantRequest
 
         mock_settings = MagicMock()
-        mock_settings.variants.enabled = True
         mock_settings.variants.max_variants = 3
 
         with patch("app.ai.agents.scaffolder.service.get_settings", return_value=mock_settings):

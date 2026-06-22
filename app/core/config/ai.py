@@ -37,7 +37,9 @@ class AIConfig(BaseModel):
     visual_qa_autofix_max_rounds: int = 1  # AI__VISUAL_QA_AUTOFIX_MAX_ROUNDS
 
     # Token budget management (Phase 22.3)
-    token_budget_enabled: bool = False  # AI__TOKEN_BUDGET_ENABLED
+    token_budget_enabled: bool = (
+        True  # AI__TOKEN_BUDGET_ENABLED — default-on (GA); kept for rollback
+    )
     token_budget_reserve: int = 4096  # AI__TOKEN_BUDGET_RESERVE — tokens reserved for response
     token_budget_max: int = 0  # AI__TOKEN_BUDGET_MAX — 0 = auto-detect from model name
 
@@ -52,7 +54,9 @@ class AIConfig(BaseModel):
     fallback_chains: dict[str, list[str]] = {}  # AI__FALLBACK_CHAINS
 
     # Cost governor (Phase 22.5)
-    cost_governor_enabled: bool = False  # AI__COST_GOVERNOR_ENABLED
+    cost_governor_enabled: bool = (
+        True  # AI__COST_GOVERNOR_ENABLED — default-on (GA); kept for rollback
+    )
     monthly_budget_gbp: float = 600.0  # AI__MONTHLY_BUDGET_GBP — 0 = unlimited
     budget_warning_threshold: float = 0.8  # AI__BUDGET_WARNING_THRESHOLD — warn at 80%
 

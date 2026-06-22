@@ -23,6 +23,7 @@ from slowapi.errors import RateLimitExceeded  # pyright: ignore[reportMissingTyp
 from app.ai.agents.content.routes import router as content_router
 from app.ai.agents.dark_mode.routes import router as dark_mode_router
 from app.ai.agents.scaffolder.routes import router as scaffolder_router
+from app.ai.agents.scaffolder.variant_routes import router as variant_router
 from app.ai.agents.skills_routes import router as skills_router
 from app.ai.blueprints.routes import router as blueprint_router
 from app.ai.blueprints.routes import runs_router as blueprint_runs_router
@@ -456,11 +457,8 @@ if settings.templates.upload_enabled:
 
     app.include_router(eval_template_router)
 
-# Multi-variant campaign assembly (Phase 25.14)
-if settings.variants.enabled:
-    from app.ai.agents.scaffolder.variant_routes import router as variant_router
-
-    app.include_router(variant_router)
+# Multi-variant campaign assembly (Phase 25.14) — graduated default-on
+app.include_router(variant_router)
 
 # Credential pool health (Phase 46.4)
 if settings.credentials.enabled:

@@ -1947,6 +1947,36 @@ export type ClientProfileSchema = {
 };
 
 /**
+ * ComparisonMatrixResponse
+ *
+ * Side-by-side comparison.
+ */
+export type ComparisonMatrixResponse = {
+    /**
+     * Subject Lines
+     */
+    subject_lines: {
+        [key: string]: string;
+    };
+    /**
+     * Preheaders
+     */
+    preheaders: {
+        [key: string]: string;
+    };
+    /**
+     * Slot Differences
+     */
+    slot_differences?: Array<SlotDifferenceResponse>;
+    /**
+     * Strategy Summary
+     */
+    strategy_summary: {
+        [key: string]: string;
+    };
+};
+
+/**
  * CompatibilityBriefResponse
  */
 export type CompatibilityBriefResponse = {
@@ -7434,6 +7464,24 @@ export type ServiceHealthReport = {
 };
 
 /**
+ * SlotDifferenceResponse
+ *
+ * A slot that differs across variants.
+ */
+export type SlotDifferenceResponse = {
+    /**
+     * Slot Id
+     */
+    slot_id: string;
+    /**
+     * Variants
+     */
+    variants: {
+        [key: string]: string;
+    };
+};
+
+/**
  * SlotHintSchema
  *
  * Slot annotation for a component version.
@@ -8171,6 +8219,111 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * VariantRequest
+ *
+ * Request body for multi-variant campaign assembly.
+ */
+export type VariantRequest = {
+    /**
+     * Brief
+     *
+     * Campaign brief
+     */
+    brief: string;
+    /**
+     * Variant Count
+     *
+     * Number of variants (2-5)
+     */
+    variant_count?: number;
+    /**
+     * Run Qa
+     */
+    run_qa?: boolean;
+    /**
+     * Brand Config
+     *
+     * Brand guidelines for design token selection
+     */
+    brand_config?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+/**
+ * VariantResultResponse
+ *
+ * Single variant in the response.
+ */
+export type VariantResultResponse = {
+    /**
+     * Variant Id
+     */
+    variant_id: string;
+    /**
+     * Strategy Name
+     */
+    strategy_name: string;
+    /**
+     * Hypothesis
+     */
+    hypothesis: string;
+    /**
+     * Predicted Differentiator
+     */
+    predicted_differentiator: string;
+    /**
+     * Subject Line
+     */
+    subject_line: string;
+    /**
+     * Preheader
+     */
+    preheader: string;
+    /**
+     * Html
+     */
+    html: string;
+    /**
+     * Qa Results
+     */
+    qa_results?: Array<QaCheckResult>;
+    /**
+     * Qa Passed
+     */
+    qa_passed?: boolean;
+};
+
+/**
+ * VariantSetResponse
+ *
+ * Response from multi-variant generation.
+ */
+export type VariantSetResponse = {
+    /**
+     * Brief
+     */
+    brief: string;
+    /**
+     * Base Template
+     */
+    base_template: string;
+    /**
+     * Variant Count
+     */
+    variant_count: number;
+    /**
+     * Variants
+     */
+    variants: Array<VariantResultResponse>;
+    comparison: ComparisonMatrixResponse;
+    /**
+     * All Qa Passed
+     */
+    all_qa_passed: boolean;
 };
 
 /**
@@ -15247,6 +15400,31 @@ export type RunVoicePipelineApiV1AiVoiceRunPostResponses = {
 };
 
 export type RunVoicePipelineApiV1AiVoiceRunPostResponse = RunVoicePipelineApiV1AiVoiceRunPostResponses[keyof RunVoicePipelineApiV1AiVoiceRunPostResponses];
+
+export type GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostData = {
+    body: VariantRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/agents/scaffolder/generate-variants';
+};
+
+export type GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostError = GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostErrors[keyof GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostErrors];
+
+export type GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: VariantSetResponse;
+};
+
+export type GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostResponse = GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostResponses[keyof GenerateVariantsApiV1AgentsScaffolderGenerateVariantsPostResponses];
 
 export type RevokeAgentCredentialsApiV1CredentialsRevokePostData = {
     body: RevokeRequest;
