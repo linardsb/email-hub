@@ -15,7 +15,6 @@ from app.core.logging import get_logger
 if TYPE_CHECKING:
     from app.ai.capability_registry import ModelCapability
     from app.ai.fallback import FallbackChain
-    from app.ai.routing_history import RoutingHistoryRepository
 
 logger = get_logger(__name__)
 
@@ -134,23 +133,3 @@ def reset_fallback_chains() -> None:
     """Reset cached fallback chains (for testing)."""
     global _fallback_chains
     _fallback_chains = None
-
-
-async def resolve_model_adaptive(
-    tier: TaskTier,
-    agent_name: str,
-    project_id: int | None,
-    routing_repo: RoutingHistoryRepository | None,
-) -> tuple[str, TaskTier]:
-    """Resolve model with adaptive tier adjustment.
-
-    Returns (model_id, effective_tier) so callers can record which tier was used.
-    """
-    effective_tier = tier
-    if routing_repo is not None:
-        from app.ai.routing_history import resolve_adaptive_tier
-
-        effective_tier = await resolve_adaptive_tier(tier, agent_name, project_id, routing_repo)
-
-    model = resolve_model(effective_tier)
-    return model, effective_tier

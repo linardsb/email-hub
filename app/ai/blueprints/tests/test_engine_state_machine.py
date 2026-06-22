@@ -299,36 +299,6 @@ class TestTrackCorrection:
         await engine._track_correction_pattern(run, ctx, "scaff", _StubNode("scaff"), result)
 
 
-# ── _record_routing_history ──
-
-
-@pytest.mark.asyncio
-class TestRecordRoutingHistory:
-    async def test_no_repo_noop(self) -> None:
-        engine = _make_engine()
-        await engine._record_routing_history(
-            _StubNode("scaff"), "scaff", NodeResult(status="success")
-        )
-
-    async def test_deterministic_node_skipped(self) -> None:
-        repo = AsyncMock()
-        engine = _make_engine(routing_history_repo=repo)
-        await engine._record_routing_history(
-            _StubNode("qa_gate", node_type="deterministic"),
-            "qa_gate",
-            NodeResult(status="success"),
-        )
-        repo.record.assert_not_awaited()
-
-    async def test_agentic_records(self) -> None:
-        repo = AsyncMock()
-        engine = _make_engine(routing_history_repo=repo)
-        await engine._record_routing_history(
-            _StubNode("scaffolder_node"), "scaffolder_node", NodeResult(status="success")
-        )
-        repo.record.assert_awaited_once()
-
-
 # ── _finalize_run_status ──
 
 

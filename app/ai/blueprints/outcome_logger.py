@@ -211,32 +211,3 @@ async def extract_and_store_failure_patterns(
             run_id=run.run_id,
             exc_info=True,
         )
-
-
-async def extract_and_store_insights(
-    run: BlueprintRun,
-    blueprint_name: str,
-    audience_profile: AudienceProfile | None,
-    project_id: int | None,
-) -> int:
-    """Extract cross-agent insights from a completed run and persist.
-
-    Fire-and-forget: errors are logged but never propagated.
-    """
-    try:
-        from app.ai.blueprints.insight_bus import extract_insights, persist_insights
-
-        insights = extract_insights(run, blueprint_name, audience_profile)
-        if not insights:
-            return 0
-
-        count = await persist_insights(insights, project_id)
-        run.insights_extracted = count
-        return count
-    except Exception:
-        logger.warning(
-            "insights.extraction_failed",
-            run_id=run.run_id,
-            exc_info=True,
-        )
-        return 0

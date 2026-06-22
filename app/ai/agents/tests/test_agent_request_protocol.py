@@ -55,7 +55,6 @@ def test_orchestrator_fields_default_to_none() -> None:
     assert req.user_id is None
     assert req.blueprint_run_id is None
     assert req.prompt_version is None
-    assert req.effective_tier is None
     assert req.client_id is None
 
 
@@ -65,11 +64,9 @@ def test_orchestrator_fields_accept_string_injection() -> None:
         user_id="user-42",
         blueprint_run_id="run-1",
         prompt_version="v3",
-        effective_tier="complex",
         client_id="gmail_web",
     )
     assert req.user_id == "user-42"
     assert req.blueprint_run_id == "run-1"
     assert req.prompt_version == "v3"
-    assert req.effective_tier == "complex"
     assert req.client_id == "gmail_web"

@@ -412,8 +412,7 @@ class BaseAgentService:
         settings = get_settings()
         provider_name = settings.ai.provider
         base_tier = self._get_model_tier(request)
-        effective_tier = request.effective_tier or base_tier
-        model = resolve_model(effective_tier)
+        model = resolve_model(base_tier)
         model_id = f"{provider_name}:{model}"
         telemetry["model"] = model_id
 
@@ -448,7 +447,7 @@ class BaseAgentService:
 
         # Call LLM (with fallback chain if configured)
         registry = get_registry()
-        chain = get_fallback_chain(effective_tier)
+        chain = get_fallback_chain(base_tier)
 
         try:
             if chain and chain.has_fallbacks:
