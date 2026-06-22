@@ -126,40 +126,12 @@ class BlueprintService:
         if settings.blueprint.checkpoints_enabled and db is not None:
             checkpoint_store = PostgresCheckpointStore(db)
 
-        # Wire routing history repo (opt-in via config)
-        routing_history_repo = None
-        if settings.ai.adaptive_routing_enabled and db is not None:
-            from app.ai.routing_history import RoutingHistoryRepository
-
-            routing_history_repo = RoutingHistoryRepository(db)
-
         # Wire recovery outcome repo (opt-in via config)
         recovery_outcome_repo = None
         if settings.blueprint.recovery_ledger_enabled and db is not None:
             from app.ai.recovery_outcomes import RecoveryOutcomeRepository
 
             recovery_outcome_repo = RecoveryOutcomeRepository(db)
-
-        # Pre-compute confidence calibrations (opt-in via config)
-        confidence_calibrations = None
-        if settings.blueprint.confidence_calibration_enabled and db is not None:
-            from app.ai.agents.skills_routes import AGENT_NAMES
-            from app.ai.confidence_calibration import (
-                MIN_CALIBRATION_SAMPLES,
-                CalibrationResult,
-                compute_calibration,
-            )
-
-            calibrations: dict[str, CalibrationResult] = {}
-            for agent in AGENT_NAMES:
-                try:
-                    cal = await compute_calibration(agent, project_id, db)
-                    if cal.sample_count >= MIN_CALIBRATION_SAMPLES:
-                        calibrations[f"{agent}_node"] = cal
-                except Exception:
-                    logger.debug("blueprint.calibration_compute_failed", agent=agent, exc_info=True)
-            if calibrations:
-                confidence_calibrations = calibrations
 
         engine = BlueprintEngine(
             definition,
@@ -171,9 +143,7 @@ class BlueprintService:
             judge_on_retry=settings.blueprint.judge_on_retry,
             design_system=design_system,
             checkpoint_store=checkpoint_store,
-            routing_history_repo=routing_history_repo,
             recovery_outcome_repo=recovery_outcome_repo,
-            confidence_calibrations=confidence_calibrations,
             client_id=client_id,
         )
 
@@ -297,7 +267,6 @@ class BlueprintService:
         try:
             from app.ai.blueprints.outcome_logger import (
                 extract_and_store_failure_patterns,
-                extract_and_store_insights,
                 persist_outcome_to_memory,
                 queue_outcome_for_graph,
             )
@@ -307,7 +276,6 @@ class BlueprintService:
             await extract_and_store_failure_patterns(
                 bp_run, definition.name, project_id, audience_profile
             )
-            await extract_and_store_insights(bp_run, definition.name, audience_profile, project_id)
         except Exception:
             logger.warning(
                 "blueprint.outcome_logging_failed",

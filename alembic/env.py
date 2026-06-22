@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 import app.ai.blueprints.checkpoint_models  # noqa: F401
 import app.ai.prompt_store  # noqa: F401  -- defines prompt_templates table
 import app.ai.recovery_outcomes  # noqa: F401
-import app.ai.routing_history  # noqa: F401
 import app.ai.skills.repository  # noqa: F401  -- defines skill_amendments table
 import app.ai.templates.models  # noqa: F401
 import app.approval.models  # noqa: F401

@@ -10,10 +10,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 if TYPE_CHECKING:
     from app.ai.blueprints.audience_context import AudienceProfile
     from app.ai.blueprints.checkpoint import CheckpointStore
-    from app.ai.confidence_calibration import CalibrationResult
     from app.ai.recovery_outcomes import RecoveryOutcomeRepository
-    from app.ai.routing import TaskTier
-    from app.ai.routing_history import RoutingHistoryRepository
     from app.core.quota import BlueprintCostTracker
     from app.knowledge.graph.protocols import GraphSearchResult
     from app.projects.design_system import DesignSystem
@@ -25,10 +22,6 @@ from app.ai.agents.context_budget import (
     summarize_trajectory,
 )
 from app.ai.agents.evals.judges.schemas import JudgeVerdict
-from app.ai.blueprints.correction_examples import (
-    format_correction_examples,
-    recall_correction_examples,
-)
 from app.ai.blueprints.exceptions import BlueprintError, BlueprintEscalatedError, BlueprintNodeError
 from app.ai.blueprints.handoff import format_upstream_constraints
 from app.ai.blueprints.protocols import (
@@ -120,7 +113,6 @@ class BlueprintRun:
     )
     resumed_from: str | None = None
     token_budget: int = 500_000
-    insights_extracted: int = 0
 
     @property
     def remaining_budget(self) -> float:
@@ -150,9 +142,7 @@ class BlueprintEngine:
         judge_on_retry: bool = False,
         design_system: "DesignSystem | None" = None,
         checkpoint_store: "CheckpointStore | None" = None,
-        routing_history_repo: "RoutingHistoryRepository | None" = None,
         recovery_outcome_repo: "RecoveryOutcomeRepository | None" = None,
-        confidence_calibrations: dict[str, "CalibrationResult"] | None = None,
         client_id: str | None = None,
     ) -> None:
         self._definition = definition
@@ -165,9 +155,7 @@ class BlueprintEngine:
         self._judge_on_retry = judge_on_retry
         self._design_system = design_system
         self._checkpoint_store = checkpoint_store
-        self._routing_history_repo = routing_history_repo
         self._recovery_outcome_repo = recovery_outcome_repo
-        self._confidence_calibrations = confidence_calibrations
 
         # Layer pipeline executed by ``_build_node_context`` in source order.
         # Each layer is an async (ctx, run, node) -> dict[str, Any] method;
@@ -186,9 +174,6 @@ class BlueprintEngine:
             self._layer_04_qa_failure_details,
             self._layer_05_economy,
             self._layer_06_progress_anchor,
-            self._layer_07_correction_examples,
-            self._layer_08_prompt_patches,
-            self._layer_09_insights,
             self._layer_10_recalled_memories,
             self._layer_11_component_context,
             self._layer_12_graph_context,
@@ -199,7 +184,6 @@ class BlueprintEngine:
             self._layer_17_failure_patterns,
             self._layer_18_competitive_context,
             self._layer_19_client_lookup_tools,
-            self._layer_20_adaptive_tier,
             self._layer_21_knowledge_prefetch,
             self._layer_22_multimodal,
             self._layer_23_visual_override,
@@ -375,7 +359,6 @@ class BlueprintEngine:
             await self._save_checkpoint(
                 run, current, len(run.progress) - 1, next_node_name=next_node
             )
-            await self._record_routing_history(node, current, result)
             current = next_node
 
         self._finalize_run_status(run, steps)
@@ -528,20 +511,6 @@ class BlueprintEngine:
             return False
         run.judge_verdict = verdict
 
-        # Persist verdict for aggregation
-        if get_settings().blueprint.judge_aggregation_enabled:
-            try:
-                from app.ai.blueprints.judge_aggregator import persist_judge_verdict
-
-                await persist_judge_verdict(verdict, self._project_id, run.run_id)
-            except Exception:
-                # Fire-and-forget: aggregator persistence failures must not crash the pipeline.
-                logger.debug(
-                    "blueprint.judge_verdict_persist_failed",
-                    run_id=run.run_id,
-                    exc_info=True,
-                )
-
         if not verdict.overall_pass:
             run.status = "needs_review"
             logger.warning(
@@ -634,21 +603,6 @@ class BlueprintEngine:
                     exc_info=True,
                 )
 
-        if (
-            result.status == "success"
-            and run._handoff_history
-            and get_settings().blueprint.correction_examples_enabled
-        ):
-            try:
-                await self._store_correction_example(run)
-            except Exception:
-                # Fire-and-forget: correction-example storage failures are non-fatal.
-                logger.debug(
-                    "blueprint.correction_example_store_failed",
-                    run_id=run.run_id,
-                    exc_info=True,
-                )
-
     async def _persist_handoff(self, run: BlueprintRun, current: str, result: NodeResult) -> None:
         """Record handoff state on the run and dispatch the memory callback."""
         if result.handoff is None:
@@ -708,46 +662,17 @@ class BlueprintEngine:
         """Set ``needs_review`` and return True when the agent's confidence is too low."""
         if result.handoff is None or result.handoff.confidence is None:
             return False
-        effective_threshold = CONFIDENCE_REVIEW_THRESHOLD
-        if self._confidence_calibrations is not None:
-            cal = self._confidence_calibrations.get(current)
-            if cal is not None:
-                effective_threshold = cal.effective_threshold
-        if result.handoff.confidence >= effective_threshold:
+        if result.handoff.confidence >= CONFIDENCE_REVIEW_THRESHOLD:
             return False
         run.status = "needs_review"
         logger.warning(
             "blueprint.low_confidence",
             node=current,
             confidence=result.handoff.confidence,
-            threshold=effective_threshold,
-            calibrated=self._confidence_calibrations is not None
-            and current in (self._confidence_calibrations or {}),
+            threshold=CONFIDENCE_REVIEW_THRESHOLD,
             run_id=run.run_id,
         )
         return True
-
-    async def _record_routing_history(
-        self, node: BlueprintNode, current: str, result: NodeResult
-    ) -> None:
-        """Persist routing-history entry for adaptive-tier learning."""
-        if self._routing_history_repo is None or node.node_type != "agentic":
-            return
-        try:
-            agent_tier: TaskTier = getattr(node, "model_tier", "standard")
-            await self._routing_history_repo.record(
-                agent_name=current,
-                project_id=self._project_id,
-                tier_used=agent_tier,
-                accepted=result.status == "success",
-            )
-        except Exception:
-            # Fire-and-forget: routing-history failures must not crash the pipeline.
-            logger.debug(
-                "blueprint.routing_history_record_failed",
-                node=current,
-                exc_info=True,
-            )
 
     def _finalize_run_status(self, run: BlueprintRun, steps: int) -> None:
         """Apply terminal status when the loop exits without one already set."""
@@ -988,82 +913,6 @@ class BlueprintEngine:
             return {}
         return {"progress_anchor": self._build_progress_anchor(run)}
 
-    async def _layer_07_correction_examples(
-        self,
-        ctx: NodeContext,
-        run: BlueprintRun,
-        node: BlueprintNode,
-    ) -> dict[str, Any]:
-        """Few-shot correction examples on retry (LAYER 15 in legacy comments)."""
-        if (
-            node.node_type != "agentic"
-            or ctx.iteration <= 0
-            or not get_settings().blueprint.correction_examples_enabled
-        ):
-            return {}
-        try:
-            examples = await recall_correction_examples(
-                agent_name=node.name.removesuffix("_node"),
-                qa_failures=run.qa_failures,
-                project_id=self._project_id,
-            )
-        except Exception:
-            logger.debug("blueprint.correction_recall_failed", node=node.name, exc_info=True)
-            return {}
-        if not examples:
-            return {}
-        return {"correction_examples": format_correction_examples(examples)}
-
-    async def _layer_08_prompt_patches(
-        self,
-        _ctx: NodeContext,
-        _run: BlueprintRun,
-        node: BlueprintNode,
-    ) -> dict[str, Any]:
-        """Judge-aggregator-derived prompt patches (LAYER 16 in legacy comments)."""
-        if node.node_type != "agentic" or not get_settings().blueprint.judge_aggregation_enabled:
-            return {}
-        from app.ai.blueprints.judge_aggregator import aggregate_verdicts, format_prompt_patches
-
-        try:
-            patches = await aggregate_verdicts(node.name.removesuffix("_node"), self._project_id)
-        except Exception:
-            logger.debug("blueprint.judge_aggregation_inject_failed", node=node.name, exc_info=True)
-            return {}
-        if not patches:
-            return {}
-        return {"prompt_patches": format_prompt_patches(patches)}
-
-    async def _layer_09_insights(
-        self,
-        _ctx: NodeContext,
-        _run: BlueprintRun,
-        node: BlueprintNode,
-    ) -> dict[str, Any]:
-        """Cross-agent insight propagation (LAYER 17 in legacy comments)."""
-        if (
-            node.node_type != "agentic"
-            or self._audience_profile is None
-            or not get_settings().blueprint.insight_propagation_enabled
-        ):
-            return {}
-        from app.ai.blueprints.insight_bus import format_insight_context, recall_insights
-
-        agent_name = node.name.removesuffix("_node")
-        try:
-            insights = await recall_insights(
-                agent_name=agent_name,
-                client_ids=tuple(self._audience_profile.client_ids),
-                project_id=self._project_id,
-            )
-        except Exception:
-            logger.debug("blueprint.insight_recall_failed", node=node.name, exc_info=True)
-            return {}
-        if not insights:
-            return {}
-        logger.info("blueprint.insights_injected", agent=agent_name, count=len(insights))
-        return {"cross_agent_insights": format_insight_context(insights)}
-
     async def _layer_10_recalled_memories(
         self,
         ctx: NodeContext,
@@ -1254,33 +1103,6 @@ class BlueprintEngine:
         return {
             "client_lookup_tool": _CLIENT_LOOKUP_TOOL,
             "client_lookup_batch_tool": _MULTI_CLIENT_LOOKUP_TOOL,
-        }
-
-    async def _layer_20_adaptive_tier(
-        self,
-        _ctx: NodeContext,
-        _run: BlueprintRun,
-        node: BlueprintNode,
-    ) -> dict[str, Any]:
-        """Effective + default model tier for adaptive routing (LAYER 12)."""
-        if self._routing_history_repo is None or node.node_type != "agentic":
-            return {}
-        from app.ai.routing_history import resolve_adaptive_tier
-
-        try:
-            default_tier: TaskTier = getattr(node, "model_tier", "standard")
-            effective_tier = await resolve_adaptive_tier(
-                default_tier,
-                node.name,
-                self._project_id,
-                self._routing_history_repo,
-            )
-        except Exception:
-            logger.debug("blueprint.adaptive_tier_failed", node=node.name, exc_info=True)
-            return {}
-        return {
-            "effective_tier": effective_tier,
-            "default_tier": default_tier,
         }
 
     async def _layer_21_knowledge_prefetch(
@@ -1560,40 +1382,6 @@ class BlueprintEngine:
                 run_id=run.run_id,
                 project_id=self._project_id,
             )
-
-    async def _store_correction_example(self, run: BlueprintRun) -> None:
-        """Store the last successful correction as a few-shot example.
-
-        Called when QA passes after a recovery cycle. Fire-and-forget safe.
-        """
-        if not run._handoff_history or not run.previous_qa_failure_details:
-            return
-
-        from app.ai.blueprints.correction_examples import store_correction_example
-
-        last_handoff = run._handoff_history[-1]
-        failure_desc = "; ".join(
-            f"{sf.check_name}: {sf.details[:100]}" for sf in run.previous_qa_failure_details[:3]
-        )
-        correction_summary = "; ".join(last_handoff.decisions[:3]) if last_handoff.decisions else ""
-
-        if not correction_summary:
-            return
-
-        check_name = (
-            run.previous_qa_failure_details[0].check_name
-            if run.previous_qa_failure_details
-            else "unknown"
-        )
-
-        await store_correction_example(
-            agent_name=last_handoff.agent_name,
-            check_name=check_name,
-            failure_description=failure_desc,
-            correction_summary=correction_summary,
-            project_id=self._project_id,
-            run_id=run.run_id,
-        )
 
     async def _search_graph(self, query: str) -> list["GraphSearchResult"]:
         """Search knowledge graph for structured compatibility context.

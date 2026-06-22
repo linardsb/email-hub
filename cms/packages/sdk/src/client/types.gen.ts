@@ -2362,10 +2362,6 @@ export type ContentRequest = {
      */
     prompt_version?: string | null;
     /**
-     * Effective Tier
-     */
-    effective_tier?: 'complex' | 'standard' | 'lightweight' | null;
-    /**
      * Client Id
      */
     client_id?: string | null;
@@ -2654,10 +2650,6 @@ export type DarkModeRequest = {
      * Prompt Version
      */
     prompt_version?: string | null;
-    /**
-     * Effective Tier
-     */
-    effective_tier?: 'complex' | 'standard' | 'lightweight' | null;
     /**
      * Client Id
      */
@@ -7012,10 +7004,6 @@ export type ScaffolderRequest = {
      * Prompt Version
      */
     prompt_version?: string | null;
-    /**
-     * Effective Tier
-     */
-    effective_tier?: 'complex' | 'standard' | 'lightweight' | null;
     /**
      * Client Id
      */

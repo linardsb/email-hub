@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from app.ai.routing import TaskTier
-
 
 class BaseAgentRequest(BaseModel):
     """Common base for every agent request schema.
 
-    Declares the five fields that the Blueprint engine injects into requests
+    Declares the four fields that the Blueprint engine injects into requests
     at runtime so downstream agents can read them with typed access rather
     than ``getattr(request, ...)``. All default to ``None`` because the
     fields are populated only when a request flows through the orchestrator;
@@ -20,5 +18,4 @@ class BaseAgentRequest(BaseModel):
     user_id: str | None = None
     blueprint_run_id: str | None = None
     prompt_version: str | None = None
-    effective_tier: TaskTier | None = None
     client_id: str | None = None

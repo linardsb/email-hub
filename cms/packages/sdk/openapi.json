@@ -14552,22 +14552,6 @@
             ],
             "title": "Prompt Version"
           },
-          "effective_tier": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "complex",
-                  "standard",
-                  "lightweight"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective Tier"
-          },
           "client_id": {
             "anyOf": [
               {
@@ -14991,22 +14975,6 @@
               }
             ],
             "title": "Prompt Version"
-          },
-          "effective_tier": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "complex",
-                  "standard",
-                  "lightweight"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective Tier"
           },
           "client_id": {
             "anyOf": [
@@ -21570,22 +21538,6 @@
               }
             ],
             "title": "Prompt Version"
-          },
-          "effective_tier": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "complex",
-                  "standard",
-                  "lightweight"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective Tier"
           },
           "client_id": {
             "anyOf": [

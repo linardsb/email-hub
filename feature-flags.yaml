@@ -12,13 +12,6 @@
 
 flags:
   # ── AI ──────────────────────────────────────────────────────────────────────
-  - name: AI__ADAPTIVE_ROUTING_ENABLED
-    description: Adaptive model tier routing with per-agent success tracking
-    owner: ai-team
-    created: "2026-03-16"
-    removal_date: "2026-09-15"
-    status: beta
-
   - name: AI__VISUAL_QA_ENABLED
     description: Visual QA agent for screenshot-based defect detection
     owner: ai-team
@@ -520,36 +513,9 @@ flags:
     description: Adaptive recovery routing from outcome history
     owner: ai-team
     created: "2026-03-24"
-    removal_date: "2026-09-15"
-    status: alpha
-
-  - name: BLUEPRINT__CORRECTION_EXAMPLES_ENABLED
-    description: Few-shot correction examples injected on agent retries
-    owner: ai-team
-    created: "2026-03-24"
-    removal_date: "2026-09-15"
-    status: alpha
-
-  - name: BLUEPRINT__JUDGE_AGGREGATION_ENABLED
-    description: Judge verdict aggregation for prompt patching
-    owner: ai-team
-    created: "2026-03-24"
-    removal_date: "2026-09-15"
-    status: alpha
-
-  - name: BLUEPRINT__CONFIDENCE_CALIBRATION_ENABLED
-    description: Per-agent confidence calibration from judge verdicts
-    owner: ai-team
-    created: "2026-03-24"
-    removal_date: "2026-09-15"
-    status: alpha
-
-  - name: BLUEPRINT__INSIGHT_PROPAGATION_ENABLED
-    description: Cross-agent insight propagation between pipeline nodes
-    owner: ai-team
-    created: "2026-03-27"
-    removal_date: "2026-09-15"
-    status: alpha
+    removal_date: null
+    status: beta
+    permanent_reason: "Opt-in; adaptive recovery routing measured per-deploy in production — the eval/golden harness does not exercise live recovery retries (Phase 54.2)"
 
   # ── Collaboration ───────────────────────────────────────────────────────────
   - name: COLLAB_WS__ENABLED
@@ -654,8 +620,9 @@ flags:
     description: Correction pattern tracking for agent self-improvement
     owner: ai-team
     created: "2026-03-27"
-    removal_date: "2026-09-15"
-    status: alpha
+    removal_date: null
+    status: beta
+    permanent_reason: "Opt-in; converter rule-learning seam (CorrectionTracker → ConverterRuleSuggestion) for the active Phase 53.x program"
 
   # ── Security ────────────────────────────────────────────────────────────────
   - name: SECURITY__PROMPT_GUARD_ENABLED

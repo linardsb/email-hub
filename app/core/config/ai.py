@@ -20,9 +20,6 @@ class AIConfig(BaseModel):
     model_standard: str = ""  # Empty = use default model
     model_lightweight: str = ""  # Empty = use default model
 
-    # Adaptive model tier routing — tracks per-agent success rates and auto-adjusts tier
-    adaptive_routing_enabled: bool = False  # AI__ADAPTIVE_ROUTING_ENABLED
-
     # Visual QA agent (Phase 17.3)
     visual_qa_enabled: bool = False  # AI__VISUAL_QA_ENABLED
     visual_qa_model: str = ""  # AI__VISUAL_QA_MODEL — empty = use default model routing
