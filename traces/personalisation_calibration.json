@@ -1,0 +1,53 @@
+{
+  "all_meet_targets": true,
+  "total_criteria": 3,
+  "passing_criteria": 3,
+  "failing_criteria": 0,
+  "target_tpr": 0.85,
+  "target_tnr": 0.8,
+  "details": [
+    {
+      "agent": "personalisation",
+      "criterion": "fallback_completeness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 71,
+        "tn": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    },
+    {
+      "agent": "personalisation",
+      "criterion": "platform_accuracy",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 71,
+        "tn": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    },
+    {
+      "agent": "personalisation",
+      "criterion": "syntax_correctness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 71,
+        "tn": 19,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    }
+  ],
+  "needs_attention": []
+}

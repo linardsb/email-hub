@@ -44,3 +44,19 @@ Then **54.2:** flip each activated flag behind a before/after `make eval-calibra
 - **Ledger:** `.agents/deferred-items.json` → `flags-2026-06-15-batch-reschedule`. These 8 are the 7 P54-cohort flags it deferred **plus** `JUDGE_ON_RETRY` (which is *not* in that 26-flag batch). The ledger entry stays `deferred` until the directions above are executed.
 - **Worksheet:** `.agents/plans/flags-2026-09-15-graduate-or-kill-worksheet.md` (advisory a/b/c leans).
 - **Audit:** `docs/agentic_rl_memory_handoff_findings.md` (2026-06-05, 5-agent read-only audit).
+
+## Execution — 54.1 reward corpus (2026-06-22)
+
+**Status:** ✅ Executed · corpus committed · calibration **honest-partial** · PR pending. Approach ratified by user in the `/be-execute` Q&A (4 "Recommended" picks: commit real snapshot · honest bootstrap labels · env-only sample rate · 5 populated agents + document the 4 empty).
+
+**What landed:**
+1. **Corpus committed** — un-ignored + committed the real 1.9 MB snapshot (`analysis.json`, 5 agents' `_verdicts`/`_human_labels`/`_calibration`, `baseline.json`, `calibration_baseline.json`); raw `_traces.jsonl` stay ignored. `baseline.json` re-generated from the committed verdicts (the April baseline referenced a now-empty 9-agent corpus → would have hard-failed `eval-regression`). `make eval-check` green; `get_failure_warnings()` injects real KNOWN-FAILURE blocks.
+2. **Human labels** — populated `human_pass` (was all-null): deterministic-QA rows = verifiable checker result (tagged, **not** judge calibration); the only 2 structurally-calibratable LLM-judge criteria labelled by independent agents **blind to `judge_pass`**.
+3. **`production_sample_rate`** — env-only; code default stays `0.0` (no `.env.example` drift). Recommended **0.05** at the activating deploy.
+4. **`MemoryCompactionPoller`** — registered in `app/main.py` lifespan.
+
+**Honest calibration finding (load-bearing for 54.2):** this synthetic corpus is component fixtures (84% of verdicts are deterministic QA shortcuts; dark_mode/personalisation have empty briefs). Real LLM-judge calibration is only computable on `scaffolder/brief_fidelity` (TPR 0.62 / TNR 0.86) and `dark_mode/color_coherence` (TPR 0.80 / TNR 1.00) — **TNR meets the 0.80 target; TPR does not meet 0.85.** The residual disagreement is a criterion-definition ambiguity (terse "snippet/effect" briefs the judge wants rendered as full HTML), not a demonstrated judge defect. Verdict: **LLM-judge calibration is uncertified on this corpus.** Tracked at deferred-item `phase-54.1-llm-judge-calibration-uncertified`.
+
+**Consequence — the two activates split in 54.2:**
+- **`BLUEPRINT__RECOVERY_LEDGER_ENABLED`** — its reward is the **QA-outcome** (deterministic, calibrated), so it is corpus-ready; proceed to a measured 54.2 rollout.
+- **`BLUEPRINT__JUDGE_ON_RETRY`** — **blocked.** It depends on calibrated LLM judges, which this corpus does not certify. Do **not** flip it in 54.2 until LLM-judge TPR/TNR reach ≥0.85/0.80 on agent-relevant data — which is exactly what sub-item 3 (production sampling) + a human-label pass accrue over time. Bootstrap labels are model-assisted/provisional.

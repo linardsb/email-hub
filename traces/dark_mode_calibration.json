@@ -1,0 +1,60 @@
+{
+  "all_meet_targets": false,
+  "total_criteria": 3,
+  "passing_criteria": 2,
+  "failing_criteria": 1,
+  "target_tpr": 0.85,
+  "target_tnr": 0.8,
+  "details": [
+    {
+      "agent": "dark_mode",
+      "criterion": "color_coherence",
+      "tpr": 0.8,
+      "tnr": 1.0,
+      "meets_targets": false,
+      "confusion": {
+        "tp": 12,
+        "tn": 9,
+        "fp": 0,
+        "fn": 3
+      },
+      "total_labels": 24
+    },
+    {
+      "agent": "dark_mode",
+      "criterion": "meta_and_media_query",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 1,
+        "tn": 89,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    },
+    {
+      "agent": "dark_mode",
+      "criterion": "outlook_selector_completeness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 1,
+        "tn": 89,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    }
+  ],
+  "needs_attention": [
+    {
+      "agent": "dark_mode",
+      "criterion": "color_coherence",
+      "tpr": 0.8,
+      "tnr": 1.0
+    }
+  ]
+}

@@ -208,6 +208,7 @@ def main() -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w") as out_f:
         json.dump(report, out_f, indent=2)
+        out_f.write("\n")  # trailing newline: idempotent regen + end-of-file-fixer compliant
 
     s = report["summary"]
     logger.info("=== Error Analysis ===")

@@ -1,0 +1,58 @@
+{
+  "dark_mode:color_coherence": {
+    "tpr": 0.8,
+    "tnr": 1.0
+  },
+  "dark_mode:meta_and_media_query": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "dark_mode:outlook_selector_completeness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "outlook_fixer:fix_completeness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "outlook_fixer:mso_conditional_correctness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "outlook_fixer:outlook_version_targeting": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "outlook_fixer:vml_wellformedness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "personalisation:fallback_completeness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "personalisation:platform_accuracy": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "personalisation:syntax_correctness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "scaffolder:brief_fidelity": {
+    "tpr": 0.619,
+    "tnr": 0.8571
+  },
+  "scaffolder:dark_mode_readiness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "scaffolder:email_layout_patterns": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  },
+  "scaffolder:mso_conditional_correctness": {
+    "tpr": 1.0,
+    "tnr": 1.0
+  }
+}
