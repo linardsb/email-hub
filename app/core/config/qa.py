@@ -29,14 +29,14 @@ class QAPropertyTestingConfig(BaseModel):
 class QAOutlookAnalyzerConfig(BaseModel):
     """Outlook Word-engine dependency analyzer configuration."""
 
-    enabled: bool = False  # QA_OUTLOOK_ANALYZER__ENABLED
+    enabled: bool = True  # QA_OUTLOOK_ANALYZER__ENABLED — default-on (GA); kept for rollback
     default_target: str = "dual_support"  # new_outlook | dual_support | audit_only
 
 
 class QADeliverabilityConfig(BaseModel):
     """Deliverability prediction scoring. Env prefix: QA_DELIVERABILITY__."""
 
-    enabled: bool = False
+    enabled: bool = True  # QA_DELIVERABILITY__ENABLED — default-on (GA); kept for rollback
     threshold: int = 70  # 0-100 score, pass if >= threshold
 
 

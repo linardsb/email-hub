@@ -163,7 +163,6 @@ class TemplatesUploadConfig(BaseModel):
 class VariantsConfig(BaseModel):
     """Multi-variant campaign assembly settings."""
 
-    enabled: bool = False
     max_variants: int = 5
     rate_limit_per_hour: int = 3
 

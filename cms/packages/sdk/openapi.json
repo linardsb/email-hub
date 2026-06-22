@@ -10828,6 +10828,53 @@
         ]
       }
     },
+    "/api/v1/agents/scaffolder/generate-variants": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Generate Variants",
+        "description": "Generate A/B/n email variants from a single campaign brief.\n\nProduces 2-5 variants, each with a distinct content strategy,\nshared template and design tokens, independent QA results,\nand a comparison matrix showing measurable differences.",
+        "operationId": "generate_variants_api_v1_agents_scaffolder_generate_variants_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VariantSetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/credentials/revoke": {
       "post": {
         "tags": [
@@ -13848,6 +13895,46 @@
           "unsupported_properties"
         ],
         "title": "ClientProfileSchema"
+      },
+      "ComparisonMatrixResponse": {
+        "properties": {
+          "subject_lines": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Subject Lines"
+          },
+          "preheaders": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Preheaders"
+          },
+          "slot_differences": {
+            "items": {
+              "$ref": "#/components/schemas/SlotDifferenceResponse"
+            },
+            "type": "array",
+            "title": "Slot Differences"
+          },
+          "strategy_summary": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Strategy Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subject_lines",
+          "preheaders",
+          "strategy_summary"
+        ],
+        "title": "ComparisonMatrixResponse",
+        "description": "Side-by-side comparison."
       },
       "CompatibilityBriefResponse": {
         "properties": {
@@ -22149,6 +22236,28 @@
         ],
         "title": "ServiceHealthReport"
       },
+      "SlotDifferenceResponse": {
+        "properties": {
+          "slot_id": {
+            "type": "string",
+            "title": "Slot Id"
+          },
+          "variants": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Variants"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slot_id",
+          "variants"
+        ],
+        "title": "SlotDifferenceResponse",
+        "description": "A slot that differs across variants."
+      },
       "SlotHintSchema": {
         "properties": {
           "slot_id": {
@@ -23399,6 +23508,146 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VariantRequest": {
+        "properties": {
+          "brief": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 10,
+            "title": "Brief",
+            "description": "Campaign brief"
+          },
+          "variant_count": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 2.0,
+            "title": "Variant Count",
+            "description": "Number of variants (2-5)",
+            "default": 3
+          },
+          "run_qa": {
+            "type": "boolean",
+            "title": "Run Qa",
+            "default": true
+          },
+          "brand_config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Config",
+            "description": "Brand guidelines for design token selection"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brief"
+        ],
+        "title": "VariantRequest",
+        "description": "Request body for multi-variant campaign assembly."
+      },
+      "VariantResultResponse": {
+        "properties": {
+          "variant_id": {
+            "type": "string",
+            "title": "Variant Id"
+          },
+          "strategy_name": {
+            "type": "string",
+            "title": "Strategy Name"
+          },
+          "hypothesis": {
+            "type": "string",
+            "title": "Hypothesis"
+          },
+          "predicted_differentiator": {
+            "type": "string",
+            "title": "Predicted Differentiator"
+          },
+          "subject_line": {
+            "type": "string",
+            "title": "Subject Line"
+          },
+          "preheader": {
+            "type": "string",
+            "title": "Preheader"
+          },
+          "html": {
+            "type": "string",
+            "title": "Html"
+          },
+          "qa_results": {
+            "items": {
+              "$ref": "#/components/schemas/QACheckResult"
+            },
+            "type": "array",
+            "title": "Qa Results"
+          },
+          "qa_passed": {
+            "type": "boolean",
+            "title": "Qa Passed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "variant_id",
+          "strategy_name",
+          "hypothesis",
+          "predicted_differentiator",
+          "subject_line",
+          "preheader",
+          "html"
+        ],
+        "title": "VariantResultResponse",
+        "description": "Single variant in the response."
+      },
+      "VariantSetResponse": {
+        "properties": {
+          "brief": {
+            "type": "string",
+            "title": "Brief"
+          },
+          "base_template": {
+            "type": "string",
+            "title": "Base Template"
+          },
+          "variant_count": {
+            "type": "integer",
+            "title": "Variant Count"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/VariantResultResponse"
+            },
+            "type": "array",
+            "title": "Variants"
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/ComparisonMatrixResponse"
+          },
+          "all_qa_passed": {
+            "type": "boolean",
+            "title": "All Qa Passed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "brief",
+          "base_template",
+          "variant_count",
+          "variants",
+          "comparison",
+          "all_qa_passed"
+        ],
+        "title": "VariantSetResponse",
+        "description": "Response from multi-variant generation."
       },
       "VisualComparisonResult": {
         "properties": {
