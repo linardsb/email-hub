@@ -205,6 +205,18 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception:
             logger.warning("eval.production_judge_worker_start_failed", exc_info=True)
 
+    # Start memory compaction poller (decay + dedup; prevents unbounded memory growth)
+    memory_compaction_poller = None
+    if settings.memory.enabled:
+        try:
+            from app.memory.compaction import MemoryCompactionPoller
+
+            memory_compaction_poller = MemoryCompactionPoller()
+            await memory_compaction_poller.start()
+            logger.info("memory.compaction_poller_started")
+        except Exception:
+            logger.warning("memory.compaction_poller_start_failed", exc_info=True)
+
     # Start checkpoint cleanup poller (daily, deletes old/completed checkpoints)
     checkpoint_poller = None
     if settings.blueprint.checkpoints_enabled:
@@ -321,6 +333,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     if judge_worker is not None:
         await judge_worker.stop()
         logger.info("eval.production_judge_worker_stopped")
+
+    if memory_compaction_poller is not None:
+        await memory_compaction_poller.stop()
+        logger.info("memory.compaction_poller_stopped")
 
     if change_detector_poller is not None:
         await change_detector_poller.stop()

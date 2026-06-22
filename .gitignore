@@ -67,6 +67,26 @@ pricing.md
 traces/*.jsonl
 traces/*.json
 !traces/baseline.json
+# Phase 54.1 — committed reward corpus (real snapshot; survives a fresh checkout so
+# failure_warnings + judge calibration + eval-check have data on a clean deploy).
+# Frozen seed: verdicts + human labels + per-agent calibration + the two baselines.
+# Regenerated raw *_traces.jsonl stay ignored (large; not needed by eval-check).
+!traces/analysis.json
+!traces/calibration_baseline.json
+!traces/scaffolder_verdicts.jsonl
+!traces/dark_mode_verdicts.jsonl
+!traces/outlook_fixer_verdicts.jsonl
+!traces/accessibility_verdicts.jsonl
+!traces/personalisation_verdicts.jsonl
+!traces/scaffolder_human_labels.jsonl
+!traces/dark_mode_human_labels.jsonl
+!traces/outlook_fixer_human_labels.jsonl
+!traces/accessibility_human_labels.jsonl
+!traces/personalisation_human_labels.jsonl
+!traces/scaffolder_calibration.json
+!traces/dark_mode_calibration.json
+!traces/outlook_fixer_calibration.json
+!traces/personalisation_calibration.json
 traces/suggestions/*.md
 
 # Uploaded template eval cases (generated at runtime)

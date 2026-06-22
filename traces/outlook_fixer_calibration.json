@@ -1,0 +1,67 @@
+{
+  "all_meet_targets": true,
+  "total_criteria": 4,
+  "passing_criteria": 4,
+  "failing_criteria": 0,
+  "target_tpr": 0.85,
+  "target_tnr": 0.8,
+  "details": [
+    {
+      "agent": "outlook_fixer",
+      "criterion": "fix_completeness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 1,
+        "tn": 89,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    },
+    {
+      "agent": "outlook_fixer",
+      "criterion": "mso_conditional_correctness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 1,
+        "tn": 89,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    },
+    {
+      "agent": "outlook_fixer",
+      "criterion": "outlook_version_targeting",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 1,
+        "tn": 89,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    },
+    {
+      "agent": "outlook_fixer",
+      "criterion": "vml_wellformedness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 1,
+        "tn": 89,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 90
+    }
+  ],
+  "needs_attention": []
+}

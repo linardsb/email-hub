@@ -1,0 +1,74 @@
+{
+  "all_meet_targets": false,
+  "total_criteria": 4,
+  "passing_criteria": 3,
+  "failing_criteria": 1,
+  "target_tpr": 0.85,
+  "target_tnr": 0.8,
+  "details": [
+    {
+      "agent": "scaffolder",
+      "criterion": "brief_fidelity",
+      "tpr": 0.619,
+      "tnr": 0.8571,
+      "meets_targets": false,
+      "confusion": {
+        "tp": 13,
+        "tn": 6,
+        "fp": 1,
+        "fn": 8
+      },
+      "total_labels": 28
+    },
+    {
+      "agent": "scaffolder",
+      "criterion": "dark_mode_readiness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 2,
+        "tn": 91,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 93
+    },
+    {
+      "agent": "scaffolder",
+      "criterion": "email_layout_patterns",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 2,
+        "tn": 91,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 93
+    },
+    {
+      "agent": "scaffolder",
+      "criterion": "mso_conditional_correctness",
+      "tpr": 1.0,
+      "tnr": 1.0,
+      "meets_targets": true,
+      "confusion": {
+        "tp": 3,
+        "tn": 90,
+        "fp": 0,
+        "fn": 0
+      },
+      "total_labels": 93
+    }
+  ],
+  "needs_attention": [
+    {
+      "agent": "scaffolder",
+      "criterion": "brief_fidelity",
+      "tpr": 0.619,
+      "tnr": 0.8571
+    }
+  ]
+}
