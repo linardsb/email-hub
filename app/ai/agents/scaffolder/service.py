@@ -245,9 +245,6 @@ class ScaffolderService(CRAGMixin, BaseAgentService):
     async def generate_variants(self, request: VariantRequest) -> VariantSetResponse:
         """Generate multi-variant campaign from a single brief."""
         settings = get_settings()
-        if not settings.variants.enabled:
-            raise AIExecutionError("Multi-variant generation is not enabled")
-
         if request.variant_count > settings.variants.max_variants:
             raise AIExecutionError(
                 f"Requested {request.variant_count} variants exceeds maximum of {settings.variants.max_variants}"
