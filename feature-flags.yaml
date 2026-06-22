@@ -23,43 +23,49 @@ flags:
     description: Visual QA agent for screenshot-based defect detection
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; requires screenshot/headless-browser infra + VLM cost"
 
   - name: AI__VISUAL_QA_AUTOFIX_ENABLED
     description: Visual QA auto-fix — applies corrections from VLM findings
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Opt-in; depends on AI__VISUAL_QA_ENABLED (screenshot infra + VLM), auto-applies edits"
 
   - name: AI__TOKEN_BUDGET_ENABLED
     description: Token budget management for prompt/response allocation
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
-    status: beta
+    removal_date: null
+    status: ga
+    permanent_reason: "Graduated default-on 2026-06-22 (ai-team); flag kept for emergency rollback"
 
   - name: AI__PROMPT_STORE_ENABLED
     description: Prompt template store for versioned prompt management
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; versioned-prompt management, enabled per team adoption"
 
   - name: AI__COST_GOVERNOR_ENABLED
     description: Cost governance — budget limits and overspend prevention
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
-    status: beta
+    removal_date: null
+    status: ga
+    permanent_reason: "Graduated default-on 2026-06-22 (ai-team); cost-safety kill-switch kept for emergency rollback"
 
   - name: AI__MULTIMODAL_CONTEXT_ENABLED
     description: Multimodal agent context protocol (images, audio in prompts)
     owner: ai-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Opt-in; requires a multimodal-capable model (cost/capability)"
 
   # ── Knowledge ───────────────────────────────────────────────────────────────
   - name: KNOWLEDGE__AUTO_TAG_ENABLED
@@ -81,22 +87,25 @@ flags:
     description: CRAG validation loop for RAG answer grounding
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; adds per-query LLM validation calls (cost/latency)"
 
   - name: KNOWLEDGE__ROUTER_ENABLED
     description: Query router for knowledge search strategy selection
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; query-strategy selection, enable per measured retrieval gain"
 
   - name: KNOWLEDGE__MULTI_REP_ENABLED
     description: Multi-representation indexing for knowledge documents
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; extra indexing compute/storage + LLM calls"
 
   - name: KNOWLEDGE__PROACTIVE_QA_ENABLED
     description: Proactive QA warnings injected from semantic memory of prior failures (Phase 48.12)
@@ -134,29 +143,33 @@ flags:
     description: Outlook Word-engine dependency analyzer
     owner: qa-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
-    status: beta
+    removal_date: null
+    status: ga
+    permanent_reason: "Graduated default-on 2026-06-22 (qa-team); local analyzer, flag kept for emergency rollback"
 
   - name: QA_DELIVERABILITY__ENABLED
     description: Deliverability prediction scoring (ISP-aware analysis)
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
-    status: beta
+    removal_date: null
+    status: ga
+    permanent_reason: "Graduated default-on 2026-06-22 (qa-team); local ISP scoring, flag kept for emergency rollback"
 
   - name: QA_GMAIL_PREDICTOR__ENABLED
     description: Gmail AI summary prediction for inbox preview
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Opt-in; calls an external LLM (API key + cost)"
 
   - name: QA_BIMI__ENABLED
     description: BIMI readiness check (SVG logo, DMARC, VMC)
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; performs DNS lookups + SVG network fetch"
 
   - name: QA_META_EVAL__ENABLED
     description: QA check meta-evaluation against labeled golden samples (Phase 48.9)
@@ -482,23 +495,26 @@ flags:
     description: CSS compiler for target-client-specific optimization
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; changes build CSS output — enable per deployment once verified across target clients"
 
   - name: EMAIL_ENGINE__SCHEMA_INJECTION_ENABLED
     description: Schema.org structured data injection in emails
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; Schema.org JSON-LD is not wanted for every campaign type"
 
   # ── Blueprint ───────────────────────────────────────────────────────────────
   - name: BLUEPRINT__CHECKPOINTS_ENABLED
     description: Opt-in checkpoint persistence for blueprint runs
     owner: ai-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; run-checkpoint persistence carries storage cost"
 
   - name: BLUEPRINT__RECOVERY_LEDGER_ENABLED
     description: Adaptive recovery routing from outcome history
@@ -589,8 +605,9 @@ flags:
     description: Automatic skill extraction from uploaded templates
     owner: ai-team
     created: "2026-03-18"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; only meaningful when TEMPLATES__UPLOAD is enabled (itself opt-in)"
 
   - name: TEMPLATES__UPLOAD_ENABLED
     description: Self-serve HTML template upload pipeline
@@ -599,13 +616,6 @@ flags:
     removal_date: null
     status: beta
     permanent_reason: "Optional capability; must be explicitly enabled per deployment"
-
-  - name: VARIANTS__ENABLED
-    description: Multi-variant A/B campaign assembly
-    owner: ai-team
-    created: "2026-03-19"
-    removal_date: "2026-09-15"
-    status: beta
 
   # ── Infrastructure ──────────────────────────────────────────────────────────
   - name: MEMORY__ENABLED
