@@ -494,15 +494,17 @@ flags:
     description: CSS compiler for target-client-specific optimization
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; changes build CSS output — enable per deployment once verified across target clients"
 
   - name: EMAIL_ENGINE__SCHEMA_INJECTION_ENABLED
     description: Schema.org structured data injection in emails
     owner: platform-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; Schema.org JSON-LD is not wanted for every campaign type"
 
   # ── Blueprint ───────────────────────────────────────────────────────────────
   - name: BLUEPRINT__CHECKPOINTS_ENABLED
