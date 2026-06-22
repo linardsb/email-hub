@@ -269,8 +269,9 @@ flags:
     description: SSIM visual fidelity scoring (Figma vs rendered HTML)
     owner: design-team
     created: "2026-03-27"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; needs rendered screenshots + Figma export (infra + token); advisory/case-5-only in CI per phase-53.7-asset-reexport-prerequisite"
 
   - name: DESIGN_SYNC__FIGMA_WEBHOOK_ENABLED
     description: Figma webhook listener for live preview sync
