@@ -143,29 +143,33 @@ flags:
     description: Outlook Word-engine dependency analyzer
     owner: qa-team
     created: "2026-03-16"
-    removal_date: "2026-09-15"
-    status: beta
+    removal_date: null
+    status: ga
+    permanent_reason: "Graduated default-on 2026-06-22 (qa-team); local analyzer, flag kept for emergency rollback"
 
   - name: QA_DELIVERABILITY__ENABLED
     description: Deliverability prediction scoring (ISP-aware analysis)
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
-    status: beta
+    removal_date: null
+    status: ga
+    permanent_reason: "Graduated default-on 2026-06-22 (qa-team); local ISP scoring, flag kept for emergency rollback"
 
   - name: QA_GMAIL_PREDICTOR__ENABLED
     description: Gmail AI summary prediction for inbox preview
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: alpha
+    permanent_reason: "Opt-in; calls an external LLM (API key + cost)"
 
   - name: QA_BIMI__ENABLED
     description: BIMI readiness check (SVG logo, DMARC, VMC)
     owner: qa-team
     created: "2026-03-17"
-    removal_date: "2026-09-15"
+    removal_date: null
     status: beta
+    permanent_reason: "Opt-in; performs DNS lookups + SVG network fetch"
 
   - name: QA_META_EVAL__ENABLED
     description: QA check meta-evaluation against labeled golden samples (Phase 48.9)
