@@ -116,7 +116,10 @@ async def app_exception_handler(request: Request, exc: AppError) -> JSONResponse
         method=request.method,
     )
 
+    from app.ai.agents.exceptions import ToolCapExceededError
+
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    reason: str | None = None
     if isinstance(exc, NotFoundError):
         status_code = status.HTTP_404_NOT_FOUND
     elif isinstance(exc, DomainValidationError):
@@ -125,6 +128,9 @@ async def app_exception_handler(request: Request, exc: AppError) -> JSONResponse
         status_code = status.HTTP_403_FORBIDDEN
     elif isinstance(exc, ConflictError):
         status_code = status.HTTP_409_CONFLICT
+    elif isinstance(exc, ToolCapExceededError):
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        reason = ToolCapExceededError.reason
     elif isinstance(exc, ServiceUnavailableError):
         status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     elif _is_sync_error(exc):
@@ -132,13 +138,13 @@ async def app_exception_handler(request: Request, exc: AppError) -> JSONResponse
 
     from app.core.error_sanitizer import get_safe_error_message, get_safe_error_type
 
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "error": get_safe_error_message(exc),
-            "type": get_safe_error_type(exc),
-        },
-    )
+    content: dict[str, Any] = {
+        "error": get_safe_error_message(exc),
+        "type": get_safe_error_type(exc),
+    }
+    if reason:
+        content["reason"] = reason
+    return JSONResponse(status_code=status_code, content=content)
 
 
 async def invalid_credentials_handler(request: Request, exc: AppError) -> JSONResponse:

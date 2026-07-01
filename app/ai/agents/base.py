@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from app.ai.multimodal import ContentBlock, ImageBlock, TextBlock
 
 from app.ai.agents.audit import hash_input, log_agent_decision
+from app.ai.agents.exceptions import ToolCapExceededError
 from app.ai.agents.types import BaseAgentRequest
 from app.ai.blueprints.protocols import AgentHandoff, HandoffStatus
 from app.ai.exceptions import AIExecutionError
@@ -48,6 +49,32 @@ CONFIDENCE_INSTRUCTION = (
     "\n\nEnd your response with <!-- CONFIDENCE: X.XX --> where X.XX is your "
     "confidence (0.00-1.00) in the output quality."
 )
+
+
+class _ToolCallCounter:
+    """Per-``process()`` tool-call cap + planning-step accumulator.
+
+    Instantiated once per ``process()`` invocation (never a module global) so
+    it resets between calls. ``record_tool_call`` raises ``ToolCapExceededError``
+    on the ``max_calls + 1``-th call.
+    """
+
+    def __init__(self, *, agent: str, max_calls: int) -> None:
+        self.agent = agent
+        self.max_calls = max_calls
+        self.count = 0
+        self.planning_steps: list[str] = []
+
+    def record_tool_call(self, step: str | None = None) -> None:
+        self.count += 1
+        if self.count > self.max_calls:
+            raise ToolCapExceededError(self.agent, self.max_calls)
+        if step:
+            self.planning_steps.append(step)
+
+    def record_planning_step(self, step: str) -> None:
+        """Record a reasoning step without counting it as a tool call."""
+        self.planning_steps.append(step)
 
 
 class BaseAgentService:
@@ -343,7 +370,15 @@ class BaseAgentService:
             "output_summary": "",
             "tokens_in": 0,
             "tokens_out": 0,
+            "tool_calls_made": 0,
+            "planning_steps": [],
         }
+
+        # K_max — per-session tool-call cap (fresh per invocation → resets).
+        counter = _ToolCallCounter(
+            agent=self.agent_name,
+            max_calls=settings.security.agent_max_tool_calls,
+        )
 
         # G3 — Kill switch: short-circuit before any work.
         if self.agent_name in settings.security.disabled_agents:
@@ -355,7 +390,7 @@ class BaseAgentService:
         decision = "ok"
         try:
             return await asyncio.wait_for(
-                self._process_impl(request, context_blocks, telemetry),
+                self._process_impl(request, context_blocks, telemetry, counter),
                 timeout=settings.security.agent_max_run_seconds,
             )
         except TimeoutError as exc:
@@ -369,12 +404,17 @@ class BaseAgentService:
                 f"Agent '{self.agent_name}' timed out after "
                 f"{settings.security.agent_max_run_seconds}s"
             ) from exc
+        except ToolCapExceededError:
+            decision = "cap_exceeded"
+            raise
         except Exception:
             if decision == "ok":
                 decision = "error"
             raise
         finally:
             duration_ms = int((time.monotonic() - started_at) * 1000)
+            telemetry["tool_calls_made"] = counter.count
+            telemetry["planning_steps"] = counter.planning_steps
             log_agent_decision(**telemetry, duration_ms=duration_ms, decision=decision)
 
     async def _process_impl(
@@ -382,6 +422,7 @@ class BaseAgentService:
         request: BaseAgentRequest,
         context_blocks: list[ContentBlock] | None,
         telemetry: dict[str, Any],
+        counter: _ToolCallCounter,
     ) -> Any:
         """Inner pipeline (no security envelope).
 
@@ -407,6 +448,7 @@ class BaseAgentService:
         request = self._scan_request(request)
         output_mode = self._get_output_mode(request)
         if output_mode == "structured" and self._output_mode_supported:
+            counter.record_planning_step(f"{self.agent_name}:structured")
             return await self._process_structured(request)
 
         settings = get_settings()

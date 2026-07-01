@@ -28,6 +28,7 @@ def configure_mock_security(mock_settings: MagicMock, **overrides: Any) -> None:
     sec.disabled_agents = overrides.get("disabled_agents", [])
     sec.agent_max_run_seconds = overrides.get("agent_max_run_seconds", 90)
     sec.agent_max_total_tokens = overrides.get("agent_max_total_tokens", 1_000_000)
+    sec.agent_max_tool_calls = overrides.get("agent_max_tool_calls", 25)
     sec.prompt_guard_enabled = overrides.get("prompt_guard_enabled", False)
     sec.prompt_guard_mode = overrides.get("prompt_guard_mode", "warn")
     # CRAG check is gated by isinstance(self, CRAGMixin) but set defensively.

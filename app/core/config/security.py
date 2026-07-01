@@ -19,6 +19,11 @@ class SecurityConfig(BaseModel):
     agent_max_run_seconds: int = 90  # SECURITY__AGENT_MAX_RUN_SECONDS
     agent_max_total_tokens: int = 32000  # SECURITY__AGENT_MAX_TOTAL_TOKENS
 
+    # 51.3 — per-session tool-call cap (completes K_max). Default 25 is
+    # deliberately permissive — must not trip any current agent.
+    # Env: SECURITY__AGENT_MAX_TOOL_CALLS
+    agent_max_tool_calls: int = 25
+
     # 51.1 — Default TTL (seconds) for credential revocations triggered by the
     # kill switch. ``None`` = permanent until ``POST /api/v1/credentials/revoke``
     # with ``restore=true`` (or ``restore_for_agent`` from a Python entry point).
