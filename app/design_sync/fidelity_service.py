@@ -19,6 +19,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.design_sync.exceptions import FidelityScoringError
 from app.design_sync.figma.layout_analyzer import DesignLayoutDescription, EmailSection
+from app.design_sync.tuning import FIDELITY_BLUR_SIGMA, FIDELITY_FIGMA_SCALE, FIDELITY_SSIM_WINDOW
 from app.design_sync.visual_scorer import FidelityScore, classify_severity, score_fidelity
 from app.shared.imaging import safe_image_open
 
@@ -59,8 +60,6 @@ class VisualFidelityService:
         Returns:
             FidelityScore with overall SSIM, per-section scores, and diff image.
         """
-        settings = get_settings()
-
         if not layout.sections:
             raise FidelityScoringError("No sections in layout — cannot score fidelity")
 
@@ -77,8 +76,8 @@ class VisualFidelityService:
             figma_image,
             html_image,
             layout.sections,
-            blur_sigma=settings.design_sync.fidelity_blur_sigma,
-            win_size=settings.design_sync.fidelity_ssim_window,
+            blur_sigma=FIDELITY_BLUR_SIGMA,
+            win_size=FIDELITY_SSIM_WINDOW,
         )
 
         # 4. Store diff image if present
@@ -102,8 +101,6 @@ class VisualFidelityService:
         figma_service: FigmaDesignSyncService | None = None,
     ) -> bytes:
         """Export and stitch Figma section frames into a single composite image."""
-        settings = get_settings()
-
         if figma_service is None:
             from app.design_sync.figma.service import FigmaDesignSyncService
 
@@ -120,7 +117,7 @@ class VisualFidelityService:
             access_token,
             node_ids,
             format="png",
-            scale=settings.design_sync.fidelity_figma_scale,
+            scale=FIDELITY_FIGMA_SCALE,
         )
 
         if not exported:
