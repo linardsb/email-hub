@@ -101,13 +101,10 @@ def _read_png_dimensions(data: bytes) -> tuple[int | None, int | None]:
 
 
 def _get_scale() -> float:
-    """Get Figma export scale from settings, with fallback."""
-    try:
-        from app.core.config import get_settings
+    """Get Figma export scale from the tuning constant."""
+    from app.design_sync.tuning import FIDELITY_FIGMA_SCALE
 
-        return get_settings().design_sync.fidelity_figma_scale
-    except Exception:
-        return 2.0
+    return FIDELITY_FIGMA_SCALE
 
 
 async def _capture_design_image(

@@ -23,6 +23,11 @@ from app.design_sync.frame_rules import (
     rule_11_card_width_from_dominant_image,
 )
 from app.design_sync.protocol import DesignFileStructure, DesignNode, DesignNodeType, StyleRun
+from app.design_sync.tuning import (
+    NESTED_CARD_PERCEPTUAL_THRESHOLD,
+    PHYSICAL_CARD_MIN_SIGNALS,
+    VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD,
+)
 
 if TYPE_CHECKING:
     from app.design_sync.vlm_classifier import VLMSectionClassification
@@ -345,11 +350,7 @@ def analyze_layout(
     # Build sections
     sections: list[EmailSection] = []
     total = len(candidates)
-    vlm_threshold = (
-        get_settings().design_sync.vlm_classification_confidence_threshold
-        if vlm_classifications
-        else 0.0
-    )
+    vlm_threshold = VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD if vlm_classifications else 0.0
     for idx, (node, container_bg, parent_wrapper_id, peel_row_id) in enumerate(candidates):
         section_type, classification_confidence = _classify_section(
             node,
@@ -437,14 +438,14 @@ def analyze_layout(
                 detection = detect_physical_card_surface(
                     node,
                     sibling_radii=sibling_radii,
-                    min_signals=ds_cfg.physical_card_min_signals,
+                    min_signals=PHYSICAL_CARD_MIN_SIGNALS,
                 )
                 is_physical_card_surface = detection.is_physical
                 physical_card_signals = detection.signals
             else:
                 nested = find_physical_card_in_subtree(
                     node,
-                    min_signals=ds_cfg.physical_card_min_signals,
+                    min_signals=PHYSICAL_CARD_MIN_SIGNALS,
                 )
                 if nested is not None:
                     is_physical_card_surface = True
@@ -1703,7 +1704,7 @@ def _detect_inner_bg(
     if global_design_image is not None:
         sampled = _sample_section_centroid(node, global_design_image)
         if sampled and _hex_max_channel_delta(sampled, container_bg) > (
-            cfg.nested_card_perceptual_threshold
+            NESTED_CARD_PERCEPTUAL_THRESHOLD
         ):
             return sampled, _resolve_corner_radius(node)
 

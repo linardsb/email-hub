@@ -41,6 +41,7 @@ from app.design_sync.section_cache import (
     get_section_cache,
 )
 from app.design_sync.token_transforms import convert_colors_to_palette, convert_typography
+from app.design_sync.tuning import BAND_GROUPING_ABSORB_SPACERS
 
 if TYPE_CHECKING:
     from app.design_sync.component_matcher import ComponentMatch
@@ -617,7 +618,7 @@ class DesignConverterService:
             # parent_wrapper_id band (preferred over similarity re-derivation).
             grouped_sections = group_by_wrapper(
                 layout.sections,
-                absorb_spacers=ds_settings.band_grouping_absorb_spacers,
+                absorb_spacers=BAND_GROUPING_ABSORB_SPACERS,
             )
         elif ds_settings.sibling_detection_enabled:
             grouped_sections = detect_repeating_groups(

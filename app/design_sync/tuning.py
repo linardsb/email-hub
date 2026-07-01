@@ -30,6 +30,24 @@ PHYSICAL_CARD_MIN_SIGNALS: Final[int] = 2
 RULE_7_ALIGNMENT_TOLERANCE_PX: Final[float] = 4.0
 """Pill x-offset tolerance for Rule 7 alignment classification."""
 
+# ── Visual fidelity scoring (SSIM) ────────────────────────────────────
+FIDELITY_SSIM_WINDOW: Final[int] = 7
+"""SSIM Gaussian window (odd, ≤ min image dim)."""
+
+FIDELITY_BLUR_SIGMA: Final[float] = 1.0
+"""Gaussian blur applied before SSIM (anti-aliasing tolerance)."""
+
+FIDELITY_FIGMA_SCALE: Final[float] = 2.0
+"""Figma export scale factor for fidelity frame capture."""
+
+# ── VLM section classification ────────────────────────────────────────
+VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD: Final[float] = 0.7
+"""Confidence floor for accepting a VLM section-type classification."""
+
+# ── Band grouping (wrapper regrouping) ────────────────────────────────
+BAND_GROUPING_ABSORB_SPACERS: Final[bool] = True
+"""Drop SPACER-typed pseudo-sections inside a grouped band (render as padding)."""
+
 # ── VLM verify loop knobs ─────────────────────────────────────────────
 VLM_VERIFY_DIFF_SKIP_THRESHOLD: Final[float] = 2.0
 """Verification-loop skip threshold — diff %% under which we skip the LLM."""

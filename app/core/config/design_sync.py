@@ -16,11 +16,10 @@ class DesignSyncConfig(BaseModel):
     converter_enabled: bool = True  # DESIGN_SYNC__CONVERTER_ENABLED (provider-agnostic)
     figma_variables_enabled: bool = True  # DESIGN_SYNC__FIGMA_VARIABLES_ENABLED
     ai_layout_enabled: bool = True  # DESIGN_SYNC__AI_LAYOUT_ENABLED
-    # Visual fidelity scoring (SSIM comparison of Figma frames vs rendered HTML)
+    # Visual fidelity scoring (SSIM comparison of Figma frames vs rendered HTML).
+    # Algorithm internals (SSIM window/blur/scale) are constants in
+    # ``app.design_sync.tuning`` — not per-deployment env knobs (Phase 50.6.4).
     fidelity_enabled: bool = False  # DESIGN_SYNC__FIDELITY_ENABLED
-    fidelity_ssim_window: int = 7  # SSIM Gaussian window (odd, ≤ min image dim)
-    fidelity_blur_sigma: float = 1.0  # Gaussian blur before SSIM (anti-aliasing tolerance)
-    fidelity_figma_scale: float = 2.0  # Figma export scale factor
     # Figma webhooks (live preview sync)
     figma_webhook_enabled: bool = False  # DESIGN_SYNC__FIGMA_WEBHOOK_ENABLED
     figma_webhook_passcode: str = ""  # DESIGN_SYNC__FIGMA_WEBHOOK_PASSCODE (HMAC secret)
@@ -49,9 +48,6 @@ class DesignSyncConfig(BaseModel):
     vlm_classification_enabled: bool = False  # DESIGN_SYNC__VLM_CLASSIFICATION_ENABLED
     vlm_classification_model: str = (
         ""  # DESIGN_SYNC__VLM_CLASSIFICATION_MODEL (empty = default routing)
-    )
-    vlm_classification_confidence_threshold: float = (
-        0.7  # DESIGN_SYNC__VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD
     )
     vlm_classification_timeout: float = 15.0  # DESIGN_SYNC__VLM_CLASSIFICATION_TIMEOUT (seconds)
     # VLM visual verification loop (Phase 47.2) — RETIRED at 53.4 (2026-06-12):
@@ -94,9 +90,6 @@ class DesignSyncConfig(BaseModel):
     # specific design. Env var is the kill switch; cull the flag once soaked
     # (review by 2026-09-10 per `make flag-audit` lifecycle).
     band_grouping_enabled: bool = True  # DESIGN_SYNC__BAND_GROUPING_ENABLED
-    # When band grouping is on, drop SPACER-typed pseudo-sections inside a band
-    # (they render as padding, not their own row). Phase 53 Track C2.
-    band_grouping_absorb_spacers: bool = True  # DESIGN_SYNC__BAND_GROUPING_ABSORB_SPACERS
     # Semantic peel/keep seam — Phase 53 D3. Peel `mj-wrapper → single
     # mj-section → N column` grandkids into their own sections when the
     # content-scale heuristic reads them as cards (imagery / card-height)
@@ -122,18 +115,12 @@ class DesignSyncConfig(BaseModel):
     # (e.g. white card on lime wrapper). Renderer wraps content in a ``_inner``
     # table when ``inner_bg`` is detected.
     nested_card_detection_enabled: bool = True  # DESIGN_SYNC__NESTED_CARD_DETECTION_ENABLED
-    # Per-channel RGB Δ above which a PNG-sampled centroid color is considered
-    # distinct from the container background (i.e. a real inner card surface).
-    nested_card_perceptual_threshold: int = 30  # DESIGN_SYNC__NESTED_CARD_PERCEPTUAL_THRESHOLD
     # FRAME-tree rules 7/8/10/11 (Phase 50.5) — pure FRAME-tree predicates that
     # emit alignment, per-corner radius, and dominant-image card width without
     # PNG sampling. Disable to fall back to Phase 50.4 behaviour.
     frame_rules_enabled: bool = True  # DESIGN_SYNC__FRAME_RULES_ENABLED
-    # Pill x-offset tolerance (px) for Rule 7 alignment classification.
-    rule_7_alignment_tolerance_px: float = 4.0  # DESIGN_SYNC__RULE_7_ALIGNMENT_TOLERANCE_PX
     # Physical-card identity exception (Phase 50.7, Rule 9 prep) — detect
     # FRAMEs that depict a real plastic card so Phase 52.7's dark-mode flip
     # can opt out and keep them visually consistent across modes. Pure
     # FRAME-tree heuristics; runs only on sections with an ``inner_bg``.
     physical_card_detection_enabled: bool = True  # DESIGN_SYNC__PHYSICAL_CARD_DETECTION_ENABLED
-    physical_card_min_signals: int = 2  # DESIGN_SYNC__PHYSICAL_CARD_MIN_SIGNALS
