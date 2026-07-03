@@ -212,6 +212,21 @@ class BaseAgentService:
         """
         from app.ai.multimodal import TextBlock, validate_content_blocks
 
+        # 51.2 — pin the safety preamble to the head of the system prompt.
+        # Flag-off is byte-identical: lazy imports mean the preamble file is
+        # never even read. Fail-closed: a missing preamble raises 503 here.
+        settings = get_settings()
+        if settings.security.safe_compaction_enabled:
+            from app.ai.agents.safety_preamble import (
+                SAFETY_PREAMBLE,
+                check_version_drift,
+                ensure_loaded,
+            )
+
+            ensure_loaded()
+            check_version_drift(settings.security.safety_preamble_version)
+            system_prompt = f"{SAFETY_PREAMBLE}\n\n{system_prompt}"
+
         sanitized_text = sanitize_prompt(user_text)
 
         if context_blocks:

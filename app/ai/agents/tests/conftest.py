@@ -30,5 +30,9 @@ def configure_mock_security(mock_settings: MagicMock, **overrides: Any) -> None:
     sec.agent_max_total_tokens = overrides.get("agent_max_total_tokens", 1_000_000)
     sec.prompt_guard_enabled = overrides.get("prompt_guard_enabled", False)
     sec.prompt_guard_mode = overrides.get("prompt_guard_mode", "warn")
+    # 51.2 — safe compaction defaults on (prod parity) so existing process()
+    # tests exercise the pinned-preamble path deterministically.
+    sec.safe_compaction_enabled = overrides.get("safe_compaction_enabled", True)
+    sec.safety_preamble_version = overrides.get("safety_preamble_version", "")
     # CRAG check is gated by isinstance(self, CRAGMixin) but set defensively.
     mock_settings.return_value.knowledge.crag_enabled = overrides.get("crag_enabled", False)

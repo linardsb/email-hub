@@ -24,3 +24,11 @@ class SecurityConfig(BaseModel):
     # with ``restore=true`` (or ``restore_for_agent`` from a Python entry point).
     # Env: SECURITY__REVOCATION_DEFAULT_TTL_S
     revocation_default_ttl_s: int | None = None
+
+    # 51.2 — Safe compaction. Pins the safety preamble to the head of every
+    # agent system prompt and keeps it alive through token-budget truncation.
+    # Kill switch: off ⇒ strict no-op (today's behaviour).
+    safe_compaction_enabled: bool = True  # SECURITY__SAFE_COMPACTION_ENABLED
+    # Expected preamble version; drift from the loaded file logs a warning when
+    # non-empty. Empty ⇒ drift check disabled.
+    safety_preamble_version: str = ""  # SECURITY__SAFETY_PREAMBLE_VERSION
