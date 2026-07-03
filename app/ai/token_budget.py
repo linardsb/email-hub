@@ -249,14 +249,32 @@ class TokenBudgetManager:
         return result
 
     def _truncate_system_message(self, messages: list[Message]) -> list[Message]:
-        """Truncate the system message to fit budget."""
+        """Truncate the system message to fit budget.
+
+        When safe compaction (51.2) is on and the system message opens with the
+        pinned safety preamble, the preamble survives truncation intact: it is
+        never cut and is preserved even when the budget would otherwise drop the
+        whole system message.
+        """
         if not messages or messages[0].role != "system":
             return messages
+
+        preamble = self._preamble_to_pin(messages[0].content)
 
         non_system_tokens = sum(self._count_message_tokens(m) for m in messages[1:])
         available_for_system = self._budget - non_system_tokens - _MESSAGE_OVERHEAD_TOKENS
 
         if available_for_system <= 0:
+            if preamble:
+                # Invariant wins over budget: keep the pinned preamble alone.
+                return [
+                    Message(
+                        role="system",
+                        content=preamble,
+                        cache_control=messages[0].cache_control,
+                    ),
+                    *messages[1:],
+                ]
             return messages[1:]
 
         system_content = messages[0].content
@@ -267,7 +285,20 @@ class TokenBudgetManager:
                 msg="Cannot truncate multimodal system message",
             )
             return messages
-        truncated = self._truncate_text_to_tokens(system_content, available_for_system)
+
+        if preamble:
+            preamble_tokens = self._count_text_tokens(preamble)
+            if available_for_system <= preamble_tokens:
+                # Budget can't fit even the preamble's remainder — keep the
+                # preamble alone rather than cutting into it.
+                truncated = preamble
+            else:
+                remainder = system_content[len(preamble) :]
+                truncated = preamble + self._truncate_text_to_tokens(
+                    remainder, available_for_system - preamble_tokens
+                )
+        else:
+            truncated = self._truncate_text_to_tokens(system_content, available_for_system)
 
         if truncated == system_content:
             return messages
@@ -281,6 +312,29 @@ class TokenBudgetManager:
             *messages[1:],
         ]
         return result
+
+    @staticmethod
+    def _preamble_to_pin(content: str | list[Any]) -> str:
+        """Return the pinned safety preamble iff it must survive truncation.
+
+        Strict no-op (returns ``""``) unless safe compaction is on, the loaded
+        preamble is non-empty, ``content`` is a ``str``, and ``content`` starts
+        with the preamble. The ``startswith`` guard keeps this an exact prefix
+        we can slice and makes generic callers (whose messages never carried the
+        preamble) fully unaffected.
+        """
+        if not isinstance(content, str):
+            return ""
+        from app.ai.agents.safety_preamble import SAFETY_PREAMBLE
+        from app.core.config import get_settings
+
+        if not SAFETY_PREAMBLE:
+            return ""
+        if not get_settings().security.safe_compaction_enabled:
+            return ""
+        if content.startswith(SAFETY_PREAMBLE):
+            return SAFETY_PREAMBLE
+        return ""
 
     def _truncate_text_to_tokens(self, text: str, max_tokens: int) -> str:
         """Truncate text to fit within a token limit."""
