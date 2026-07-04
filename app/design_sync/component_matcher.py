@@ -30,6 +30,15 @@ class SlotFill:
     value: str
     slot_type: str = "text"  # "text" | "image" | "cta" | "attr"
     attr_overrides: dict[str, str] = field(default_factory=dict[str, str])
+    # F1 (RC-F1): extra images stacked around the primary image slot. A
+    # multi-image section fills its seed's single image slot with the largest
+    # image and carries the remaining images here as ready-to-inject
+    # ``<tr><td><img>`` rows — those preceding the primary in tree order in
+    # ``stacked_before`` (rendered above), those following in ``stacked_after``
+    # (rendered below). Consumed by ``_fill_image_slot``; empty for every other
+    # fill. Render-time only (never serialised), so no bridge sites.
+    stacked_before: str = ""
+    stacked_after: str = ""
 
 
 @dataclass(frozen=True)
@@ -931,6 +940,79 @@ def _resolve_image_url(
     return f"/api/v1/design-sync/assets/{node_id}.png"
 
 
+# F1 (RC-F1) — below this width (0.9x the 600px container) a stacked image
+# renders at its natural size instead of stretching to full width, so icons and
+# thin decorations aren't blown up. Mirrors the F3 image-width discipline.
+_STACK_NATURAL_WIDTH_MAX = 540
+
+
+def _select_primary_image(images: list[ImagePlaceholder]) -> tuple[int, ImagePlaceholder]:
+    """Pick the largest image (by area) as a section's primary slot fill (F1).
+
+    Single-image seeds carry one image slot; when a section has several images
+    the largest is the visual anchor (the hero), so it fills that slot instead
+    of ``images[0]`` — fixing the "icon-as-hero" swap where a small decoration
+    preceded the real hero in tree order. Ties resolve to the earliest image.
+    """
+    best_idx = 0
+    best_area = -1.0
+    for idx, img in enumerate(images):
+        width = img.width if img.width is not None else 0.0
+        height = img.height if img.height is not None else 0.0
+        area = width * height
+        if area > best_area:
+            best_area = area
+            best_idx = idx
+    return best_idx, images[best_idx]
+
+
+def _stacked_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None) -> str:
+    """Render one extra section image as a stacked ``<tr><td><img>`` row (F1).
+
+    A full-width-style row (its own ``<tr>``) so multiple section images stack
+    vertically. The inline width rule keeps genuinely full-width images
+    responsive (``width:100%``) but pins sub-threshold images — icons, thin
+    strips — to their natural size so they don't stretch to 600px. ``alt`` via
+    :func:`_derive_image_alt`; ``data-node-id`` stamped for parity with the
+    primary slot.
+    """
+    url = _resolve_image_url(img.node_id, image_urls)
+    width = int(img.width) if img.width else None
+    if width is not None and width < _STACK_NATURAL_WIDTH_MAX:
+        size_css = f"width:{width}px;max-width:{width}px;"
+    else:
+        size_css = "width:100%;max-width:600px;"
+    width_attr = f' width="{width}"' if width is not None else ""
+    tag = (
+        f'<img src="{html.escape(url)}" '
+        f'alt="{html.escape(_derive_image_alt(img))}"{width_attr} '
+        f'style="display:block;{size_css}height:auto;border:0;" '
+        f'data-node-id="{html.escape(img.node_id)}" />'
+    )
+    return f'<tr><td style="padding:0;text-align:center;font-size:0;line-height:0;">{tag}</td></tr>'
+
+
+def _stacked_image_rows(
+    images: list[ImagePlaceholder],
+    primary_idx: int,
+    image_urls: dict[str, str] | None,
+) -> tuple[str, str]:
+    """Split a section's non-primary images into rows above/below the primary (F1).
+
+    Images arrive in tree order (== y order for these sections), so images that
+    precede the primary render above it and images that follow render below —
+    preserving the design's vertical order without a new seed slot.
+    """
+    before: list[str] = []
+    after: list[str] = []
+    for idx, img in enumerate(images):
+        if idx == primary_idx:
+            continue
+        row = _stacked_image_row(img, image_urls)
+        (before if idx < primary_idx else after).append(row)
+    return "".join(before), "".join(after)
+
+
 def _fills_preheader(
     section: EmailSection,
     _cw: int,
@@ -961,18 +1043,22 @@ def _fills_logo_header(
 ) -> list[SlotFill]:
     fills: list[SlotFill] = []
     if section.images:
-        img = section.images[0]
+        # F1 (RC-F1): largest image is the primary logo, any extras stack below.
+        primary_idx, img = _select_primary_image(section.images)
         overrides: dict[str, str] = _image_node_id_attrs(img)
         if img.width:
             overrides["width"] = str(int(img.width))
         if img.height:
             overrides["height"] = str(int(img.height))
+        before, after = _stacked_image_rows(section.images, primary_idx, image_urls)
         fills.append(
             SlotFill(
                 "logo_url",
                 _resolve_image_url(img.node_id, image_urls),
                 slot_type="image",
                 attr_overrides=overrides,
+                stacked_before=before,
+                stacked_after=after,
             )
         )
         fills.append(SlotFill("logo_alt", _derive_image_alt(img)))
@@ -991,7 +1077,11 @@ def _fills_hero(
 
     # Background image
     if section.images:
-        img = section.images[0]
+        # F1 (RC-F1): largest image is the hero background. Stacked extra-image
+        # rows don't apply — hero-block renders the image as a CSS/VML
+        # background (no <img> anchor to splice around), and no corpus fixture
+        # routes a multi-image section to hero-block. Deferred.
+        _primary_idx, img = _select_primary_image(section.images)
         fills.append(
             SlotFill(
                 "hero_image",
@@ -1032,18 +1122,24 @@ def _fills_full_width_image(
 ) -> list[SlotFill]:
     fills: list[SlotFill] = []
     if section.images:
-        img = section.images[0]
+        # F1 (RC-F1): fill the seed's single image slot with the LARGEST image
+        # and stack the rest as extra rows in tree order — previously
+        # ``images[0]`` won and the real hero (case 7/8) was dropped.
+        primary_idx, img = _select_primary_image(section.images)
         overrides: dict[str, str] = _image_node_id_attrs(img)
         if img.width:
             overrides["width"] = str(int(img.width))
         if img.height:
             overrides["height"] = str(int(img.height))
+        before, after = _stacked_image_rows(section.images, primary_idx, image_urls)
         fills.append(
             SlotFill(
                 "image_url",
                 _resolve_image_url(img.node_id, image_urls),
                 slot_type="image",
                 attr_overrides=overrides,
+                stacked_before=before,
+                stacked_after=after,
             )
         )
         fills.append(SlotFill("image_alt", _derive_image_alt(img)))
@@ -1213,13 +1309,17 @@ def _fills_article_card(
     groups = section.child_content_groups
 
     if section.images:
-        img = section.images[0]
+        # F1 (RC-F1): largest image is the card's primary, rest stack in tree order.
+        primary_idx, img = _select_primary_image(section.images)
+        before, after = _stacked_image_rows(section.images, primary_idx, image_urls)
         fills.append(
             SlotFill(
                 "image_url",
                 _resolve_image_url(img.node_id, image_urls),
                 slot_type="image",
                 attr_overrides=_image_node_id_attrs(img),
+                stacked_before=before,
+                stacked_after=after,
             )
         )
         fills.append(SlotFill("image_alt", _derive_image_alt(img)))
@@ -1263,7 +1363,12 @@ def _fills_image_block(
     """
     fills: list[SlotFill] = []
     if section.images:
-        img = section.images[0]
+        # F1 (RC-F1): pick the largest image (fixes icon-as-primary). Stacked
+        # extra-image rows are NOT emitted here — the image-block seed is
+        # special-cased in the renderer's _fill_slots (direct src/alt replace,
+        # bypassing _fill_image_slot where the splice lives), and no corpus
+        # fixture routes a multi-image section to image-block. Deferred.
+        _primary_idx, img = _select_primary_image(section.images)
         fills.append(
             SlotFill(
                 "image_url",

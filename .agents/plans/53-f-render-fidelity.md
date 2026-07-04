@@ -45,6 +45,37 @@ and case 8 heroes vanish; case 8's 64×64 icon stretches to 600px in the hero's 
 **Verify:** case 7 hero node `2833:1881` and case 8 hero `2833:2264` present in output;
 A3 full_image on 7/8 moves up materially; baselines 7/8 (+ any case with multi-image
 sections) regen after diff audit; new unit test: 2-image section → 2 `<img>` in output.
+**Result (2026-07-04, `fix/phase-53f-f1-multi-image`):** `_select_primary_image` (largest by
+area, ties→earliest) + `_stacked_image_rows`/`_stacked_image_row` (`component_matcher.py`) fill
+the seed's image slot with the largest image and stack the rest as `<tr><td><img>` rows in tree
+order — those preceding the primary above it, those after below — sized by the inline F3 width
+rule (`<540px` → natural width, else `width:100%`). `SlotFill` gains `stacked_before`/
+`stacked_after` (render-time only, no bridge sites); `_splice_stacked_rows`
+(`component_renderer.py`) injects them around the primary img's `<tr>` from `_fill_image_slot`.
+Splice is **verified only for full-width-image** (tested + both corpus cases); article-card and
+logo-header are wired but reached by no fixture — logo-header's `<img>` is a standalone top-level
+`<tr>` (splice structurally correct), but article-card's sits in a 280px column cell so stacked
+rows there would be column-constrained, not full-width — unvalidated. image-block (renderer
+special-case) + hero-block (CSS/VML background, no `<img>` anchor) get largest-primary selection
+only; no corpus fixture routes a multi-image section to either → stacked rows deferred.
+**Step 3 (skip images inside an already-imaged FRAME) intentionally not implemented:**
+`ImagePlaceholder` carries no geometry at the builder layer so containment is uncomputable there,
+the 53.5 §1 predicate the plan says to reuse does not exist yet, and the corpus has no
+frame-child duplication — the guard belongs in extraction, not the fill builders. Corpus: exactly **2**
+qualifying sections, both `full-width-image` (c7 §1, c8 §0), both `[strip, hero]` with the hero
+last → **hero promoted to primary, strip stacked above; c7 `2833:1881` + c8 `2833:2264` now
+emitted as `<img>` (absent before, incl. from the old baselines) — HTML-verified.** Baselines
+7/8 regenerated (18-line intended diff, audited line-by-line); ladder **13/9/8/10/8/12 held**;
+c5/6/9/10 byte-identical (no F1-builder multi-image sections). 5 unit tests RED→GREEN (2-img
+emission, largest-primary, before/after ordering, ≤540 width rule). **Limitation (asset gap):**
+the hero PNGs (`2833:1881`, `2833:2264`) were never exported — the pre-F1 converter referenced
+only `images[0]` (the strips) — and are unrecoverable this session (c7 cached S3 URL 403, c8
+uncached, no `FIGMA_TOKEN`), so the fidelity scorer renders them **blank**. Pixel deltas are
+therefore asset-artifacts, **not** F1's win: **c7 0.623→0.612** (broken-image gap replaces the
+stretched strip), **c8 0.793→0.802** (section_min 0.668→0.688). Real win pending hero re-export
+(`phase-53.7-asset-reexport-prerequisite`). The inline width rule is synthetic-test-only (both
+corpus extras are 600px → full-width); the audit's "64×64 icon stretched to 600px" is ingest-side
+(`layout_analyzer` reports `2833:2262` as 600×68), unfixed by F1.
 
 ### F2 — Insert section background when the seed has none `[S, ~0.5d]`
 **Defect:** RC-F2. `_outer` bg override no-ops on bg-less seeds (image seeds) → dark bands
@@ -254,3 +285,4 @@ Hard rules for parallel execution:
 |---|---|---|---|---|---|---|---|---|
 | 2026-07-03 | baseline (audit-4) | 0.879 | 0.801 | 0.624 | 0.702 | 0.640 | 0.679 | full_image; section_min 0.63/0.48/0.30/0.30/0.36/0.09 |
 | 2026-07-04 | F2+F8 | 0.879 | 0.801 | 0.623 | 0.793 | 0.732 | 0.679 | F2 dark bands hold: **c8 +0.091, c9 +0.092** (section_min c8 0.30→0.67, c9 0.36→0.53); 5/6/10 neutral (explicit==implicit white, byte-changed/score-flat); c7 −0.001 noise (residual is F1/F4). F8 corpus byte-identical. BEFORE row reproduced audit-4 exactly. |
+| 2026-07-04 | F1 | 0.879 | 0.801 | 0.612 | 0.802 | 0.732 | 0.679 | full_image; section_min 0.634/0.480/**0.271**/**0.688**/0.527/0.087. Heroes now emitted as `<img>` (c7 `2833:1881`, c8 `2833:2264` — HTML-verified, in regen baselines). **Pixel deltas are asset-artifacts, not the win:** hero PNGs absent from fixtures (pre-F1 exported only `images[0]`), unrecoverable (c7 cache URL 403, c8 uncached, no `FIGMA_TOKEN`) → scorer renders heroes blank. c7 **−0.011** (blank gap replaces stretched strip), c8 **+0.009** (median 0.790→0.859). c5/6/9/10 byte-identical (no F1-builder multi-image sections). Real win pending hero re-export (`phase-53.7-asset-reexport-prerequisite`). |
