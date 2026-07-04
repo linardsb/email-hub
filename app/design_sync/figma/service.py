@@ -609,6 +609,13 @@ def _parse_visual_props(
             DesignNodeType.IMAGE,
         ):
             resolved_node_type = DesignNodeType.IMAGE
+            # Capture the fill's imageRef too (mirrors the FRAME-background
+            # branch below). Assets resolve by node-id today so output is
+            # unchanged, but this closes the latent trap under the FRAME-bg
+            # gate (layout_analyzer.py) before 53.3 builds on it.
+            raw_ref = fi_d.get("imageRef")
+            if isinstance(raw_ref, str) and raw_ref:
+                image_ref = raw_ref
             continue
         # Extract IMAGE fill reference on FRAME nodes (hero/section backgrounds)
         if fill_type == "IMAGE" and resolved_node_type == DesignNodeType.FRAME:

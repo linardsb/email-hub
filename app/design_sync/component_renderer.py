@@ -937,11 +937,20 @@ class ComponentRenderer:
                     # would otherwise overwrite the inner card's bg.
                     result = self._replace_outer_bg_color(result, val)
                     result = self._replace_bg_class_color(result, val)
+                elif prop == "background-color":
+                    # Legacy components without _outer class.
+                    replaced = self._replace_first_css_prop(result, prop, val)
+                    replaced = self._replace_bg_class_color(replaced, val)
+                    if replaced == result:
+                        # RC-F2: bg-less seeds (the image seeds) carry no
+                        # background-color to replace and no bg-class element,
+                        # so the override would no-op and a dark section band
+                        # flips white. Insert the surface instead.
+                        replaced = self._insert_first_table_bg_color(result, val)
+                    result = replaced
                 else:
-                    # Legacy components without _outer class
+                    # Legacy components without _outer class (non-bg props).
                     result = self._replace_first_css_prop(result, prop, val)
-                    if prop == "background-color":
-                        result = self._replace_bg_class_color(result, val)
             elif target == "_inner":
                 if prop == "background-color":
                     result = self._replace_inner_bg_color(result, val)
@@ -1167,6 +1176,35 @@ class ComponentRenderer:
             r'(?:\s[^"]*)?"(?:(?!\bbgcolor=)[^>])*?)(/?>)'
         )
         return bgcolor_pattern.sub(rf'\g<1>\g<2> bgcolor="{safe}"\g<3>', result)
+
+    def _insert_first_table_bg_color(self, html_str: str, color: str) -> str:
+        """Insert ``background-color`` onto the first visible presentation table.
+
+        RC-F2: bg-less seeds (the image seeds) have no ``_outer`` class and no
+        ``background-color`` declaration for the ``_outer`` override to replace,
+        so a dark section band would otherwise flip white. Inject the surface
+        into the first ``<table role="presentation" width="100%">`` — the
+        section's outer table; the MSO ghost is fixed-width, so ``width="100%"``
+        skips it — and stamp a matching ``bgcolor`` attribute for Outlook,
+        mirroring :meth:`_replace_outer_bg_color`. Only the first such table is
+        touched (``count=1``).
+        """
+        safe = html.escape(color, quote=True)
+
+        def _inject(match: re.Match[str]) -> str:
+            tag = match.group(0)
+            if 'style="' in tag:
+                tag = tag.replace('style="', f'style="background-color:{safe};', 1)
+            else:
+                tag = f'{tag[:-1]} style="background-color:{safe};">'
+            if "bgcolor=" not in tag:
+                tag = f'{tag[:-1]} bgcolor="{safe}">'
+            return tag
+
+        # First VISIBLE presentation table: role="presentation" + width="100%"
+        # in any attribute order (the fixed-width MSO ghost is skipped).
+        pattern = re.compile(r'<table\b(?=[^>]*\brole="presentation")(?=[^>]*\bwidth="100%")[^>]*>')
+        return pattern.sub(_inject, html_str, count=1)
 
     def _replace_inner_bg_color(self, html_str: str, color: str) -> str:
         """Apply background-color to elements carrying ``class="_inner"``.

@@ -273,6 +273,57 @@ class TestRendererInnerDispatch:
         assert "overflow:hidden" in out
 
 
+# ── Renderer: _outer bg insert on bg-less seeds (Track F / RC-F2) ──
+
+
+class TestOuterBgInsertOnBgLessSeed:
+    """RC-F2: an ``_outer`` background-color override on a bg-less image seed
+    (no ``_outer`` class, no ``background-color`` to replace) inserts the surface
+    into the first visible presentation table instead of no-oping, so dark
+    section bands don't flip white. Uses the real component seeds."""
+
+    def test_inserts_bg_into_full_width_image_seed(self, renderer: ComponentRenderer) -> None:
+        # full-width-image's visible table has a style attr → bg is injected
+        # into it; the fixed-width MSO ghost must stay uncolored.
+        seed = (_COMPONENT_DIR / "full-width-image.html").read_text(encoding="utf-8")
+        out = renderer._apply_token_overrides(
+            seed,
+            [TokenOverride("background-color", "_outer", "#181818")],
+        )
+        assert "background-color:#181818" in out
+        assert 'bgcolor="#181818"' in out
+        # the leading MSO ghost (width="600") is not the target
+        ghost = out.split("<![endif]-->")[0]
+        assert 'width="600"' in ghost
+        assert "background-color:#181818" not in ghost
+        assert 'bgcolor="#181818"' not in ghost
+
+    def test_adds_style_attr_to_image_block_seed(self, renderer: ComponentRenderer) -> None:
+        # image-block's visible table carries no style attr → one is added.
+        seed = (_COMPONENT_DIR / "image-block.html").read_text(encoding="utf-8")
+        out = renderer._apply_token_overrides(
+            seed,
+            [TokenOverride("background-color", "_outer", "#2B2B2B")],
+        )
+        assert 'style="background-color:#2B2B2B;"' in out
+        assert 'bgcolor="#2B2B2B"' in out
+
+    def test_existing_bg_is_replaced_not_inserted(self, renderer: ComponentRenderer) -> None:
+        # Gate: a legacy table WITH a background-color goes through replace; the
+        # insert path must not fire (replaced != result) or double-apply.
+        html_in = (
+            '<table role="presentation" width="100%" '
+            'style="background-color:#ffffff;padding:0;"><tr><td>x</td></tr></table>'
+        )
+        out = renderer._apply_token_overrides(
+            html_in,
+            [TokenOverride("background-color", "_outer", "#181818")],
+        )
+        assert "background-color:#181818" in out
+        assert "#ffffff" not in out
+        assert out.count("background-color:#181818") == 1
+
+
 # ── Component HTML files carry the markers ──
 
 
