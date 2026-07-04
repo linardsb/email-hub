@@ -50,6 +50,12 @@ _INLINE_FORMAT_TAG_RE = re.compile(
     r"</?(?:br|strong|em|b|i|u|sub|sup|small)\b[^>]*>", re.IGNORECASE
 )
 
+# CTA label slots that live inside a clickable ``<a>``. When a section has no
+# button its builder emits an empty fill (F4a) or none at all; either way the
+# anchor is removed whole rather than blanked (B3: no empty clickable anchors) —
+# see :meth:`ComponentRenderer._prune_unfilled_ctas`.
+_CTA_TEXT_SLOTS = ("cta_text", "link_text", "primary_text", "secondary_text")
+
 
 def _is_blankable_text(inner: str) -> bool:
     """Return True when ``inner`` is a bare text seed safe to blank.
@@ -771,6 +777,14 @@ class ComponentRenderer:
         filled_ids = {fill.slot_id for fill in fills}
         result = self._blank_unfilled_text_slots(result, filled_ids)
 
+        # F4a (RC-F4): prune CTA anchors whose label slot got no real content.
+        # The td-only blank pass above cannot reach <span>/<a> slots, so seed
+        # CTA defaults ("Shop Now"/"Learn More"/"Read More") and empty clickable
+        # anchors would leak. Keyed on slots carrying a non-empty fill, so both
+        # unfilled seeds and B8 empty fills count as "no CTA".
+        nonempty_filled = {fill.slot_id for fill in fills if fill.value.strip()}
+        result = self._prune_unfilled_ctas(result, nonempty_filled)
+
         # Warn on known placeholder patterns surviving in output
         for m in _PLACEHOLDER_IN_OUTPUT_RE.finditer(result):
             logger.warning(
@@ -817,6 +831,68 @@ class ComponentRenderer:
             if not _is_blankable_text(inner_match.group(1)):
                 continue
             result = self._fill_text_slot(result, slot_id, SlotFill(slot_id, ""))
+        return result
+
+    def _prune_unfilled_ctas(self, html_str: str, nonempty_filled: set[str]) -> str:
+        """Remove CTA anchors (and their button chrome) that got no real fill.
+
+        An ``<a>…<span data-slot="cta_text">…</span>…</a>`` whose label slot has
+        no non-empty fill is a leaked seed default. Blanking the span alone
+        would leave an empty clickable anchor (B3 rule), so the whole anchor is
+        removed. For the standalone cta-button seed the anchor is wrapped in a
+        ``class="cta-btn"`` table with an Outlook ``<v:roundrect>`` twin whose
+        ``<center>`` carries the same seed literal — both are stripped too, so
+        no empty blue box or MSO-only "Shop Now" survives. Scoped per section
+        (``_fill_slots`` runs once per component), so there is at most one
+        anchor + one roundrect to consider.
+        """
+        result = html_str
+        pruned_any = False
+        for slot in _CTA_TEXT_SLOTS:
+            if slot in nonempty_filled:
+                continue
+            anchor_re = (
+                r"<a\b[^>]*>\s*"
+                rf'<span\b[^>]*\bdata-slot="{re.escape(slot)}"[^>]*>.*?</span>'
+                r"\s*</a>"
+            )
+            result, n = re.subn(anchor_re, "", result, flags=re.DOTALL)
+            if n:
+                pruned_any = True
+        if pruned_any:
+            result = self._strip_empty_cta_chrome(result)
+        return result
+
+    def _strip_empty_cta_chrome(self, html_str: str) -> str:
+        """Drop button chrome left behind by a pruned CTA anchor.
+
+        Removes ``class="cta-btn"/"cta-ghost"/"cta-primary"/"cta-secondary"``
+        tables that no longer contain an ``<a>`` and the Outlook
+        ``<!--[if mso]>…<v:roundrect>…</v:roundrect>…<![endif]-->`` twin. The
+        cta-button seed renders its label on both surfaces, so leaving either
+        would keep a blue box / an MSO-only leak. A filled sibling button keeps
+        its ``<a>`` and survives the empty-check (cta-pair partial fill).
+        """
+
+        def _drop_empty_table(match: re.Match[str]) -> str:
+            block = match.group(0)
+            # cta-* chrome tables never nest another <table>, so the non-greedy
+            # match to the first </table> is exact; keep the block only if an
+            # anchor still lives inside it.
+            return "" if re.search(r"<a\b", block) is None else block
+
+        result = re.sub(
+            r'<table\b[^>]*\bclass="[^"]*cta-(?:btn|ghost|primary|secondary)[^"]*"[^>]*>.*?</table>',
+            _drop_empty_table,
+            html_str,
+            flags=re.DOTALL,
+        )
+        result = re.sub(
+            r"<!--\[if mso\]>\s*<v:roundrect\b.*?</v:roundrect>\s*<!\[endif\]-->",
+            "",
+            result,
+            flags=re.DOTALL,
+        )
         return result
 
     def _fill_text_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
@@ -1576,13 +1652,29 @@ class ComponentRenderer:
         arcsize = min(round(radius_px / 48 * 100), 50)
         return self._VML_ARCSIZE_RE.sub(f'arcsize="{arcsize}%"', html_str)
 
-    _PLACEHOLDER_URL_RE = re.compile(
-        r'(src|href)="https?://(?:via\.placeholder\.com|placehold\.co|placeholder\.com)[^"]*"'
+    # A converter-emitted real image always resolves to a RELATIVE
+    # ``/api/v1/design-sync/assets/…`` src (both the corpus fallback in
+    # ``_resolve_image_url`` and the production asset map in import_service). So
+    # ANY absolute ``http(s)://`` img src is an unfilled seed placeholder
+    # (fakeimg.pl, via.placeholder.com, …). F4b (RC-F4) drops the whole ``<img>``
+    # — and a sole-child wrapping ``<a>`` — rather than blanking the src, so the
+    # placeholder's "Feature icon"-class alt is removed with it (blanking src
+    # alone leaks the alt). This also reaches col-icon's no-data-slot mobile
+    # ``<img>`` twins, which no data-slot fill or blank pass can target.
+    _PLACEHOLDER_LINKED_IMG_RE = re.compile(
+        r'<a\b[^>]*>\s*<img\b[^>]*\bsrc="https?://[^"]*"[^>]*>\s*</a>', re.IGNORECASE
+    )
+    _PLACEHOLDER_IMG_RE = re.compile(r'<img\b[^>]*\bsrc="https?://[^"]*"[^>]*>', re.IGNORECASE)
+    # Non-img placeholder hrefs keep the blank-to-empty behaviour.
+    _PLACEHOLDER_HREF_RE = re.compile(
+        r'(href)="https?://(?:via\.placeholder\.com|placehold\.co|placeholder\.com|fakeimg\.pl)[^"]*"'
     )
 
     def _strip_placeholder_urls(self, html_str: str) -> str:
-        """Replace remaining placeholder URLs with empty defaults."""
-        return self._PLACEHOLDER_URL_RE.sub(r'\1=""', html_str)
+        """Drop leftover placeholder images; blank placeholder-host hrefs."""
+        result = self._PLACEHOLDER_LINKED_IMG_RE.sub("", html_str)
+        result = self._PLACEHOLDER_IMG_RE.sub("", result)
+        return self._PLACEHOLDER_HREF_RE.sub(r'\1=""', result)
 
     def _update_mso_widths(self, html_str: str, width: int) -> str:
         """Clamp MSO conditional table widths to the container width.

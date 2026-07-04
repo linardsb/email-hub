@@ -666,6 +666,21 @@
       ],
       "symptom_if_broken": "get_failure_warnings('code_reviewer'|'content'|'knowledge'|'innovation') returns None (no KNOWN-FAILURE block injected); those agents' judges cannot be TPR/TNR-calibrated.",
       "closes_when": "A live eval run populates traces/{agent}_{traces,verdicts}.jsonl for the 4 agents and human labels are added; the files are committed via the same gitignore-negation pattern as the 5 populated agents."
+    },
+    {
+      "id": "phase-53-f4d-extended-candidate-orphans",
+      "phase": "53.f",
+      "title": "Converter's _score_extended_candidates scored 5 component types (countdown-timer, testimonial, pricing-table, video-placeholder, zigzag-alternating) it had no fill builder for",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-04-03",
+      "introduced_commit": "9c7168f2",
+      "summary": "The design_sync converter's _score_extended_candidates scored 5 slugs that have no _build_slot_fills builder, so a Figma section matching one rendered the seed's placeholder text verbatim (fakeimg.pl images, 'Shop Now'/'Read More' CTAs, 'Feature icon' alts). F4d removed the 5 scoring blocks (and their now-dead patterns/params); only builder-backed event-card and col-icon remain scorable. The 5 stay valid manual component-library components (component_manifest.yaml + seeds + test_new_components.py untouched) — only the converter's auto-match path was the defect.",
+      "code_refs": ["app/design_sync/component_matcher.py:388 (_score_extended_candidates)"],
+      "symptom_if_broken": "A design-sync import section renders raw seed placeholder text (fakeimg.pl image, 'Shop Now'/'Read More' CTA, 'Feature icon' alt) because it matched a builder-less extended component type.",
+      "closes_when": "The 5 builder-less slugs are removed from _score_extended_candidates so only builder-backed slugs can be scored — done in F4d; verified by inspection that no corpus fixture (cases 5-10) matched any of them.",
+      "closed_commit": "pending commit",
+      "notes": "The 5 slugs remain full component-library citizens; if a converter fill builder is later written for any, re-add its scoring block and the _build_slot_fills builder together."
     }
   ],
   "tooling_followups": [

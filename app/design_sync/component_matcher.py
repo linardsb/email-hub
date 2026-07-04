@@ -232,12 +232,7 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         slug, confidence = _score_candidates(
             section, has_images, has_texts, has_buttons, has_headings
         )
-        ext_slug, ext_confidence = _score_extended_candidates(
-            section,
-            has_texts,
-            has_buttons,
-            has_headings,
-        )
+        ext_slug, ext_confidence = _score_extended_candidates(section, has_texts)
         # Extended types use specific content signals (regex, aspect ratio,
         # quote chars) that are always more specific than base heuristics.
         if ext_confidence > 0:
@@ -377,17 +372,11 @@ def _score_candidates(
 
 # ── Extended component detection patterns ──
 
-_TIME_PATTERN = re.compile(r"\b\d{1,2}\s*[:.]\s*\d{2}\b")
-_TIME_UNIT_PATTERN = re.compile(
-    r"\b(?:hours?|mins?|minutes?|secs?|seconds?|days?)\b", re.IGNORECASE
-)
-_CURRENCY_PATTERN = re.compile(r"[$€£¥]")
 _DATE_PATTERN = re.compile(
     r"\b(?:\d{1,2}[/\-\.]\d{1,2}(?:[/\-\.]\d{2,4})?|"
     r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2})\b",
     re.IGNORECASE,
 )
-_QUOTE_CHARS = {"\u0022", "\u201c", "\u201d", "\u2018", "\u2019"}
 _EVENT_KEYWORD_PATTERN = re.compile(
     r"\b(?:date|time|location|venue|where|when|address|doors?\s+open)\s*:",
     re.IGNORECASE,
@@ -398,62 +387,24 @@ _TIME_OF_DAY_PATTERN = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)\b")
 def _score_extended_candidates(
     section: EmailSection,
     has_texts: bool,
-    has_buttons: bool,
-    has_headings: bool,
 ) -> tuple[str, float]:
-    """Score extended component types added in 47.6.
+    """Score extended component types that have a fill builder.
 
-    Returns the best (slug, confidence) among countdown-timer, testimonial,
-    pricing-table, video-placeholder, event-card, and zigzag-alternating.
-    Returns ``("text-block", 0.0)`` when nothing matches so the caller can
-    safely compare against the base scorer.
+    Returns the best (slug, confidence) among event-card and col-icon — the only
+    extended types with a ``_build_slot_fills`` builder. Returns
+    ``("text-block", 0.0)`` when nothing matches so the caller can safely compare
+    against the base scorer.
+
+    F4d (RC-F4) dropped countdown-timer, testimonial, pricing-table,
+    video-placeholder, and zigzag-alternating: they scored here but had no
+    builder, so a match rendered only seed placeholder text (see
+    ``.agents/deferred-items.json``).
     """
     candidates: list[tuple[str, float]] = []
 
     texts = section.texts
     images = section.images
-    col_groups = section.column_groups or []
     all_text = " ".join(t.content for t in texts)
-
-    # countdown-timer: 3+ short numeric/time-unit texts + heading
-    if has_headings and len(texts) >= 3:
-        time_hits = sum(
-            1
-            for t in texts
-            if not t.is_heading
-            and (_TIME_PATTERN.search(t.content) or _TIME_UNIT_PATTERN.search(t.content))
-        )
-        if time_hits >= 3:
-            candidates.append(("countdown-timer", 0.92))
-
-    # testimonial: quoted text, short body, 1 small avatar image
-    if has_texts:
-        has_quote = any(c in all_text for c in _QUOTE_CHARS)
-        body_texts = [t for t in texts if not t.is_heading]
-        short_body = body_texts and all(len(t.content) <= 200 for t in body_texts)
-        has_avatar = (
-            len(images) == 1
-            and images[0].width is not None
-            and images[0].width <= 100
-            and images[0].height is not None
-            and images[0].height <= 100
-        )
-        if has_quote and short_body and has_avatar:
-            candidates.append(("testimonial", 0.9))
-
-    # pricing-table: currency symbols, 2+ col_groups with texts, buttons
-    if has_buttons and len(col_groups) >= 2 and _CURRENCY_PATTERN.search(all_text):
-        groups_with_text = sum(1 for g in col_groups if g.texts)
-        if groups_with_text >= 2:
-            candidates.append(("pricing-table", 0.93))
-
-    # video-placeholder: 1 image with 16:9 aspect ratio, button, few texts
-    if len(images) == 1 and has_buttons and len(texts) <= 2:
-        img = images[0]
-        if img.width and img.height and img.height > 0:
-            ratio = img.width / img.height
-            if 1.6 <= ratio <= 1.9:
-                candidates.append(("video-placeholder", 0.88))
 
     # event-card: structured event information (date/time/location patterns)
     # False-positive gate: real event cards are text-dense (no hero image) and
@@ -477,13 +428,6 @@ def _score_extended_candidates(
             )
             if keyword_hits >= 2:
                 candidates.append(("event-card", 0.83))
-
-    # zigzag-alternating: 3+ col_groups each with mixed image+text
-    # (product-grid fires at 2+, so 3+ distinguishes zigzag rows)
-    if len(col_groups) >= 3:
-        mixed_count = sum(1 for g in col_groups if g.images and g.texts)
-        if mixed_count >= 3:
-            candidates.append(("zigzag-alternating", 0.9))
 
     # col-icon: small icon image + short text group (icon-driven content block)
     if len(images) == 1 and has_texts and 1 <= len(texts) <= 3:
@@ -575,7 +519,7 @@ def _build_slot_fills(
         "footer-social": _fills_social,
         "footer-unsub": _fills_text_block,
         # ── Batch I: structure ──
-        "col-icon": _fills_text_block,
+        "col-icon": _fills_col_icon,
         "header": _fills_logo_header,
         "app-store": _fills_text_block,
         "section": _fills_image_block,
@@ -1105,11 +1049,13 @@ def _fills_hero(
         body = _first_body(section.texts)
         if body:
             fills.append(SlotFill("subtext", _safe_text(body.content)))
-    # CTA
-    if section.buttons:
-        btn = section.buttons[0]
-        fills.append(SlotFill("cta_text", _safe_text(btn.text)))
-        fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
+    # CTA — F4a (RC-F4): emit even without a button so the empty fills blank the
+    # seed's "Learn More" placeholder (the B8 empty-fill discipline); the
+    # renderer's CTA prune arm then drops the now-empty anchor rather than
+    # leaking it.
+    btn = section.buttons[0] if section.buttons else None
+    fills.append(SlotFill("cta_text", _safe_text(btn.text) if btn else ""))
+    fills.append(SlotFill("cta_url", _safe_url(btn.url) if btn else "", slot_type="cta"))
     return fills
 
 
@@ -1445,6 +1391,41 @@ def _fills_category_nav(
     return fills
 
 
+def _fills_col_icon(
+    section: EmailSection,
+    _cw: int,
+    *,
+    image_urls: dict[str, str] | None = None,
+    **_kw: object,
+) -> list[SlotFill]:
+    """Fill col-icon: per-column icon image + heading (F4b, RC-F4).
+
+    The seed's slots are ``icon_1_url``/``icon_2_url`` (images) and
+    ``heading_1``/``heading_2`` (labels). Routing to ``_fills_text_block`` (which
+    emits ``heading``/``body``) left all four unfilled by construction, so
+    slate's grid leaked ``fakeimg.pl`` placeholders + "Feature icon" alts. Fill
+    each column's icon (real src + derived alt) and heading from the section's
+    images/texts; unfilled ``icon_N_url`` imgs — and the seed's no-data-slot
+    mobile twins — are dropped by ``_strip_placeholder_urls``, and unfilled
+    ``heading_N`` cells blank via the post-fill text pass.
+    """
+    fills: list[SlotFill] = []
+    for i, img in enumerate(section.images[:2], start=1):
+        overrides = _image_node_id_attrs(img)
+        overrides["alt"] = _derive_image_alt(img)
+        fills.append(
+            SlotFill(
+                f"icon_{i}_url",
+                _resolve_image_url(img.node_id, image_urls),
+                slot_type="image",
+                attr_overrides=overrides,
+            )
+        )
+    for i, text in enumerate(section.texts[:2], start=1):
+        fills.append(SlotFill(f"heading_{i}", _safe_text(text.content)))
+    return fills
+
+
 def _fills_image_gallery(
     section: EmailSection,
     _cw: int,
@@ -1498,14 +1479,18 @@ def _fills_cta(
                 "secondary_url", _safe_url(secondary.url) if secondary else "", slot_type="cta"
             )
         )
-    elif buttons:
-        btn = buttons[0]
-        if slug == "text-link":
-            fills.append(SlotFill("link_text", _safe_text(btn.text)))
-            fills.append(SlotFill("link_url", _safe_url(btn.url), slot_type="cta"))
-        else:
-            fills.append(SlotFill("cta_text", _safe_text(btn.text)))
-            fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
+    elif slug == "text-link":
+        # F4a (RC-F4): emit even when ``buttons`` is empty so the empty fills
+        # blank the seed's link placeholder (the B8 cta-pair empty-fill
+        # discipline); the renderer's CTA prune arm then drops the now-empty
+        # anchor rather than leaking the seed default.
+        btn = buttons[0] if buttons else None
+        fills.append(SlotFill("link_text", _safe_text(btn.text) if btn else ""))
+        fills.append(SlotFill("link_url", _safe_url(btn.url) if btn else "", slot_type="cta"))
+    else:
+        btn = buttons[0] if buttons else None
+        fills.append(SlotFill("cta_text", _safe_text(btn.text) if btn else ""))
+        fills.append(SlotFill("cta_url", _safe_url(btn.url) if btn else "", slot_type="cta"))
     return fills
 
 

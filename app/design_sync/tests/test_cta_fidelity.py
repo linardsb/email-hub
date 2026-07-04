@@ -282,6 +282,9 @@ class TestRendererCTAOverrides:
     def test_cta_bg_color_applied(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "cta-button",
+            # F4a: overrides accompany real content in production; supply the
+            # label so the button isn't pruned as an empty CTA.
+            fills=[SlotFill("cta_text", "Shop")],
             overrides=[TokenOverride("background-color", "_cta", "#c6fc6a")],
         )
         result = renderer.render_section(match)
@@ -294,6 +297,7 @@ class TestRendererCTAOverrides:
     def test_cta_border_radius_applied(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "cta-button",
+            fills=[SlotFill("cta_text", "Shop")],  # F4a: keep the button present
             overrides=[TokenOverride("border-radius", "_cta", "6px")],
         )
         result = renderer.render_section(match)
@@ -304,6 +308,7 @@ class TestRendererCTAOverrides:
     def test_cta_text_color_applied(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "cta-button",
+            fills=[SlotFill("cta_text", "Shop")],  # F4a: keep the button present
             overrides=[TokenOverride("color", "_cta", "#000000")],
         )
         result = renderer.render_section(match)
@@ -371,6 +376,7 @@ class TestMultipleCTAs:
         for color in colors:
             match = _make_match(
                 "cta-button",
+                fills=[SlotFill("cta_text", "Shop")],  # F4a: keep the button present
                 overrides=[TokenOverride("background-color", "_cta", color)],
             )
             result = renderer.render_section(match)
@@ -578,3 +584,31 @@ class TestFillsCtaSlugAware:
         assert by_id["link_text"].value == "Read more"
         assert by_id["link_url"].value == "https://example.com/read"
         assert "cta_text" not in by_id
+
+
+class TestFillsCtaEmptyDiscipline:
+    """F4a (RC-F4): CTA builders emit explicit EMPTY fills when a section has no
+    button, so the renderer blanks/prunes the seed default instead of leaking
+    'Shop Now'/'Learn More'. Mirrors the existing cta-pair empty-fill path."""
+
+    def test_cta_button_no_buttons_emits_empty_fills(self) -> None:
+        fills = _build_slot_fills("cta-button", _make_section(buttons=[]), 600)
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["cta_text"].value == ""
+        assert by_id["cta_url"].value == ""
+
+    def test_text_link_no_buttons_emits_empty_link_fills(self) -> None:
+        fills = _build_slot_fills("text-link", _make_section(buttons=[]), 600)
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["link_text"].value == ""
+        assert by_id["link_url"].value == ""
+
+    def test_hero_no_buttons_emits_empty_cta_fills(self) -> None:
+        fills = _build_slot_fills(
+            "hero-block",
+            _make_section(EmailSectionType.CONTENT, buttons=[]),
+            600,
+        )
+        by_id = {f.slot_id: f for f in fills}
+        assert by_id["cta_text"].value == ""
+        assert by_id["cta_url"].value == ""
