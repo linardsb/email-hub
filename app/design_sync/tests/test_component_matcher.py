@@ -455,7 +455,11 @@ class TestFooterSlotFills:
     """Test email-footer slot fill generation."""
 
     def test_footer_with_texts(self) -> None:
-        """Footer texts become footer_content with bare text and br separators."""
+        """Footer texts become footer_editorial with bare text + br separators.
+
+        F5 (RC-F5): the builder fills only the editorial cell; the seed's
+        ``footer_legal`` unsub/legal rows are preserved separately.
+        """
         s = _make_section(
             EmailSectionType.FOOTER,
             texts=[
@@ -465,10 +469,12 @@ class TestFooterSlotFills:
         )
         m = match_section(s, 0)
         fills_by_id = {f.slot_id: f for f in m.slot_fills}
-        assert "footer_content" in fills_by_id
-        assert "<p " not in fills_by_id["footer_content"].value
-        assert "Contact Us" in fills_by_id["footer_content"].value
-        assert "unsubscribe" in fills_by_id["footer_content"].value
+        assert "footer_editorial" in fills_by_id
+        assert "footer_content" not in fills_by_id
+        assert "footer_legal" not in fills_by_id  # preserved seed, never filled
+        assert "<p " not in fills_by_id["footer_editorial"].value
+        assert "Contact Us" in fills_by_id["footer_editorial"].value
+        assert "unsubscribe" in fills_by_id["footer_editorial"].value
 
     def test_footer_empty_section(self) -> None:
         """Empty FOOTER section produces no fills."""
@@ -483,7 +489,7 @@ class TestFooterSlotFills:
             texts=[_text("© 2026 A&B Corp")],
         )
         m = match_section(s, 0)
-        footer_fill = next(f for f in m.slot_fills if f.slot_id == "footer_content")
+        footer_fill = next(f for f in m.slot_fills if f.slot_id == "footer_editorial")
         assert "A&amp;B Corp" in footer_fill.value
 
 

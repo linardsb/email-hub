@@ -28,17 +28,21 @@ _PLACEHOLDER_IN_OUTPUT_RE = re.compile(
 _TEXT_SLOT_OPEN_RE = re.compile(r'<td\b[^>]*\bdata-slot="([^"]+)"[^>]*>')
 
 # Legally-required footer fields. When unfilled, keep their seed literal as a
-# compliance fallback instead of blanking to empty — design-system footer
-# injection (BrandRepair stage 8) overrides these downstream. Without this,
-# `_fills_footer` (which only emits `footer_content`) would leave
-# `company_name`/`company_address` unfilled and the blank pass would strip the
-# postal address / identity that CAN-SPAM and GDPR require.
+# compliance fallback instead of blanking to empty. The converter is
+# self-sufficient — `RepairPipeline`/BrandRepair is deliberately NOT wired into
+# `convert_document` (Track F/F5) — so preserving these seed literals IS the
+# compliance mechanism, not a fallback for a downstream repair that never runs.
+# `footer_legal` carries the email-footer seed's unsubscribe/preferences/address
+# rows; `_fills_footer` fills only `footer_editorial`, so the legal cell is never
+# overwritten (RC-F5). The other slugs (`footer.html`, `footer-minimal.html`, …)
+# keep their `copyright`/`company_name`/`company_address`/`unsub_text` identity
+# that CAN-SPAM and GDPR require when a builder emits no fill.
 _PRESERVE_UNFILLED_SLOTS = frozenset(
     {
         "copyright",
         "company_name",
         "company_address",
-        "footer_content",
+        "footer_legal",
         "unsub_text",
     }
 )

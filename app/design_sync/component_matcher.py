@@ -1499,10 +1499,15 @@ def _fills_footer(
     _cw: int,
     **_kw: object,
 ) -> list[SlotFill]:
-    """Build footer content from section texts.
+    """Build footer editorial content from section texts.
 
-    Joins text lines with <br><br> separators, preserving the Figma content
-    (social links, unsubscribe text, legal copy, etc.).
+    Joins the Figma footer text lines with <br><br> separators into the
+    ``footer_editorial`` slot (social links, editorial copy, etc.). The seed's
+    ``footer_legal`` cell — the unsubscribe/preferences/address rows — is a
+    separate slot this builder never emits, so it is preserved verbatim
+    (:data:`component_renderer._PRESERVE_UNFILLED_SLOTS`) rather than wiped
+    (RC-F5, Track F/F5). Legal compliance no longer depends on the design
+    carrying its own unsub text.
     """
     if not section.texts:
         return []
@@ -1512,7 +1517,7 @@ def _fills_footer(
         escaped = _safe_text(text.content)
         parts.append(escaped)
 
-    return [SlotFill("footer_content", "<br><br>".join(parts))]
+    return [SlotFill("footer_editorial", "<br><br>".join(parts))]
 
 
 def _fills_spacer(

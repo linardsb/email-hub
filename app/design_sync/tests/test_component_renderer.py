@@ -940,21 +940,37 @@ class TestFindMatchingClose:
 
 
 class TestFooterContentNoTruncation:
-    """Phase 53 B4: a footer_content <td> wrapping a nested table is filled
-    whole, not truncated at the first inner </td> (Mode A2)."""
+    """Phase 53 F5 (was B4): the email-footer seed splits into a fillable
+    ``footer_editorial`` cell and a preserved ``footer_legal`` cell wrapping a
+    nested table of unsub/legal rows. Filling the editorial slot must land the
+    Figma text WITHOUT truncating or wiping the legal cell — the depth-balanced
+    close-tag walk (Mode A2) keeps the nested legal table intact."""
 
-    def test_footer_content_fill_replaces_whole_cell(self, renderer: ComponentRenderer) -> None:
-        fill = "Acme Ltd legal line<br><br>Unsubscribe | Preferences"
-        match = _make_match("email-footer", fills=[SlotFill("footer_content", fill)])
+    def test_editorial_fill_preserves_legal_rows(self, renderer: ComponentRenderer) -> None:
+        fill = "Contact Us<br><br>You can unsubscribe here"
+        match = _make_match("email-footer", fills=[SlotFill("footer_editorial", fill)])
         result = renderer.render_section(match).html
-        # The Figma-derived footer content survives in full…
-        assert "Acme Ltd legal line" in result
-        assert "Unsubscribe | Preferences" in result
-        # …and the seed scaffold it replaced is gone — these strings only
-        # survive when the fill truncates at the first nested </td>.
-        assert "123 Business Street" not in result
-        assert "2026 Company Name" not in result
-        # Structure stays balanced — truncation orphans closing tags.
+        # The Figma-derived editorial text lands…
+        assert "Contact Us" in result
+        assert "You can unsubscribe here" in result
+        # …and the legal scaffold it sits above survives verbatim — the whole
+        # point of the split. The old single-cell fill wiped exactly these.
+        assert "123 Business Street" in result
+        assert "2026 Company Name" in result
+        assert "{{unsubscribeUrl}}" in result
+        assert ">Unsubscribe</a>" in result
+        # Structure stays balanced — truncation would orphan closing tags.
+        assert result.count("<td") == result.count("</td>")
+        assert result.count("<table") == result.count("</table>")
+
+    def test_unfilled_footer_keeps_legal_unsub_row(self, renderer: ComponentRenderer) -> None:
+        """With no editorial fill the legal/unsub row still survives (F5
+        compliance: the converter is self-sufficient, no RepairPipeline)."""
+        match = _make_match("email-footer", fills=[])
+        result = renderer.render_section(match).html
+        assert "{{unsubscribeUrl}}" in result
+        assert ">Unsubscribe</a>" in result
+        assert "123 Business Street" in result
         assert result.count("<td") == result.count("</td>")
         assert result.count("<table") == result.count("</table>")
 
