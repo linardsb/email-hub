@@ -30,13 +30,15 @@ class SlotFill:
     value: str
     slot_type: str = "text"  # "text" | "image" | "cta" | "attr"
     attr_overrides: dict[str, str] = field(default_factory=dict[str, str])
-    # F1 (RC-F1): extra images stacked around the primary image slot. A
-    # multi-image section fills its seed's single image slot with the largest
-    # image and carries the remaining images here as ready-to-inject
+    # Extra ``<tr>`` rows to splice around this slot's own row at render time.
+    # F1 (RC-F1): a multi-image section fills its seed's single image slot with
+    # the largest image and carries the remaining images here as ready-to-inject
     # ``<tr><td><img>`` rows — those preceding the primary in tree order in
     # ``stacked_before`` (rendered above), those following in ``stacked_after``
-    # (rendered below). Consumed by ``_fill_image_slot``; empty for every other
-    # fill. Render-time only (never serialised), so no bridge sites.
+    # (below); consumed by ``_fill_image_slot``. F6 (RC-F6): the text-block / hero
+    # heading fill carries pre-heading eyebrow ``<tr><td data-node-id>`` rows in
+    # ``stacked_before``, spliced above the heading row by ``_fill_text_slot``.
+    # Empty for every other fill. Render-time only (never serialised) — no bridge sites.
     stacked_before: str = ""
     stacked_after: str = ""
 
@@ -562,11 +564,6 @@ def _first_heading(texts: list[TextBlock]) -> TextBlock | None:
     return next((t for t in texts if t.is_heading), None)
 
 
-def _first_body(texts: list[TextBlock]) -> TextBlock | None:
-    """Return the first non-heading text block."""
-    return next((t for t in texts if not t.is_heading), None)
-
-
 def _body_texts(texts: list[TextBlock]) -> list[TextBlock]:
     """Return all non-heading text blocks."""
     return [t for t in texts if not t.is_heading]
@@ -1044,9 +1041,21 @@ def _fills_hero(
             fills.append(SlotFill("subtext", _safe_text(bodies[0].content)))
     else:
         heading = _first_heading(section.texts)
+        # RC-F6: a subtext preceding the headline in source order is an eyebrow —
+        # splice it above the headline (stacked_before) rather than into the
+        # subtext slot below; the subtext slot then takes the first POST-headline
+        # body.
+        pre_heading = _pre_heading_body_texts(section)
+        pre_ids = {t.node_id for t in pre_heading}
         if heading:
-            fills.append(SlotFill("headline", _safe_text(heading.content)))
-        body = _first_body(section.texts)
+            fills.append(
+                SlotFill(
+                    "headline",
+                    _safe_text(heading.content),
+                    stacked_before=_pre_heading_rows_html(pre_heading),
+                )
+            )
+        body = next((b for b in _body_texts(section.texts) if b.node_id not in pre_ids), None)
         if body:
             fills.append(SlotFill("subtext", _safe_text(body.content)))
     # CTA — F4a (RC-F4): emit even without a button so the empty fills blank the
@@ -1112,6 +1121,25 @@ def _body_slot_texts(section: EmailSection) -> list[TextBlock]:
     return []
 
 
+def _pre_heading_body_texts(section: EmailSection) -> list[TextBlock]:
+    """Body texts that PRECEDE the first heading in source (tree/y) order (RC-F6).
+
+    An eyebrow/kicker is a small body-classed text sitting above the headline in
+    the design; since texts arrive in tree order, it is the run of body nodes
+    before the first ``is_heading`` node. Empty for the group/column paths (no
+    corpus fixture carries a grouped eyebrow) and when the section has no heading
+    (nothing to sit above). Pairs with :func:`_pre_heading_rows_html`, which
+    renders these as rows spliced above the heading.
+    """
+    if section.column_layout != ColumnLayout.SINGLE or section.child_content_groups:
+        return []
+    texts = section.texts
+    first_heading_idx = next((i for i, t in enumerate(texts) if t.is_heading), None)
+    if first_heading_idx is None:
+        return []
+    return [t for t in texts[:first_heading_idx] if not _is_placeholder(t.content)]
+
+
 def _per_node_body_texts(section: EmailSection) -> list[TextBlock]:
     """Body texts that get per-node ``<td data-node-id>`` anchors (RC-D-prime).
 
@@ -1123,6 +1151,12 @@ def _per_node_body_texts(section: EmailSection) -> list[TextBlock]:
     if section.column_layout != ColumnLayout.SINGLE:
         return []
     texts = _body_slot_texts(section)
+    # RC-F6: once an eyebrow is lifted above the heading, the shared ``_body``
+    # target (first-body typography) becomes the eyebrow's, which would mis-style
+    # a lone post-heading paragraph — so anchor every body node per-id, not just
+    # when there are ≥2.
+    if _pre_heading_body_texts(section):
+        return texts
     return texts if len(texts) >= 2 else []
 
 
@@ -1165,6 +1199,28 @@ def _per_node_body_html(texts: list[TextBlock]) -> str:
     )
 
 
+def _pre_heading_rows_html(texts: list[TextBlock]) -> str:
+    """Render pre-heading eyebrow texts as bare ``<tr><td data-node-id>`` rows (RC-F6).
+
+    The rows are spliced ABOVE the heading row.
+    Each ``<td>`` is an addressable anchor for its ``_text_<node_id>`` typography
+    override, so per-node styling is preserved. Inter-element spacing uses the
+    ``padding-bottom`` LONGHAND, never the ``padding:`` shorthand — the section's
+    ``_cell`` padding override replaces the first ``padding:`` shorthand, so a
+    shorthand here would be stolen from the heading ``<td>`` that follows.
+    """
+    rows: list[str] = []
+    for text in texts:
+        node = html.escape(text.node_id, quote=True)
+        rows.append(
+            f'<tr><td data-node-id="{node}" '
+            f'style="padding-bottom:{_paragraph_gap(text)}px;'
+            f'mso-line-height-rule:exactly;">'
+            f"{_safe_text(text.content)}</td></tr>"
+        )
+    return "".join(rows)
+
+
 def _fills_text_block(
     section: EmailSection,
     _cw: int,
@@ -1173,6 +1229,13 @@ def _fills_text_block(
     fills: list[SlotFill] = []
     groups = section.child_content_groups
 
+    # RC-F6: body texts preceding the first heading in source order are eyebrows;
+    # they ride the heading fill's stacked_before as data-node-id rows spliced
+    # above the heading row (empty for groups / no-heading — see helper).
+    pre_heading = _pre_heading_body_texts(section)
+    pre_ids = {t.node_id for t in pre_heading}
+    pre_rows = _pre_heading_rows_html(pre_heading)
+
     if groups:
         all_headings = _headings_from_groups(groups)
         if all_headings:
@@ -1180,19 +1243,20 @@ def _fills_text_block(
     else:
         heading = _first_heading(section.texts)
         if heading:
-            fills.append(SlotFill("heading", _safe_text(heading.content)))
+            fills.append(SlotFill("heading", _safe_text(heading.content), stacked_before=pre_rows))
         elif section.texts and not _body_texts(section.texts):
             # All texts are headings — use first as heading, rest as body
             fills.append(SlotFill("heading", _safe_text(section.texts[0].content)))
 
-    body_blocks = _body_slot_texts(section)
+    # Body slot carries only the post-heading body texts; the pre-heading
+    # eyebrows are spliced above the heading (pre_rows) instead.
+    body_blocks = [b for b in _body_slot_texts(section) if b.node_id not in pre_ids]
     if body_blocks:
-        per_node = _per_node_body_texts(section)
-        if per_node:
+        if _per_node_body_texts(section):
             # RC-D-prime (phase-52.4b): per-node anchors instead of the
             # '<br><br>'.join, which flattened every run onto the first
             # body's typography (last-write-wins on the shared _body class).
-            fills.append(SlotFill("body", _per_node_body_html(per_node)))
+            fills.append(SlotFill("body", _per_node_body_html(body_blocks)))
         else:
             fills.append(
                 SlotFill("body", "<br><br>".join(_safe_text(b.content) for b in body_blocks))

@@ -715,6 +715,23 @@
       "symptom_if_broken": "A large decorative IMAGE (arrow, texture, badge) renders at content size or stacks as if it were a content photo, because nothing flags it decorative and the size heuristic only catches small icons.",
       "closes_when": "Ingest captures z-order / role so decorative IMAGE nodes are flagged distinctly from content photos (Phase 53.3d), replacing the size heuristic.",
       "notes": "Surfaced by audit-4 §RC-F7 / de-ranked findings. Paired with the F3 design-width work; the heuristic is deliberately a stopgap, not the fix."
+    },
+    {
+      "id": "phase-53f-eyebrow-partial-padding-cell-theft",
+      "phase": "53.f",
+      "title": "F6 eyebrow row can steal a section's partial _cell padding from the heading",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-04",
+      "introduced_commit": "pending",
+      "summary": "F6 splices pre-heading eyebrow <tr><td data-node-id> rows above the heading row and uses a padding-bottom LONGHAND so the section _cell padding override (_replace_first_css_prop on the `padding:` shorthand) still lands on the heading <td>, not the eyebrow. This dodge only covers 4-side (shorthand) section padding. When a section has PARTIAL padding, _build_token_overrides emits per-side _cell longhands applied via _upsert_first_td_css_prop, which targets the FIRST <td> in the HTML — after the splice that is the eyebrow row, so the heading loses its intended per-side padding to the eyebrow. Both corpus acceptance cases (c5/c8) use 4-side padding, so this is unexercised.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_pre_heading_rows_html — padding-bottom longhand)",
+        "app/design_sync/component_renderer.py (_apply_token_overrides `_cell` non-shorthand branch -> _upsert_first_td_css_prop, targets first <td>)"
+      ],
+      "symptom_if_broken": "A text-block/hero section with a pre-heading eyebrow AND partial (non-4-side) section padding renders the heading with the eyebrow's padding and the eyebrow row carrying the heading's intended per-side padding.",
+      "closes_when": "_upsert_first_td_css_prop is scoped to the heading/first-content <td> (skipping spliced eyebrow rows), or _cell per-side longhands target data-slot cells explicitly. Verified by a partial-padding eyebrow section rendering the heading padding correctly.",
+      "notes": "Speculative gap found by inspection during F6 (RC-F6). No corpus fixture carries partial padding + eyebrow. Also unhandled by F6: grouped / multi-column eyebrows (flat single-col path only) — no corpus fixture either."
     }
   ],
   "tooling_followups": [
