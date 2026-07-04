@@ -681,6 +681,40 @@
       "closes_when": "The 5 builder-less slugs are removed from _score_extended_candidates so only builder-backed slugs can be scored — done in F4d; verified by inspection that no corpus fixture (cases 5-10) matched any of them.",
       "closed_commit": "pending commit",
       "notes": "The 5 slugs remain full component-library citizens; if a converter fill builder is later written for any, re-add its scoring block and the _build_slot_fills builder together."
+    },
+    {
+      "id": "phase-53f-brandrepair-footer-gaps",
+      "phase": "53.f",
+      "title": "BrandRepair._repair_footer is dead as a compliance backstop — never reached from design-sync and never injects unsub links",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-04",
+      "introduced_commit": "pending",
+      "summary": "Audit-4 (RC-F5) found the comment claiming BrandRepair fixes footer legal/unsub content downstream is false. RepairPipeline is never invoked from any design-sync path (converter_service.py / import_service.py / routes.py have zero repair imports), and BrandRepair._repair_footer early-returns on any element matching class=\"...footer...\" (the seed's footer-bg qualifies) and, even when it does fire, injects only a <footer> with copyright/address/legal_text from DesignSystem — never an unsubscribe LINK. F5 makes the converter self-sufficient instead: the email-footer seed's footer_legal cell (unsub/preferences/address rows) is preserved verbatim and never overwritten by _fills_footer.",
+      "code_refs": [
+        "app/qa_engine/repair/brand.py:141-172 (BrandRepair._repair_footer — early-return at :149 on footer class; no unsub-link injection)",
+        "app/design_sync/converter_service.py (no RepairPipeline import — converter is self-sufficient by design, plan §1 F5 decision 4)"
+      ],
+      "symptom_if_broken": "A scaffolder-pipeline (non-converter) email whose template carries a decorative footer class ships missing an unsubscribe link — BrandRepair sees the class, assumes a footer exists, and never injects one.",
+      "closes_when": "BrandRepair._repair_footer is either repaired to inject an unsub link when one is absent (not just a <footer> block) or removed as dead code, OR the scaffolder pipeline gains an equivalent always-present footer_legal guarantee.",
+      "notes": "Adjacent, NOT covered by this entry: F5's footer_legal preserves the email-footer seed's hardcoded '© Company Name / 123 Business Street' — those are LITERALS, not merge tags, and nothing in the converter path replaces them (RepairPipeline deliberately not wired). That is within the plan's 'legal row never overwritten' decision (v1 dedupe is a non-goal; a design carrying its own unsub text yields both an editorial and a legal row). Per-brand legal-text substitution is a separate design-system concern."
+    },
+    {
+      "id": "phase-53f-decorative-image-flag",
+      "phase": "53.f",
+      "title": "Plain IMAGE decorations are indistinguishable from content photos at extraction",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-07-04",
+      "introduced_commit": "pending",
+      "summary": "Extraction sets is_background only for frame fills (layout_analyzer.py), so a plain IMAGE node that is decorative (arrow, pin, texture, thermometer) carries no signal distinguishing it from a content photo. The F1/F3 image-width work uses a size heuristic (<=64px never stretches; design-width threading) as a stopgap to keep small decorations from ballooning, but a genuinely large decorative image is still treated as content. The real fix is z-order / semantic-role capture at ingest (53.3d territory).",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py:105 (is_background field), :1296 (set True only on frame fills)",
+        "app/design_sync/component_matcher.py (_stacked_image_row inline width rule — size-based stopgap)"
+      ],
+      "symptom_if_broken": "A large decorative IMAGE (arrow, texture, badge) renders at content size or stacks as if it were a content photo, because nothing flags it decorative and the size heuristic only catches small icons.",
+      "closes_when": "Ingest captures z-order / role so decorative IMAGE nodes are flagged distinctly from content photos (Phase 53.3d), replacing the size heuristic.",
+      "notes": "Surfaced by audit-4 §RC-F7 / de-ranked findings. Paired with the F3 design-width work; the heuristic is deliberately a stopgap, not the fix."
     }
   ],
   "tooling_followups": [

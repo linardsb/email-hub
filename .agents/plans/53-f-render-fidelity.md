@@ -174,6 +174,30 @@ warnings drop; unit guards per sub-item (RED pre-fix); baselines regen after dif
 **Verify:** all 6 outputs contain an unsubscribe link row; no raw-merge-tag leak OUTSIDE
 footer_legal; footer editorial text from the design still lands; golden-conformance +
 seed-slot manifest (`component_manifest.yaml`) updated; baselines regen after diff audit.
+**Result (2026-07-04, `fix/phase-53f-f5-footer`):** email-footer seed's `footer_content`
+cell split into `footer_editorial` (Figma text via `_fills_footer`) + `footer_legal`
+(unsub/preferences/address rows, in `_PRESERVE_UNFILLED_SLOTS`, never filled). Renderer's
+false BrandRepair comment deleted; `_PRESERVE_UNFILLED_SLOTS` swaps `footer_content`→
+`footer_legal` (keeps `copyright`/`company_name`/`company_address`/`unsub_text` for the other
+footer seeds). Manifest `email-footer` slot_definitions → the two new slots (+selectors).
+`{{unsubscribeUrl}}`/`{{preferencesUrl}}` stay as literal ESP merge tags ONLY inside
+footer_legal (**QA confirm, empirical:** `liquid_syntax` passes clean; `personalisation_syntax`
+returns 0.9 "platform unknown" — a **library-wide** soft signal the raw seed + every `{{ }}`
+template scores identically, so it's seed-faithful not an F5 regression; **2 per case, zero
+leak outside** on c5/c7). Depth-balanced `_find_matching_close` untouched — editorial is
+simple text, legal is never filled → **truncation risk eliminated, not reintroduced**
+(`TestFooterContentNoTruncation` rewritten: editorial-fills / legal-survives / tags-balanced,
++ unfilled-keeps-legal). RepairPipeline deliberately NOT wired (decision 4). **Reality: only
+c5/c7 carry a footer section** — 6/8/9/10 end in `social-icons` (no footer → outside F5's
+reach; verified **byte-identical**). Both now emit the unsub link row (previously **wiped** by
+the whole-cell fill). **Compliance win, not pixels:** **c5 0.877→0.844** (−0.033; off-design
+legal boilerplate "© Company Name"/"123 Business Street" + links now render on maap's dark
+footer — the accepted compliance/fidelity trade, cf. F4), **c7 0.612→0.615** (+0.003, editorial
+now in a styled `footer-text` cell); c6/8/9/10 unchanged. Ladder **13/9/8/10/8/12 held**;
+design_sync+components **2777 passed**. Ceiling note: v1 does NOT dedupe a design's own unsub
+text against the legal row (c5/c7 render both); footer_legal keeps the seed's hardcoded
+"© Company Name"/"123 Business Street" **literals** — no per-brand substitution (RepairPipeline
+unwired) → deferred `phase-53f-brandrepair-footer-gaps` + `phase-53f-decorative-image-flag`.
 
 ### F6 — Eyebrow/kicker order `[S-M, ~1d]`
 **Defect:** RC-F6. Small-text-above-heading renders below the heading (maap, Ferrari) —
@@ -292,3 +316,4 @@ Hard rules for parallel execution:
 | 2026-07-04 | F2+F8 | 0.879 | 0.801 | 0.623 | 0.793 | 0.732 | 0.679 | F2 dark bands hold: **c8 +0.091, c9 +0.092** (section_min c8 0.30→0.67, c9 0.36→0.53); 5/6/10 neutral (explicit==implicit white, byte-changed/score-flat); c7 −0.001 noise (residual is F1/F4). F8 corpus byte-identical. BEFORE row reproduced audit-4 exactly. |
 | 2026-07-04 | F1 | 0.879 | 0.801 | 0.612 | 0.802 | 0.732 | 0.679 | full_image; section_min 0.634/0.480/**0.271**/**0.688**/0.527/0.087. Heroes now emitted as `<img>` (c7 `2833:1881`, c8 `2833:2264` — HTML-verified, in regen baselines). **Pixel deltas are asset-artifacts, not the win:** hero PNGs absent from fixtures (pre-F1 exported only `images[0]`), unrecoverable (c7 cache URL 403, c8 uncached, no `FIGMA_TOKEN`) → scorer renders heroes blank. c7 **−0.011** (blank gap replaces stretched strip), c8 **+0.009** (median 0.790→0.859). c5/6/9/10 byte-identical (no F1-builder multi-image sections). Real win pending hero re-export (`phase-53.7-asset-reexport-prerequisite`). |
 | 2026-07-04 | F4a-d | 0.877 | 0.814 | 0.612 | 0.802 | 0.723 | 0.678 | **Correctness win, not pixels.** Zero leaks on all 6 (`Shop Now`/`Learn More`/`Read More`/fakeimg/`Feature icon`/📅/📍, entity+UTF-8). **c6 +0.013** (F4a empty cta-fill + F4c emoji-in-span; median 0.682→0.698). c9 (F4b col-icon): median **0.776→0.833** (2 headings recovered from the text-block mis-route) but full −0.009 / section_min 0.527→**0.353** (sections [7]/[8], both col-icon) — F4b fills the real `/api` icon src (`2833:2113`/`2126`), but those assets are **absent from the fixture (disk-verified missing; the render shows a broken-image box)**, which pixel-matches slate's real icon worse than the prior fakeimg grey rectangle did. Production serves these assets; this is a fixture asset-gap (same as F1 heroes) with the table structure intact (verified in the render) — not a code regression. c5/c10 −0.002/−0.001 noise (F4a dropped a non-design seed CTA). c7/c8 byte-identical (untouched). F4d: 5 builder-less slugs removed from the converter scorer (library intact), 0 baseline change. Ladder 13/9/8/10/8/12 held. |
+| 2026-07-04 | F5 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Compliance win, not pixels.** Footer legal/unsub row now preserved (was wiped by whole-cell fill). Only **c5/c7** have a footer section (6/8/9/10 end in `social-icons` → outside F5's reach, **byte-identical**). **c5 −0.033** (0.877→0.844; section_min 0.632→0.492): off-design legal boilerplate ("© Company Name"/"123 Business Street") + unsub links now render on maap's dark footer — accepted compliance/fidelity trade (cf. F4). **c7 +0.003** (0.612→0.615; editorial now in styled `footer-text` cell). Ladder 13/9/8/10/8/12 held. Merge tags `{{unsubscribeUrl}}`/`{{preferencesUrl}}` contained to footer_legal (2/case, zero leak outside). c8 pre-existing heading trailing-whitespace drift (F8-noted) normalized by regression; c8 baseline untouched. |

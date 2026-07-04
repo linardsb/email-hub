@@ -1021,13 +1021,17 @@ components:
 
   - slug: email-footer
     name: Email Footer
-    description: "Copyright, address, unsubscribe/preferences links with MSO wrapper."
+    description: "Editorial footer text plus preserved legal row (copyright, address, unsubscribe/preferences links) with MSO wrapper."
     category: structure
     compatibility: full
     slot_definitions:
-      - slot_id: footer_content
+      - slot_id: footer_editorial
         slot_type: body
-        selector: "[data-slot='footer_content']"
+        selector: "[data-slot='footer_editorial']"
+        required: false
+      - slot_id: footer_legal
+        slot_type: body
+        selector: "[data-slot='footer_legal']"
         required: false
 
   - slug: cta-button
