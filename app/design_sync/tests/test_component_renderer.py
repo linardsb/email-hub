@@ -6,7 +6,12 @@ import re
 
 import pytest
 
-from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
+from app.design_sync.component_matcher import (
+    ComponentMatch,
+    SlotFill,
+    TokenOverride,
+    match_section,
+)
 from app.design_sync.component_renderer import (
     ComponentRenderer,
     RenderedSection,
@@ -14,8 +19,10 @@ from app.design_sync.component_renderer import (
     _is_blankable_text,
 )
 from app.design_sync.figma.layout_analyzer import (
+    ColumnLayout,
     EmailSection,
     EmailSectionType,
+    ImagePlaceholder,
 )
 
 
@@ -943,3 +950,89 @@ class TestColumnWidthFractions:
         td_widths = re.findall(r'<td width="(\d+)" valign="top">', result)
         div_widths = re.findall(r'class="column"[^>]*?max-width:\s*(\d+)px', result)
         assert td_widths == div_widths == ["450", "150"]
+
+
+def _img(node_id: str, w: float, h: float) -> ImagePlaceholder:
+    return ImagePlaceholder(node_id=node_id, node_name="photo", width=w, height=h)
+
+
+def _hero_section(images: list[ImagePlaceholder]) -> EmailSection:
+    """A single-column HERO section — image-only heroes match ``full-width-image``.
+
+    Mirrors the corpus case 7 §[1] / case 8 §[0] shape: two stacked images in
+    one hero band, no heading text.
+    """
+    return EmailSection(
+        section_type=EmailSectionType.HERO,
+        node_id="frame_hero",
+        node_name="hero",
+        images=images,
+        column_layout=ColumnLayout.SINGLE,
+        width=600,
+    )
+
+
+def _img_tag_for(html: str, src_fragment: str) -> str:
+    """Return the single ``<img …>`` tag whose src contains ``src_fragment``."""
+    m = re.search(rf"<img\b[^>]*{re.escape(src_fragment)}[^>]*/?>", html)
+    assert m is not None, f"no <img> with src containing {src_fragment!r}"
+    return m.group(0)
+
+
+class TestF1MultiImageEmission:
+    """F1 (RC-F1): single-image builders emit ALL images in a section.
+
+    Previously ``_fills_full_width_image`` took ``section.images[0]`` and
+    silently dropped the rest, so case 7/8 heroes vanished. F1 selects the
+    LARGEST image (by area) as the primary slot fill and stacks the remaining
+    images as ``<tr><td><img>`` rows in tree order — those before the primary
+    above it, those after below — each sized by the inline F3 width rule.
+
+    The corpus exercises only full-width extras (600px-wide strips); the
+    sub-threshold width rule and the after-primary ordering are covered here
+    synthetically because no fixture triggers them.
+    """
+
+    def test_two_image_section_emits_two_imgs(self, renderer: ComponentRenderer) -> None:
+        """A 2-image hero renders BOTH images (RED pre-F1: only images[0])."""
+        section = _hero_section([_img("strip", 600, 67), _img("hero", 600, 400)])
+        match = match_section(section, 0, container_width=600)
+        assert match.component_slug == "full-width-image"
+        html = renderer.render_section(match).html
+        assert html.count("<img") == 2
+        assert "strip.png" in html
+        assert "hero.png" in html
+
+    def test_largest_image_is_primary(self, renderer: ComponentRenderer) -> None:
+        """The seed's primary image slot carries the largest image, not images[0]."""
+        section = _hero_section([_img("strip", 600, 67), _img("hero", 600, 400)])
+        match = match_section(section, 0, container_width=600)
+        html = renderer.render_section(match).html
+        # The primary lives in the seed's bannerimg (data-slot=image_url) element.
+        primary = re.search(r'<img\b[^>]*class="bannerimg"[^>]*>', html)
+        assert primary is not None
+        assert "hero.png" in primary.group(0)
+
+    def test_extra_before_primary_renders_above(self, renderer: ComponentRenderer) -> None:
+        """An image preceding the primary in tree order renders above it."""
+        section = _hero_section([_img("strip", 600, 67), _img("hero", 600, 400)])
+        match = match_section(section, 0, container_width=600)
+        html = renderer.render_section(match).html
+        assert html.index("strip.png") < html.index("hero.png")
+
+    def test_extra_after_primary_renders_below(self, renderer: ComponentRenderer) -> None:
+        """An image following the primary in tree order renders below it."""
+        section = _hero_section([_img("hero", 600, 400), _img("strip", 600, 67)])
+        match = match_section(section, 0, container_width=600)
+        html = renderer.render_section(match).html
+        assert html.index("hero.png") < html.index("strip.png")
+
+    def test_small_stacked_image_uses_natural_width(self, renderer: ComponentRenderer) -> None:
+        """A sub-threshold stacked image keeps its natural width (F3 icon guard)."""
+        section = _hero_section([_img("hero", 600, 400), _img("icon", 64, 64)])
+        match = match_section(section, 0, container_width=600)
+        html = renderer.render_section(match).html
+        icon_tag = _img_tag_for(html, "icon.png")
+        assert "width:64px" in icon_tag
+        assert "width:100%" not in icon_tag
+        assert 'width="64"' in icon_tag

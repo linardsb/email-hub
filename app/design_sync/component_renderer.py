@@ -876,7 +876,41 @@ class ComponentRenderer:
                 # Insert the attribute before the closing /> or >
                 new_tag = re.sub(r"(\s*/?>)$", f' {attr}="{html.escape(val)}"\\1', new_tag)
 
-        return html_str.replace(img_tag, new_tag, 1)
+        result = html_str.replace(img_tag, new_tag, 1)
+
+        # F1 (RC-F1): stack the section's extra images as sibling rows around the
+        # primary image's row — those before it in tree order above, those after
+        # below. Injected here so every _fill_image_slot seed (full-width-image,
+        # article-card, logo-header) gains multi-image support uniformly.
+        if fill.stacked_before or fill.stacked_after:
+            result = self._splice_stacked_rows(
+                result, new_tag, fill.stacked_before, fill.stacked_after
+            )
+        return result
+
+    @staticmethod
+    def _splice_stacked_rows(html_str: str, primary_img_tag: str, before: str, after: str) -> str:
+        """Inject stacked ``<tr>`` image rows around the primary image's row (F1).
+
+        Locates the ``<tr>…</tr>`` enclosing the just-filled primary ``<img>`` and
+        splices ``before`` ahead of it and ``after`` behind it, keeping the new
+        rows inside the same presentation table. The MSO ghost ``<tr>`` sits inside
+        a conditional comment further upstream, so the nearest real ``<tr>`` before
+        the image is the visible one. No-ops if the image isn't wrapped in a row
+        (defensive).
+        """
+        img_pos = html_str.find(primary_img_tag)
+        if img_pos == -1:
+            return html_str
+        opens = list(re.finditer(r"<tr\b", html_str[:img_pos]))
+        if not opens:
+            return html_str
+        tr_start = opens[-1].start()
+        close = html_str.find("</tr>", img_pos)
+        if close == -1:
+            return html_str
+        tr_end = close + len("</tr>")
+        return html_str[:tr_start] + before + html_str[tr_start:tr_end] + after + html_str[tr_end:]
 
     def _fill_cta_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Update href on a data-slot link element."""

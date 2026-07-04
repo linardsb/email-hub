@@ -596,7 +596,8 @@
         "app/design_sync/fidelity_case_scorer.py (CI scores committed case-5 PNGs only)"
       ],
       "symptom_if_broken": "A3 advisory numbers quietly become single-fixture (case 5, an under-segmenter) on any machine without a prior local export — fork/regression judgments made on them over-weight one fixture class; a future gate wired to multi-fixture scores fails on fresh checkouts with missing-asset errors.",
-      "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI."
+      "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI.",
+      "notes": "Phase 53 Track F F1 (2026-07-04, fix/phase-53f-f1-multi-image) enlarged the referenced-but-unexported set: emitting ALL section images now references hero nodes the pre-F1 converter dropped — c7 2833:1881 and c8 2833:2264 have NO on-disk assets/<id>.png (only their images[0] strips 2833:1879 / 2833:2262 do), and are unrecoverable this session (c7 cached S3 URL 403-expired, c8 never cached, FIGMA_TOKEN unset). The scorer renders both heroes blank, so F1's visual/pixel win cannot be measured until these two nodes are re-exported (c7 −0.011 / c8 +0.009 are broken-image artifacts). F1's HTML-level acceptance (heroes present as <img>, in regen baselines 7/8) is met independent of the assets."
     },
     {
       "id": "flags-2026-06-15-batch-reschedule",
