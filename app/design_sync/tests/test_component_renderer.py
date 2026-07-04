@@ -875,6 +875,35 @@ class TestBlankUnfilledTextSlots:
         assert "/api/v1/design-sync/assets/ic1.png" in result.html
         assert "fakeimg" not in result.html
 
+    def test_event_card_emoji_inside_span_blanks_with_empty_fill(
+        self, renderer: ComponentRenderer
+    ) -> None:
+        # F4c (RC-F4): 📅/📍 now live INSIDE the date/location spans, so the
+        # builder's empty fill blanks the emoji with the span — previously the
+        # emoji sat outside and orphaned when the slot blanked.
+        result = renderer.render_section(
+            _make_match(
+                "event-card",
+                fills=[SlotFill("date", ""), SlotFill("location", "")],
+            )
+        )
+        assert "&#128197;" not in result.html  # 📅
+        assert "&#128205;" not in result.html  # 📍
+
+    def test_event_card_filled_date_carries_no_seed_emoji(
+        self, renderer: ComponentRenderer
+    ) -> None:
+        # A real date replaces the whole span, so the seed 📅 decoration does
+        # not leak in front of filled content either.
+        result = renderer.render_section(
+            _make_match(
+                "event-card",
+                fills=[SlotFill("date", "June 1"), SlotFill("location", "")],
+            )
+        )
+        assert "June 1" in result.html
+        assert "&#128197;" not in result.html
+
     def test_is_blankable_text_predicate(self) -> None:
         assert _is_blankable_text("Section Heading") is True
         assert _is_blankable_text("Line 1<br>Line 2") is True
