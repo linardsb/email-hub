@@ -848,6 +848,33 @@ class TestBlankUnfilledTextSlots:
         assert "Buy Now" in result.html
         assert 'data-slot="cta_url"' in result.html
 
+    def test_col_icon_placeholder_imgs_stripped(self, renderer: ComponentRenderer) -> None:
+        # F4b (RC-F4): col-icon's fakeimg placeholders — the desktop unfilled
+        # icon_2 AND the no-data-slot mobile twins — are removed whole, so
+        # neither the src nor the "Feature icon" alt survives.
+        result = renderer.render_section(_make_match("col-icon"))
+        assert "fakeimg" not in result.html
+        assert "Feature icon" not in result.html
+
+    def test_col_icon_real_image_not_stripped(self, renderer: ComponentRenderer) -> None:
+        # Guard against over-stripping: a filled (relative /api) icon survives
+        # while the sibling placeholders are still dropped.
+        result = renderer.render_section(
+            _make_match(
+                "col-icon",
+                fills=[
+                    SlotFill(
+                        "icon_1_url",
+                        "/api/v1/design-sync/assets/ic1.png",
+                        slot_type="image",
+                        attr_overrides={"alt": "Truck icon"},
+                    ),
+                ],
+            )
+        )
+        assert "/api/v1/design-sync/assets/ic1.png" in result.html
+        assert "fakeimg" not in result.html
+
     def test_is_blankable_text_predicate(self) -> None:
         assert _is_blankable_text("Section Heading") is True
         assert _is_blankable_text("Line 1<br>Line 2") is True

@@ -575,7 +575,7 @@ def _build_slot_fills(
         "footer-social": _fills_social,
         "footer-unsub": _fills_text_block,
         # ── Batch I: structure ──
-        "col-icon": _fills_text_block,
+        "col-icon": _fills_col_icon,
         "header": _fills_logo_header,
         "app-store": _fills_text_block,
         "section": _fills_image_block,
@@ -1444,6 +1444,41 @@ def _fills_category_nav(
     fills: list[SlotFill] = []
     for i, text in enumerate(section.texts[:6], 1):
         fills.append(SlotFill(f"nav_item_{i}", _safe_text(text.content)))
+    return fills
+
+
+def _fills_col_icon(
+    section: EmailSection,
+    _cw: int,
+    *,
+    image_urls: dict[str, str] | None = None,
+    **_kw: object,
+) -> list[SlotFill]:
+    """Fill col-icon: per-column icon image + heading (F4b, RC-F4).
+
+    The seed's slots are ``icon_1_url``/``icon_2_url`` (images) and
+    ``heading_1``/``heading_2`` (labels). Routing to ``_fills_text_block`` (which
+    emits ``heading``/``body``) left all four unfilled by construction, so
+    slate's grid leaked ``fakeimg.pl`` placeholders + "Feature icon" alts. Fill
+    each column's icon (real src + derived alt) and heading from the section's
+    images/texts; unfilled ``icon_N_url`` imgs — and the seed's no-data-slot
+    mobile twins — are dropped by ``_strip_placeholder_urls``, and unfilled
+    ``heading_N`` cells blank via the post-fill text pass.
+    """
+    fills: list[SlotFill] = []
+    for i, img in enumerate(section.images[:2], start=1):
+        overrides = _image_node_id_attrs(img)
+        overrides["alt"] = _derive_image_alt(img)
+        fills.append(
+            SlotFill(
+                f"icon_{i}_url",
+                _resolve_image_url(img.node_id, image_urls),
+                slot_type="image",
+                attr_overrides=overrides,
+            )
+        )
+    for i, text in enumerate(section.texts[:2], start=1):
+        fills.append(SlotFill(f"heading_{i}", _safe_text(text.content)))
     return fills
 
 

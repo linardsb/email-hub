@@ -1652,13 +1652,29 @@ class ComponentRenderer:
         arcsize = min(round(radius_px / 48 * 100), 50)
         return self._VML_ARCSIZE_RE.sub(f'arcsize="{arcsize}%"', html_str)
 
-    _PLACEHOLDER_URL_RE = re.compile(
-        r'(src|href)="https?://(?:via\.placeholder\.com|placehold\.co|placeholder\.com)[^"]*"'
+    # A converter-emitted real image always resolves to a RELATIVE
+    # ``/api/v1/design-sync/assets/…`` src (both the corpus fallback in
+    # ``_resolve_image_url`` and the production asset map in import_service). So
+    # ANY absolute ``http(s)://`` img src is an unfilled seed placeholder
+    # (fakeimg.pl, via.placeholder.com, …). F4b (RC-F4) drops the whole ``<img>``
+    # — and a sole-child wrapping ``<a>`` — rather than blanking the src, so the
+    # placeholder's "Feature icon"-class alt is removed with it (blanking src
+    # alone leaks the alt). This also reaches col-icon's no-data-slot mobile
+    # ``<img>`` twins, which no data-slot fill or blank pass can target.
+    _PLACEHOLDER_LINKED_IMG_RE = re.compile(
+        r'<a\b[^>]*>\s*<img\b[^>]*\bsrc="https?://[^"]*"[^>]*>\s*</a>', re.IGNORECASE
+    )
+    _PLACEHOLDER_IMG_RE = re.compile(r'<img\b[^>]*\bsrc="https?://[^"]*"[^>]*>', re.IGNORECASE)
+    # Non-img placeholder hrefs keep the blank-to-empty behaviour.
+    _PLACEHOLDER_HREF_RE = re.compile(
+        r'(href)="https?://(?:via\.placeholder\.com|placehold\.co|placeholder\.com|fakeimg\.pl)[^"]*"'
     )
 
     def _strip_placeholder_urls(self, html_str: str) -> str:
-        """Replace remaining placeholder URLs with empty defaults."""
-        return self._PLACEHOLDER_URL_RE.sub(r'\1=""', html_str)
+        """Drop leftover placeholder images; blank placeholder-host hrefs."""
+        result = self._PLACEHOLDER_LINKED_IMG_RE.sub("", html_str)
+        result = self._PLACEHOLDER_IMG_RE.sub("", result)
+        return self._PLACEHOLDER_HREF_RE.sub(r'\1=""', result)
 
     def _update_mso_widths(self, html_str: str, width: int) -> str:
         """Clamp MSO conditional table widths to the container width.

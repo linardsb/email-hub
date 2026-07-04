@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.design_sync.component_matcher import (
     _build_column_fill_html,
+    _build_slot_fills,
     _derive_image_alt,
     _is_descriptive_alt,
     _is_placeholder,
@@ -846,6 +847,24 @@ class TestPlaceholderSuppression:
         assert _is_placeholder("Add your text here")
         assert not _is_placeholder("SHOP THE COLLECTION")
         assert not _is_placeholder("Eiger Nordwand Jacket")
+
+
+class TestColIconSlotFills:
+    """F4b (RC-F4): col-icon fills its own icon_N_url/heading_N slots, not the
+    text-block heading/body slots it used to mis-route to (0/4 fill by
+    construction → fakeimg + 'Feature icon' leak)."""
+
+    def test_col_icon_emits_icon_and_heading_slots(self) -> None:
+        s = _make_section(
+            texts=[_text("Fast shipping")],
+            images=[_image(node_id="ic1", name="truck", w=48, h=48)],
+        )
+        by_id = {f.slot_id: f for f in _build_slot_fills("col-icon", s, 600)}
+        assert by_id["icon_1_url"].slot_type == "image"
+        assert by_id["heading_1"].value == "Fast shipping"
+        # NOT the old text-block mis-route slots.
+        assert "heading" not in by_id
+        assert "body" not in by_id
 
 
 class TestButtonInTextBlock:
