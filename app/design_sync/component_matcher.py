@@ -1105,11 +1105,13 @@ def _fills_hero(
         body = _first_body(section.texts)
         if body:
             fills.append(SlotFill("subtext", _safe_text(body.content)))
-    # CTA
-    if section.buttons:
-        btn = section.buttons[0]
-        fills.append(SlotFill("cta_text", _safe_text(btn.text)))
-        fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
+    # CTA — F4a (RC-F4): emit even without a button so the empty fills blank the
+    # seed's "Learn More" placeholder (the B8 empty-fill discipline); the
+    # renderer's CTA prune arm then drops the now-empty anchor rather than
+    # leaking it.
+    btn = section.buttons[0] if section.buttons else None
+    fills.append(SlotFill("cta_text", _safe_text(btn.text) if btn else ""))
+    fills.append(SlotFill("cta_url", _safe_url(btn.url) if btn else "", slot_type="cta"))
     return fills
 
 
@@ -1498,14 +1500,18 @@ def _fills_cta(
                 "secondary_url", _safe_url(secondary.url) if secondary else "", slot_type="cta"
             )
         )
-    elif buttons:
-        btn = buttons[0]
-        if slug == "text-link":
-            fills.append(SlotFill("link_text", _safe_text(btn.text)))
-            fills.append(SlotFill("link_url", _safe_url(btn.url), slot_type="cta"))
-        else:
-            fills.append(SlotFill("cta_text", _safe_text(btn.text)))
-            fills.append(SlotFill("cta_url", _safe_url(btn.url), slot_type="cta"))
+    elif slug == "text-link":
+        # F4a (RC-F4): emit even when ``buttons`` is empty so the empty fills
+        # blank the seed's link placeholder (the B8 cta-pair empty-fill
+        # discipline); the renderer's CTA prune arm then drops the now-empty
+        # anchor rather than leaking the seed default.
+        btn = buttons[0] if buttons else None
+        fills.append(SlotFill("link_text", _safe_text(btn.text) if btn else ""))
+        fills.append(SlotFill("link_url", _safe_url(btn.url) if btn else "", slot_type="cta"))
+    else:
+        btn = buttons[0] if buttons else None
+        fills.append(SlotFill("cta_text", _safe_text(btn.text) if btn else ""))
+        fills.append(SlotFill("cta_url", _safe_url(btn.url) if btn else "", slot_type="cta"))
     return fills
 
 

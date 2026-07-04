@@ -118,7 +118,12 @@ class TestSlotFilling:
     def test_fill_cta_url_slot(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "cta-button",
-            fills=[SlotFill("cta_url", "https://shop.example.com", slot_type="cta")],
+            # F4a: a real CTA carries its label; without cta_text the now-empty
+            # anchor would be pruned before the href assertion.
+            fills=[
+                SlotFill("cta_text", "Shop"),
+                SlotFill("cta_url", "https://shop.example.com", slot_type="cta"),
+            ],
         )
         result = renderer.render_section(match)
         assert 'href="https://shop.example.com"' in result.html
@@ -804,16 +809,44 @@ class TestBlankUnfilledTextSlots:
         assert self._td_inner(result.html, "company_name")
         assert self._td_inner(result.html, "company_address")
 
-    def test_cta_label_span_preserved(self, renderer: ComponentRenderer) -> None:
-        # <span data-slot="cta_text"> lives inside <a>; td-only scope leaves it
-        # intact (blanking would create an empty clickable link).
+    def test_unfilled_cta_anchor_pruned(self, renderer: ComponentRenderer) -> None:
+        # F4a (RC-F4): an unfilled CTA is a leaked seed default. The whole
+        # <a>…<span data-slot="cta_text">…</span></a> is removed — blanking the
+        # span alone would leave an empty clickable anchor (B3 advisor rule).
         result = renderer.render_section(_make_match("article-card"))
-        cta = re.search(
-            r'<span\b[^>]*\bdata-slot="cta_text"[^>]*>(.*?)</span>',
-            result.html,
-            re.DOTALL,
+        assert "Read More" not in result.html
+        assert 'data-slot="cta_text"' not in result.html
+        assert 'data-slot="cta_url"' not in result.html
+
+    def test_cta_button_empty_no_seed_leak(self, renderer: ComponentRenderer) -> None:
+        # F4a: an empty cta-button leaks "Shop Now" on BOTH surfaces (non-MSO
+        # <span> + MSO <v:roundrect><center>) plus the seed-blue chrome — all go.
+        result = renderer.render_section(_make_match("cta-button"))
+        assert "Shop Now" not in result.html
+        assert "v:roundrect" not in result.html
+        assert 'class="cta-btn"' not in result.html
+
+    def test_hero_block_empty_drops_cta_keeps_background(self, renderer: ComponentRenderer) -> None:
+        # F4a: hero with no button drops its "Learn More" seed CTA anchor, but
+        # the MSO <v:rect> background twin (not a roundrect) is untouched.
+        result = renderer.render_section(_make_match("hero-block"))
+        assert "Learn More" not in result.html
+        assert 'data-slot="cta_url"' not in result.html
+        assert "v:rect" in result.html
+
+    def test_filled_cta_not_pruned(self, renderer: ComponentRenderer) -> None:
+        # Guard against over-pruning: a real CTA fill keeps its anchor + label.
+        result = renderer.render_section(
+            _make_match(
+                "cta-button",
+                fills=[
+                    SlotFill("cta_text", "Buy Now"),
+                    SlotFill("cta_url", "https://x.test", slot_type="cta"),
+                ],
+            )
         )
-        assert cta is not None and cta.group(1).strip() != ""
+        assert "Buy Now" in result.html
+        assert 'data-slot="cta_url"' in result.html
 
     def test_is_blankable_text_predicate(self) -> None:
         assert _is_blankable_text("Section Heading") is True
