@@ -232,12 +232,7 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         slug, confidence = _score_candidates(
             section, has_images, has_texts, has_buttons, has_headings
         )
-        ext_slug, ext_confidence = _score_extended_candidates(
-            section,
-            has_texts,
-            has_buttons,
-            has_headings,
-        )
+        ext_slug, ext_confidence = _score_extended_candidates(section, has_texts)
         # Extended types use specific content signals (regex, aspect ratio,
         # quote chars) that are always more specific than base heuristics.
         if ext_confidence > 0:
@@ -377,17 +372,11 @@ def _score_candidates(
 
 # ── Extended component detection patterns ──
 
-_TIME_PATTERN = re.compile(r"\b\d{1,2}\s*[:.]\s*\d{2}\b")
-_TIME_UNIT_PATTERN = re.compile(
-    r"\b(?:hours?|mins?|minutes?|secs?|seconds?|days?)\b", re.IGNORECASE
-)
-_CURRENCY_PATTERN = re.compile(r"[$€£¥]")
 _DATE_PATTERN = re.compile(
     r"\b(?:\d{1,2}[/\-\.]\d{1,2}(?:[/\-\.]\d{2,4})?|"
     r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2})\b",
     re.IGNORECASE,
 )
-_QUOTE_CHARS = {"\u0022", "\u201c", "\u201d", "\u2018", "\u2019"}
 _EVENT_KEYWORD_PATTERN = re.compile(
     r"\b(?:date|time|location|venue|where|when|address|doors?\s+open)\s*:",
     re.IGNORECASE,
@@ -398,62 +387,24 @@ _TIME_OF_DAY_PATTERN = re.compile(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)\b")
 def _score_extended_candidates(
     section: EmailSection,
     has_texts: bool,
-    has_buttons: bool,
-    has_headings: bool,
 ) -> tuple[str, float]:
-    """Score extended component types added in 47.6.
+    """Score extended component types that have a fill builder.
 
-    Returns the best (slug, confidence) among countdown-timer, testimonial,
-    pricing-table, video-placeholder, event-card, and zigzag-alternating.
-    Returns ``("text-block", 0.0)`` when nothing matches so the caller can
-    safely compare against the base scorer.
+    Returns the best (slug, confidence) among event-card and col-icon — the only
+    extended types with a ``_build_slot_fills`` builder. Returns
+    ``("text-block", 0.0)`` when nothing matches so the caller can safely compare
+    against the base scorer.
+
+    F4d (RC-F4) dropped countdown-timer, testimonial, pricing-table,
+    video-placeholder, and zigzag-alternating: they scored here but had no
+    builder, so a match rendered only seed placeholder text (see
+    ``.agents/deferred-items.json``).
     """
     candidates: list[tuple[str, float]] = []
 
     texts = section.texts
     images = section.images
-    col_groups = section.column_groups or []
     all_text = " ".join(t.content for t in texts)
-
-    # countdown-timer: 3+ short numeric/time-unit texts + heading
-    if has_headings and len(texts) >= 3:
-        time_hits = sum(
-            1
-            for t in texts
-            if not t.is_heading
-            and (_TIME_PATTERN.search(t.content) or _TIME_UNIT_PATTERN.search(t.content))
-        )
-        if time_hits >= 3:
-            candidates.append(("countdown-timer", 0.92))
-
-    # testimonial: quoted text, short body, 1 small avatar image
-    if has_texts:
-        has_quote = any(c in all_text for c in _QUOTE_CHARS)
-        body_texts = [t for t in texts if not t.is_heading]
-        short_body = body_texts and all(len(t.content) <= 200 for t in body_texts)
-        has_avatar = (
-            len(images) == 1
-            and images[0].width is not None
-            and images[0].width <= 100
-            and images[0].height is not None
-            and images[0].height <= 100
-        )
-        if has_quote and short_body and has_avatar:
-            candidates.append(("testimonial", 0.9))
-
-    # pricing-table: currency symbols, 2+ col_groups with texts, buttons
-    if has_buttons and len(col_groups) >= 2 and _CURRENCY_PATTERN.search(all_text):
-        groups_with_text = sum(1 for g in col_groups if g.texts)
-        if groups_with_text >= 2:
-            candidates.append(("pricing-table", 0.93))
-
-    # video-placeholder: 1 image with 16:9 aspect ratio, button, few texts
-    if len(images) == 1 and has_buttons and len(texts) <= 2:
-        img = images[0]
-        if img.width and img.height and img.height > 0:
-            ratio = img.width / img.height
-            if 1.6 <= ratio <= 1.9:
-                candidates.append(("video-placeholder", 0.88))
 
     # event-card: structured event information (date/time/location patterns)
     # False-positive gate: real event cards are text-dense (no hero image) and
@@ -477,13 +428,6 @@ def _score_extended_candidates(
             )
             if keyword_hits >= 2:
                 candidates.append(("event-card", 0.83))
-
-    # zigzag-alternating: 3+ col_groups each with mixed image+text
-    # (product-grid fires at 2+, so 3+ distinguishes zigzag rows)
-    if len(col_groups) >= 3:
-        mixed_count = sum(1 for g in col_groups if g.images and g.texts)
-        if mixed_count >= 3:
-            candidates.append(("zigzag-alternating", 0.9))
 
     # col-icon: small icon image + short text group (icon-driven content block)
     if len(images) == 1 and has_texts and 1 <= len(texts) <= 3:

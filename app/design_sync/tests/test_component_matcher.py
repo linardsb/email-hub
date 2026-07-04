@@ -1351,10 +1351,17 @@ class TestExpandedMatcherRules:
 
 
 class TestExtendedComponentScoring:
-    """Tests for extended component types added in 47.6."""
+    """Tests for extended component types (47.6).
 
-    def test_countdown_timer_time_pattern(self) -> None:
-        """3+ time-pattern texts + heading → countdown-timer."""
+    F4d (RC-F4) removed countdown-timer, testimonial, pricing-table,
+    video-placeholder and zigzag-alternating: they were scored here but had no
+    fill builder, so a match rendered only seed placeholder text. Only
+    event-card and col-icon (which have builders) remain; a section shaped like
+    a removed orphan now falls through to a builder-backed slug.
+    """
+
+    def test_countdown_timer_shape_no_longer_matched(self) -> None:
+        """Time-pattern texts + heading no longer yield builder-less countdown-timer."""
         s = _make_section(
             texts=[
                 _text("Sale ends in", is_heading=True),
@@ -1363,12 +1370,10 @@ class TestExtendedComponentScoring:
                 _text("08:15"),
             ],
         )
-        m = match_section(s, 0)
-        assert m.component_slug == "countdown-timer"
-        assert m.confidence == 0.92
+        assert match_section(s, 0).component_slug != "countdown-timer"
 
-    def test_countdown_timer_unit_words(self) -> None:
-        """Time-unit word texts + heading → countdown-timer."""
+    def test_countdown_timer_unit_words_no_longer_matched(self) -> None:
+        """Time-unit word texts + heading no longer yield countdown-timer."""
         s = _make_section(
             texts=[
                 _text("Hurry!", is_heading=True),
@@ -1377,19 +1382,15 @@ class TestExtendedComponentScoring:
                 _text("30 Minutes"),
             ],
         )
-        m = match_section(s, 0)
-        assert m.component_slug == "countdown-timer"
-        assert m.confidence == 0.92
+        assert match_section(s, 0).component_slug != "countdown-timer"
 
-    def test_testimonial_with_quote_and_avatar(self) -> None:
-        """Quoted text + small avatar image → testimonial."""
+    def test_testimonial_shape_no_longer_matched(self) -> None:
+        """Quoted text + small avatar no longer yields builder-less testimonial."""
         s = _make_section(
             texts=[_text("\u201cGreat service\u201d")],
             images=[_image(w=80, h=80)],
         )
-        m = match_section(s, 0)
-        assert m.component_slug == "testimonial"
-        assert m.confidence == 0.9
+        assert match_section(s, 0).component_slug != "testimonial"
 
     def test_testimonial_no_avatar_stays_text(self) -> None:
         """Quoted text only, no image → falls back to text-block."""
@@ -1399,8 +1400,8 @@ class TestExtendedComponentScoring:
         m = match_section(s, 0)
         assert m.component_slug == "text-block"
 
-    def test_pricing_table_with_currency(self) -> None:
-        """Currency text + 2 col_groups + buttons → pricing-table."""
+    def test_pricing_table_shape_no_longer_matched(self) -> None:
+        """Currency text + col_groups + button no longer yields builder-less pricing-table."""
         s = _make_section(
             texts=[_text("$9.99/mo"), _text("$19.99/mo")],
             buttons=[_button("Buy now")],
@@ -1421,19 +1422,15 @@ class TestExtendedComponentScoring:
                 ),
             ],
         )
-        m = match_section(s, 0)
-        assert m.component_slug == "pricing-table"
-        assert m.confidence == 0.93
+        assert match_section(s, 0).component_slug != "pricing-table"
 
-    def test_video_placeholder_16_9(self) -> None:
-        """1 image with 16:9 ratio + button → video-placeholder."""
+    def test_video_placeholder_shape_no_longer_matched(self) -> None:
+        """16:9 image + button no longer yields builder-less video-placeholder."""
         s = _make_section(
             images=[_image(w=640, h=360)],
             buttons=[_button("Play")],
         )
-        m = match_section(s, 0)
-        assert m.component_slug == "video-placeholder"
-        assert m.confidence == 0.88
+        assert match_section(s, 0).component_slug != "video-placeholder"
 
     def test_video_wrong_ratio_not_matched(self) -> None:
         """1 image with 1:1 ratio + button → not video-placeholder."""
@@ -1500,8 +1497,8 @@ class TestExtendedComponentScoring:
         m = match_section(s, 0)
         assert m.component_slug == "text-block"
 
-    def test_zigzag_alternating_columns(self) -> None:
-        """3+ col_groups each with mixed image+text → zigzag-alternating."""
+    def test_zigzag_shape_no_longer_matched(self) -> None:
+        """3+ mixed col_groups no longer yield builder-less zigzag-alternating."""
         s = _make_section(
             texts=[_text("Row 1"), _text("Row 2"), _text("Row 3")],
             images=[_image(node_id="img1"), _image(node_id="img2"), _image(node_id="img3")],
@@ -1529,9 +1526,7 @@ class TestExtendedComponentScoring:
                 ),
             ],
         )
-        m = match_section(s, 0)
-        assert m.component_slug == "zigzag-alternating"
-        assert m.confidence == 0.9
+        assert match_section(s, 0).component_slug != "zigzag-alternating"
 
     def test_existing_product_grid_unchanged(self) -> None:
         """Regression: product-grid scoring is not affected by extended scorer."""
