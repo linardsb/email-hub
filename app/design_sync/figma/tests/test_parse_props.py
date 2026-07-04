@@ -85,8 +85,14 @@ def test_parse_visual_props_reclassifies_vector_with_image_fill() -> None:
     }
     out = _parse_visual_props(node, DesignNodeType.VECTOR, node_opacity=1.0)
     assert out.resolved_node_type == DesignNodeType.IMAGE
-    assert out.image_ref is None  # IMAGE fill on VECTOR reclassifies, not extracts
+    assert out.image_ref == "img-123"  # F8: reclassify now also captures the fill's ref
     assert out.fill_color is None
+
+    # An IMAGE fill without an imageRef still reclassifies; the ref stays None.
+    no_ref: RawFigmaNode = {"type": "VECTOR", "fills": [{"type": "IMAGE", "visible": True}]}
+    no_ref_out = _parse_visual_props(no_ref, DesignNodeType.VECTOR, node_opacity=1.0)
+    assert no_ref_out.resolved_node_type == DesignNodeType.IMAGE
+    assert no_ref_out.image_ref is None
 
     # FRAME with IMAGE fill extracts image_ref, no reclassification
     frame_node: RawFigmaNode = {

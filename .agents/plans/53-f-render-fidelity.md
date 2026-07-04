@@ -59,6 +59,16 @@ do NOT hand-edit the 3 image seeds (drift risk, and custom seeds would still bre
 **Verify:** case 8's `full-width-image` sections emit `#181818`; case 9 dark bands hold;
 white-band count in side-by-side drops; baselines 8/9/10 regen after diff audit; unit test:
 bg-less seed + `_outer` override → inserted declaration + bgcolor attr.
+**Result (2026-07-04, `fix/phase-53f-f2-f8`):** `_insert_first_table_bg_color`
+(`component_renderer.py`) injects `background-color` + `bgcolor` into the first *visible*
+(`width="100%"`) presentation table — MSO ghost (fixed-width) skipped — gated on the existing
+replace no-oping (`replaced == result`) so it only fires on genuinely bg-less seeds. Fires on
+all 6 (plan's "every bg-less seed"); dark wins **c8 0.702→0.793, c9 0.640→0.732** (section_min
+c8 0.30→0.67, c9 0.36→0.53), 5/6/10 neutral (explicit==implicit white), c7 −0.001 (noise;
+its residual is F1/F4 broken images). 3 unit tests: real full-width-image (styled table) +
+image-block (no style attr) seeds + replace-not-insert gate. Limitation: the `width="100%"`
+discriminator no-ops on a bg-less seed whose outer table isn't `width="100%"` (no regression;
+all 3 current image seeds qualify).
 
 ### F3 — Thread design width through every image emission `[S-M, ~1d]`
 **Defect:** RC-F3. Column images hardcode `width:100%`; most single-image builders drop
@@ -166,6 +176,11 @@ branch (mirror the FRAME branch :614-618). No visible output change expected (as
 resolve by node-id) — corpus byte-diff must be empty; unit test on a synthetic RECTANGLE
 node. Closes the trap under the FRAME-bg gate (`layout_analyzer.py:1287`) before 53.3
 builds on it.
+**Result (2026-07-04):** `imageRef` captured in the reclassify branch (`figma/service.py`,
+mirrors the FRAME branch). Corpus regen byte-identical — the only diff on any case is the
+pre-existing c8 heading trailing-whitespace drift (converter text-join, unrelated to F8).
+The existing `test_parse_props.py` reclassify test was asserting the dropped-ref bug (comment
+"reclassifies, not extracts"); updated to expect the ref + added a no-`imageRef` case.
 
 ## 2. Sequencing & batching
 
@@ -238,3 +253,4 @@ Hard rules for parallel execution:
 | Date | Item | c5 | c6 | c7 | c8 | c9 | c10 | Notes |
 |---|---|---|---|---|---|---|---|---|
 | 2026-07-03 | baseline (audit-4) | 0.879 | 0.801 | 0.624 | 0.702 | 0.640 | 0.679 | full_image; section_min 0.63/0.48/0.30/0.30/0.36/0.09 |
+| 2026-07-04 | F2+F8 | 0.879 | 0.801 | 0.623 | 0.793 | 0.732 | 0.679 | F2 dark bands hold: **c8 +0.091, c9 +0.092** (section_min c8 0.30→0.67, c9 0.36→0.53); 5/6/10 neutral (explicit==implicit white, byte-changed/score-flat); c7 −0.001 noise (residual is F1/F4). F8 corpus byte-identical. BEFORE row reproduced audit-4 exactly. |
