@@ -733,6 +733,23 @@
       "symptom_if_broken": "A text-block/hero section with a pre-heading eyebrow AND partial (non-4-side) section padding renders the heading with the eyebrow's padding and the eyebrow row carrying the heading's intended per-side padding.",
       "closes_when": "_upsert_first_td_css_prop is scoped to the heading/first-content <td> (skipping spliced eyebrow rows), or _cell per-side longhands target data-slot cells explicitly. Verified by a partial-padding eyebrow section rendering the heading padding correctly.",
       "notes": "Speculative gap found by inspection during F6 (RC-F6). No corpus fixture carries partial padding + eyebrow. Also unhandled by F6: grouped / multi-column eyebrows (flat single-col path only) — no corpus fixture either."
+    },
+    {
+      "id": "phase-53f-f7-text-block-cta-hardcoded-radius",
+      "phase": "53.f",
+      "title": "_fills_text_block hardcodes border-radius:4px, discarding btn.border_radius",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "pending",
+      "summary": "The text-block CTA-append path in _fills_text_block emits a hardcoded `border-radius:4px` for every button, discarding btn.border_radius (which the document model carries correctly). The sibling column path _column_cta_row honors btn.border_radius with a '4' fallback. Surfaced during the RC-F7 pill-radius fixture recovery (fix/phase-53f-f7-pills-radius): c5 section-[1] 'Discover →' carries border_radius=25.0 (verified via from_legacy) yet renders 4px; corpus-wide the same hardcode forces every text-block CTA that has a design radius to 4px — confirmed on c6 'Order your fall favorite' and c7 'Explore now' (both 25.0 in the model, 4px in expected.html). c5's 7 COLUMN city pills route through _column_cta_row and correctly render 25px, which is why the fixture patch alone recovered them.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:1345 (_fills_text_block CTA-append — hardcoded border-radius:4px)",
+        "app/design_sync/component_matcher.py:843 (_column_cta_row — the honor-radius pattern to mirror: radius = f'{btn.border_radius:.0f}' if not None else '4')"
+      ],
+      "symptom_if_broken": "A text-block section CTA renders square (border-radius:4px) even when the design specifies a rounded/pill radius. Concretely c5 'Discover →', c6 'Order your fall favorite', c7 'Explore now' show 4px instead of their 25px design radius.",
+      "closes_when": "_fills_text_block threads btn.border_radius (fallback '4', mirroring _column_cta_row:843), and the c5/c6/c7 expected.html baselines are regenerated + diff-audited (text-block CTA border-radius 4px→25px only) with the ladder unchanged (13/9/8/10/8/12).",
+      "notes": "Split out of RC-F7 half-2 during the pill recovery (2026-07-05). User-ratified (2026-07-05) to recover only the 7 c5 column pills via the fixture patch and DEFER this shared render-path fix, because fixing it moves the c6/c7 baselines (they are NOT byte-identical after) and belongs in its own scoped effort. Companion to phase-53f-f7-stale-case5-fixture-drops-pill-radius (closed by the fixture patch) — that was the fixture staleness; this is the residual render-path bug that keeps the section-[1] Discover pill square."
     }
   ],
   "tooling_followups": [

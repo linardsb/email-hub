@@ -348,6 +348,7 @@
                           "children": [
                             {
                               "id": "2833:1639",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2096,6 +2097,7 @@
                           "children": [
                             {
                               "id": "2833:1700",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2211,6 +2213,7 @@
                           "children": [
                             {
                               "id": "2833:1704",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2326,6 +2329,7 @@
                           "children": [
                             {
                               "id": "2833:1708",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2470,6 +2474,7 @@
                           "children": [
                             {
                               "id": "2833:1713",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2585,6 +2590,7 @@
                           "children": [
                             {
                               "id": "2833:1717",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2700,6 +2706,7 @@
                           "children": [
                             {
                               "id": "2833:1721",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
@@ -2815,6 +2822,7 @@
                           "children": [
                             {
                               "id": "2833:1725",
+                              "corner_radius": 25.0,
                               "name": "mj-button",
                               "type": "FRAME",
                               "children": [
