@@ -8,8 +8,8 @@
     "type-check": "turbo type-check"
   },
   "devDependencies": {
-    "next": "^16.2.9",
-    "turbo": "^2.9.18"
+    "next": "^16.2.10",
+    "turbo": "^2.10.2"
   },
   "pnpm": {
     "overrides": {
