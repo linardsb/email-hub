@@ -213,6 +213,37 @@ themselves. Same treatment in `_fills_hero` for `subtext`-before-`headline`.
 **Verify:** case 8 eyebrows render above headings (`data/debug/8/actual.html` order flips);
 case 5 intro order matches design; per-node typography preserved; baselines 5/8 regen after
 diff audit; unit test with an eyebrow-above-heading synthetic section (RED pre-fix).
+**Result (2026-07-04, `fix/phase-53f-f6-eyebrow-order`):** `_pre_heading_body_texts`
+(flat/single-col: body nodes before the first `is_heading` in source order) +
+`_pre_heading_rows_html` (bare `<tr><td data-node-id>` rows using the `padding-bottom`
+LONGHAND — never the `padding:` shorthand — so the section's `_cell` shorthand override still
+lands on the heading `<td>`, not the spliced eyebrow) in `component_matcher.py`.
+`_fills_text_block`/`_fills_hero` split pre/post-heading: pre-heading eyebrows ride the
+heading/headline `SlotFill.stacked_before` (reusing F1's render-time field, docstring
+generalized); the body/subtext slot keeps only post-heading texts. `_per_node_body_texts`
+forces per-node anchoring whenever an eyebrow is lifted (else a lone post-heading paragraph
+would inherit the shared `_body` target = the *eyebrow's* typography and mis-render). Renderer
+`_fill_text_slot` consumes `stacked_before` via `_splice_rows_before_slot` (mirrors F1's
+`_splice_stacked_rows`, anchored on `<td data-slot>`); the existing `_text_<node_id>` upsert arm
+styles the spliced anchors → **per-node typography preserved**. `_detect_content_hierarchy`
+untouched (no corpus-wide reclassification). **Acceptance met (HTML + side-by-side composite vs
+reference):** c8 both `FERRARI 849 TESTAROSSA` / `…SPIDER` eyebrows above their headings, c5
+`New Season Collaboration` above `MAAP x KASK`; 12px `#DA291C` centered / Courier-New 12px
+typography intact; heading `_cell` padding intact (longhand dodge, disk-verified). **Only c5/c8
+carry pre-heading eyebrows — 6/7/9/10 byte-identical.** 7 guards (`test_eyebrow_order.py`)
+RED→GREEN (4 order/stacked_before RED pre-fix) + 3 preserved (typography, heading-padding-
+survives-splice, heading-first-unchanged). **Correctness win, not pixels** (§6): full_image flat
+on all 6, **c8 section_median 0.859→0.868** (+0.009); c5 flat (a ~12px eyebrow reposition is
+sub-rounding on the 5036px composite). Ladder **13/9/8/10/8/12 held**; design_sync **1977 passed**
+/ components **807 passed** / golden-conformance / mypy+pyright 0 errors. **Scope:** flat
+single-column path only (no corpus fixture carries a grouped/multi-column eyebrow); hero path
+wired + unit-tested (no corpus hero eyebrow). **Limitation:** the longhand dodge protects the
+`_cell` *shorthand* path (both acceptance cases are 4-side padding); a *partial*-padding section
+would route `_cell` per-side longhands to the eyebrow row via `_upsert_first_td_css_prop` — not
+exercised by corpus. The pre-existing F8-noted heading trailing-whitespace (stash-proven
+pre-existing, not F6) is stripped by the pre-commit hook and normalized by the snapshot
+comparison, so the committed c8 baseline changes are eyebrow-rows-only; it moves again when
+F3 (Lane A, still unshipped — no Result/§6 row) lands (merge-second protocol).
 
 ### F7 — Card + pill fidelity (fixable half of the structural ceiling) `[M-L, ~2-3d]`
 **Defect:** RC-F7 fixable subset. Child-frame cards invisible (LEGO); pill radius ignored.
@@ -317,3 +348,4 @@ Hard rules for parallel execution:
 | 2026-07-04 | F1 | 0.879 | 0.801 | 0.612 | 0.802 | 0.732 | 0.679 | full_image; section_min 0.634/0.480/**0.271**/**0.688**/0.527/0.087. Heroes now emitted as `<img>` (c7 `2833:1881`, c8 `2833:2264` — HTML-verified, in regen baselines). **Pixel deltas are asset-artifacts, not the win:** hero PNGs absent from fixtures (pre-F1 exported only `images[0]`), unrecoverable (c7 cache URL 403, c8 uncached, no `FIGMA_TOKEN`) → scorer renders heroes blank. c7 **−0.011** (blank gap replaces stretched strip), c8 **+0.009** (median 0.790→0.859). c5/6/9/10 byte-identical (no F1-builder multi-image sections). Real win pending hero re-export (`phase-53.7-asset-reexport-prerequisite`). |
 | 2026-07-04 | F4a-d | 0.877 | 0.814 | 0.612 | 0.802 | 0.723 | 0.678 | **Correctness win, not pixels.** Zero leaks on all 6 (`Shop Now`/`Learn More`/`Read More`/fakeimg/`Feature icon`/📅/📍, entity+UTF-8). **c6 +0.013** (F4a empty cta-fill + F4c emoji-in-span; median 0.682→0.698). c9 (F4b col-icon): median **0.776→0.833** (2 headings recovered from the text-block mis-route) but full −0.009 / section_min 0.527→**0.353** (sections [7]/[8], both col-icon) — F4b fills the real `/api` icon src (`2833:2113`/`2126`), but those assets are **absent from the fixture (disk-verified missing; the render shows a broken-image box)**, which pixel-matches slate's real icon worse than the prior fakeimg grey rectangle did. Production serves these assets; this is a fixture asset-gap (same as F1 heroes) with the table structure intact (verified in the render) — not a code regression. c5/c10 −0.002/−0.001 noise (F4a dropped a non-design seed CTA). c7/c8 byte-identical (untouched). F4d: 5 builder-less slugs removed from the converter scorer (library intact), 0 baseline change. Ladder 13/9/8/10/8/12 held. |
 | 2026-07-04 | F5 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Compliance win, not pixels.** Footer legal/unsub row now preserved (was wiped by whole-cell fill). Only **c5/c7** have a footer section (6/8/9/10 end in `social-icons` → outside F5's reach, **byte-identical**). **c5 −0.033** (0.877→0.844; section_min 0.632→0.492): off-design legal boilerplate ("© Company Name"/"123 Business Street") + unsub links now render on maap's dark footer — accepted compliance/fidelity trade (cf. F4). **c7 +0.003** (0.612→0.615; editorial now in styled `footer-text` cell). Ladder 13/9/8/10/8/12 held. Merge tags `{{unsubscribeUrl}}`/`{{preferencesUrl}}` contained to footer_legal (2/case, zero leak outside). c8 pre-existing heading trailing-whitespace drift (F8-noted) normalized by regression; c8 baseline untouched. |
+| 2026-07-04 | F6 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Correctness win, not pixels.** Eyebrow/kicker order flipped: pre-heading body texts render ABOVE the heading (HTML + composite verified vs reference — c8 `FERRARI 849 TESTAROSSA`/`…SPIDER` above their headings, c5 `New Season Collaboration` above `MAAP x KASK`). Only **c5/c8** carry pre-heading eyebrows (**6/7/9/10 byte-identical**). full_image flat on all 6; **c8 section_median 0.859→0.868** (+0.009, the eyebrow section now matches the design's reading order); c5 flat (0.844/0.492/0.806 — a ~12px eyebrow reposition is sub-rounding on the 5036px composite). Per-node typography preserved (12px `#DA291C` center on c8; Courier New 12px on c5); heading `_cell` padding intact (`padding-bottom` longhand dodges the `padding:`-shorthand override). Ladder **13/9/8/10/8/12 held**. Pre-existing F8-noted heading trailing-whitespace (not F6) stripped by pre-commit hook + normalized by snapshot comparison → committed c8 baseline changes are eyebrow-rows-only; moves again when F3 (Lane A, unshipped) lands. |

@@ -932,7 +932,12 @@ class ComponentRenderer:
         close_start = _find_matching_close(html_str, tag_name, content_start)
         if close_start is None:
             return html_str
-        return html_str[:content_start] + fill.value + html_str[close_start:]
+        result = html_str[:content_start] + fill.value + html_str[close_start:]
+        # F6 (RC-F6): a heading fill can carry pre-heading eyebrow rows to splice
+        # above its own row (empty for every other text fill).
+        if fill.stacked_before:
+            result = self._splice_rows_before_slot(result, slot_id, fill.stacked_before)
+        return result
 
     def _fill_image_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Update src (and optionally width/height/alt) on a data-slot image element."""
@@ -991,6 +996,26 @@ class ComponentRenderer:
             return html_str
         tr_end = close + len("</tr>")
         return html_str[:tr_start] + before + html_str[tr_start:tr_end] + after + html_str[tr_end:]
+
+    @staticmethod
+    def _splice_rows_before_slot(html_str: str, slot_id: str, before: str) -> str:
+        """Inject ``<tr>`` rows before the ``<tr>`` enclosing a text slot's ``<td>`` (F6).
+
+        Mirrors :meth:`_splice_stacked_rows` but anchors on ``<td data-slot=...>``
+        rather than the primary image tag: the pre-heading eyebrow rows land as
+        siblings just above the heading row in the seed's table. The MSO ghost
+        ``<tr>`` sits inside a conditional comment upstream, so the nearest real
+        ``<tr>`` before the slot is the heading's own row. No-ops if the slot or
+        its enclosing row isn't found (defensive).
+        """
+        m = re.search(rf'<td\b[^>]*\bdata-slot="{re.escape(slot_id)}"', html_str)
+        if not m:
+            return html_str
+        opens = list(re.finditer(r"<tr\b", html_str[: m.start()]))
+        if not opens:
+            return html_str
+        tr_start = opens[-1].start()
+        return html_str[:tr_start] + before + html_str[tr_start:]
 
     def _fill_cta_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Update href on a data-slot link element."""
