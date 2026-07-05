@@ -1,11 +1,5 @@
 export type WorkflowExecutionStatus =
-  | "CREATED"
-  | "RUNNING"
-  | "SUCCESS"
-  | "FAILED"
-  | "WARNING"
-  | "PAUSED"
-  | "KILLED";
+  "CREATED" | "RUNNING" | "SUCCESS" | "FAILED" | "WARNING" | "PAUSED" | "KILLED";
 
 export interface TaskRun {
   task_id: string;

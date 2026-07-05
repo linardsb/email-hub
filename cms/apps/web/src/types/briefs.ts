@@ -1,12 +1,5 @@
 export type BriefPlatform =
-  | "jira"
-  | "asana"
-  | "monday"
-  | "clickup"
-  | "trello"
-  | "notion"
-  | "wrike"
-  | "basecamp";
+  "jira" | "asana" | "monday" | "clickup" | "trello" | "notion" | "wrike" | "basecamp";
 
 export type BriefConnectionStatus = "connected" | "syncing" | "error" | "disconnected";
 
