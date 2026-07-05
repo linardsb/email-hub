@@ -4,6 +4,10 @@
   ============================================================================
   Status: TARGET output the converter must converge toward.
   Author: Opus manual conversion using hub components, [Rule N]-tagged.
+  2026-07-05: design values re-audited against data/debug/7/raw_figma.json (node
+  2833:1869) — colors, spacing, radii, and typography now match the Figma spec
+  exactly; verified via 600px Chromium light-mode render vs viaual_design.png
+  (all 6 card bands pixel-exact, total height Δ +2px of 3223).
   Companion files (in the same directory):
     - viaual_design.png                       — source design (ground truth)
     - hub_converter_phase49_baseline.html     — frozen "before" baseline
@@ -164,10 +168,10 @@
                     style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 14px;
                            color: #2c2c2c; mso-line-height-rule: exactly;">
                   <a href="https://example.com/view-online" target="_blank"
-                     style="color: #2c2c2c; text-decoration: underline;">View online</a>
+                     style="color: #2c2c2c; text-decoration: none;">View online</a>
                   &nbsp;|&nbsp;
                   <a href="https://example.com/account" target="_blank"
-                     style="color: #2c2c2c; text-decoration: underline;">My Account</a>
+                     style="color: #2c2c2c; text-decoration: none;">My Account</a>
                 </td>
               </tr>
             </table>
@@ -201,19 +205,19 @@
         <!-- bgcolor matches hero image bottom edge (#4e3092) for seamless continuity -->
         <tr>
           <td class="hero-overlay" bgcolor="#4e3092"
-              style="background-color: #4e3092; padding: 28px 30px 32px 30px;">
+              style="background-color: #4e3092; padding: 20px 30px 20px 30px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td align="center" class="hero-title"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 30px; line-height: 36px;
-                           font-weight: 600; color: #ffffff; padding: 0 0 12px 0;
+                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 30px; line-height: 41px;
+                           font-weight: 600; color: #ffffff; padding: 0 0 20px 0;
                            mso-line-height-rule: exactly;">
                   Frights and brick-built delights
                 </td>
               </tr>
               <tr>
                 <td align="center" class="hero-subtitle"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 16px; line-height: 22px;
+                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 16px; line-height: 20px;
                            font-weight: 400; color: #ffffff; padding: 0 0 22px 0;
                            mso-line-height-rule: exactly;">
                   Conjure up even more joy this scary season with new Halloween sets.
@@ -224,8 +228,8 @@
                 <td align="center" style="padding: 0;">
                   <!--[if mso]>
                   <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
-                               href="https://example.com/halloween" style="height:38px;v-text-anchor:middle;width:130px;"
-                               arcsize="50%" strokecolor="#ffffff" fillcolor="#ffffff">
+                               href="https://example.com/halloween" style="height:43px;v-text-anchor:middle;width:126px;"
+                               arcsize="50%" strokecolor="#000000" strokeweight="2px" fillcolor="#ffffff">
                     <w:anchorlock/>
                     <center style="color:#000000;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Explore now</center>
                   </v:roundrect>
@@ -233,12 +237,12 @@
                   <!--[if !mso]><!-->
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
                          class="cta-btn"
-                         style="background-color: #ffffff; border-radius: 19px;">
+                         style="background-color: #ffffff; border: 2px solid #000000; border-radius: 25px; border-collapse: separate;">
                     <tr>
-                      <td style="padding: 9px 24px;">
+                      <td style="padding: 10px 18px;">
                         <a href="https://example.com/halloween" target="_blank"
-                           style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 20px;
-                                  font-weight: 700; color: #000000; text-decoration: none; display: inline-block;">
+                           style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 19px;
+                                  font-weight: 700; color: #000000; text-decoration: none; display: block;">
                           Explore now
                         </a>
                       </td>
@@ -266,11 +270,11 @@
         <!-- Component basis: text-block-centered.html — bgcolor=#afca01 -->
         <tr>
           <td class="lime-bg" bgcolor="#afca01"
-              style="background-color: #afca01; padding: 16px 20px 8px 20px;">
+              style="background-color: #afca01; padding: 20px 20px 20px 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td align="center" class="textblock-heading"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 30px; line-height: 36px;
+                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 30px; line-height: 41px;
                            font-weight: 600; color: #000000; padding: 0 0 8px 0;
                            mso-line-height-rule: exactly;">
                   Membership Tip
@@ -279,7 +283,7 @@
               <tr>
                 <td align="center" class="textblock-body"
                     style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 16px; line-height: 20px;
-                           font-weight: 400; color: #000000; padding: 0 0 8px 0;
+                           font-weight: 400; color: #000000; padding: 0;
                            mso-line-height-rule: exactly;">
                   Your LEGO&reg; Insiders points total is: 0
                 </td>
@@ -297,7 +301,7 @@
                 Inputs per-design: parent FRAME's fills[0].color, cornerRadius, child FRAME count.
                 Action: emit ONE wrapping <table bgcolor> with border-radius matching the FRAME's
                 cornerRadius; render each child as an inner row. THIS LEGO instance: outer table
-                bgcolor=#ffffff, border-radius:16px (read from the FRAME's cornerRadius).
+                bgcolor=#ffffff, border-radius:12px (read from the FRAME's cornerRadius).
 
              [Rule 2 — responsive image overflow on stacked columns]
                 Inputs per-design: image's inline max-width vs parent column's stacked mobile width.
@@ -308,8 +312,8 @@
              [Rule 3 — image padding inside non-bleed container]
                 Inputs per-design: image-Frame's absoluteBoundingBox vs parent FRAME's
                 absoluteBoundingBox; emit the visible top/right/bottom/left margins as <td>
-                padding (rounded to 4px increments). THIS LEGO instance: 14px 0 14px 14px (image
-                is inset 14px from card top/bottom/left and flush-right against content column).
+                padding (rounded to 4px increments). THIS LEGO instance: 20px 0 20px 20px (image
+                is inset 20px from card top/bottom/left and flush-right against the column gap).
 
              [Rule 7 — pill alignment from child x-coordinate]
                 Inputs per-design: pill FRAME's absoluteBoundingBox.x vs its parent column's
@@ -336,45 +340,45 @@
                 border-top-left-radius:6px + border-bottom-left-radius:6px only. -->
         <tr>
           <td class="lime-bg" bgcolor="#afca01"
-              style="background-color: #afca01; padding: 8px 20px 8px 20px;">
+              style="background-color: #afca01; padding: 0 20px 0 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="artcard-bg"
-                   style="background-color: #ffffff; border-radius: 16px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 12px; border-collapse: separate; overflow: hidden;">
               <tr>
                 <td style="padding: 0;">
                   <!--[if mso]>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tr><td width="250" valign="top">
+                    <tr><td width="270" valign="top">
                   <![endif]-->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                          style="font-size: 0; text-align: left;">
                     <tr>
                       <td style="font-size: 0;">
-                        <div class="column" style="display: inline-block; max-width: 250px; width: 100%; vertical-align: middle;">
+                        <div class="column" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td class="card-img-cell" style="padding: 14px 0 14px 14px; line-height: 0; font-size: 0;">
+                              <td class="card-img-cell" style="padding: 20px 0 20px 20px; line-height: 0; font-size: 0;">
                                 <img src="lego-insiders-halloween-assets/card1-art-prints.png"
-                                     alt="Bundle of 6 Halloween posters" width="222" class="bannerimg"
-                                     style="display: block; width: 100%; max-width: 222px; height: auto; border: 0;
+                                     alt="Bundle of 6 Halloween posters" width="250" class="bannerimg"
+                                     style="display: block; width: 100%; max-width: 250px; height: auto; border: 0;
                                             border-top-left-radius: 6px; border-bottom-left-radius: 6px;" />
                               </td>
                             </tr>
                           </table>
                         </div>
-                        <!--[if mso]></td><td width="270" valign="middle"><![endif]-->
-                        <div class="column stack-pad" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
+                        <!--[if mso]></td><td width="290" valign="middle"><![endif]-->
+                        <div class="column stack-pad" style="display: inline-block; max-width: 290px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td style="padding: 16px 20px 12px 20px;">
+                              <td style="padding: 20px 20px 20px 20px;">
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                   <!-- [GAP] tag pill — left-aligned above heading, sharp corners -->
                                   <tr>
                                     <td align="left" style="padding: 0 0 10px 0;">
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left"
-                                             bgcolor="#836eb2" style="background-color: #836eb2; border-radius: 0;">
+                                             bgcolor="#4e3092" style="background-color: #4e3092; border-radius: 0;">
                                         <tr>
-                                          <td style="padding: 4px 12px;
+                                          <td style="padding: 5px 10px;
                                                      font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px;
                                                      line-height: 14px; font-weight: 700; color: #ffffff;
                                                      text-align: center; mso-line-height-rule: exactly;">
@@ -386,7 +390,7 @@
                                   </tr>
                                   <tr>
                                     <td class="artcard-heading"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 22px; line-height: 28px;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 22px; line-height: 30px;
                                                font-weight: 600; color: #000000; padding: 0 0 10px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Bundle of 6 Halloween posters
@@ -394,8 +398,8 @@
                                   </tr>
                                   <tr>
                                     <td class="artcard-body"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 20px;
-                                               font-weight: 400; color: #000000; padding: 0 0 14px 0; text-align: left;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 16px; line-height: 20px;
+                                               font-weight: 400; color: #000000; padding: 0 0 20px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       As a member, you can make things even more mysterious with exclusive
                                       Halloween rewards. Like our bundle of 6 posters for 3,000 points.
@@ -406,7 +410,7 @@
                                       <!--[if mso]>
                                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
                                                    href="https://example.com/redeem-art-prints"
-                                                   style="height:38px;v-text-anchor:middle;width:160px;"
+                                                   style="height:43px;v-text-anchor:middle;width:150px;"
                                                    arcsize="50%" strokecolor="#4e3092" fillcolor="#4e3092">
                                         <w:anchorlock/>
                                         <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Redeem reward</center>
@@ -414,13 +418,13 @@
                                       <![endif]-->
                                       <!--[if !mso]><!-->
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-btn"
-                                             style="background-color: #4e3092; border-radius: 19px;">
+                                             style="background-color: #4e3092; border-radius: 25px;">
                                         <tr>
-                                          <td style="padding: 9px 24px;">
+                                          <td style="padding: 12px 20px;">
                                             <a href="https://example.com/redeem-art-prints" target="_blank"
                                                style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px;
-                                                      line-height: 20px; font-weight: 700; color: #ffffff;
-                                                      text-decoration: none; display: inline-block;">
+                                                      line-height: 19px; font-weight: 700; color: #ffffff;
+                                                      text-decoration: none; display: block;">
                                               Redeem reward
                                             </a>
                                           </td>
@@ -453,44 +457,44 @@
              rule does NOT assume both pills look the same; it reads each FRAME independently. -->
         <tr>
           <td class="lime-bg" bgcolor="#afca01"
-              style="background-color: #afca01; padding: 8px 20px 8px 20px;">
+              style="background-color: #afca01; padding: 20px 20px 0 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="artcard-bg"
-                   style="background-color: #ffffff; border-radius: 16px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 12px; border-collapse: separate; overflow: hidden;">
               <tr>
                 <td style="padding: 0;">
                   <!--[if mso]>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tr><td width="250" valign="top">
+                    <tr><td width="270" valign="top">
                   <![endif]-->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                          style="font-size: 0; text-align: left;">
                     <tr>
                       <td style="font-size: 0;">
-                        <div class="column" style="display: inline-block; max-width: 250px; width: 100%; vertical-align: middle;">
+                        <div class="column" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td class="card-img-cell" style="padding: 14px 0 14px 14px; line-height: 0; font-size: 0;">
+                              <td class="card-img-cell" style="padding: 20px 0 20px 20px; line-height: 0; font-size: 0;">
                                 <img src="lego-insiders-halloween-assets/card2-stationery.png"
-                                     alt="Stranger Things Sketchbook" width="222" class="bannerimg"
-                                     style="display: block; width: 100%; max-width: 222px; height: auto; border: 0;
+                                     alt="Stranger Things Sketchbook" width="250" class="bannerimg"
+                                     style="display: block; width: 100%; max-width: 250px; height: auto; border: 0;
                                             border-top-left-radius: 6px; border-bottom-left-radius: 6px;" />
                               </td>
                             </tr>
                           </table>
                         </div>
-                        <!--[if mso]></td><td width="270" valign="middle"><![endif]-->
-                        <div class="column stack-pad" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
+                        <!--[if mso]></td><td width="290" valign="middle"><![endif]-->
+                        <div class="column stack-pad" style="display: inline-block; max-width: 290px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td style="padding: 16px 20px 12px 20px;">
+                              <td style="padding: 20px 20px 20px 20px;">
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                   <tr>
                                     <td align="left" style="padding: 0 0 10px 0;">
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left"
-                                             bgcolor="#836eb2" style="background-color: #836eb2; border-radius: 0;">
+                                             bgcolor="#4e3092" style="background-color: #4e3092; border-radius: 0;">
                                         <tr>
-                                          <td style="padding: 4px 12px;
+                                          <td style="padding: 5px 10px;
                                                      font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px;
                                                      line-height: 14px; font-weight: 700; color: #ffffff;
                                                      text-align: center; mso-line-height-rule: exactly;">
@@ -502,7 +506,7 @@
                                   </tr>
                                   <tr>
                                     <td class="artcard-heading"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 22px; line-height: 28px;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 22px; line-height: 30px;
                                                font-weight: 600; color: #000000; padding: 0 0 10px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Stranger Things Sketchbook
@@ -510,8 +514,8 @@
                                   </tr>
                                   <tr>
                                     <td class="artcard-body"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 20px;
-                                               font-weight: 400; color: #000000; padding: 0 0 14px 0; text-align: left;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 16px; line-height: 20px;
+                                               font-weight: 400; color: #000000; padding: 0 0 20px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Get creative and relive memories of the legendary series with this member-only reward.
                                     </td>
@@ -521,7 +525,7 @@
                                       <!--[if mso]>
                                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
                                                    href="https://example.com/redeem-stationery"
-                                                   style="height:38px;v-text-anchor:middle;width:160px;"
+                                                   style="height:43px;v-text-anchor:middle;width:150px;"
                                                    arcsize="50%" strokecolor="#4e3092" fillcolor="#4e3092">
                                         <w:anchorlock/>
                                         <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Redeem reward</center>
@@ -529,13 +533,13 @@
                                       <![endif]-->
                                       <!--[if !mso]><!-->
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-btn"
-                                             style="background-color: #4e3092; border-radius: 19px;">
+                                             style="background-color: #4e3092; border-radius: 25px;">
                                         <tr>
-                                          <td style="padding: 9px 24px;">
+                                          <td style="padding: 12px 20px;">
                                             <a href="https://example.com/redeem-stationery" target="_blank"
                                                style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px;
-                                                      line-height: 20px; font-weight: 700; color: #ffffff;
-                                                      text-decoration: none; display: inline-block;">
+                                                      line-height: 19px; font-weight: 700; color: #ffffff;
+                                                      text-decoration: none; display: block;">
                                               Redeem reward
                                             </a>
                                           </td>
@@ -559,17 +563,17 @@
           </td>
         </tr>
 
-        <!-- ───────────────────────── #9 "EXPECT LOTS OF TREATS" HEADING (LIME GREEN, LEFT) ───────────────────────── -->
-        <!-- Component basis: text-block.html (left-aligned variant) — bgcolor=#afca01.
-             [GAP] Heading is left-aligned in the design; default text-block-centered would centre it. -->
+        <!-- ───────────────────────── #9 "EXPECT LOTS OF TREATS" HEADING (LIME GREEN) ───────────────────────── -->
+        <!-- Component basis: text-block-centered.html — bgcolor=#afca01.
+             Heading is centre-aligned (Figma TEXT node 2833:1945 align=CENTER), 30px/600/41. -->
         <tr>
           <td class="lime-bg" bgcolor="#afca01"
-              style="background-color: #afca01; padding: 24px 20px 12px 20px;">
+              style="background-color: #afca01; padding: 40px 20px 20px 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td align="left" class="textblock-heading"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 28px; line-height: 34px;
-                           font-weight: 700; color: #000000; padding: 0;
+                <td align="center" class="textblock-heading"
+                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 30px; line-height: 41px;
+                           font-weight: 600; color: #000000; padding: 0;
                            mso-line-height-rule: exactly;">
                   Expect lots of treats this Halloween!
                 </td>
@@ -593,8 +597,8 @@
              [Rule 2] class="bannerimg" on the product image. Same per-design behaviour as #7.
 
              [Rule 3] Image inset from card edges. Inputs per-design: image-Frame's bbox vs
-                parent card's content-area bbox. THIS LEGO instance: padding 18px 14px 18px 0
-                (14px from card right edge, flush-left against content-column boundary).
+                parent card's content-area bbox. THIS LEGO instance: padding 20px 20px 20px 10px
+                (20px from card top/right/bottom edges, 10px gap toward the text column).
                 When the rule applies to a different design, the inset values come from THAT
                 design's measurement — could be 0, 8, 24, or any other px value.
 
@@ -617,75 +621,76 @@
 
              [Rule 9] class="artcard-bg" on the inner white card. Same per-design behaviour. -->
         <tr>
-          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 8px 20px 8px 20px;">
+          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 0 20px 0 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="artcard-bg"
-                   style="background-color: #ffffff; border-radius: 16px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 12px; border-collapse: separate; overflow: hidden;">
               <tr>
                 <td style="padding: 0;">
                   <!--[if mso]>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl">
-                    <tr><td width="240" valign="middle" dir="ltr">
+                    <tr><td width="270" valign="middle" dir="ltr">
                   <![endif]-->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                          style="font-size: 0; text-align: left;">
                     <tr>
                       <td class="flip-row" style="font-size: 0;">
-                        <div class="column" dir="ltr" style="display: inline-block; max-width: 240px; width: 100%; vertical-align: middle;">
+                        <div class="column" dir="ltr" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
                               <td align="left" class="img-pad"
-                                  style="padding: 18px 14px 18px 0; line-height: 0; font-size: 0;">
+                                  style="padding: 20px 20px 20px 10px; line-height: 0; font-size: 0;">
                                 <img src="lego-insiders-halloween-assets/product1-wreath.png"
-                                     alt="Halloween Wreath LEGO set" width="220" class="bannerimg"
-                                     style="display: block; width: 100%; max-width: 220px; height: auto; border: 0;" />
+                                     alt="Halloween Wreath LEGO set" width="240" class="bannerimg"
+                                     style="display: block; width: 100%; max-width: 240px; height: auto; border: 0;
+                                            border-top-left-radius: 6px; border-bottom-left-radius: 6px;" />
                               </td>
                             </tr>
                           </table>
                         </div>
-                        <!--[if mso]></td><td width="280" valign="middle" dir="ltr"><![endif]-->
-                        <div class="column stack-pad" dir="ltr" style="display: inline-block; max-width: 280px; width: 100%; vertical-align: middle;">
+                        <!--[if mso]></td><td width="290" valign="middle" dir="ltr"><![endif]-->
+                        <div class="column stack-pad" dir="ltr" style="display: inline-block; max-width: 290px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td style="padding: 18px 16px 18px 22px;">
+                              <td style="padding: 20px 10px 20px 20px;">
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                   <tr>
                                     <td class="product-title"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 24px;
-                                               font-weight: 700; color: #000000; padding: 0 0 14px 0; text-align: left;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 25px;
+                                               font-weight: 600; color: #000000; padding: 0 0 20px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Halloween Wreath
                                     </td>
                                   </tr>
                                   <tr>
                                     <!-- [GAP] spec mini-table: 2 columns × (icon + bold value + small label) -->
-                                    <td style="padding: 0 0 16px 0;">
+                                    <td style="padding: 0 0 20px 0;">
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 10px 0 0; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-pieces-1.png" alt="" role="presentation"
                                                  width="16" height="22" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top" style="padding: 0 18px 0 0;">
+                                          <td valign="middle" width="40" style="padding: 0;">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">617</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000;
                                                               mso-line-height-rule: exactly;">Pieces</td></tr>
                                             </table>
                                           </td>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 2px; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-points-1.png" alt="" role="presentation"
                                                  width="26" height="26" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top">
+                                          <td valign="middle">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">+260</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000; max-width: 140px;
                                                               mso-line-height-rule: exactly;">LEGO&reg; Insiders Points</td></tr>
                                             </table>
@@ -699,7 +704,7 @@
                                       <!--[if mso]>
                                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
                                                    href="https://example.com/halloween-wreath"
-                                                   style="height:36px;v-text-anchor:middle;width:110px;"
+                                                   style="height:43px;v-text-anchor:middle;width:108px;"
                                                    arcsize="50%" strokecolor="#4e3092" fillcolor="#4e3092">
                                         <w:anchorlock/>
                                         <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Shop now</center>
@@ -707,13 +712,13 @@
                                       <![endif]-->
                                       <!--[if !mso]><!-->
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-btn"
-                                             style="background-color: #4e3092; border-radius: 18px;">
+                                             style="background-color: #4e3092; border-radius: 25px;">
                                         <tr>
-                                          <td style="padding: 8px 22px;">
+                                          <td style="padding: 12px 20px;">
                                             <a href="https://example.com/halloween-wreath" target="_blank"
                                                style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px;
-                                                      line-height: 18px; font-weight: 700; color: #ffffff;
-                                                      text-decoration: none; display: inline-block;">
+                                                      line-height: 19px; font-weight: 700; color: #ffffff;
+                                                      text-decoration: none; display: block;">
                                               Shop now
                                             </a>
                                           </td>
@@ -745,74 +750,75 @@
              rule's action is a no-op. Cards #11 and #13 fall in this branch; cards #10 and #12
              require the dir-flip. -->
         <tr>
-          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 8px 20px 8px 20px;">
+          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 20px 20px 0 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="artcard-bg"
-                   style="background-color: #ffffff; border-radius: 16px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 12px; border-collapse: separate; overflow: hidden;">
               <tr>
                 <td style="padding: 0;">
                   <!--[if mso]>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tr><td width="240" valign="middle">
+                    <tr><td width="270" valign="middle">
                   <![endif]-->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                          style="font-size: 0; text-align: left;">
                     <tr>
                       <td style="font-size: 0;">
-                        <div class="column" style="display: inline-block; max-width: 240px; width: 100%; vertical-align: middle;">
+                        <div class="column" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
                               <td align="left" class="img-pad"
-                                  style="padding: 18px 0 18px 14px; line-height: 0; font-size: 0;">
+                                  style="padding: 20px 10px 20px 20px; line-height: 0; font-size: 0;">
                                 <img src="lego-insiders-halloween-assets/product2-hocuspocus.png"
-                                     alt="Hocus Pocus Sanderson Sisters Cottage LEGO set" width="220" class="bannerimg"
-                                     style="display: block; width: 100%; max-width: 220px; height: auto; border: 0;" />
+                                     alt="Hocus Pocus Sanderson Sisters Cottage LEGO set" width="240" class="bannerimg"
+                                     style="display: block; width: 100%; max-width: 240px; height: auto; border: 0;
+                                            border-top-left-radius: 6px; border-bottom-left-radius: 6px;" />
                               </td>
                             </tr>
                           </table>
                         </div>
-                        <!--[if mso]></td><td width="280" valign="middle"><![endif]-->
-                        <div class="column stack-pad" style="display: inline-block; max-width: 280px; width: 100%; vertical-align: middle;">
+                        <!--[if mso]></td><td width="290" valign="middle"><![endif]-->
+                        <div class="column stack-pad" style="display: inline-block; max-width: 290px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td style="padding: 18px 22px 18px 16px;">
+                              <td style="padding: 20px 20px 20px 10px;">
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                   <tr>
                                     <td class="product-title"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 24px;
-                                               font-weight: 700; color: #000000; padding: 0 0 14px 0; text-align: left;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 25px;
+                                               font-weight: 600; color: #000000; padding: 0 0 20px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Disney Hocus Pocus: The Sanderson Sisters&rsquo; Cottage
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td style="padding: 0 0 16px 0;">
+                                    <td style="padding: 0 0 20px 0;">
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 10px 0 0; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-pieces-2.png" alt="" role="presentation"
                                                  width="16" height="22" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top" style="padding: 0 18px 0 0;">
+                                          <td valign="middle" width="40" style="padding: 0;">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">2316</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000;
                                                               mso-line-height-rule: exactly;">Pieces</td></tr>
                                             </table>
                                           </td>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 2px; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-points-2.png" alt="" role="presentation"
                                                  width="26" height="26" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top">
+                                          <td valign="middle">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">+1495</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000; max-width: 140px;
                                                               mso-line-height-rule: exactly;">LEGO&reg; Insiders Points</td></tr>
                                             </table>
@@ -826,7 +832,7 @@
                                       <!--[if mso]>
                                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
                                                    href="https://example.com/hocus-pocus"
-                                                   style="height:36px;v-text-anchor:middle;width:110px;"
+                                                   style="height:43px;v-text-anchor:middle;width:108px;"
                                                    arcsize="50%" strokecolor="#4e3092" fillcolor="#4e3092">
                                         <w:anchorlock/>
                                         <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Shop now</center>
@@ -834,13 +840,13 @@
                                       <![endif]-->
                                       <!--[if !mso]><!-->
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-btn"
-                                             style="background-color: #4e3092; border-radius: 18px;">
+                                             style="background-color: #4e3092; border-radius: 25px;">
                                         <tr>
-                                          <td style="padding: 8px 22px;">
+                                          <td style="padding: 12px 20px;">
                                             <a href="https://example.com/hocus-pocus" target="_blank"
                                                style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px;
-                                                      line-height: 18px; font-weight: 700; color: #ffffff;
-                                                      text-decoration: none; display: inline-block;">
+                                                      line-height: 19px; font-weight: 700; color: #ffffff;
+                                                      text-decoration: none; display: block;">
                                               Shop now
                                             </a>
                                           </td>
@@ -872,74 +878,75 @@
              puts both cards in the image-RIGHT desktop slot.
              [Rule 1] [Rule 2] [Rule 3] [Rule 6] [Rule 9]. -->
         <tr>
-          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 8px 20px 8px 20px;">
+          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 20px 20px 0 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="artcard-bg"
-                   style="background-color: #ffffff; border-radius: 16px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 12px; border-collapse: separate; overflow: hidden;">
               <tr>
                 <td style="padding: 0;">
                   <!--[if mso]>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl">
-                    <tr><td width="240" valign="middle" dir="ltr">
+                    <tr><td width="270" valign="middle" dir="ltr">
                   <![endif]-->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                          style="font-size: 0; text-align: left;">
                     <tr>
                       <td class="flip-row" style="font-size: 0;">
-                        <div class="column" dir="ltr" style="display: inline-block; max-width: 240px; width: 100%; vertical-align: middle;">
+                        <div class="column" dir="ltr" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
                               <td align="left" class="img-pad"
-                                  style="padding: 18px 14px 18px 0; line-height: 0; font-size: 0;">
+                                  style="padding: 20px 20px 20px 10px; line-height: 0; font-size: 0;">
                                 <img src="lego-insiders-halloween-assets/product3-mansion.png"
-                                     alt="Haunted Mansion LEGO set" width="220" class="bannerimg"
-                                     style="display: block; width: 100%; max-width: 220px; height: auto; border: 0;" />
+                                     alt="Haunted Mansion LEGO set" width="240" class="bannerimg"
+                                     style="display: block; width: 100%; max-width: 240px; height: auto; border: 0;
+                                            border-top-left-radius: 6px; border-bottom-left-radius: 6px;" />
                               </td>
                             </tr>
                           </table>
                         </div>
-                        <!--[if mso]></td><td width="280" valign="middle" dir="ltr"><![endif]-->
-                        <div class="column stack-pad" dir="ltr" style="display: inline-block; max-width: 280px; width: 100%; vertical-align: middle;">
+                        <!--[if mso]></td><td width="290" valign="middle" dir="ltr"><![endif]-->
+                        <div class="column stack-pad" dir="ltr" style="display: inline-block; max-width: 290px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td style="padding: 18px 16px 18px 22px;">
+                              <td style="padding: 20px 10px 20px 20px;">
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                   <tr>
                                     <td class="product-title"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 24px;
-                                               font-weight: 700; color: #000000; padding: 0 0 14px 0; text-align: left;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 25px;
+                                               font-weight: 600; color: #000000; padding: 0 0 20px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Haunted mansion
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td style="padding: 0 0 16px 0;">
+                                    <td style="padding: 0 0 20px 0;">
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 10px 0 0; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-pieces-3.png" alt="" role="presentation"
                                                  width="16" height="22" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top" style="padding: 0 18px 0 0;">
+                                          <td valign="middle" width="40" style="padding: 0;">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">736</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000;
                                                               mso-line-height-rule: exactly;">Pieces</td></tr>
                                             </table>
                                           </td>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 2px; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-points-3.png" alt="" role="presentation"
                                                  width="26" height="26" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top">
+                                          <td valign="middle">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">+585</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000; max-width: 140px;
                                                               mso-line-height-rule: exactly;">LEGO&reg; Insiders Points</td></tr>
                                             </table>
@@ -953,7 +960,7 @@
                                       <!--[if mso]>
                                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
                                                    href="https://example.com/haunted-mansion"
-                                                   style="height:36px;v-text-anchor:middle;width:110px;"
+                                                   style="height:43px;v-text-anchor:middle;width:108px;"
                                                    arcsize="50%" strokecolor="#4e3092" fillcolor="#4e3092">
                                         <w:anchorlock/>
                                         <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Shop now</center>
@@ -961,13 +968,13 @@
                                       <![endif]-->
                                       <!--[if !mso]><!-->
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-btn"
-                                             style="background-color: #4e3092; border-radius: 18px;">
+                                             style="background-color: #4e3092; border-radius: 25px;">
                                         <tr>
-                                          <td style="padding: 8px 22px;">
+                                          <td style="padding: 12px 20px;">
                                             <a href="https://example.com/haunted-mansion" target="_blank"
                                                style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px;
-                                                      line-height: 18px; font-weight: 700; color: #ffffff;
-                                                      text-decoration: none; display: inline-block;">
+                                                      line-height: 19px; font-weight: 700; color: #ffffff;
+                                                      text-decoration: none; display: block;">
                                               Shop now
                                             </a>
                                           </td>
@@ -995,74 +1002,75 @@
         <!-- Same shape as card #11. [Rule 1] [Rule 2] [Rule 3] [Rule 9] fire; [Rule 6] is a
              no-op here (DOM order matches desktop visual order). -->
         <tr>
-          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 8px 20px 24px 20px;">
+          <td class="lime-bg" bgcolor="#afca01" style="background-color: #afca01; padding: 20px 20px 20px 20px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="artcard-bg"
-                   style="background-color: #ffffff; border-radius: 16px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 12px; border-collapse: separate; overflow: hidden;">
               <tr>
                 <td style="padding: 0;">
                   <!--[if mso]>
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                    <tr><td width="240" valign="middle">
+                    <tr><td width="270" valign="middle">
                   <![endif]-->
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                          style="font-size: 0; text-align: left;">
                     <tr>
                       <td style="font-size: 0;">
-                        <div class="column" style="display: inline-block; max-width: 240px; width: 100%; vertical-align: middle;">
+                        <div class="column" style="display: inline-block; max-width: 270px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
                               <td align="left" class="img-pad"
-                                  style="padding: 18px 0 18px 14px; line-height: 0; font-size: 0;">
+                                  style="padding: 20px 10px 20px 20px; line-height: 0; font-size: 0;">
                                 <img src="lego-insiders-halloween-assets/product4-jackolantern.png"
-                                     alt="Jack-O'-Lantern Pickup Truck LEGO set" width="220" class="bannerimg"
-                                     style="display: block; width: 100%; max-width: 220px; height: auto; border: 0;" />
+                                     alt="Jack-O'-Lantern Pickup Truck LEGO set" width="240" class="bannerimg"
+                                     style="display: block; width: 100%; max-width: 240px; height: auto; border: 0;
+                                            border-top-left-radius: 6px; border-bottom-left-radius: 6px;" />
                               </td>
                             </tr>
                           </table>
                         </div>
-                        <!--[if mso]></td><td width="280" valign="middle"><![endif]-->
-                        <div class="column stack-pad" style="display: inline-block; max-width: 280px; width: 100%; vertical-align: middle;">
+                        <!--[if mso]></td><td width="290" valign="middle"><![endif]-->
+                        <div class="column stack-pad" style="display: inline-block; max-width: 290px; width: 100%; vertical-align: middle;">
                           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                             <tr>
-                              <td style="padding: 18px 22px 18px 16px;">
+                              <td style="padding: 20px 20px 20px 10px;">
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                   <tr>
                                     <td class="product-title"
-                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 24px;
-                                               font-weight: 700; color: #000000; padding: 0 0 14px 0; text-align: left;
+                                        style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 25px;
+                                               font-weight: 600; color: #000000; padding: 0 0 20px 0; text-align: left;
                                                mso-line-height-rule: exactly;">
                                       Jack-O&rsquo;-Lantern Pickup Truck
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td style="padding: 0 0 16px 0;">
+                                    <td style="padding: 0 0 20px 0;">
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 10px 0 0; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-pieces-4.png" alt="" role="presentation"
                                                  width="16" height="22" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top" style="padding: 0 18px 0 0;">
+                                          <td valign="middle" width="40" style="padding: 0;">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">177</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000;
                                                               mso-line-height-rule: exactly;">Pieces</td></tr>
                                             </table>
                                           </td>
-                                          <td valign="top" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                                          <td valign="middle" style="padding: 0 2px; line-height: 0; font-size: 0;">
                                             <img src="lego-insiders-halloween-assets/icon-points-4.png" alt="" role="presentation"
                                                  width="26" height="26" style="display: block; border: 0;" />
                                           </td>
-                                          <td valign="top">
+                                          <td valign="middle">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 16px;
-                                                              font-weight: 700; color: #000000; padding: 0 0 2px 0;
+                                              <tr><td class="product-stat-value" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                                                              font-weight: 500; color: #000000; padding: 0;
                                                               mso-line-height-rule: exactly;">+97</td></tr>
-                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 10px; line-height: 12px;
+                                              <tr><td class="product-stat-label" style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 8px; line-height: 11px;
                                                               font-weight: 500; color: #000000; max-width: 140px;
                                                               mso-line-height-rule: exactly;">LEGO&reg; Insiders Points</td></tr>
                                             </table>
@@ -1076,7 +1084,7 @@
                                       <!--[if mso]>
                                       <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"
                                                    href="https://example.com/jack-o-lantern"
-                                                   style="height:36px;v-text-anchor:middle;width:110px;"
+                                                   style="height:43px;v-text-anchor:middle;width:108px;"
                                                    arcsize="50%" strokecolor="#4e3092" fillcolor="#4e3092">
                                         <w:anchorlock/>
                                         <center style="color:#ffffff;font-family:'Segoe UI',sans-serif;font-size:14px;font-weight:bold;">Shop now</center>
@@ -1084,13 +1092,13 @@
                                       <![endif]-->
                                       <!--[if !mso]><!-->
                                       <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="cta-btn"
-                                             style="background-color: #4e3092; border-radius: 18px;">
+                                             style="background-color: #4e3092; border-radius: 25px;">
                                         <tr>
-                                          <td style="padding: 8px 22px;">
+                                          <td style="padding: 12px 20px;">
                                             <a href="https://example.com/jack-o-lantern" target="_blank"
                                                style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px;
-                                                      line-height: 18px; font-weight: 700; color: #ffffff;
-                                                      text-decoration: none; display: inline-block;">
+                                                      line-height: 19px; font-weight: 700; color: #ffffff;
+                                                      text-decoration: none; display: block;">
                                               Shop now
                                             </a>
                                           </td>
@@ -1139,9 +1147,10 @@
                   (a) a literal `|` character with `color: <neutral>; padding: 0 14px;`,
                   (b) a 1px-wide bgcolor <td> for a clean line, or
                   (c) an <hr> for a horizontal divider.
-                THIS LEGO instance: the design shows a `|` between Andy and the points icon
-                that has no corresponding FRAME node — emitted as a literal pipe with
-                color:#c8c8c8 (neutral mid-grey, readable in both light and dark modes).
+                THIS LEGO instance: the divider between Andy and the points icon DOES exist
+                in the FRAME tree as a column stroke (node 2833:2048, individualStrokeWeights
+                left=1, #d9d9d9) — emitted as option (b): border-left: 1px solid #d9d9d9 on
+                the points-icon column's <td>, not as a literal pipe.
 
              [Rule 9 — dark-mode contrast on a wrapper-flipped bg, sub-pattern: user-info row]
                 Inputs per-design: text cells on a wrapper-flipped dark-mode bg whose default
@@ -1149,35 +1158,30 @@
                 Action: add a `footer-strong`-type class so name/number cells flip to the
                 dark-palette emphasis colour (typically #fff) in dark mode; leave the
                 neutral-grey divider unchanged.
-                THIS LEGO instance: "Andy" and "0" cells get class="footer-strong"; pipe
-                stays #c8c8c8. -->
+                THIS LEGO instance: "Andy" and "0" cells get class="footer-strong"; the
+                1px #d9d9d9 border-left divider stays as-is. -->
         <tr>
           <td class="footer-bg" bgcolor="#f4f4f4"
-              style="background-color: #f4f4f4; padding: 24px 60px 14px 60px;">
+              style="background-color: #f4f4f4; padding: 20px 80px 0 80px;">
             <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"
                    style="margin: 0 auto;">
               <tr>
-                <td valign="middle" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                <td width="60" align="center" valign="middle" style="line-height: 0; font-size: 0;">
                   <img src="lego-insiders-halloween-assets/user-avatar.png" alt="Andy avatar"
-                       width="30" height="30" style="display: block; border: 0; border-radius: 15px;" />
+                       width="30" height="30" style="display: inline-block; border: 0; border-radius: 15px;" />
                 </td>
-                <td valign="middle" align="left" class="footer-strong"
+                <td width="60" valign="middle" align="left" class="footer-strong"
                     style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 15px; line-height: 20px;
-                           font-weight: 600; color: #000000; padding: 0 14px 0 0; white-space: nowrap;
+                           font-weight: 600; color: #000000; white-space: nowrap;
                            mso-line-height-rule: exactly;">
                   Andy
                 </td>
-                <td valign="middle"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 18px; line-height: 20px;
-                           font-weight: 400; color: #c8c8c8; padding: 0 14px 0 0;
-                           mso-line-height-rule: exactly;">
-                  |
-                </td>
-                <td valign="middle" style="padding: 0 8px 0 0; line-height: 0; font-size: 0;">
+                <td width="60" align="center" valign="middle"
+                    style="border-left: 1px solid #d9d9d9; line-height: 0; font-size: 0;">
                   <img src="lego-insiders-halloween-assets/user-points-icon.png" alt="Insiders points"
-                       width="30" height="30" style="display: block; border: 0;" />
+                       width="30" height="30" style="display: inline-block; border: 0;" />
                 </td>
-                <td valign="middle" align="left" class="footer-strong"
+                <td width="60" valign="middle" align="left" class="footer-strong"
                     style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 15px; line-height: 20px;
                            font-weight: 600; color: #000000; white-space: nowrap;
                            mso-line-height-rule: exactly;">
@@ -1195,8 +1199,8 @@
              [Rule 1 — card with N children collapses to one container]
                 Inputs per-design: parent FRAME's fills, cornerRadius, child count.
                 THIS LEGO instance: parent FRAME 2833:2057 has fills[0]=#ffffff,
-                cornerRadius=24, 4 children → one wrapping table with bgcolor=#ffffff,
-                border-radius:24px wraps all 4 children as inner rows.
+                cornerRadius=18, 4 children → one wrapping table with bgcolor=#ffffff,
+                border-radius:18px wraps all 4 children as inner rows.
 
              [Rule 5 — asset name disagrees with content]
                 Inputs per-design: each image's PNG content (perceptual hash, aspect ratio,
@@ -1215,7 +1219,7 @@
                 the card is a physical-identity element (membership card, boarding pass,
                 credit-card-style coupon) and should opt OUT of the dark-mode flip.
                 THIS LEGO instance: 440×369 white card with LEGO Insiders logo on white +
-                EAN barcode + 24px cornerRadius — three signals fire → no class="card-bg",
+                EAN barcode + 18px cornerRadius — three signals fire → no class="card-bg",
                 stays white in dark mode by design. The text inside stays dark, readable
                 against the unflipped white surface.
 
@@ -1232,12 +1236,12 @@
                 For a different design the value comes from THAT design's dominant image. -->
         <tr>
           <td bgcolor="#f4f4f4" class="footer-bg" align="center"
-              style="background-color: #f4f4f4; padding: 6px 16px 6px 16px;">
+              style="background-color: #f4f4f4; padding: 20px 80px 0 80px;">
             <table role="presentation" width="440" align="center" cellpadding="0" cellspacing="0" border="0"
                    bgcolor="#ffffff" class="wf"
-                   style="background-color: #ffffff; border-radius: 24px; border-collapse: separate; overflow: hidden;">
+                   style="background-color: #ffffff; border-radius: 18px; border-collapse: separate; overflow: hidden;">
               <tr>
-                <td style="padding: 0; line-height: 0; font-size: 0;">
+                <td style="padding: 20px 0 0 0; line-height: 0; font-size: 0;">
                   <img src="lego-insiders-halloween-assets/footer-card.png"
                        alt="LEGO Insiders" width="440" class="bannerimg"
                        style="display: block; width: 100%; max-width: 440px; height: auto; border: 0;" />
@@ -1245,16 +1249,16 @@
               </tr>
               <tr>
                 <td align="center"
-                    style="background-color: #ffffff; padding: 4px 24px 8px 24px;
-                           font-family: 'Noto Sans', Arial, sans-serif; font-size: 16px; line-height: 22px;
-                           font-weight: 700; color: #000000;
+                    style="background-color: #ffffff; padding: 10px 24px 0 24px;
+                           font-family: 'Noto Sans', Arial, sans-serif; font-size: 14px; line-height: 19px;
+                           font-weight: 600; color: #000000;
                            mso-line-height-rule: exactly;">
-                  Andy<br />
-                  <span style="font-weight: 400;">email@brand.emaillove.com</span>
+                  <span style="font-size: 16px; line-height: 22px;">Andy</span><br />
+                  email@brand.emaillove.com
                 </td>
               </tr>
               <tr>
-                <td style="padding: 0; line-height: 0; font-size: 0;">
+                <td style="padding: 30px 0 20px 0; line-height: 0; font-size: 0;">
                   <img src="lego-insiders-halloween-assets/footer-social.png"
                        alt="Membership barcode 820209814" width="440" class="bannerimg"
                        style="display: block; width: 100%; max-width: 440px; height: auto; border: 0;" />
@@ -1275,38 +1279,38 @@
         <!-- Component basis: footer-centered.html (links + copyright slots) -->
         <tr>
           <td class="footer-bg" bgcolor="#f4f4f4"
-              style="background-color: #f4f4f4; padding: 8px 24px 24px 24px;">
+              style="background-color: #f4f4f4; padding: 20px 80px 40px 80px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td align="center" class="footer-link"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 18px;
-                           font-weight: 500; color: #000000; padding: 0 0 12px 0;
+                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 12px; line-height: 16px;
+                           font-weight: 500; color: #000000; padding: 0 0 10px 0;
                            mso-line-height-rule: exactly;">
                   <a href="https://example.com/unsubscribe" target="_blank"
-                     style="color: #000000; text-decoration: underline;">Unsubscribe</a>
+                     style="color: #000000; text-decoration: none;">Unsubscribe</a>
                   &nbsp;&nbsp;|&nbsp;&nbsp;
                   <a href="https://example.com/privacy" target="_blank"
-                     style="color: #000000; text-decoration: underline;">Privacy Policy</a>
+                     style="color: #000000; text-decoration: none;">Privacy Policy</a>
                   &nbsp;&nbsp;|&nbsp;&nbsp;
                   <a href="https://example.com/cookies" target="_blank"
-                     style="color: #000000; text-decoration: underline;">Cookies Policy</a>
+                     style="color: #000000; text-decoration: none;">Cookies Policy</a>
                   &nbsp;&nbsp;|&nbsp;&nbsp;
                   <a href="https://example.com/preferences" target="_blank"
-                     style="color: #000000; text-decoration: underline;">Preferences</a>
+                     style="color: #000000; text-decoration: none;">Preferences</a>
                 </td>
               </tr>
               <tr>
                 <td align="center" class="footer-text"
-                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 11px; line-height: 16px;
-                           font-weight: 500; color: #000000; padding: 8px 20px 0 20px;
+                    style="font-family: 'Noto Sans', Arial, sans-serif; font-size: 11px; line-height: 15px;
+                           font-weight: 500; color: #000000; padding: 30px 81px 0 81px;
                            mso-line-height-rule: exactly;">
-                  *For full Terms &amp; Conditions,
                   <a href="https://example.com/terms" target="_blank"
-                     style="color: #000000; text-decoration: underline;">click here</a>.
-                  <br />
-                  This email was sent to: email@brand.emaillove.com.
-                  <br />
-                  LEGO Aastvej 1, Billund, Denmark.
+                     style="color: #000000; text-decoration: underline;">*For full Terms &amp; Conditions, click here</a>
+                  <br /><br />
+                  This email was sent to:&nbsp;<a href="mailto:email@brand.emaillove.com"
+                     style="color: #0080c6; text-decoration: underline;">email@brand.emaillove.com</a><span style="color: #0080c6;">.</span>
+                  <br /><br />
+                  <span style="font-weight: 700;">LEGO Aastvej 1, Billund, 7190, Denmark</span>
                 </td>
               </tr>
             </table>
