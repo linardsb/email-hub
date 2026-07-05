@@ -118,6 +118,38 @@ all 3 current image seeds qualify).
 **Verify:** slate pin/thermometer + mammut arrows render at design size; no regression on
 true full-bleed images (case 7 banner strip stays 600); baselines regen after diff audit;
 unit tests for both paths (small icon in column; small image in image-block seed).
+**Result (2026-07-05, `fix/phase-53f-f3-image-widths`, off post-F6 main 3a626dcd — F6 merged
+mid-lane so F3 sits sequentially on top, not parallel):** Design width threaded through every
+image emission, scoped to the plan's 2 files. `_image_fills_column` (new predicate) +
+`_column_image_row` (now takes `column_width=group.width` from `_build_column_fill_html`): a
+column image ≤64px OR narrower than 0.9× its column drops `width:100%` and emits `width="{w}"` +
+`width:{w}px;max-width:{w}px`; column-filling images keep `width:100%` (responsive `bannerimg`);
+unknown width degrades to the pre-F3 default. `overrides["width"]`/`["height"]` added to
+`_fills_image_block`/`_fills_hero`/`_fills_image_grid`/`_fills_product_grid` (mirrors
+`_fills_logo_header`; `_fills_hero` is **inert** — hero-block is a CSS/VML bg, no `<img>` anchor,
+documented like F1). `_fill_image_slot` clamps inline `max-width` to the design width via
+`_clamp_img_max_width` (keeps `width:100%`, so a full-bleed 600px image stays **byte-identical**
+via value-equality no-op while a small icon renders at natural size); the image-block `image_url`
+branch now **delegates to `_fill_image_slot`** (was direct-src, could not size). 17 unit tests
+(`test_image_width_fidelity.py`) cover both directions; 2 proven RED pre-fix (34px column icon →
+`width:100%` giant; 40px image-block → `max-width:600`). **c9 wins (HTML + composite verified):
+pins/thermometer `2833:2094/2103` 270px→34px, grid arrow `2833:2143` 292px→48px; c7 LEGO
+decorations — 26 imgs `width:100%`→26/30px.** Ladder **13/9/8/10/8/12 held**; design_sync+components
+**3026 passed**; golden-conformance 26 passed; mypy+pyright 0 errors; scoped security lint clean.
+Baselines 5/6/7/8/9 regen (diff-audited: only max-width/width value changes, no structural drift);
+**c10 byte-identical**. **Correctness win, not pixels (§6):** the height-sensitive band scorer
+*penalises* the now-shorter renders — collapsing the oversized icons removes spurious height that
+was masking the still-missing RC-F7 card structure (c9 render aspect **3.31→2.63** vs reference →
+resize distortion; per-section confirms the drop is the height-shifted bands, not a render defect).
+**c10 nav arrows deferred (user-ratified scope):** their width is inflated 28px→268px at ingest
+(`layout_analyzer.py:1318`, frame-wrap branch uses the frame width), outside F3's matcher/renderer
+scope → carried forward under `phase-53f-decorative-image-flag` (53.3d). **Known latent (Outlook,
+not fidelity-scored):** a shrunk grid image keeps the seed cell's `width="292"` attr while the
+inline `max-width` drops to the design width — Chromium honours the CSS cap so the render is
+correct, but Outlook obeys the HTML attr and would show it at the 292px cell width. Out of the
+Chromium-scored path, so it neither blocks nor regresses the ladder; flagged for a later
+attr/style reconciliation. **Merge note:** F3 is now
+the last Track-F pixel item on main; F7 remains.
 
 ### F4 — Stop seed-default leakage `[M, ~2d]`
 **Defect:** RC-F4. Unfilled `<span>`/`<a>`/`<img>` slots keep seed literals; slot-id
@@ -348,4 +380,5 @@ Hard rules for parallel execution:
 | 2026-07-04 | F1 | 0.879 | 0.801 | 0.612 | 0.802 | 0.732 | 0.679 | full_image; section_min 0.634/0.480/**0.271**/**0.688**/0.527/0.087. Heroes now emitted as `<img>` (c7 `2833:1881`, c8 `2833:2264` — HTML-verified, in regen baselines). **Pixel deltas are asset-artifacts, not the win:** hero PNGs absent from fixtures (pre-F1 exported only `images[0]`), unrecoverable (c7 cache URL 403, c8 uncached, no `FIGMA_TOKEN`) → scorer renders heroes blank. c7 **−0.011** (blank gap replaces stretched strip), c8 **+0.009** (median 0.790→0.859). c5/6/9/10 byte-identical (no F1-builder multi-image sections). Real win pending hero re-export (`phase-53.7-asset-reexport-prerequisite`). |
 | 2026-07-04 | F4a-d | 0.877 | 0.814 | 0.612 | 0.802 | 0.723 | 0.678 | **Correctness win, not pixels.** Zero leaks on all 6 (`Shop Now`/`Learn More`/`Read More`/fakeimg/`Feature icon`/📅/📍, entity+UTF-8). **c6 +0.013** (F4a empty cta-fill + F4c emoji-in-span; median 0.682→0.698). c9 (F4b col-icon): median **0.776→0.833** (2 headings recovered from the text-block mis-route) but full −0.009 / section_min 0.527→**0.353** (sections [7]/[8], both col-icon) — F4b fills the real `/api` icon src (`2833:2113`/`2126`), but those assets are **absent from the fixture (disk-verified missing; the render shows a broken-image box)**, which pixel-matches slate's real icon worse than the prior fakeimg grey rectangle did. Production serves these assets; this is a fixture asset-gap (same as F1 heroes) with the table structure intact (verified in the render) — not a code regression. c5/c10 −0.002/−0.001 noise (F4a dropped a non-design seed CTA). c7/c8 byte-identical (untouched). F4d: 5 builder-less slugs removed from the converter scorer (library intact), 0 baseline change. Ladder 13/9/8/10/8/12 held. |
 | 2026-07-04 | F5 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Compliance win, not pixels.** Footer legal/unsub row now preserved (was wiped by whole-cell fill). Only **c5/c7** have a footer section (6/8/9/10 end in `social-icons` → outside F5's reach, **byte-identical**). **c5 −0.033** (0.877→0.844; section_min 0.632→0.492): off-design legal boilerplate ("© Company Name"/"123 Business Street") + unsub links now render on maap's dark footer — accepted compliance/fidelity trade (cf. F4). **c7 +0.003** (0.612→0.615; editorial now in styled `footer-text` cell). Ladder 13/9/8/10/8/12 held. Merge tags `{{unsubscribeUrl}}`/`{{preferencesUrl}}` contained to footer_legal (2/case, zero leak outside). c8 pre-existing heading trailing-whitespace drift (F8-noted) normalized by regression; c8 baseline untouched. |
+| 2026-07-05 | F3 | 0.844 | 0.802 | 0.636 | 0.802 | 0.679 | 0.678 | **Correctness win, not pixels.** Design width threaded through every image emission (`_column_image_row`+`_image_fills_column`; `overrides["width"]`+`_clamp_img_max_width` on image-block/hero/grid/product; full-bleed keeps `width:100%`, byte-identical). **c9 giants fixed (composite-verified): pins/thermometer 270→34px, grid arrow 292→48px; c7 LEGO decorations →26/30px** (**+0.021**, section_min 0.280→0.338). c8 flat (median 0.859→0.868, 504px Ferrari correct); c5 flat (200px maap neutral). **c9 −0.044 (section_min held 0.353) / c6 −0.012 are scorer artifacts:** shrinking the oversized icons drops render height (c9 aspect 3.31→2.63) below the reference's card-inflated height (RC-F7 cards still missing), so the resize-based band scorer distorts — per-section shows only the height-shifted bands moved (sec3 0.922→0.492), no render defect. **c10 arrows unchanged** — width inflated 28→268px at ingest (`layout_analyzer.py:1318`), outside F3's 2-file scope → deferred `phase-53f-decorative-image-flag`. Ladder 13/9/8/10/8/12 held; c10 byte-identical. |
 | 2026-07-04 | F6 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Correctness win, not pixels.** Eyebrow/kicker order flipped: pre-heading body texts render ABOVE the heading (HTML + composite verified vs reference — c8 `FERRARI 849 TESTAROSSA`/`…SPIDER` above their headings, c5 `New Season Collaboration` above `MAAP x KASK`). Only **c5/c8** carry pre-heading eyebrows (**6/7/9/10 byte-identical**). full_image flat on all 6; **c8 section_median 0.859→0.868** (+0.009, the eyebrow section now matches the design's reading order); c5 flat (0.844/0.492/0.806 — a ~12px eyebrow reposition is sub-rounding on the 5036px composite). Per-node typography preserved (12px `#DA291C` center on c8; Courier New 12px on c5); heading `_cell` padding intact (`padding-bottom` longhand dodges the `padding:`-shorthand override). Ladder **13/9/8/10/8/12 held**. Pre-existing F8-noted heading trailing-whitespace (not F6) stripped by pre-commit hook + normalized by snapshot comparison → committed c8 baseline changes are eyebrow-rows-only; moves again when F3 (Lane A, unshipped) lands. |

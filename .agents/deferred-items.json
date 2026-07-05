@@ -710,11 +710,12 @@
       "summary": "Extraction sets is_background only for frame fills (layout_analyzer.py), so a plain IMAGE node that is decorative (arrow, pin, texture, thermometer) carries no signal distinguishing it from a content photo. The F1/F3 image-width work uses a size heuristic (<=64px never stretches; design-width threading) as a stopgap to keep small decorations from ballooning, but a genuinely large decorative image is still treated as content. The real fix is z-order / semantic-role capture at ingest (53.3d territory).",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py:105 (is_background field), :1296 (set True only on frame fills)",
-        "app/design_sync/component_matcher.py (_stacked_image_row inline width rule — size-based stopgap)"
+        "app/design_sync/figma/layout_analyzer.py:1318 (frame-wrapping-single-image branch uses node.width = the FRAME width, inflating a small wrapped image to its column width — the c10 arrow case)",
+        "app/design_sync/component_matcher.py (_image_fills_column / _column_image_row width rule; _stacked_image_row — size-based stopgaps)"
       ],
       "symptom_if_broken": "A large decorative IMAGE (arrow, texture, badge) renders at content size or stacks as if it were a content photo, because nothing flags it decorative and the size heuristic only catches small icons.",
-      "closes_when": "Ingest captures z-order / role so decorative IMAGE nodes are flagged distinctly from content photos (Phase 53.3d), replacing the size heuristic.",
-      "notes": "Surfaced by audit-4 §RC-F7 / de-ranked findings. Paired with the F3 design-width work; the heuristic is deliberately a stopgap, not the fix."
+      "closes_when": "Ingest captures z-order / role so decorative IMAGE nodes are flagged distinctly from content photos (Phase 53.3d), AND the frame-wrap branch (layout_analyzer.py:1318) uses the inner image's own width when it is much smaller than its wrapper — replacing the size heuristic.",
+      "notes": "Surfaced by audit-4 §RC-F7 / de-ranked findings; the heuristic is deliberately a stopgap, not the fix. F3 execution (2026-07-05) CONFIRMED the specific mammut (c10) mechanism: the MEN/WOMEN/EQUIPMENT red nav arrows are 28x28 IMAGE nodes wrapped in 268px mj-image frames, so layout_analyzer.py:1318 reports img.width=268 (== column) — F3's img.width-based rule (matcher/renderer scope) cannot shrink them because the width it reads is already wrong. User ratified deferring c10 to this entry; F3 fixed only the correctly-sized c9 icons (34/48px). The real fix is ingest-side (frame-wrap width + role capture)."
     },
     {
       "id": "phase-53f-eyebrow-partial-padding-cell-theft",
