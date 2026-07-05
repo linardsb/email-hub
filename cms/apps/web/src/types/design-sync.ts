@@ -185,12 +185,7 @@ export interface DesignImportAsset {
 }
 
 export type ImportStatus =
-  | "pending"
-  | "extracting"
-  | "converting"
-  | "completed"
-  | "failed"
-  | "cancelled";
+  "pending" | "extracting" | "converting" | "completed" | "failed" | "cancelled";
 
 export interface DesignImport {
   id: number;
