@@ -74,6 +74,34 @@ Section-count ladder (`data/debug/ladder_snapshot.json`, A2 target gate):
   font/size/weight/color via `<td data-node-id>` anchors + `_text_<node_id>` overrides;
   closed `phase-52.4b-per-run-typography-structural`.
 
+**Track F close-out (2026-07-05, branch `fix/phase-53f-f7-pills-radius`; full log
+`.agents/plans/53-f-render-fidelity.md` §6):** the seed-fill render-defect classes
+RC-F1–F8 are closed or ledgered. Metric: **A3 advisory pixel score** (CIEDE2000 in LAB,
+MIN-aggregated, blur 0.0, **gmail_web render only**), local 6-fixture corpus (assets
+gitignored — CI still scores case 5 only):
+
+| Fixture (client) | full_image | section_min | section_median | Δ full_image vs audit-4 (2026-07-03) |
+|---|---|---|---|---|
+| 5 maap | 0.845 | 0.492 | 0.821 | −0.034 — F5 compliance trade, accepted at ship |
+| 6 starbucks | 0.802 | 0.477 | 0.699 | +0.001 |
+| 7 LEGO | 0.719 | 0.351 | 0.804 | **+0.095** |
+| 8 performance_reimagined (Ferrari) | 0.802 | 0.688 | 0.868 | **+0.100** |
+| 9 slate | 0.679 | 0.353 | 0.745 | +0.039 |
+| 10 mammut | 0.678 | 0.087 | 0.777 | −0.001 |
+
+Pixel movers were F2 (bg-less-seed background insert — dark bands hold on c8/c9) and
+F7-cards (column card surfaces — c7 +0.083). F1/F3/F4/F5/F6/F7-pills/F8 are
+correctness/compliance wins the band scorer under-prices: fixture asset gaps render F1
+heroes / F4b icons as blank boxes (`phase-53.7-asset-reexport-prerequisite`), and F3's
+icon shrink removes render height the reference's still-unbuilt card structure inflates.
+Plan §3 band target (c7/c8/c9 full_image ≥0.80): **c8 met; c7/c9 missed** — remaining
+mechanisms recorded honestly in plan §6 close-out; the dominant one is the **column
+width-budget** residual (§4). Ladder unchanged (13/9/8/10/8/12). **Ops caveat:** app-side
+design runs ingested before the Track B–F extraction upgrades render *below* these numbers
+on identical renderer code — their DB-stored structures lack radius/stroke/text-color/
+alignment fields (observed on a 2026-04-03 LEGO run: invisible outlined CTA, 4px pills,
+left-aligned headings). Re-run design-sync on stale runs before judging fidelity.
+
 ## 4. Residual gaps (tracked, not hidden)
 
 | Residual | Tracker | State |
@@ -85,6 +113,8 @@ Section-count ladder (`data/debug/ladder_snapshot.json`, A2 target gate):
 | VLM verify→correct loop: dead on the default path (`vlm_verify_enabled=False`; correction applicator is property-only — cannot add/remove/reorder/merge sections; internal metric returns 1.0 on empty input) | **53.4 — RETIRED 2026-06-12** (`.agents/plans/53-4-vlm-retirement.md`) | Flag deprecated, cull 2026-09-10; reopen conditions documented; `vlm_fallback_enabled` (matcher classification) unaffected |
 | Never-parsed ingest render: effects/blendMode (flat/VML fallback), per-node gradient reattach (52.5 `node_id` captured), `scaleMode`/`imageTransform` crop, rotation, z-order → `frame_export` | TODO.md **53.3** | Open — capture landed (52.5); render pending |
 | Decorative standalone VECTOR/LINE nodes fall through extraction (`layout_analyzer.py`) | TODO.md **53.5** | Open — `DocumentVector` class or rasterize/inline-PNG |
+| **Column width budget:** column seeds hardcode 600px-context pixel widths (MSO ghost `td width` + div `max-width`); any horizontal inset (band `_cell` padding, F7 card padding) shrinks the live content box below the seed total, so the inline-block columns wrap and **2-col layouts render stacked** (c7 all 6 benefit cards, c8 spec grid, c10 product grid). Detection is correct — A8 fractions redistribute but never rescale the total | `phase-53f-column-width-budget` (deferred-items) | Open — F9-class renderer-side rescale; Track-F close-out finding (plan §4 row 4's "detection widening" is the wrong lever) |
+| In-column content ordering: `_build_column_fill_html` emits images→texts→buttons buckets, discarding design y-order (tag pills render below body instead of eyebrow-above-heading; card icons above product names) | `phase-53f-column-category-order` (deferred-items) | Open — y-order merge in the column fill builder |
 
 ## 5. How to talk about converter fidelity (the contract)
 
