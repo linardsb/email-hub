@@ -747,15 +747,13 @@ class ComponentRenderer:
                 result = self._fill_hero_image(result, fill.value)
                 continue
 
-            # Special: image-block has no data-slot attrs — replace placeholder src directly
+            # Special: image-block. The seed's single <img> carries
+            # data-slot="image_url", so delegate to the shared image-slot filler
+            # — it replaces src AND applies the width/height overrides + F3
+            # max-width clamp the direct-src branch could not (RC-F3). No stacked
+            # rows are set for image-block, so no splice occurs.
             if slug == "image-block" and slot_id == "image_url":
-                safe_url = html.escape(fill.value)
-                result = re.sub(
-                    r'(<img\b[^>]*\bsrc=")[^"]*(")',
-                    rf"\g<1>{safe_url}\g<2>",
-                    result,
-                    count=1,
-                )
+                result = self._fill_image_slot(result, slot_id, fill)
                 continue
             if slug == "image-block" and slot_id == "image_alt":
                 safe_alt = html.escape(fill.value)
@@ -961,6 +959,14 @@ class ComponentRenderer:
                 # Insert the attribute before the closing /> or >
                 new_tag = re.sub(r"(\s*/?>)$", f' {attr}="{html.escape(val)}"\\1', new_tag)
 
+        # F3 (RC-F3): the width ATTR set above loses to the seed's inline
+        # width:100%, so clamp inline max-width to the design width — a small
+        # icon then renders at natural size while a full-bleed image (max-width
+        # already its own width) stays byte-identical.
+        width_ov = fill.attr_overrides.get("width")
+        if width_ov is not None and width_ov.isdigit():
+            new_tag = self._clamp_img_max_width(new_tag, int(width_ov))
+
         result = html_str.replace(img_tag, new_tag, 1)
 
         # F1 (RC-F1): stack the section's extra images as sibling rows around the
@@ -972,6 +978,31 @@ class ComponentRenderer:
                 result, new_tag, fill.stacked_before, fill.stacked_after
             )
         return result
+
+    @staticmethod
+    def _clamp_img_max_width(img_tag: str, width_px: int) -> str:
+        """Clamp an ``<img>``'s inline ``max-width`` to its design width (F3, RC-F3).
+
+        The seed ``<img>`` carries ``width:100%`` (+ often ``max-width:600px``);
+        the width ATTR alone loses to that, so the image balloons to the
+        container. Capping ``max-width`` at the design width holds a small icon
+        at natural size while keeping ``width:100%`` responsive. Returns the tag
+        unchanged when it has no ``style`` attribute or its ``max-width`` already
+        equals the design width (a full-bleed banner) — no byte churn.
+        """
+        style_m = re.search(r'style="([^"]*)"', img_tag)
+        if style_m is None:
+            return img_tag
+        style = style_m.group(1)
+        mw = re.search(r"max-width\s*:\s*(\d+)px", style)
+        if mw is not None:
+            if int(mw.group(1)) == width_px:
+                return img_tag
+            new_style = f"{style[: mw.start(1)]}{width_px}{style[mw.end(1) :]}"
+        else:
+            sep = "" if not style.strip() or style.rstrip().endswith(";") else ";"
+            new_style = f"{style.rstrip()}{sep}max-width:{width_px}px;"
+        return img_tag.replace(style_m.group(0), f'style="{new_style}"', 1)
 
     @staticmethod
     def _splice_stacked_rows(html_str: str, primary_img_tag: str, before: str, after: str) -> str:

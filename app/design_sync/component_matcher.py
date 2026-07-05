@@ -773,19 +773,59 @@ def _derive_image_alt(img: ImagePlaceholder) -> str:
     return "Company logo" if "logo" in name.lower() else "Content image"
 
 
-def _column_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None) -> str:
+# F3 (RC-F3): a column image at or below this design width never stretches to
+# fill its column — it renders at natural size (the button-icon precedent).
+_ICON_MAX_WIDTH_PX = 64
+# An image at least this fraction of its column's width is treated as
+# column-filling and keeps the responsive ``width:100%`` behaviour.
+_COLUMN_FILL_RATIO = 0.9
+
+
+def _image_fills_column(img_width: float | None, column_width: float | None) -> bool:
+    """Whether a column image should keep the responsive ``width:100%`` fill (F3).
+
+    A column-filling image (as wide as its column — the ``bannerimg`` case)
+    keeps ``width:100%``. A small icon/decoration (≤64px, or narrower than 90%
+    of its column) is instead pinned to its design width so it renders at
+    natural size rather than ballooning to the column edge (RC-F3). Degrades to
+    the pre-F3 responsive default when the design width is unknown.
+    """
+    if img_width is None:
+        return True
+    if img_width <= _ICON_MAX_WIDTH_PX:
+        return False
+    if column_width is None:
+        return True
+    return img_width >= _COLUMN_FILL_RATIO * column_width
+
+
+def _column_image_row(
+    img: ImagePlaceholder,
+    image_urls: dict[str, str] | None,
+    *,
+    column_width: float | None = None,
+) -> str:
     """Wrap a column image in its own ``<tr><td>`` row (Phase 53 B2).
 
     Shared by ``_build_column_fill_html`` and the round-robin fallback in
     ``_build_column_fills`` so the two builders emit byte-identical image markup
-    and cannot drift. The ``<img>`` itself is unchanged from the pre-B2 bare
-    element (alt derivation + ``display:block`` full-width styling).
+    and cannot drift. A column-filling image keeps the responsive ``width:100%``
+    fill; a small icon/decoration is pinned to its design width (+ ``max-width``
+    clamp) so it renders at natural size instead of filling the column (F3,
+    RC-F3).
     """
     url = _resolve_image_url(img.node_id, image_urls)
+    if img.width is None or _image_fills_column(img.width, column_width):
+        style = "display:block;width:100%;height:auto;border:0;"
+        width_attr = ""
+    else:
+        w = int(img.width)
+        style = f"display:block;width:{w}px;max-width:{w}px;height:auto;border:0;"
+        width_attr = f' width="{w}"'
     tag = (
         f'<img src="{html.escape(url)}" '
-        f'alt="{html.escape(_derive_image_alt(img))}" '
-        f'style="display:block;width:100%;height:auto;border:0;" />'
+        f'alt="{html.escape(_derive_image_alt(img))}"{width_attr} '
+        f'style="{style}" />'
     )
     return f"<tr><td>{tag}</td></tr>"
 
@@ -847,7 +887,7 @@ def _build_column_fill_html(
     """
     rows: list[str] = []
     for img in group.images:
-        rows.append(_column_image_row(img, image_urls))
+        rows.append(_column_image_row(img, image_urls, column_width=group.width))
     for text in group.texts:
         if _is_placeholder(text.content):
             continue
@@ -1023,12 +1063,21 @@ def _fills_hero(
         # background (no <img> anchor to splice around), and no corpus fixture
         # routes a multi-image section to hero-block. Deferred.
         _primary_idx, img = _select_primary_image(section.images)
+        overrides: dict[str, str] = _image_node_id_attrs(img)
+        # F3 (RC-F3): thread the design width for parity with the other image
+        # builders. Inert for the current hero-block seed (CSS/VML background,
+        # no <img> anchor — the renderer's _fill_hero_image ignores it); kept so
+        # a future hero seed carrying an <img> sizes correctly.
+        if img.width:
+            overrides["width"] = str(int(img.width))
+        if img.height:
+            overrides["height"] = str(int(img.height))
         fills.append(
             SlotFill(
                 "hero_image",
                 _resolve_image_url(img.node_id, image_urls),
                 slot_type="image",
-                attr_overrides=_image_node_id_attrs(img),
+                attr_overrides=overrides,
             )
         )
     # Headline + Subtext
@@ -1379,12 +1428,19 @@ def _fills_image_block(
         # bypassing _fill_image_slot where the splice lives), and no corpus
         # fixture routes a multi-image section to image-block. Deferred.
         _primary_idx, img = _select_primary_image(section.images)
+        overrides: dict[str, str] = _image_node_id_attrs(img)
+        # F3 (RC-F3): thread the design width; applied via _fill_image_slot (the
+        # image-block image_url branch now delegates there).
+        if img.width:
+            overrides["width"] = str(int(img.width))
+        if img.height:
+            overrides["height"] = str(int(img.height))
         fills.append(
             SlotFill(
                 "image_url",
                 _resolve_image_url(img.node_id, image_urls),
                 slot_type="image",
-                attr_overrides=_image_node_id_attrs(img),
+                attr_overrides=overrides,
             )
         )
         fills.append(SlotFill("image_alt", _derive_image_alt(img)))
@@ -1400,12 +1456,19 @@ def _fills_image_grid(
 ) -> list[SlotFill]:
     fills: list[SlotFill] = []
     for i, img in enumerate(section.images[:2], start=1):
+        overrides: dict[str, str] = _image_node_id_attrs(img)
+        # F3 (RC-F3): thread the design width; clamped in _fill_image_slot so a
+        # small grid image is not stretched to the seed's full cell width.
+        if img.width:
+            overrides["width"] = str(int(img.width))
+        if img.height:
+            overrides["height"] = str(int(img.height))
         fills.append(
             SlotFill(
                 f"image_{i}",
                 _resolve_image_url(img.node_id, image_urls),
                 slot_type="image",
-                attr_overrides=_image_node_id_attrs(img),
+                attr_overrides=overrides,
             )
         )
     return fills
@@ -1424,12 +1487,18 @@ def _fills_product_grid(
     for i, group in enumerate(groups[:4], 1):
         if group.images:
             img = group.images[0]
+            overrides: dict[str, str] = _image_node_id_attrs(img)
+            # F3 (RC-F3): thread the design width; clamped in _fill_image_slot.
+            if img.width:
+                overrides["width"] = str(int(img.width))
+            if img.height:
+                overrides["height"] = str(int(img.height))
             fills.append(
                 SlotFill(
                     f"product_{i}_image",
                     _resolve_image_url(img.node_id, image_urls),
                     slot_type="image",
-                    attr_overrides=_image_node_id_attrs(img),
+                    attr_overrides=overrides,
                 )
             )
         heading = _first_heading(group.texts)
