@@ -874,6 +874,30 @@ def _wrap_column_table(rows: list[str]) -> str:
     )
 
 
+def _ordered_column_elements(
+    group: ColumnGroup,
+) -> list[ImagePlaceholder | TextBlock | ButtonElement]:
+    """Column content in design tree order (F10).
+
+    ``content_order`` (node ids captured pre-order at group construction)
+    interleaves the three category lists back into the design's vertical
+    order — a tag pill (``ButtonElement``) above the heading, a product name
+    above its spec-icon rows. Groups without it (older persisted documents,
+    the content-group conversion) keep the legacy images→texts→buttons
+    order, as do any ids the tuple doesn't cover (stable sort).
+    """
+    combined: list[ImagePlaceholder | TextBlock | ButtonElement] = [
+        *group.images,
+        *group.texts,
+        *group.buttons,
+    ]
+    if not group.content_order:
+        return combined
+    position = {node_id: i for i, node_id in enumerate(group.content_order)}
+    unknown = len(position)
+    return sorted(combined, key=lambda element: position.get(element.node_id, unknown))
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -883,19 +907,21 @@ def _build_column_fill_html(
 
     Each image, text and CTA is wrapped as a ``<tr><td>`` row inside one inner
     ``<table>`` (Phase 53 B2) so the column renders as a well-formed nested
-    table instead of collapsing orphan rows in email clients.
+    table instead of collapsing orphan rows in email clients. Rows follow the
+    design's vertical order via ``content_order`` (F10), not category buckets.
     """
     rows: list[str] = []
-    for img in group.images:
-        rows.append(_column_image_row(img, image_urls, column_width=group.width))
-    for text in group.texts:
-        if _is_placeholder(text.content):
-            continue
-        rows.append(_column_text_row(text, is_heading=text.is_heading))
-    for btn in group.buttons:
-        if _is_placeholder(btn.text):
-            continue
-        rows.append(_column_cta_row(btn))
+    for element in _ordered_column_elements(group):
+        if isinstance(element, ImagePlaceholder):
+            rows.append(_column_image_row(element, image_urls, column_width=group.width))
+        elif isinstance(element, TextBlock):
+            if _is_placeholder(element.content):
+                continue
+            rows.append(_column_text_row(element, is_heading=element.is_heading))
+        else:
+            if _is_placeholder(element.text):
+                continue
+            rows.append(_column_cta_row(element))
     return _wrap_column_table(rows)
 
 
