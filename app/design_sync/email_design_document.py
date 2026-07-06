@@ -847,6 +847,10 @@ class DocumentColumn:
     texts: list[DocumentText] = field(default_factory=list[DocumentText])
     images: list[DocumentImage] = field(default_factory=list[DocumentImage])
     buttons: list[DocumentButton] = field(default_factory=list[DocumentButton])
+    # F10 — mirrors ColumnGroup.content_order (design tree order of the
+    # content node ids). Older persisted documents lack it → () → the
+    # renderer keeps the legacy category order.
+    content_order: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -862,6 +866,8 @@ class DocumentColumn:
             d["images"] = [i.to_json() for i in self.images]
         if self.buttons:
             d["buttons"] = [b.to_json() for b in self.buttons]
+        if self.content_order:
+            d["content_order"] = list(self.content_order)
         return d
 
     @classmethod
@@ -874,6 +880,7 @@ class DocumentColumn:
             texts=[DocumentText.from_json(t) for t in data.get("texts", [])],
             images=[DocumentImage.from_json(i) for i in data.get("images", [])],
             buttons=[DocumentButton.from_json(b) for b in data.get("buttons", [])],
+            content_order=tuple(data.get("content_order", [])),
         )
 
     @classmethod
@@ -886,6 +893,7 @@ class DocumentColumn:
             texts=[DocumentText.from_text_block(t) for t in c.texts],
             images=[DocumentImage.from_image_placeholder(i) for i in c.images],
             buttons=[DocumentButton.from_button_element(b) for b in c.buttons],
+            content_order=c.content_order,
         )
 
     def to_column_group(self) -> ColumnGroup:
@@ -897,6 +905,7 @@ class DocumentColumn:
             texts=[t.to_text_block() for t in self.texts],
             images=[i.to_image_placeholder() for i in self.images],
             buttons=[b.to_button_element() for b in self.buttons],
+            content_order=self.content_order,
         )
 
 

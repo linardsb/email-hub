@@ -146,6 +146,11 @@ class ColumnGroup:
     images: list[ImagePlaceholder] = field(default_factory=list[ImagePlaceholder])
     buttons: list[ButtonElement] = field(default_factory=list[ButtonElement])
     width: float | None = None
+    # F10 — node ids of the extracted content in design tree (pre-order) order.
+    # The three category lists above lose the interleave; this restores it at
+    # render time. Empty on groups built before the field existed (older
+    # persisted documents) → callers fall back to category order.
+    content_order: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1098,6 +1103,40 @@ def _layout_from_count(count: int) -> ColumnLayout:
     return ColumnLayout.SINGLE
 
 
+def _column_content_order(
+    node: DesignNode,
+    texts: list[TextBlock],
+    images: list[ImagePlaceholder],
+    buttons: list[ButtonElement],
+) -> tuple[str, ...]:
+    """Node ids of a column's extracted content in design tree order (F10).
+
+    The per-category extractors each walk the column subtree pre-order, so
+    every list is internally ordered but the cross-category interleave is
+    lost. One more pre-order walk restores it: the returned tuple lets
+    ``_build_column_fill_html`` emit rows in design vertical order (a tag
+    pill above the heading, a product name above its spec-icon rows) instead
+    of images→texts→buttons buckets. Ids the walk doesn't reach (e.g. a
+    wrapped image's frame exported under a different id) simply stay out of
+    the tuple — the consumer keeps them in category order.
+    """
+    wanted = (
+        {text.node_id for text in texts}
+        | {img.node_id for img in images}
+        | {btn.node_id for btn in buttons}
+    )
+    order: list[str] = []
+
+    def visit(current: DesignNode) -> None:
+        if current.id in wanted:
+            order.append(current.id)
+        for child in current.children:
+            visit(child)
+
+    visit(node)
+    return tuple(order)
+
+
 def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
     """Find mj-column children and extract their content."""
     # Walk one level to find mj-section, then its mj-column children
@@ -1137,6 +1176,7 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
                     images=images,
                     buttons=buttons,
                     width=child.width,
+                    content_order=_column_content_order(child, texts, images, buttons),
                 )
             )
     return all_columns
@@ -1148,15 +1188,18 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
     for idx, child in enumerate(frame_children, 1):
         buttons = _extract_buttons(child)
         btn_ids = _collect_button_node_ids(buttons)
+        texts = _extract_texts(child, exclude_node_ids=btn_ids)
+        images = _extract_images(child)
         groups.append(
             ColumnGroup(
                 column_idx=idx,
                 node_id=child.id,
                 node_name=child.name,
-                texts=_extract_texts(child, exclude_node_ids=btn_ids),
-                images=_extract_images(child),
+                texts=texts,
+                images=images,
                 buttons=buttons,
                 width=child.width,
+                content_order=_column_content_order(child, texts, images, buttons),
             )
         )
     return groups
