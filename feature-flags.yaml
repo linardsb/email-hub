@@ -632,6 +632,14 @@ flags:
     removal_date: "2026-10-24"
     status: beta
 
+  - name: SECURITY__SAFE_COMPACTION_ENABLED
+    description: Fail-closed safety-preamble pinning — preamble survives token-budget compaction; a missing safety file 503s the agent instead of shipping an unpinned prompt (Phase 51.2)
+    owner: platform-team
+    created: "2026-07-03"
+    removal_date: null
+    status: ga
+    permanent_reason: "Fail-closed security control, default-on since 51.2 (cf73b51a, #312); flag kept as emergency rollback kill-switch"
+
   # ── Scheduling ──────────────────────────────────────────────────────────────
   - name: SCHEDULING__ENABLED
     description: Cron scheduling engine for background jobs (QA sweep, ontology sync) (Phase 45.1)
