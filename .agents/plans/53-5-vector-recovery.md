@@ -77,3 +77,51 @@ delta recorded; `make types` + design_sync suite + golden-conformance green.
   fixture regen requires `scripts/export-case-assets.py` + `FIGMA_TOKEN`.
 - Schema strictness gap (`stroke_*` on DocumentImage) — fix here or as its own ledger entry;
   do not leave `to_json` emitting fields the schema forbids.
+
+## §6 — scores row (standard contract)
+
+| | c5 | c6 | c7 | c8 | c9 | c10 |
+|---|---|---|---|---|---|---|
+| BEFORE (2026-07-06, post-53.3 main) | 0.840 | 0.802 | 0.794 | 0.778 | 0.680 | 0.742 |
+| AFTER | 0.840 | 0.802 | 0.794 | 0.778 | **0.681** | 0.742 |
+
+## Result (2026-07-06, `fix/phase-53.5-vector-recovery`)
+
+Shipped both halves as planned; ran after 53.3 (`#332`, gate honoured).
+
+- **Divider half** — zero-area stroked LINEs adopt onto their DIVIDER section
+  (`_zero_area_vector_stroke` + DIVIDER-scoped lift in `analyze_layout`); matcher emits
+  `TokenOverride("border-top", "_divider", "<w>px solid <hex>")` (hex-validated, weight
+  defaults 1px); renderer rewrites the `divider-line` element's `border-top`
+  (`_replace_divider_border`). Schema gains the 52.5-leftover `stroke_color`/`stroke_weight`
+  on BOTH `image` and `section` defs (section `to_json` had been emitting them un-declared
+  since 52.5); bridge-roundtrip `_full_image`/`_full_section` now pin all four.
+- **Icon half** — `_walk_for_images` collects visible VECTORs ≥ 8×8 px as
+  `ImagePlaceholder(export_node_id=node.id)` (the Figma render composites
+  BOOLEAN_OPERATION subtrees); vectors inside already-imaged frames are skipped
+  (`skip_vectors` threading — the frame export bakes them in); zero-area/sub-8px skipped.
+  `_is_descriptive_alt` additionally rejects Figma auto-names ("Vector 3", "Union 12") so
+  rasterized vectors fall back to the gate-clean generic alt — **found live by the new
+  test**: "Vector 3" previously passed and would have leaked as alt text (G3-neg class);
+  no committed baseline carries such alts, so the tightening is churn-free.
+- **Corpus effect (diff-audited, per-case):** the plan predicted divider-only changes on
+  5/8/9/10; reality is **case 9 only** — its two `mj-divider` sections re-render
+  `border-top:1px solid #e0e0e0` → `2px solid #545454` (regen `snapshot-capture.py 9
+  --overwrite`, exactly ±2 lines; snapshot gate isolates case 9 before regen, all-green
+  after). Case 5's LINEs are genuinely stroke-less (raw has no strokes — nothing to
+  recover); case 8's LINE is a **column child** inside a content wrapper (never a section;
+  in-column divider row is a 51.x seam); case 10's divider sections DO adopt `#C7CCCF`
+  (visible in the layout dump) but band grouping **absorbs** them as spacer-class
+  separators before matching (`absorb_spacers`, the ratified A2 behaviour) — new ledger
+  entry `phase-53.5-nested-divider-render-gap` tracks both. **No icon vectors exist in the
+  corpus** — the rasterize half is synthetic-tests-only (stated in the test docstring).
+- **Gates:** ladder 13/9/8/10/8/12 held (data-regression 73 passed / 1 mammut xfail;
+  snapshot 34 passed post-regen); `make types` 0 errors; design_sync+components suite
+  green; golden-conformance 26; scoped ruff (incl. S-rules) clean. **Scores:** §6 row —
+  flat everywhere except c9 full-image +0.001 (0.680 → 0.681, the two recovered rules
+  are 2px darker and match the design's own stroke values; sub-band change, composite
+  eyeball adds nothing over the byte diff). A3 advisory delta recorded.
+- **Honest read:** recovery reach is section-level dividers only (1 of 3 stroked fixture
+  dividers rendered); nested (column-child / band-absorbed) dividers need their own seam.
+  Icon rasterization exercises the existing export path — live-import PNGs join the
+  gitignored-assets class (`phase-53.7-asset-reexport-prerequisite` stays open).
