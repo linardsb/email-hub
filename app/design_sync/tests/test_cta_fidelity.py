@@ -402,6 +402,36 @@ class TestTextBlockCTARadius:
         assert "border-radius:4px" in html
 
 
+class TestTextBlockCTALabelColor:
+    """The stroke-less text-block CTA honours ButtonElement.text_color (F11).
+
+    Guards phase-53-b8-text-block-solid-cta-text-color: the stroke-less branch
+    hardcoded `color:#ffffff`, ignoring the design's label colour (c5
+    'Discover →' extracts text_color #000000). White is the absence-fallback
+    only — `_safe_color(btn.text_color, "#ffffff")`, mirroring _column_cta_row.
+    """
+
+    def _body_html(self, btn: ButtonElement) -> str:
+        from app.design_sync.component_matcher import _fills_text_block
+
+        section = _make_section(EmailSectionType.CONTENT, buttons=[btn])
+        fills = _fills_text_block(section, 600)
+        body = next(f for f in fills if f.slot_id == "body")
+        return body.value
+
+    def test_dark_label_on_light_fill(self) -> None:
+        html = self._body_html(_button("Discover →", fill_color="#FFFFFF", text_color="#010101"))
+        assert "color:#010101" in html
+        # The invisible white-on-white signature must be gone…
+        assert "color:#ffffff" not in html
+        # …and no border invented for a stroke-less button.
+        assert "border:" not in html
+
+    def test_white_fallback_when_text_color_absent(self) -> None:
+        html = self._body_html(_button("Shop Now", fill_color="#0066cc"))
+        assert "color:#ffffff" in html
+
+
 # ---------------------------------------------------------------------------
 # 15. Multiple CTAs with different colors
 # ---------------------------------------------------------------------------

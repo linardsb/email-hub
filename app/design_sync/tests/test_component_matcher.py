@@ -887,7 +887,7 @@ class TestButtonInTextBlock:
         assert "<a " in body.value
         assert "Shop Now" in body.value
         assert "background-color:#0066cc" in body.value
-        # Solid-fill button (no stroke) keeps white label text and no border.
+        # No designed text_color → white absence-fallback (F11); no stroke → no border.
         assert "color:#ffffff" in body.value
         assert "border:" not in body.value
 
