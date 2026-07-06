@@ -564,6 +564,33 @@ class _VisualProps(NamedTuple):
     hyperlink: str | None
     # Possibly-reclassified node type (IMAGE fills on VECTOR/RECTANGLE).
     resolved_node_type: DesignNodeType
+    # ``scaleMode`` of the topmost visible IMAGE fill (53.3c) — None when the
+    # node has no IMAGE fill.
+    scale_mode: str | None
+
+
+def _parse_effects_summary(node_data: RawFigmaNode) -> str | None:
+    """Summarise dropped visual effects + blend mode (53.3a).
+
+    Email HTML cannot reproduce shadows/blurs/blends (ceiling doc §2); the
+    ``"<count>:<TYPE,...>"`` summary carries the loss into conversion warnings
+    instead of silence. ``NORMAL``/``PASS_THROUGH`` blends are the no-op
+    defaults and are ignored.
+    """
+    types: list[str] = []
+    for effect_item in node_data.get("effects", []):
+        if not isinstance(effect_item, dict):
+            continue
+        e_d = cast(dict[str, Any], effect_item)
+        if e_d.get("visible") is False:
+            continue
+        types.append(str(e_d.get("type", "UNKNOWN")))
+    blend = node_data.get("blendMode")
+    if isinstance(blend, str) and blend not in ("NORMAL", "PASS_THROUGH"):
+        types.append(f"BLEND_{blend}")
+    if not types:
+        return None
+    return f"{len(types)}:{','.join(sorted(set(types)))}"
 
 
 def _parse_visual_props(
@@ -594,6 +621,7 @@ def _parse_visual_props(
     fill_color: str | None = None
     text_color: str | None = None
     image_ref: str | None = None
+    scale_mode: str | None = None
     resolved_node_type = node_type
     raw_fills = node_data.get("fills", [])
     for fill_item in reversed(raw_fills):
@@ -616,12 +644,18 @@ def _parse_visual_props(
             raw_ref = fi_d.get("imageRef")
             if isinstance(raw_ref, str) and raw_ref:
                 image_ref = raw_ref
+            raw_scale = fi_d.get("scaleMode")
+            if scale_mode is None and isinstance(raw_scale, str) and raw_scale:
+                scale_mode = raw_scale
             continue
         # Extract IMAGE fill reference on FRAME nodes (hero/section backgrounds)
         if fill_type == "IMAGE" and resolved_node_type == DesignNodeType.FRAME:
             raw_ref = fi_d.get("imageRef")
             if isinstance(raw_ref, str) and raw_ref:
                 image_ref = raw_ref
+            raw_scale = fi_d.get("scaleMode")
+            if scale_mode is None and isinstance(raw_scale, str) and raw_scale:
+                scale_mode = raw_scale
             continue
         if fill_type != "SOLID":
             continue
@@ -653,6 +687,7 @@ def _parse_visual_props(
         stroke_weight=stroke_weight,
         hyperlink=hyperlink,
         resolved_node_type=resolved_node_type,
+        scale_mode=scale_mode,
     )
 
 
@@ -1577,6 +1612,11 @@ class FigmaDesignSyncService:
         visual = _parse_visual_props(node_data, node_type, node_opacity, bg_hex=parent_bg)
         node_type = visual.resolved_node_type  # apply IMAGE reclassification
 
+        # 53.3d — rotation (degrees, Figma REST convention); non-trivial
+        # rotations feed the reproducibility classifier.
+        raw_rotation = node_data.get("rotation")
+        rotation = float(raw_rotation) if isinstance(raw_rotation, (int, float)) else None
+
         children: list[DesignNode] = []
         effective_max = max_depth if max_depth is not None else _MAX_PARSE_DEPTH
         if current_depth < effective_max:
@@ -1631,6 +1671,9 @@ class FigmaDesignSyncService:
             style_runs=text.style_runs,
             visible=node_data.get("visible") is not False,
             opacity=node_opacity,
+            scale_mode=visual.scale_mode,
+            rotation=rotation,
+            effects_summary=_parse_effects_summary(node_data),
         )
 
     async def list_components(self, file_ref: str, access_token: str) -> list[DesignComponent]:

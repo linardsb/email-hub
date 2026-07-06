@@ -124,3 +124,7 @@ class DesignSyncConfig(BaseModel):
     # can opt out and keep them visually consistent across modes. Pure
     # FRAME-tree heuristics; runs only on sections with an ``inner_bg``.
     physical_card_detection_enabled: bool = True  # DESIGN_SYNC__PHYSICAL_CARD_DETECTION_ENABLED
+    # Frame-export fallback for non-reproducible subtrees (Phase 53.3d) —
+    # rotation beyond ±1° / overlapping siblings render as ONE exported frame
+    # image instead of mis-extracted content. The fork-(c) escape hatch seam.
+    frame_export_fallback_enabled: bool = False  # DESIGN_SYNC__FRAME_EXPORT_FALLBACK_ENABLED

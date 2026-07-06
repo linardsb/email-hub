@@ -1030,6 +1030,10 @@ class DocumentSection:
     stroke_weight: float | None = None
     # D3 follow-up — same-row peel id (see EmailSection.peel_row_id).
     peel_row_id: str | None = None
+    # 53.3b — gradient source node id (see EmailSection.gradient_ref).
+    gradient_ref: str | None = None
+    # 53.3a — dropped-effects summary (see EmailSection.effects_summary).
+    effects_summary: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"id": self.id, "type": self.type}
@@ -1103,6 +1107,10 @@ class DocumentSection:
             d["stroke_color"] = self.stroke_color
         if self.stroke_weight is not None:
             d["stroke_weight"] = self.stroke_weight
+        if self.gradient_ref is not None:
+            d["gradient_ref"] = self.gradient_ref
+        if self.effects_summary is not None:
+            d["effects_summary"] = self.effects_summary
         return d
 
     @classmethod
@@ -1148,6 +1156,8 @@ class DocumentSection:
             vlm_confidence=data.get("vlm_confidence"),
             stroke_color=data.get("stroke_color"),
             stroke_weight=data.get("stroke_weight"),
+            gradient_ref=data.get("gradient_ref"),
+            effects_summary=data.get("effects_summary"),
         )
 
     def to_email_section(self) -> EmailSection:
@@ -1198,6 +1208,8 @@ class DocumentSection:
             stroke_color=self.stroke_color,
             stroke_weight=self.stroke_weight,
             peel_row_id=self.peel_row_id,
+            gradient_ref=self.gradient_ref,
+            effects_summary=self.effects_summary,
         )
 
     @classmethod
@@ -1259,6 +1271,8 @@ class DocumentSection:
             vlm_confidence=section.vlm_confidence,
             stroke_color=section.stroke_color,
             stroke_weight=section.stroke_weight,
+            gradient_ref=section.gradient_ref,
+            effects_summary=section.effects_summary,
         )
 
 
@@ -1510,6 +1524,11 @@ class EmailDesignDocument:
                 layout_kwargs["button_name_hints"] = bnh
         if vlm_classifications:
             layout_kwargs["vlm_classifications"] = vlm_classifications
+        # 53.3b — the gradient capture (52.5) records source node ids; hand
+        # them to layout analysis so sections reattach their gradients.
+        gradient_node_ids = frozenset(g.node_id for g in tokens.gradients if g.node_id)
+        if gradient_node_ids:
+            layout_kwargs["gradient_node_ids"] = gradient_node_ids
         layout = analyze_layout(structure, **layout_kwargs)
 
         # 4. Derive container width (clamped 400-800, config override priority)

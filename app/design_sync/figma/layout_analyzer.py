@@ -240,6 +240,15 @@ class EmailSection:
     # composes them side-by-side (the design lays them out horizontally) while
     # each still COUNTS as its own section for the A2 target gate.
     peel_row_id: str | None = None
+    # 53.3b — source node id of a gradient fill captured at 52.5. The matcher
+    # resolves it against ``tokens.gradients[*].node_id`` to emit the
+    # background-image override; ``None`` when the section carries no gradient.
+    gradient_ref: str | None = None
+    # 53.3a — dropped visual effects on this section's subtree, as
+    # ``"<count>:<TYPE,...>"`` (e.g. ``"2:DROP_SHADOW,LAYER_BLUR"``). Shadows/
+    # blurs/blends are not reproducible in email HTML (ceiling doc §2); this
+    # carries the loss into conversion warnings instead of silence.
+    effects_summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -306,6 +315,7 @@ def analyze_layout(
     button_name_hints: list[str] | None = None,
     vlm_classifications: dict[str, VLMSectionClassification] | None = None,
     global_design_image: bytes | None = None,
+    gradient_node_ids: frozenset[str] | None = None,
 ) -> DesignLayoutDescription:
     """Analyze a design file structure and detect email sections.
 
@@ -356,6 +366,7 @@ def analyze_layout(
     sections: list[EmailSection] = []
     total = len(candidates)
     vlm_threshold = VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD if vlm_classifications else 0.0
+    frame_export_fallback = get_settings().design_sync.frame_export_fallback_enabled
     for idx, (node, container_bg, parent_wrapper_id, peel_row_id) in enumerate(candidates):
         section_type, classification_confidence = _classify_section(
             node,
@@ -399,6 +410,49 @@ def analyze_layout(
                     vlm_confidence=vlm_conf,
                     rule_confidence=classification_confidence,
                 )
+
+        # 53.3d — a subtree the fixed-seed renderer cannot reproduce (rotation,
+        # overlapping siblings) renders as ONE exported image of the whole
+        # section frame instead of mis-extracted content. Flag-gated, default
+        # off; the fork-(c) escape hatch seam.
+        if frame_export_fallback:
+            raster_reason = _unreproducible_reason(node)
+            if raster_reason is not None:
+                logger.info(
+                    "design_sync.frame_export_fallback",
+                    node_id=node.id,
+                    reason=raster_reason,
+                )
+                sections.append(
+                    EmailSection(
+                        section_type=section_type,
+                        node_id=node.id,
+                        node_name=node.name,
+                        y_position=node.y,
+                        x_position=node.x,
+                        width=node.width,
+                        height=node.height,
+                        images=[
+                            ImagePlaceholder(
+                                node_id=node.id,
+                                node_name=node.name,
+                                width=node.width,
+                                height=node.height,
+                                export_node_id=node.id,
+                            )
+                        ],
+                        bg_color=node.fill_color,
+                        classification_confidence=classification_confidence,
+                        vlm_classification=vlm_type_str,
+                        vlm_confidence=vlm_conf,
+                        content_roles=("image",),
+                        container_bg=container_bg,
+                        parent_wrapper_id=parent_wrapper_id,
+                        peel_row_id=peel_row_id,
+                        effects_summary=_collect_effects_summary(node),
+                    )
+                )
+                continue
 
         col_layout, col_count, col_groups = _detect_column_layout_with_groups(node, convention)
         buttons = _extract_buttons(node, extra_hints=button_name_hints)
@@ -456,6 +510,16 @@ def analyze_layout(
                     is_physical_card_surface = True
                     physical_card_signals = ("nested_card", *nested.signals)
 
+        # 53.3b — reattach a captured gradient fill: the section node (or the
+        # wrapper it was unwrapped from) is the node whose fill produced a
+        # ``tokens.gradients`` entry at 52.5.
+        gradient_ref: str | None = None
+        if gradient_node_ids:
+            if node.id in gradient_node_ids:
+                gradient_ref = node.id
+            elif parent_wrapper_id and parent_wrapper_id in gradient_node_ids:
+                gradient_ref = parent_wrapper_id
+
         sections.append(
             EmailSection(
                 section_type=section_type,
@@ -493,6 +557,8 @@ def analyze_layout(
                 stroke_color=node.stroke_color,
                 stroke_weight=node.stroke_weight,
                 peel_row_id=peel_row_id,
+                gradient_ref=gradient_ref,
+                effects_summary=_collect_effects_summary(node),
             )
         )
 
@@ -1314,6 +1380,19 @@ def _extract_images(node: DesignNode) -> list[ImagePlaceholder]:
     return results
 
 
+def _crop_export_id(node: DesignNode) -> str | None:
+    """Export the node itself when its IMAGE fill carries a crop (53.3c).
+
+    A ``scaleMode`` other than the ``FILL`` default (FIT/CROP/TILE) is a crop
+    instruction the HTML ``<img>`` can't express — exporting the node makes
+    the Figma render bake the crop into the bitmap (the frame-wrapping-image
+    path below already gets this for free by exporting the wrapper).
+    """
+    if node.scale_mode is not None and node.scale_mode != "FILL":
+        return node.id
+    return None
+
+
 def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
     """Walk tree collecting IMAGE nodes and FRAME nodes with IMAGE fills."""
     if node.type == DesignNodeType.IMAGE:
@@ -1323,6 +1402,7 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 node_name=node.name,
                 width=node.width,
                 height=node.height,
+                export_node_id=_crop_export_id(node),
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
                 stroke_color=node.stroke_color,
                 stroke_weight=node.stroke_weight,
@@ -1337,6 +1417,7 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 width=node.width,
                 height=node.height,
                 is_background=True,
+                export_node_id=_crop_export_id(node),
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
                 stroke_color=node.stroke_color,
                 stroke_weight=node.stroke_weight,
@@ -1377,6 +1458,98 @@ def _corner_spec_or_none(spec: CornerRadiusSpec) -> CornerRadiusSpec | None:
     if spec.scalar is None and spec.per_corner is None:
         return None
     return spec
+
+
+# 53.3d — reproducibility classifier bounds. Boring and conservative (raster
+# only when certain): visible rotation beyond ±1° or sibling pairs whose
+# bboxes clearly overlap (≥25% of the smaller box; near-parent-sized backdrop
+# layers excluded).
+_ROTATION_TOLERANCE_DEG = 1.0
+_OVERLAP_MIN_RATIO = 0.25
+_BACKDROP_COVERAGE = 0.95
+
+
+def _overlapping_children(node: DesignNode) -> tuple[str, str] | None:
+    """First clearly-overlapping visible child pair, if any (53.3d)."""
+    boxes: list[tuple[str, float, float, float, float]] = []
+    parent_area: float | None = None
+    if node.width is not None and node.height is not None:
+        parent_area = node.width * node.height
+    for child in node.children:
+        if not child.visible:
+            continue
+        if child.x is None or child.y is None or child.width is None or child.height is None:
+            continue
+        area = child.width * child.height
+        if parent_area is not None and area >= _BACKDROP_COVERAGE * parent_area:
+            continue  # backdrop layer (hero image under text), not a content overlap
+        boxes.append((child.id, child.x, child.y, child.width, child.height))
+    for i, (a_id, ax, ay, aw, ah) in enumerate(boxes):
+        for b_id, bx, by, bw, bh in boxes[i + 1 :]:
+            ix = min(ax + aw, bx + bw) - max(ax, bx)
+            iy = min(ay + ah, by + bh) - max(ay, by)
+            if ix <= 0.0 or iy <= 0.0:
+                continue
+            smaller = min(aw * ah, bw * bh)
+            if smaller > 0.0 and ix * iy >= _OVERLAP_MIN_RATIO * smaller:
+                return (a_id, b_id)
+    return None
+
+
+def _unreproducible_reason(node: DesignNode) -> str | None:
+    """Why the fixed-seed renderer cannot reproduce this subtree (53.3d).
+
+    ``None`` when the subtree is reproducible. THIS is the reproducibility
+    classifier — z-order/overlap and rotation are the two properties the
+    table renderer cannot express (ceiling doc §2), so the section falls back
+    to one exported image of the whole frame when the flag is on.
+    """
+    if not node.visible:
+        return None
+    if node.rotation is not None and abs(node.rotation) > _ROTATION_TOLERANCE_DEG:
+        return f"rotation:{node.id}"
+    overlap = _overlapping_children(node)
+    if overlap is not None:
+        return f"overlap:{overlap[0]}+{overlap[1]}"
+    for child in node.children:
+        reason = _unreproducible_reason(child)
+        if reason is not None:
+            return reason
+    return None
+
+
+def _is_reproducible(node: DesignNode) -> bool:
+    """Whether the fixed-seed renderer can reproduce this subtree (53.3d)."""
+    return _unreproducible_reason(node) is None
+
+
+def _collect_effects_summary(node: DesignNode) -> str | None:
+    """Aggregate dropped-effect summaries across a section subtree (53.3a).
+
+    Per-node ``DesignNode.effects_summary`` values (``"<count>:<TYPE,...>"``)
+    are merged into one section-level summary of the same shape so the
+    converter can surface the loss as a warning. ``None`` when the subtree
+    carries no effects.
+    """
+    total = 0
+    types: set[str] = set()
+
+    def _walk(n: DesignNode) -> None:
+        nonlocal total
+        if n.effects_summary:
+            count_str, _, type_csv = n.effects_summary.partition(":")
+            try:
+                total += int(count_str)
+            except ValueError:
+                total += 1
+            types.update(t for t in type_csv.split(",") if t)
+        for child in n.children:
+            _walk(child)
+
+    _walk(node)
+    if total == 0:
+        return None
+    return f"{total}:{','.join(sorted(types))}"
 
 
 def validate_image_dimensions(

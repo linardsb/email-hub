@@ -182,6 +182,9 @@ def _full_section() -> EmailSection:
         inner_card_fixed_width=480,
         is_physical_card_surface=True,
         physical_card_signals=("aspect_ratio", "rounded_corners"),
+        # 53.3b/a — gradient reattach ref + dropped-effects summary.
+        gradient_ref="grad-node-1",
+        effects_summary="2:DROP_SHADOW,LAYER_BLUR",
     )
 
 

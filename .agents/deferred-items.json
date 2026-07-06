@@ -893,6 +893,23 @@
       "closed_date": "2026-07-06",
       "closed_commit": "pending commit",
       "resolution": "FIXED same day (branch fix/phase-53f-app-render-field-parity) via the closes_when's sanctioned fallback: run_conversion takes the snapshot document path only when design_import.selected_node_ids is empty; selected-nodes imports use the legacy path, which filters via _filter_structure. Guarded by test_run_conversion_selected_nodes_skip_document_path (RED-proven on pre-fix code) + test_run_conversion_whole_file_import_uses_document_path (document path preserved for whole-file imports). Live-proven: snapshot 21 HAS document_json, yet imports 42/43 (145 selected LEGO nodes) produced the 71,869-byte LEGO email, not the 2MB whole-file output. The interim dev-DB workaround (snapshot 20 document_json nulled) is obsolete but harmless — snapshot 21 supersedes it."
+    },
+    {
+      "id": "phase-53.3-line-height-relative-loader-gap",
+      "phase": "53.3",
+      "title": "structure.json loader drops line_height_relative — AUTO/% line heights die on fixture reload",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-06",
+      "introduced_commit": "3fd6377d",
+      "summary": "_node_from_dict (app/design_sync/diagnose/report.py) reconstructs DesignNode without line_height_relative, the 52.5 AUTO/% line-height field. The dumper (_dataclass_to_dict) writes every field, so any post-52.5 fixture regen will carry the value and silently lose it on reload. Latent today: all 6 committed structure.json dumps predate 52.5 (zero occurrences of the key), so nothing currently breaks. Found by inspection while adding the 53.3 fields (scale_mode/rotation/effects_summary) to the same loader.",
+      "code_refs": [
+        "app/design_sync/diagnose/report.py:99 (_node_from_dict — no line_height_relative kwarg)",
+        "app/design_sync/protocol.py:138 (DesignNode.line_height_relative)"
+      ],
+      "symptom_if_broken": "After a fixture regen against live Figma, a design using AUTO/% line heights renders with default line-height in the regression corpus while the live import path renders the designed value — baseline diffs blame the wrong layer.",
+      "closes_when": "_node_from_dict round-trips line_height_relative (one kwarg) and a bridge-roundtrip-style loader test pins every DesignNode field, OR the diagnose loader is replaced by a schema-driven serializer.",
+      "notes": "Fix is one line + test, but it changes fixture-reload behaviour — do it in a phase that owns a baseline regen, not as a drive-by (53.3 shipped with byte-identical baselines)."
     }
   ],
   "tooling_followups": [
