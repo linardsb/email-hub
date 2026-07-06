@@ -733,6 +733,114 @@
       "symptom_if_broken": "A text-block/hero section with a pre-heading eyebrow AND partial (non-4-side) section padding renders the heading with the eyebrow's padding and the eyebrow row carrying the heading's intended per-side padding.",
       "closes_when": "_upsert_first_td_css_prop is scoped to the heading/first-content <td> (skipping spliced eyebrow rows), or _cell per-side longhands target data-slot cells explicitly. Verified by a partial-padding eyebrow section rendering the heading padding correctly.",
       "notes": "Speculative gap found by inspection during F6 (RC-F6). No corpus fixture carries partial padding + eyebrow. Also unhandled by F6: grouped / multi-column eyebrows (flat single-col path only) — no corpus fixture either."
+    },
+    {
+      "id": "phase-53f-f7-text-block-cta-hardcoded-radius",
+      "phase": "53.f",
+      "title": "_fills_text_block hardcodes border-radius:4px, discarding btn.border_radius",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "pending",
+      "summary": "The text-block CTA-append path in _fills_text_block emits a hardcoded `border-radius:4px` for every button, discarding btn.border_radius (which the document model carries correctly). The sibling column path _column_cta_row honors btn.border_radius with a '4' fallback. Surfaced during the RC-F7 pill-radius fixture recovery (fix/phase-53f-f7-pills-radius): c5 section-[1] 'Discover →' carries border_radius=25.0 (verified via from_legacy) yet renders 4px; corpus-wide the same hardcode forces every text-block CTA that has a design radius to 4px — confirmed on c6 'Order your fall favorite' and c7 'Explore now' (both 25.0 in the model, 4px in expected.html). c5's 7 COLUMN city pills route through _column_cta_row and correctly render 25px, which is why the fixture patch alone recovered them.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:1345 (_fills_text_block CTA-append — hardcoded border-radius:4px)",
+        "app/design_sync/component_matcher.py:843 (_column_cta_row — the honor-radius pattern to mirror: radius = f'{btn.border_radius:.0f}' if not None else '4')"
+      ],
+      "symptom_if_broken": "A text-block section CTA renders square (border-radius:4px) even when the design specifies a rounded/pill radius. Concretely c5 'Discover →', c6 'Order your fall favorite', c7 'Explore now' show 4px instead of their 25px design radius.",
+      "closes_when": "_fills_text_block threads btn.border_radius (fallback '4', mirroring _column_cta_row:843), and the c5/c6/c7 expected.html baselines are regenerated + diff-audited (text-block CTA border-radius 4px→25px only) with the ladder unchanged (13/9/8/10/8/12).",
+      "notes": "Split out of RC-F7 half-2 during the pill recovery (2026-07-05). User-ratified (2026-07-05) to recover only the 7 c5 column pills via the fixture patch and DEFER this shared render-path fix, because fixing it moves the c6/c7 baselines (they are NOT byte-identical after) and belongs in its own scoped effort. Companion to phase-53f-f7-stale-case5-fixture-drops-pill-radius (closed by the fixture patch) — that was the fixture staleness; this is the residual render-path bug that keeps the section-[1] Discover pill square."
+    },
+    {
+      "id": "phase-53f-f7-image-gallery-membership-card",
+      "phase": "53.f",
+      "title": "LEGO membership card [19] (image-gallery seed) has no _inner/col-bg target, stays surface-less",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "97bfb77c",
+      "summary": "RC-F7's card-surface fix (_wrap_col_bg_inner_card) wraps only column-layout-{2,3,4} sections (matched by the col[234]-bg cell). LEGO section [19] carries inner_bg=#FFFFFF (verified via from_legacy->to_email_sections->match_section) but matches the image-gallery seed, which has neither class=\"_inner\" nor a col-bg class, so _COL_BG_CELL_OPEN_RE does not match and the membership/barcode card still renders surface-less on the lime band. Confirmed in the c7 fidelity composite (bottom card).",
+      "code_refs": [
+        "app/design_sync/component_renderer.py:_wrap_col_bg_inner_card (col[234]-bg-scoped; does not match image-gallery)",
+        "email-templates/components/image-gallery.html (no _inner / no col-bg class)",
+        "app/design_sync/component_matcher.py:69 (match_section -> image-gallery for section [19])"
+      ],
+      "symptom_if_broken": "The LEGO Insiders membership/barcode card (section [19]) renders content directly on the lime band with no white card surface, unlike the 6 column-layout benefit cards which RC-F7 fixed.",
+      "closes_when": "Either the 51.1 composite-slot chain gives image-gallery a card wrapper, or an image-gallery-specific inner-card insert analog ships (mirroring _wrap_col_bg_inner_card, anchored on the image-gallery cell), and c7 expected.html is regenerated + diff-audited (1 added wrapper on section [19]) with the ladder unchanged (13/9/8/10/8/12).",
+      "blocked_by": [
+        "phase-51-converter-fidelity-51.2"
+      ],
+      "notes": "Split from phase-53f-f7-column-seed-no-inner at RC-F7 card-surface execution (2026-07-05). The column-layout half (6 benefit cards) shipped; this image-gallery half was explicitly scoped out (different seed) and deferred to 51.1."
+    },
+    {
+      "id": "phase-53f-f7-column-seed-no-inner",
+      "phase": "53.f",
+      "title": "column-layout seeds have no class=\"_inner\", so a card section's inner_bg override no-ops",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "97bfb77c",
+      "closed_commit": "97bfb77c",
+      "summary": "LEGO card sections [5,7,9,11,13,15] carry inner_bg (50.4 direct path) but match column-layout-2, which lacks class=\"_inner\", so the inner_bg->_inner override (component_matcher.py:2054 -> component_renderer.py:_replace_inner_bg_color) no-oped AND the elif section.bg_color->_outer fallback was skipped (inner_bg truthy) -> the white card surface was dropped and content rendered on bare lime.",
+      "code_refs": [
+        "app/design_sync/component_renderer.py:_wrap_col_bg_inner_card (the fix)",
+        "app/design_sync/tests/test_column_card_surface.py (10 tests, 6 RED pre-fix)"
+      ],
+      "symptom_if_broken": "LEGO (c7) column-layout benefit cards render content on the bare lime band with no white rounded card surface.",
+      "closes_when": "A column-layout seed with inner_bg emits a paintable _inner card wrapper.",
+      "closure_note": "Closed 2026-07-05 by a renderer-only insert (plan .agents/plans/53-f7-column-card-surface.md). _wrap_col_bg_inner_card wraps the col[234]-bg cell body in <table class=\"product-card _inner\"> when the _inner bg override no-ops (RC-F2 insert-on-no-op pattern); reuses existing _inner bg/radius overrides + the static product-card dark class (#2d2d44), _detect_inner_bg untouched. c7 0.636->0.719 (exactly 6 wraps, sec 5/7/9/11/13/15); c5/c6/c8/c9/c10 byte-identical; ladder held. The image-gallery membership card [19] was scoped out -> phase-53f-f7-image-gallery-membership-card."
+    },
+    {
+      "id": "phase-53f-f7-card-wrapper-outlook-ghost-overflow",
+      "phase": "53.f",
+      "title": "RC-F7 card wrapper's relocated _cell padding overflows the 600px MSO ghost in Outlook",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "97bfb77c",
+      "summary": "_wrap_col_bg_inner_card inserts a width=100% card table whose <td> becomes the first cell, so the section's _cell padding override (component_matcher.py:2169, applied after inner_bg -> deterministic) lands 20px on the WRAPPER cell, which sits OUTSIDE the MSO ghost (<table width=600>). In the Word/Outlook engine the card is: 100% wrapper -> td with 40px horizontal padding -> a fixed 600px ghost inside a 560px content box; Word will not shrink the ghost, so the card overflows the 600px email column (~640px). Chromium honours the 100% wrapper and renders correctly; the fidelity scorer (Chromium) + DOM/string unit tests + make test never exercise the MSO path, so no gate caught it. Same class as the F3 Outlook attr/width latent.",
+      "code_refs": [
+        "app/design_sync/component_renderer.py:_wrap_col_bg_inner_card (wrapper td, width=100%)",
+        "app/design_sync/component_matcher.py:2169 (_cell padding override, hits the wrapper cell post-wrap)"
+      ],
+      "symptom_if_broken": "In Outlook (Word engine) a LEGO column-layout card renders ~40px too wide, overflowing the 600px email column / misaligning the columns. Chromium-correct.",
+      "closes_when": "The 51.1 card-padding restructure (lime-float + uniform inner-card inset) threads card padding INSIDE the MSO ghost cells (per-column) instead of onto the width=100% wrapper cell, so the 600px ghost fits, and c7 is re-rendered + Outlook-verified.",
+      "notes": "Non-blocking: converter fidelity is Chromium-scored and c7 0.636->0.719 is the Chromium win. Logged per the no-silent-caps discipline (cf. F3's Outlook attr/width note). Belongs with the 51.1 lime-float/card-padding work, which restructures this region anyway. A quick Outlook-safe stopgap (drop the wrapper td's style=padding:0 so _cell stays on col_1 inside the ghost) was considered but reintroduces the pre-fix image/text top misalignment and lowers the Chromium score, so deferred to the holistic 51.1 fix."
+    },
+    {
+      "id": "phase-53f-column-width-budget",
+      "phase": "53.f",
+      "title": "Column seeds' fixed 600px-context widths overflow padded content boxes — 2-col layouts render stacked",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "97bfb77c",
+      "summary": "column-layout-{2,3,4} seeds hardcode per-column pixel widths sized for a full 600px context (MSO ghost td width=300/200/150 + div max-width). Any horizontal inset — a band's _cell padding (24px/side), RC-F7's relocated card padding (20px/side) — shrinks the live content box below the seed total (c7 cards: ~512px vs 600px of columns), so the display:inline-block column divs wrap and multi-column sections render stacked. _apply_column_width_fractions (A8) redistributes the seed total by measured fractions but never RESCALES the total to the effective box; detection is CORRECT (sections match column-layout-* — plan 53-f §4 row 4's 'column-detection widening' is the wrong lever). Dominant remaining c7 full_image mechanism at Track-F close-out.",
+      "code_refs": [
+        "email-templates/components/column-layout-2.html:6 (ghost width=600 / td width=300 hardcodes)",
+        "app/design_sync/component_renderer.py:_apply_column_width_fractions (redistributes, no rescale)",
+        "app/design_sync/component_renderer.py:_wrap_col_bg_inner_card (adds the 20px card inset)"
+      ],
+      "symptom_if_broken": "Any multi-column section inside a padded band or card renders its columns stacked vertically instead of side-by-side, and the email renders far taller than the design (c7 app export 4470px vs 3223px design; c7 all 6 benefit cards image-above-text; c7 user-info col4 wraps its 4th cell; c8 2x2 spec grid single-column; c10 product grid single-column).",
+      "closes_when": "The renderer rescales column ghost td widths + div max-widths so their sum fits the effective content box (600 minus accumulated horizontal insets), preserving A8 fractions; c7/c8/c10 baselines regenerated + diff-audited showing side-by-side columns; ladder unchanged (13/9/8/10/8/12).",
+      "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out; composite-verified on harness + a LEGO app export vs the re-audited P50 target). F9-class renderer slice — no non-MJML fixture dependency. Interacts with phase-53f-f7-card-wrapper-outlook-ghost-overflow (both resolve in how column/card widths thread through the MSO ghost)."
+    },
+    {
+      "id": "phase-53f-column-category-order",
+      "phase": "53.f",
+      "title": "_build_column_fill_html emits images->texts->buttons buckets, discarding design y-order",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-05",
+      "introduced_commit": "97bfb77c",
+      "summary": "The column fill builder iterates group.images, then group.texts, then group.buttons, so in-column content renders category-bucketed instead of in design vertical order. A tag pill (a filled rect + label, classified as a ButtonElement) renders below the body text when the design places it above the heading — F6's eyebrow lift covers pre-heading TEXTS only — and product-card spec icons (images) render above the product name.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:889 (_build_column_fill_html category loops)",
+        "app/design_sync/component_matcher.py:1284 (_pre_heading_body_texts — texts-only eyebrow precedent)"
+      ],
+      "symptom_if_broken": "c7 tip cards render the 'Art prints'/'Stationery' pill after the body and above the CTA (design: eyebrow pill above the heading); c7 treats cards render pieces/points icons above the product name.",
+      "closes_when": "_build_column_fill_html merges images/texts/buttons by node y/tree order (or pre-heading button-like nodes ride stacked_before like F6 eyebrows); c7 baseline regenerated + diff-audited; ladder unchanged (13/9/8/10/8/12).",
+      "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out, composite-verified). Pairs with phase-53f-f7-text-block-cta-hardcoded-radius / phase-53-b8-text-block-solid-cta-text-color for the full pill/CTA fidelity story."
     }
   ],
   "tooling_followups": [

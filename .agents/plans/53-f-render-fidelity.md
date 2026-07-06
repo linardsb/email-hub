@@ -292,6 +292,70 @@ F3 (Lane A, still unshipped — no Result/§6 row) lands (merge-second protocol)
 **Verify:** LEGO white cards reappear behind card content (A3 case 7 section scores);
 maap pills round; no dark-mode regression (`bgcolor-*` class contract, 41.3); baselines
 regen after diff audit.
+**Investigation (2026-07-05, `fix/phase-53f-f7-cards-pills`) — HALTED, premise misaligned; NO code landed:**
+Pre-implementation fixture audit (BEFORE scores c5 0.844 / c6 0.802 / c7 0.636 / c8 0.802 / c9 0.679 /
+c10 0.678; per-section diag via `from_legacy`→`analyze_layout`→`match_section`) shows **both halves' stated
+mechanisms don't reach the corpus**:
+- **Half-1 inert (LEGO cards).** c7 card sections [5,7,9,11,13,15] ALREADY carry `inner_bg=#FFFFFF` (existing
+  direct path, `node.fill_color`≠`container_bg`) yet render on bare lime. They match `column-layout-2`; the
+  membership card [19] matches `image-gallery` — **neither seed has `class="_inner"`** (only 6/151 seeds do:
+  article-card, editorial-2, event-card, pricing-table, zigzag-image-{left,right}), so the `_inner` override
+  no-ops (0 `_inner` in `data/debug/7/expected.html`). And because `inner_bg` is truthy the `elif
+  section.bg_color`→`_outer` fallback (`component_matcher.py:2056`) is skipped → white surface dropped
+  entirely. Child-frame promotion would set *more* `inner_bg` but paint nothing; the white card is
+  STRUCTURAL (column seed needs a card wrapper) = 51.1 composite-slot work (§4), not F7. Dropping the
+  `container_bg` precondition also WIDENS physical-card detection (`layout_analyzer.py:433` `if inner_bg is
+  not None`) → dark-mode regression surface for zero render gain.
+- **Half-2 misdiagnosed (maap pills).** All 8 maap `mj-button`s carry a clean SCALAR `cornerRadius:25.0` in
+  `data/debug/5/raw_figma.json` that the EXISTING `border_radius=node.corner_radius`
+  (`layout_analyzer.py:1438`) already renders (proven by c6/c7 buttons `br=25.0`). But
+  `data/debug/5/structure.json` (6 Jun, old adapter) is STALE and dropped ALL radius (0 occurrences); **no
+  corpus button carries the per-corner `corner_radius_spec` the plan's "uniform→scalar" mechanism targets.**
+  Root cause is fixture staleness, not extraction — implementing the plan's mechanism would fix nothing and
+  claim a win for the wrong fix.
+- **Real fixes (both outside F7's `layout_analyzer`/`component_matcher` file scope):** (a) re-ingest
+  `data/debug/5/structure.json` from raw_figma → existing code rounds the pills (bigger scope; case-5
+  ladder/segmentation diff-audit risk); (b) 51.x composite-slot chain gives column seeds an `_inner`/card
+  wrapper → LEGO cards render. F7's two acceptance criteria are **unmeetable** via the plan's stated code
+  changes. User decision (2026-07-05): HALT & report; branch left clean (no source, no baseline, no Result).
+  Re-scope pending; new blockers logged in §5.
+**Result (2026-07-05, `fix/phase-53f-f7-pills-radius`) — pill radius RECOVERED (fixture, no code):**
+Re-scoped from the halt: half-2 is a stale-fixture recovery, not the plan's per-corner mechanism. A surgical
+text-insertion patched the scalar `"corner_radius": 25.0` into exactly the 8 maap `mj-button` nodes in
+`data/debug/5/structure.json` (`git diff --numstat` = **`8  0`**; **no `json.dumps` round-trip** — c5 is
+old-schema, 26 keys/node, so a re-serialize would have rewritten all 123 nodes with ~10 defaulted keys).
+`snapshot-capture 5 --overwrite`: the **7 city pills (Melbourne/Amsterdam/Seoul/Singapore/Hong Kong/Berlin/
+Taipei) flip `border-radius:4px`→`25px`** via the existing `_column_cta_row` (`component_matcher.py:843`) —
+expected.html diff is **7 border-radius values, nothing else**; ladder **13** held; **c6–c10 byte-identical**.
+**c5 0.844→0.845** (section_median 0.806→**0.821**; section_min 0.492 flat — a 152px pill rounding is
+sub-rounding on the 5036px composite). The 8th button — section [1] **'Discover →' stays 4px**: its
+`border_radius=25.0` reaches the document model (verified via `from_legacy`) but it renders through
+`_fills_text_block`'s CTA-append, which **hardcodes `border-radius:4px`** (`component_matcher.py:1345`),
+discarding it — a **pre-existing corpus-wide bug** (also c6 'Order your fall favorite', c7 'Explore now').
+**User-ratified (2026-07-05):** recover the 7 column pills here; defer the shared render-path fix
+(`phase-53f-f7-text-block-cta-hardcoded-radius`, §5) so c6/c7 baselines don't move. **No regression test** —
+`test_cta_fidelity.py::test_column_fill_uses_button_radius` already covers
+`ButtonElement.border_radius`→`_column_cta_row`→`border-radius:{r}px` end-to-end. `rendered_w600.png` left
+frozen (advisory-only, already stale since F5/F6 — regenerating would fold their visual drift into this commit).
+Closes `phase-53f-f7-stale-case5-fixture-drops-pill-radius` (§5); the LEGO-card half-1 remains open
+(`phase-53f-f7-column-seed-no-inner`).
+**Result (2026-07-05, `fix/phase-53f-f7-pills-radius`) — LEGO-card half DONE (renderer-only), plan
+`.agents/plans/53-f7-column-card-surface.md`:** `_wrap_col_bg_inner_card` (`component_renderer.py`)
+mirrors the RC-F2 insert-on-no-op — when the `_inner` bg override finds no target AND a `col[234]-bg`
+cell exists, it wraps that cell's body (via `_find_matching_close`) in ONE
+`<table class="product-card _inner">`. Reuses the existing `_inner` bg/radius overrides + the static
+`product-card` dark class (`converter_service.py:1083` → `#2d2d44`); **`_detect_inner_bg` /
+physical-card detection untouched** (item-2 answer confirmed correct). Seeds + `component_matcher.py`
+**not touched** (byte-safe insert beats the seed-wrapper sketch — the divergence held up). **c7
+0.636→0.719 (+0.083)**, section_median → 0.804; **only c7's expected.html changed** (git-confirmed),
+**exactly 6 wraps** (sec 5/7/9/11/13/15), c5/c6/c8/c9/c10 byte-identical (snapshot regression 34
+passed / 1 xfail; ladder 13/9/8/10/8/12 held). c7 cards are rounded (`inner_radius=12`, not square as
+the plan assumed) — one bug found+fixed in execution: the wrapper base must NOT set
+`border-collapse:collapse` or it overrides the radius path's prepended `separate` and defeats corner
+clipping. 10 unit tests (`test_column_card_surface.py`, 6 RED pre-fix, real seeds w/ MSO ghosts).
+Visual (composite): uniform white rounded cards on lime, not ragged. Membership card [19]
+(`image-gallery`, carries `inner_bg` but a different seed) still surface-less → new deferred
+`phase-53f-f7-image-gallery-membership-card`; lime-float + per-corner rounding stay 51.1.
 
 ### F8 — Latent imageRef capture `[S, ~0.5h]` — hygiene
 `figma/service.py:607-612`: capture `imageRef` in the RECTANGLE→IMAGE reclassification
@@ -356,7 +420,7 @@ Hard rules for parallel execution:
 | 1 | Ratify stub triage → promote **51.1 composite-slot infrastructure**, then 51.2/51.3 | `deferred/TRIAGE-2026-06-12.md` | The real lifter for RC-F7's structural half (card-with-N-children, tag/pill slot, vertical nav). USER RATIFICATION still pending since 2026-06-12. |
 | 2 | 53.3 ingest render (gradient reattach → crop → rotation/z-order frame_export → effects warnings) | `53-3-ingest-render.md` | Unchanged, still valid. F8 lands first (imageRef trap). |
 | 3 | 53.5 vector recovery (divider stroke fidelity + icon rasterize path) | `53-5-vector-recovery.md` | Unchanged. Note: audit-4's "giant icons" were NOT this class (they render, wrongly sized → F3). |
-| 4 | Column detection widening (bare IMAGE+TEXT columns; peel beyond `mj-wrapper` naming) | ⏳ new plan | Only if post-F corpus still shows stacked 2-cols; needs non-MJML fixtures first (53.6 stub). |
+| 4 | Column detection widening (bare IMAGE+TEXT columns; peel beyond `mj-wrapper` naming) | ⏳ new plan | Only if post-F corpus still shows stacked 2-cols; needs non-MJML fixtures first (53.6 stub). **Close-out finding (2026-07-05): the condition FIRED but the mechanism is different** — stacked 2-cols persist corpus-wide, yet detection is correct (sections match `column-layout-{2,4}`); the stacking is a RENDER width-budget bug (§6 close-out, c7 item 1). A detection-widening plan would aim at the wrong lever; the needed slice is renderer-side width rescale (F9-class), no non-MJML fixture dependency. |
 
 ## 5. Deferred-items to add at ship time
 
@@ -370,6 +434,27 @@ Hard rules for parallel execution:
   heuristic is a stopgap; real fix is z-order/role capture (53.3d territory).
 - Close-check at F4d: if orphan slugs are deleted, close by inspection; if wired, each needs
   a fixture or a synthetic test.
+- `phase-53f-f7-stale-case5-fixture-drops-pill-radius` (known-bug, from F7 halt 2026-07-05) — **CLOSED 2026-07-05 (`fix/phase-53f-f7-pills-radius`)**:
+  `data/debug/5/structure.json` (6 Jun, old adapter) dropped the scalar `cornerRadius:25.0` present on all 8
+  maap `mj-button`s in `raw_figma.json`. The existing `border_radius=node.corner_radius`
+  (`layout_analyzer.py:1438`) + `_column_cta_row` (`component_matcher.py:843`) render 25px pills once the
+  fixture carries the data (proven by c6/c7). **Closure:** a surgical `+8  0` patch inserted the scalar into
+  the 8 nodes → the 7 column pills render 25px (ladder 13 held, c6–c10 byte-identical, c5 0.844→0.845). The
+  section-[1] 'Discover →' residual is a separate render-path bug, not fixture staleness →
+  `phase-53f-f7-text-block-cta-hardcoded-radius`.
+- `phase-53f-f7-text-block-cta-hardcoded-radius` (known-bug, from F7 recovery 2026-07-05; also in
+  `.agents/deferred-items.json`): `_fills_text_block`'s CTA-append (`component_matcher.py:1345`) emits a
+  **hardcoded `border-radius:4px`**, discarding `btn.border_radius` (which the model carries). The sibling
+  `_column_cta_row` (`:843`) honors it. Corpus-wide: c5 'Discover →', c6 'Order your fall favorite', c7
+  'Explore now' render 4px despite a 25.0 design radius. Fix = thread `btn.border_radius` (fallback '4') like
+  `_column_cta_row`, then regen c5/c6/c7 baselines + diff-audit. Deferred (user-ratified 2026-07-05) to keep
+  the pill recovery surgical (c6–c10 byte-identical).
+- `phase-53f-f7-column-seed-no-inner` (confirmed, from F7 halt 2026-07-05): LEGO card sections carry
+  `inner_bg` (50.4 direct path) but match `column-layout-2` / `image-gallery`, which lack `class="_inner"`,
+  so the 50.4 nested-card render path (`component_matcher.py:2054`→`component_renderer.py:1124`) no-ops and
+  the white surface is dropped (`elif section.bg_color` skipped because `inner_bg` is truthy). Blocks F7
+  half-1 "LEGO cards reappear". Real fix = 51.1 composite-slot card wrapper on the column seeds, not
+  `_detect_inner_bg` promotion.
 
 ## 6. A3 score log (append per landed item)
 
@@ -382,3 +467,16 @@ Hard rules for parallel execution:
 | 2026-07-04 | F5 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Compliance win, not pixels.** Footer legal/unsub row now preserved (was wiped by whole-cell fill). Only **c5/c7** have a footer section (6/8/9/10 end in `social-icons` → outside F5's reach, **byte-identical**). **c5 −0.033** (0.877→0.844; section_min 0.632→0.492): off-design legal boilerplate ("© Company Name"/"123 Business Street") + unsub links now render on maap's dark footer — accepted compliance/fidelity trade (cf. F4). **c7 +0.003** (0.612→0.615; editorial now in styled `footer-text` cell). Ladder 13/9/8/10/8/12 held. Merge tags `{{unsubscribeUrl}}`/`{{preferencesUrl}}` contained to footer_legal (2/case, zero leak outside). c8 pre-existing heading trailing-whitespace drift (F8-noted) normalized by regression; c8 baseline untouched. |
 | 2026-07-05 | F3 | 0.844 | 0.802 | 0.636 | 0.802 | 0.679 | 0.678 | **Correctness win, not pixels.** Design width threaded through every image emission (`_column_image_row`+`_image_fills_column`; `overrides["width"]`+`_clamp_img_max_width` on image-block/hero/grid/product; full-bleed keeps `width:100%`, byte-identical). **c9 giants fixed (composite-verified): pins/thermometer 270→34px, grid arrow 292→48px; c7 LEGO decorations →26/30px** (**+0.021**, section_min 0.280→0.338). c8 flat (median 0.859→0.868, 504px Ferrari correct); c5 flat (200px maap neutral). **c9 −0.044 (section_min held 0.353) / c6 −0.012 are scorer artifacts:** shrinking the oversized icons drops render height (c9 aspect 3.31→2.63) below the reference's card-inflated height (RC-F7 cards still missing), so the resize-based band scorer distorts — per-section shows only the height-shifted bands moved (sec3 0.922→0.492), no render defect. **c10 arrows unchanged** — width inflated 28→268px at ingest (`layout_analyzer.py:1318`), outside F3's 2-file scope → deferred `phase-53f-decorative-image-flag`. Ladder 13/9/8/10/8/12 held; c10 byte-identical. |
 | 2026-07-04 | F6 | 0.844 | 0.814 | 0.615 | 0.802 | 0.723 | 0.678 | **Correctness win, not pixels.** Eyebrow/kicker order flipped: pre-heading body texts render ABOVE the heading (HTML + composite verified vs reference — c8 `FERRARI 849 TESTAROSSA`/`…SPIDER` above their headings, c5 `New Season Collaboration` above `MAAP x KASK`). Only **c5/c8** carry pre-heading eyebrows (**6/7/9/10 byte-identical**). full_image flat on all 6; **c8 section_median 0.859→0.868** (+0.009, the eyebrow section now matches the design's reading order); c5 flat (0.844/0.492/0.806 — a ~12px eyebrow reposition is sub-rounding on the 5036px composite). Per-node typography preserved (12px `#DA291C` center on c8; Courier New 12px on c5); heading `_cell` padding intact (`padding-bottom` longhand dodges the `padding:`-shorthand override). Ladder **13/9/8/10/8/12 held**. Pre-existing F8-noted heading trailing-whitespace (not F6) stripped by pre-commit hook + normalized by snapshot comparison → committed c8 baseline changes are eyebrow-rows-only; moves again when F3 (Lane A, unshipped) lands. |
+| 2026-07-05 | F7 (cards) | 0.845 | 0.802 | **0.719** | 0.802 | 0.679 | 0.678 | **Pixel win (LEGO white cards), renderer-only.** Plan `.agents/plans/53-f7-column-card-surface.md`. `_wrap_col_bg_inner_card` (`component_renderer.py`) inserts ONE `<table class="product-card _inner">` around the `col[234]-bg` cell body when the `_inner` bg override no-ops (RC-F2 insert-on-no-op pattern) — reuses existing `_inner` overrides + static `product-card` dark class (`#2d2d44`), zero `_detect_inner_bg` change. **c7 0.636→0.719 (+0.083)**, section_median → **0.804** (maap/starbucks band), section_min 0.351 (still capped by the F1 blank hero + out-of-scope membership card). **Only c7 changed** (git-confirmed single-file baseline diff; snapshot regression 34 passed/1 xfail): **exactly 6 wraps** (sec 5/7/9/11/13/15 `column-layout-2`); c7's 7th col-bg + sec[19] `image-gallery` membership card byte-identical within c7; c5/c6/c8/c9/c10 **byte-identical**. Cards render rounded (`inner_radius=12` → `border-radius:12px`, `border-collapse:separate;overflow:hidden` clips — plan's "square card" assumption was wrong). Visual: uniform white rounded cards on lime, not ragged (per-section confirmed). Ladder 13/9/8/10/8/12 held; 10 unit tests (`test_column_card_surface.py`, 6 RED pre-fix). Closes `phase-53f-f7-column-seed-no-inner`; membership card → new deferred `phase-53f-f7-image-gallery-membership-card`. **Outlook latent (logged, non-blocking):** the section's `_cell` 20px override now lands on the wrapper cell, which sits OUTSIDE the 600px MSO ghost → card ~40px too wide in the Word engine (Chromium-correct + unscored; no gate renders Outlook, cf. F3's attr/width latent) → deferred `phase-53f-f7-card-wrapper-outlook-ghost-overflow`, resolved by the 51.1 card-padding restructure (threads padding inside the per-column ghost cells). |
+| 2026-07-05 | F7 (pills) | 0.845 | 0.802 | 0.636 | 0.802 | 0.679 | 0.678 | **Fixture recovery (maap pill radius), not code.** Stale c5 `structure.json` (6 Jun) dropped the scalar `cornerRadius:25.0` on all 8 `mj-button`s; surgically re-inserted (`+8  0` diff, no `json.dumps` round-trip). **7 city pills 4px→25px** via the existing `_column_cta_row` — **c5 0.844→0.845** (section_median 0.806→**0.821**; section_min 0.492 flat — a 152px pill rounding is sub-rounding on the 5036px composite). **c6–c10 byte-identical** (only c5 `expected.html` touched; scores unchanged). 8th button section [1] 'Discover →' stays 4px — it renders via `_fills_text_block`, which **hardcodes `border-radius:4px`** (`component_matcher.py:1345`), a pre-existing corpus-wide bug (also c6 'Order your fall favorite', c7 'Explore now') → deferred `phase-53f-f7-text-block-cta-hardcoded-radius` (user-ratified). Ladder **13/9/8/10/8/12 held**; `rendered_w600.png` left frozen (advisory-only, stale since F5/F6). |
+| 2026-07-05 | **Track F close-out (final)** | 0.845 | 0.802 | 0.719 | 0.802 | 0.679 | 0.678 | Final full_image (fresh run, F7-cards `97bfb77c` in tree); section_min 0.492/0.477/0.351/0.688/0.353/0.087; section_median 0.821/0.699/0.804/0.868/0.745/0.777. All 6 composites eyeballed per §3.3 — verdict below. |
+
+### Close-out verdict vs §3 (2026-07-05)
+
+**Band target (c7/c8/c9 full_image ≥0.80): 1 of 3 met.** c8 0.702→**0.802 MET**. c7 0.624→**0.719 MISSED** (+0.095; section_median 0.804 *is* in the maap/starbucks band — the full_image miss is height distortion from stacked columns + the blank hero, see below). c9 0.640→**0.679 MISSED** (+0.039; peaked 0.732 post-F2, gave the gain back to fixture asset-gaps + the F3 height artifact). **"No case regresses":** c5 0.879→0.845 is the F5 compliance trade (−0.033, accepted + documented at ship) plus pills (+0.001); c6 +0.001 / c10 −0.001 noise. No unexplained regression.
+
+**Remaining mechanisms (composite-verified this session — honest per contract, no massage):**
+- **c7 (0.719):** (1) **Column width budget — NEW RC, biggest remaining lever, previously unnamed.** Column seeds hardcode 600px-context pixel widths (`column-layout-2` ghost `td width="300"` + div `max-width:300px`; ×4 = 150s), but the live content box shrinks to ~512px under the band's 24px `_cell` inset + F7's 20px card padding → the inline-block columns **wrap: every 2-col card renders stacked** (an app-side export renders 4470px vs the 3223px design). Detection is CORRECT (sections match `column-layout-2`; §4 row 4's "column-detection widening" is the wrong lever); `_apply_column_width_fractions` (A8) redistributes but never rescales the seed total to the effective box. Renderer-side rescale = F9-class slice. (2) F1 blank-hero asset gap (`2833:1881` PNG unexported — fixture artifact, production unaffected). (3) Membership card [19] surface → `phase-53f-f7-image-gallery-membership-card` (51.1). (4) Text-block CTA path → `phase-53f-f7-text-block-cta-hardcoded-radius` + `phase-53-b8-text-block-solid-cta-text-color` ('Explore now' 4px; invisible-on-white risk when stroke data is absent). (5) **In-column category ordering:** `_build_column_fill_html` emits images→texts→buttons, discarding design y-order — the tag pill renders below the body (design: eyebrow above heading; F6 lifts *texts* only, a pill classifies as a button) and card icons render above product names.
+- **c9 (0.679):** fixture asset gaps dominate (F4b col-icon `/api` PNGs + F1-class heroes absent → broken-image boxes on white bands; production serves these — `phase-53.7-asset-reexport-prerequisite`); article-card fills 2/5 ("HOT TRIP, COOL GEAR." heading + CTA absent from render); F3's height artifact vs the card-inflated reference persists (aspect 2.63 vs 3.31).
+- **c10 (0.678):** under-segmentation (A2 12 vs 18, mammut xfail — count work out of scope per §3.2) + ingest-inflated nav arrows (28→268px, `phase-53f-decorative-image-flag`) + product grid rendering single-column (same width/grid class as c7 item 1).
+- **Ops note (not an engine gap):** an app-side LEGO run ingested 2026-04-03 renders far below the harness on identical renderer code — its DB-stored structure predates the radius/stroke/text-color/alignment extraction fields (invisible outlined CTA, 4px pills, left-aligned headings). Stale design runs need a design-sync re-run; the frozen `data/debug` fixtures are unaffected.

@@ -440,6 +440,12 @@ _INNER_CLASS_ATTR_RE = re.compile(
     r'(<(?:table|td)\b[^>]*\bclass=")((?:[^"]*\s)?_inner(?:\s[^"]*)?)(")'
 )
 
+# RC-F7: the wrapper <td> of a column-layout seed (column-layout-2/3/4). A section
+# carrying inner_bg but matching a column seed (which has no class="_inner") gets
+# its card surface inserted around this cell's body — the column seeds are the only
+# ones with a col[234]-bg cell, so this scopes the insert without seed-type sniffing.
+_COL_BG_CELL_OPEN_RE = re.compile(r'<td\b[^>]*\bclass="[^"]*\bcol[234]-bg\b[^"]*"[^>]*>')
+
 _SLOT_ATTR_RE = re.compile(r'data-slot="([^"]+)"')
 
 
@@ -1123,7 +1129,14 @@ class ComponentRenderer:
                     result = self._replace_first_css_prop(result, prop, val)
             elif target == "_inner":
                 if prop == "background-color":
-                    result = self._replace_inner_bg_color(result, val)
+                    replaced = self._replace_inner_bg_color(result, val)
+                    if replaced == result:
+                        # RC-F7: column-layout seeds have no _inner target, so a
+                        # card section's inner_bg would no-op and content renders
+                        # on the bare band. Wrap the col[234]-bg cell body in a
+                        # card surface (mirrors the RC-F2 insert-on-no-op).
+                        replaced = self._wrap_col_bg_inner_card(result, val)
+                    result = replaced
                 elif prop == "border-radius":
                     result = self._replace_inner_radius(result, val)
                 elif prop == "width":
@@ -1375,6 +1388,49 @@ class ComponentRenderer:
         # in any attribute order (the fixed-width MSO ghost is skipped).
         pattern = re.compile(r'<table\b(?=[^>]*\brole="presentation")(?=[^>]*\bwidth="100%")[^>]*>')
         return pattern.sub(_inject, html_str, count=1)
+
+    def _wrap_col_bg_inner_card(self, html_str: str, color: str) -> str:
+        """Wrap a column-layout section's body in an inner card surface (RC-F7).
+
+        column-layout-{2,3,4} seeds carry no ``class="_inner"`` element, so a
+        section with ``inner_bg`` set — a card floating on a coloured band (LEGO
+        benefit cards) — loses its surface: the ``_inner`` bg override no-ops and
+        content renders on the bare band. Mirroring RC-F2's insert-on-no-op
+        (:meth:`_insert_first_table_bg_color`), when the ``_inner`` bg override
+        finds no target AND the section rendered through a ``col[234]-bg`` cell,
+        wrap that cell's whole body in ONE ``<table class="product-card _inner">``
+        painted with the card colour. A single per-section wrapper spans every
+        column so the surface is uniform — per-column wrapping would leave the
+        band exposed below the shorter column (col_1 image vs col_2 text differ
+        in height). ``product-card`` is a static dark-mode class
+        (``converter_service.py`` → ``#2d2d44``), so the card flips to the
+        nested-card shade in dark mode with no dark-CSS change. Byte-identical
+        no-op when no ``col[234]-bg`` cell is present (non-column seed).
+        """
+        safe = html.escape(color, quote=True)
+        cell_match = _COL_BG_CELL_OPEN_RE.search(html_str)
+        if cell_match is None:
+            return html_str  # not a column-layout seed → byte-identical no-op
+        content_start = cell_match.end()
+        close = _find_matching_close(html_str, "td", content_start)
+        if close is None:
+            return html_str  # unbalanced markup → leave untouched
+        body = html_str[content_start:close]
+        # NB: no ``border-collapse`` in the base style. When ``inner_radius`` is
+        # set, :meth:`_replace_inner_radius` PREPENDS ``border-collapse:separate;
+        # overflow:hidden`` (needed to clip rounded corners); a base
+        # ``border-collapse:collapse`` would sit LATER in the value and win,
+        # defeating the rounding. ``cellspacing="0"`` already kills cell spacing,
+        # so the browser default (separate) is safe for the square case.
+        wrapper_open = (
+            '<table role="presentation" class="product-card _inner" width="100%" '
+            'cellpadding="0" cellspacing="0" border="0" '
+            f'style="mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:{safe};" '
+            f'bgcolor="{safe}"><tr><td style="padding:0;">'
+        )
+        return (
+            html_str[:content_start] + wrapper_open + body + "</td></tr></table>" + html_str[close:]
+        )
 
     def _replace_inner_bg_color(self, html_str: str, color: str) -> str:
         """Apply background-color to elements carrying ``class="_inner"``.
