@@ -234,6 +234,7 @@ def _mock_layout_settings() -> Any:
             "nested_card_perceptual_threshold": 30,
             "physical_card_detection_enabled": False,
             "physical_card_min_signals": 2,
+            "frame_export_fallback_enabled": False,
         },
     )()
     mock_s = type("S", (), {"design_sync": mock_ds})()

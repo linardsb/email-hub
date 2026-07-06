@@ -56,6 +56,7 @@ class RawFigmaPaint(TypedDict, total=False):
     opacity: float
     color: RawFigmaColor
     imageRef: str
+    scaleMode: str  # "FILL" | "FIT" | "CROP" | "TILE" (IMAGE fills, 53.3c)
     gradientStops: list[RawFigmaGradientStop]
     gradientHandlePositions: list[RawFigmaGradientHandle]
 
@@ -100,6 +101,10 @@ class RawFigmaNode(TypedDict, total=False):
     type: str  # "DOCUMENT" | "CANVAS" | "FRAME" | "TEXT" | "RECTANGLE" | ...
     visible: bool  # default True when omitted
     opacity: float
+    rotation: float  # degrees, Figma REST convention (53.3d)
+    blendMode: str  # "NORMAL" | "PASS_THROUGH" | "MULTIPLY" | ... (53.3a)
+    # Effect items are dict-checked at the use site (53.3a)
+    effects: list[Any]
     absoluteBoundingBox: Any  # dict-checked at use site
 
     # Layout / auto-layout

@@ -552,7 +552,7 @@
       "id": "phase-53-b8-text-block-solid-cta-text-color",
       "phase": "53",
       "title": "Solid-fill text-block CTAs hardcode white label text, ignoring ButtonElement.text_color",
-      "status": "deferred",
+      "status": "closed",
       "severity": "speculative",
       "introduced": "2026-06-11",
       "introduced_commit": "5d0b2bdb",
@@ -563,7 +563,10 @@
       ],
       "symptom_if_broken": "A solid-fill text-block CTA whose design specifies dark label text renders white-on-colour instead; case 5's button shows white text where the extracted design data says #010101. Low-contrast or wrong-colour labels on non-outlined buttons in real designs.",
       "closes_when": "Visual verification (a committed design render or a VLM compare) resolves whether case 5's solid button is white- or dark-labelled; _fills_text_block either adopts text_color for solid buttons too, or documents white as the deliberate override. Verified by case 5's rendered label colour matching the confirmed design.",
-      "notes": "Deliberate scope boundary of the phase-53-b8-non-cta-multibutton-drop fix (commit 5d0b2bdb): outlined buttons (stroke) use designed text_color + border; solid buttons keep white. Recorded because the chosen white diverges from extracted data on case 5 and can't be adjudicated without a design render — blocked on the same asset re-export as plan §A3/§A4. Related: phase-53-b8-non-cta-multibutton-drop, phase-53-b8-cta-pair-color-fidelity."
+      "notes": "Deliberate scope boundary of the phase-53-b8-non-cta-multibutton-drop fix (commit 5d0b2bdb): outlined buttons (stroke) use designed text_color + border; solid buttons keep white. Recorded because the chosen white diverges from extracted data on case 5 and can't be adjudicated without a design render — blocked on the same asset re-export as plan §A3/§A4. Related: phase-53-b8-non-cta-multibutton-drop, phase-53-b8-cta-pair-color-fidelity.",
+      "closed_date": "2026-07-06",
+      "closed_commit": "198332a1 (fix/phase-53f11-textblock-cta-label, F11)",
+      "resolution": "FIXED per closes_when, adjudicated from raw design data instead of the blocked render re-export: c7 raw_figma mj-button 2833:1890 (fill #FFFFFF, stroke #000000/2.0 strokeAlign INSIDE, cornerRadius 25) with label TEXT 2833:1891 fill #000000 proves outlined buttons are dark-labelled by design — extracted button text fills are visual intent, not Figma text-node defaults, killing the 'often a Figma default' premise that justified the white hardcode. _fills_text_block's stroke-less branch now threads _safe_color(btn.text_color, '#ffffff') — white only as absence-fallback — mirroring _column_cta_row:842; the outlined branch is byte-unchanged (keeps its border + darker #1a1a1a absence-fallback). Case 5 'Discover ->' (raw TEXT 2833:1640 fill #000000; this entry's #010101 was the pre-re-audit fixture value, superseded by the 2026-07-05 exact-raw re-audit; extracted fill_color is None -> renderer-default #0066cc, not a design blue) now renders color:#000000 — the label matches the confirmed design. c6 'Order your fall favorite' raw TEXT 2833:1439 fill #FFFFFF confirms white IS the c6 design (byte-level no-op beyond hex case). Baselines diff-audited: c5 1 semantic line; c6 1 case-only line (#ffffff -> #FFFFFF, extracted case flows through, column-path parity); c8 2 case-only 'DISCOVER IT' lines (the regen's trailing-ws churn is stripped by the pre-commit hook — the churn's actual origin); c7/c9/c10 byte-identical (c9's dark-label 'WATCH THE VIDEO' never renders — pre-existing template-path drop, out of scope). White-on-white grep (background-color:#FFFFFF;color:#ffffff, any case) zero on all 6; ladder 13/9/8/10/8/12 held; fidelity scores flat to 3dp on all 18 metrics. Gates: types 0-err, design_sync+components 2854, backend 8294, golden 26, snapshot 34/10sk/1xf. Guarded by TestTextBlockCTALabelColor (test_cta_fidelity.py): dark-label-on-light-fill RED-proven pre-fix (failure output was the exact background-color:#FFFFFF;color:#ffffff invisible signature); white-fallback-when-text_color-absent pins the absence-fallback against _safe_color's #333333 default. Own-row CTA emission (vs inline-in-body) deliberately not taken — 51.1 territory."
     },
     {
       "id": "phase-53.7-typography-maxitems-cap",
@@ -816,10 +819,11 @@
       "id": "phase-53f-column-width-budget",
       "phase": "53.f",
       "title": "Column seeds' fixed 600px-context widths overflow padded content boxes — 2-col layouts render stacked",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
+      "closed_commit": "e6812b44",
       "summary": "column-layout-{2,3,4} seeds hardcode per-column pixel widths sized for a full 600px context (MSO ghost td width=300/200/150 + div max-width). Any horizontal inset — a band's _cell padding (24px/side), RC-F7's relocated card padding (20px/side) — shrinks the live content box below the seed total (c7 cards: ~512px vs 600px of columns), so the display:inline-block column divs wrap and multi-column sections render stacked. _apply_column_width_fractions (A8) redistributes the seed total by measured fractions but never RESCALES the total to the effective box; detection is CORRECT (sections match column-layout-* — plan 53-f §4 row 4's 'column-detection widening' is the wrong lever). Dominant remaining c7 full_image mechanism at Track-F close-out.",
       "code_refs": [
         "email-templates/components/column-layout-2.html:6 (ghost width=600 / td width=300 hardcodes)",
@@ -828,16 +832,17 @@
       ],
       "symptom_if_broken": "Any multi-column section inside a padded band or card renders its columns stacked vertically instead of side-by-side, and the email renders far taller than the design (c7 app export 4470px vs 3223px design; c7 all 6 benefit cards image-above-text; c7 user-info col4 wraps its 4th cell; c8 2x2 spec grid single-column; c10 product grid single-column).",
       "closes_when": "The renderer rescales column ghost td widths + div max-widths so their sum fits the effective content box (600 minus accumulated horizontal insets), preserving A8 fractions; c7/c8/c10 baselines regenerated + diff-audited showing side-by-side columns; ladder unchanged (13/9/8/10/8/12).",
-      "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out; composite-verified on harness + a LEGO app export vs the re-audited P50 target). F9-class renderer slice — no non-MJML fixture dependency. Interacts with phase-53f-f7-card-wrapper-outlook-ghost-overflow (both resolve in how column/card widths thread through the MSO ghost)."
+      "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out; composite-verified on harness + a LEGO app export vs the re-audited P50 target). F9-class renderer slice — no non-MJML fixture dependency. Interacts with phase-53f-f7-card-wrapper-outlook-ghost-overflow (both resolve in how column/card widths thread through the MSO ghost). CLOSED 2026-07-06 (e6812b44, fix/phase-53f9-column-width-budget, plan 53-f9-column-width-budget.md): _shrink_column_ghost_widths rescales ghost td widths + div max-widths + the ghost table total together (A8 fractions + all-or-nothing preserved) at two call sites — render_section 3c (card wrapper inset) and render_repeating_group rows (2x band horizontal). closes_when met in full: c5/c7/c8/c9/c10 baselines regenerated + diff-audited width-only (c6 byte-identical; c8 sec[9] un-inset control untouched), composites show c7 cards side-by-side / c8 spec grid 2x2 / c10 grid 2-up, ladder 13/9/8/10/8/12 held. c7 0.771->0.794, c10 0.678->0.742. The Outlook ghost-overflow sibling STAYS OPEN (arithmetic now fits 512+88=600 but unverified in the Word engine)."
     },
     {
       "id": "phase-53f-column-category-order",
       "phase": "53.f",
       "title": "_build_column_fill_html emits images->texts->buttons buckets, discarding design y-order",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
+      "closed_commit": "12aebee1",
       "summary": "The column fill builder iterates group.images, then group.texts, then group.buttons, so in-column content renders category-bucketed instead of in design vertical order. A tag pill (a filled rect + label, classified as a ButtonElement) renders below the body text when the design places it above the heading — F6's eyebrow lift covers pre-heading TEXTS only — and product-card spec icons (images) render above the product name.",
       "code_refs": [
         "app/design_sync/component_matcher.py:889 (_build_column_fill_html category loops)",
@@ -888,6 +893,41 @@
       "closed_date": "2026-07-06",
       "closed_commit": "pending commit",
       "resolution": "FIXED same day (branch fix/phase-53f-app-render-field-parity) via the closes_when's sanctioned fallback: run_conversion takes the snapshot document path only when design_import.selected_node_ids is empty; selected-nodes imports use the legacy path, which filters via _filter_structure. Guarded by test_run_conversion_selected_nodes_skip_document_path (RED-proven on pre-fix code) + test_run_conversion_whole_file_import_uses_document_path (document path preserved for whole-file imports). Live-proven: snapshot 21 HAS document_json, yet imports 42/43 (145 selected LEGO nodes) produced the 71,869-byte LEGO email, not the 2MB whole-file output. The interim dev-DB workaround (snapshot 20 document_json nulled) is obsolete but harmless — snapshot 21 supersedes it."
+    },
+    {
+      "id": "phase-53.3-line-height-relative-loader-gap",
+      "phase": "53.3",
+      "title": "structure.json loader drops line_height_relative — AUTO/% line heights die on fixture reload",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-06",
+      "introduced_commit": "3fd6377d",
+      "summary": "_node_from_dict (app/design_sync/diagnose/report.py) reconstructs DesignNode without line_height_relative, the 52.5 AUTO/% line-height field. The dumper (_dataclass_to_dict) writes every field, so any post-52.5 fixture regen will carry the value and silently lose it on reload. Latent today: all 6 committed structure.json dumps predate 52.5 (zero occurrences of the key), so nothing currently breaks. Found by inspection while adding the 53.3 fields (scale_mode/rotation/effects_summary) to the same loader.",
+      "code_refs": [
+        "app/design_sync/diagnose/report.py:99 (_node_from_dict — no line_height_relative kwarg)",
+        "app/design_sync/protocol.py:138 (DesignNode.line_height_relative)"
+      ],
+      "symptom_if_broken": "After a fixture regen against live Figma, a design using AUTO/% line heights renders with default line-height in the regression corpus while the live import path renders the designed value — baseline diffs blame the wrong layer.",
+      "closes_when": "_node_from_dict round-trips line_height_relative (one kwarg) and a bridge-roundtrip-style loader test pins every DesignNode field, OR the diagnose loader is replaced by a schema-driven serializer.",
+      "notes": "Fix is one line + test, but it changes fixture-reload behaviour — do it in a phase that owns a baseline regen, not as a drive-by (53.3 shipped with byte-identical baselines)."
+    },
+    {
+      "id": "phase-53.5-nested-divider-render-gap",
+      "phase": "53.5",
+      "title": "Nested mj-divider rules don't render — column-child and band-absorbed dividers lose their stroke",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-07-06",
+      "introduced_commit": "adca13e0",
+      "summary": "53.5 recovers divider strokes only when the mj-divider frame IS a section (case 9). Case 8's LINE sits at mj-wrapper > mj-section > mj-column > mj-divider-Frame — a column child; the column fill builder has no divider row category, so the rule vanishes. Case 10's two divider sections DO adopt #C7CCCF via the 53.5 lift, but band grouping absorbs them as spacer-class separators before matching (absorb_spacers, ratified A2 behaviour) and the band renderer emits no rule.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_build_column_fill* — no divider category)",
+        "app/design_sync/sibling_detector.py (group_by_wrapper absorb_spacers)",
+        "app/design_sync/figma/layout_analyzer.py (_zero_area_vector_stroke — the recoverable signal)"
+      ],
+      "symptom_if_broken": "Designs whose horizontal rules live inside columns or inside band-grouped wrappers render without the rule; the design shows a visible separator, the email shows none (cases 8 and 10 today).",
+      "closes_when": "Column fills gain a divider row category (in-column, 51.x seam) AND band absorption carries the absorbed divider's stroke into a band-internal rule row — or segmentation changes make such dividers first-class sections.",
+      "notes": "The stroke signal is already captured and bridged (section.stroke_color / _zero_area_vector_stroke); this is a renderer-reach gap, not an ingest gap."
     }
   ],
   "tooling_followups": [

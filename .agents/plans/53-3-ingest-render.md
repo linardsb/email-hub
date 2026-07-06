@@ -102,3 +102,56 @@ for every new field (D2 trap); `make types` + design_sync suite + golden-conform
 - 52.5 capture limits noted in TODO.md (image-fill frames yield no `child_bg`;
   gradient-topmost fills don't update `child_bg`) — 53.3b inherits them; do not silently
   re-promise them.
+
+## Result (2026-07-06, `fix/phase-53.3-ingest-render`)
+
+Shipped all four sub-items as planned. **Corpus effect: ZERO by design** — the raw_figma
+audit (2026-07-06) found the 6 fixture cases carry no gradients, no non-FILL scaleModes, no
+rotations beyond float noise, no effects, and only NORMAL/PASS_THROUGH blends, so synthetic
+trees (`test_ingest_render.py`, 31 tests) are the only coverage; baselines stayed
+byte-identical (no regen), ladder 13/9/8/10/8/12 held (data-regression 73 passed / 1 mammut
+xfail), and scores are **flat: c5 0.840 / c6 0.802 / c7 0.794 / c8 0.778 / c9 0.680 /
+c10 0.742** (BEFORE row reproduced exactly, AFTER identical — the A3 advisory delta is 0).
+
+- **53.3b** — `gradient_ref` on `EmailSection`/`DocumentSection` (+ all 4 bridge sites + the
+  schema property, and the missing `gradient.node_id` schema property — a 52.5 leftover of
+  the same strictness family); attach at `analyze_layout` via `gradient_node_ids` threaded
+  from `from_legacy`; matcher resolves against `tokens.gradients[*].node_id` and emits
+  `background-image` on `_outer` plus the solid midpoint `background-color` when the section
+  has no fill (stamps MSO `bgcolor`); renderer upserts via `_apply_outer_bg_image`
+  (`_outer`-classed element, else first visible presentation table — MSO ghost skipped).
+  E2e verified: `from_legacy → convert_document` HTML carries
+  `background-image:linear-gradient(90deg, …)` + the `#5E6F80` fallback. **Linear only** —
+  radial+ stay solid; **no VML gradient in v1** (ceiling doc §2 updated).
+- **53.3c** — `scaleMode` parsed off the consumed IMAGE fill (`_VisualProps.scale_mode` →
+  `DesignNode.scale_mode`); `_walk_for_images` sets `export_node_id = node.id` for non-FILL
+  modes (`_crop_export_id`) on both the plain-IMAGE and FRAME-bg branches, so the Figma
+  render bakes the crop. `imageTransform` matrix deliberately not parsed (plan: export the
+  cropped result instead).
+- **53.3d** — `DesignNode.rotation` (degrees, Figma REST convention);
+  `_unreproducible_reason`/`_is_reproducible` in `layout_analyzer.py` (rotation beyond ±1°,
+  sibling bbox overlap ≥25% of the smaller box, ≥95%-of-parent backdrop layers excluded,
+  invisible subtrees skipped); flag-gated section raster
+  (`DESIGN_SYNC__FRAME_EXPORT_FALLBACK_ENABLED`, default off, registered in
+  `feature-flags.yaml` + settings) replaces extraction with one
+  `ImagePlaceholder(export_node_id=frame)` and logs `design_sync.frame_export_fallback`;
+  oversized-asset audit warning (`design_sync.asset_oversized`, >200 KB) in `assets.py`.
+- **53.3a** — `effects[]`/`blendMode` → `DesignNode.effects_summary`
+  (`"<count>:<TYPE,…>"`), aggregated per section (`_collect_effects_summary`), bridged
+  (4 sites + schema), surfaced by `convert_document` as `design_sync.effects_dropped` log +
+  conversion warning. NOTE: `_collect_vector_warnings` in `converter_service.py` turned out
+  to be dead code (zero callers), so the plan's "appears in conversion warnings" needed the
+  section-level carry — `DesignNode`-only state cannot reach the document path.
+
+**Honest read / follow-ups:** rotation unit is asserted (degrees) from figma-api typings, not
+verified against a live rotated design — the classifier errs to rastering either way;
+`match_section_with_vlm_fallback` accepts `gradients` but no production caller threads it
+(the path itself is flag-off); effects warnings emit on `convert_document` only (the MJML
+path builds its own warnings list). New ledger entry:
+`phase-53.3-line-height-relative-loader-gap` (the diagnose loader drops the 52.5 AUTO/%
+line-height field on reload — latent, fixture dumps predate 52.5). Ledger sweep: no entry
+closes — `phase-53f-decorative-image-flag` needs per-image role capture (not the 53.3d
+subtree classifier) + the frame-wrap width fix; the mammut escape-hatch condition needs case
+10 to actually converge (flag is default-off). Gates: `make types` 0 errors ·
+design_sync+components 2885 passed / 2 xfailed · golden-conformance 26 · scoped ruff (incl.
+S-rules) clean · flag audit 87 flags green.

@@ -146,6 +146,11 @@ class ColumnGroup:
     images: list[ImagePlaceholder] = field(default_factory=list[ImagePlaceholder])
     buttons: list[ButtonElement] = field(default_factory=list[ButtonElement])
     width: float | None = None
+    # F10 — node ids of the extracted content in design tree (pre-order) order.
+    # The three category lists above lose the interleave; this restores it at
+    # render time. Empty on groups built before the field existed (older
+    # persisted documents) → callers fall back to category order.
+    content_order: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -235,6 +240,15 @@ class EmailSection:
     # composes them side-by-side (the design lays them out horizontally) while
     # each still COUNTS as its own section for the A2 target gate.
     peel_row_id: str | None = None
+    # 53.3b — source node id of a gradient fill captured at 52.5. The matcher
+    # resolves it against ``tokens.gradients[*].node_id`` to emit the
+    # background-image override; ``None`` when the section carries no gradient.
+    gradient_ref: str | None = None
+    # 53.3a — dropped visual effects on this section's subtree, as
+    # ``"<count>:<TYPE,...>"`` (e.g. ``"2:DROP_SHADOW,LAYER_BLUR"``). Shadows/
+    # blurs/blends are not reproducible in email HTML (ceiling doc §2); this
+    # carries the loss into conversion warnings instead of silence.
+    effects_summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -301,6 +315,7 @@ def analyze_layout(
     button_name_hints: list[str] | None = None,
     vlm_classifications: dict[str, VLMSectionClassification] | None = None,
     global_design_image: bytes | None = None,
+    gradient_node_ids: frozenset[str] | None = None,
 ) -> DesignLayoutDescription:
     """Analyze a design file structure and detect email sections.
 
@@ -351,6 +366,7 @@ def analyze_layout(
     sections: list[EmailSection] = []
     total = len(candidates)
     vlm_threshold = VLM_CLASSIFICATION_CONFIDENCE_THRESHOLD if vlm_classifications else 0.0
+    frame_export_fallback = get_settings().design_sync.frame_export_fallback_enabled
     for idx, (node, container_bg, parent_wrapper_id, peel_row_id) in enumerate(candidates):
         section_type, classification_confidence = _classify_section(
             node,
@@ -394,6 +410,49 @@ def analyze_layout(
                     vlm_confidence=vlm_conf,
                     rule_confidence=classification_confidence,
                 )
+
+        # 53.3d — a subtree the fixed-seed renderer cannot reproduce (rotation,
+        # overlapping siblings) renders as ONE exported image of the whole
+        # section frame instead of mis-extracted content. Flag-gated, default
+        # off; the fork-(c) escape hatch seam.
+        if frame_export_fallback:
+            raster_reason = _unreproducible_reason(node)
+            if raster_reason is not None:
+                logger.info(
+                    "design_sync.frame_export_fallback",
+                    node_id=node.id,
+                    reason=raster_reason,
+                )
+                sections.append(
+                    EmailSection(
+                        section_type=section_type,
+                        node_id=node.id,
+                        node_name=node.name,
+                        y_position=node.y,
+                        x_position=node.x,
+                        width=node.width,
+                        height=node.height,
+                        images=[
+                            ImagePlaceholder(
+                                node_id=node.id,
+                                node_name=node.name,
+                                width=node.width,
+                                height=node.height,
+                                export_node_id=node.id,
+                            )
+                        ],
+                        bg_color=node.fill_color,
+                        classification_confidence=classification_confidence,
+                        vlm_classification=vlm_type_str,
+                        vlm_confidence=vlm_conf,
+                        content_roles=("image",),
+                        container_bg=container_bg,
+                        parent_wrapper_id=parent_wrapper_id,
+                        peel_row_id=peel_row_id,
+                        effects_summary=_collect_effects_summary(node),
+                    )
+                )
+                continue
 
         col_layout, col_count, col_groups = _detect_column_layout_with_groups(node, convention)
         buttons = _extract_buttons(node, extra_hints=button_name_hints)
@@ -451,6 +510,27 @@ def analyze_layout(
                     is_physical_card_surface = True
                     physical_card_signals = ("nested_card", *nested.signals)
 
+        # 53.3b — reattach a captured gradient fill: the section node (or the
+        # wrapper it was unwrapped from) is the node whose fill produced a
+        # ``tokens.gradients`` entry at 52.5.
+        gradient_ref: str | None = None
+        if gradient_node_ids:
+            if node.id in gradient_node_ids:
+                gradient_ref = node.id
+            elif parent_wrapper_id and parent_wrapper_id in gradient_node_ids:
+                gradient_ref = parent_wrapper_id
+
+        # 53.5 — divider rule recovery: the visible rule of an ``mj-divider``
+        # is the stroke of a zero-area LINE child, not the section frame's own
+        # (usually empty) stroke. Adopt it so the matcher can thread colour +
+        # thickness into the divider seed.
+        stroke_color = node.stroke_color
+        stroke_weight = node.stroke_weight
+        if section_type == EmailSectionType.DIVIDER and stroke_color is None:
+            line_stroke = _zero_area_vector_stroke(node)
+            if line_stroke is not None:
+                stroke_color, stroke_weight = line_stroke
+
         sections.append(
             EmailSection(
                 section_type=section_type,
@@ -485,9 +565,11 @@ def analyze_layout(
                 inner_card_fixed_width=inner_card_fixed_width,
                 is_physical_card_surface=is_physical_card_surface,
                 physical_card_signals=physical_card_signals,
-                stroke_color=node.stroke_color,
-                stroke_weight=node.stroke_weight,
+                stroke_color=stroke_color,
+                stroke_weight=stroke_weight,
                 peel_row_id=peel_row_id,
+                gradient_ref=gradient_ref,
+                effects_summary=_collect_effects_summary(node),
             )
         )
 
@@ -1098,6 +1180,40 @@ def _layout_from_count(count: int) -> ColumnLayout:
     return ColumnLayout.SINGLE
 
 
+def _column_content_order(
+    node: DesignNode,
+    texts: list[TextBlock],
+    images: list[ImagePlaceholder],
+    buttons: list[ButtonElement],
+) -> tuple[str, ...]:
+    """Node ids of a column's extracted content in design tree order (F10).
+
+    The per-category extractors each walk the column subtree pre-order, so
+    every list is internally ordered but the cross-category interleave is
+    lost. One more pre-order walk restores it: the returned tuple lets
+    ``_build_column_fill_html`` emit rows in design vertical order (a tag
+    pill above the heading, a product name above its spec-icon rows) instead
+    of images→texts→buttons buckets. Ids the walk doesn't reach (e.g. a
+    wrapped image's frame exported under a different id) simply stay out of
+    the tuple — the consumer keeps them in category order.
+    """
+    wanted = (
+        {text.node_id for text in texts}
+        | {img.node_id for img in images}
+        | {btn.node_id for btn in buttons}
+    )
+    order: list[str] = []
+
+    def visit(current: DesignNode) -> None:
+        if current.id in wanted:
+            order.append(current.id)
+        for child in current.children:
+            visit(child)
+
+    visit(node)
+    return tuple(order)
+
+
 def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
     """Find mj-column children and extract their content."""
     # Walk one level to find mj-section, then its mj-column children
@@ -1137,6 +1253,7 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
                     images=images,
                     buttons=buttons,
                     width=child.width,
+                    content_order=_column_content_order(child, texts, images, buttons),
                 )
             )
     return all_columns
@@ -1148,15 +1265,18 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
     for idx, child in enumerate(frame_children, 1):
         buttons = _extract_buttons(child)
         btn_ids = _collect_button_node_ids(buttons)
+        texts = _extract_texts(child, exclude_node_ids=btn_ids)
+        images = _extract_images(child)
         groups.append(
             ColumnGroup(
                 column_idx=idx,
                 node_id=child.id,
                 node_name=child.name,
-                texts=_extract_texts(child, exclude_node_ids=btn_ids),
-                images=_extract_images(child),
+                texts=texts,
+                images=images,
                 buttons=buttons,
                 width=child.width,
+                content_order=_column_content_order(child, texts, images, buttons),
             )
         )
     return groups
@@ -1271,8 +1391,80 @@ def _extract_images(node: DesignNode) -> list[ImagePlaceholder]:
     return results
 
 
-def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
-    """Walk tree collecting IMAGE nodes and FRAME nodes with IMAGE fills."""
+def _crop_export_id(node: DesignNode) -> str | None:
+    """Export the node itself when its IMAGE fill carries a crop (53.3c).
+
+    A ``scaleMode`` other than the ``FILL`` default (FIT/CROP/TILE) is a crop
+    instruction the HTML ``<img>`` can't express — exporting the node makes
+    the Figma render bake the crop into the bitmap (the frame-wrapping-image
+    path below already gets this for free by exporting the wrapper).
+    """
+    if node.scale_mode is not None and node.scale_mode != "FILL":
+        return node.id
+    return None
+
+
+# 53.5 — standalone-vector recovery bounds. A dimension at or under the
+# epsilon marks an mj-divider-class LINE (rule, not artwork); anything under
+# the minimum on either axis is an export artifact, not an icon.
+_ZERO_AREA_EPS = 1.0
+_MIN_VECTOR_PX = 8.0
+
+
+def _zero_area_vector_stroke(node: DesignNode) -> tuple[str, float | None] | None:
+    """Stroke of the first zero-area stroked VECTOR in a subtree (53.5).
+
+    The ``mj-divider`` shape: a LINE with height (or width) ≈ 0 whose visible
+    rule IS its stroke. Rasterizing a 0-px PNG is useless — the parent divider
+    section adopts the stroke instead, so the divider seed renders the real
+    rule colour/thickness.
+    """
+    if (
+        node.type == DesignNodeType.VECTOR
+        and node.visible
+        and node.stroke_color is not None
+        and (
+            (node.height is not None and node.height <= _ZERO_AREA_EPS)
+            or (node.width is not None and node.width <= _ZERO_AREA_EPS)
+        )
+    ):
+        return (node.stroke_color, node.stroke_weight)
+    for child in node.children:
+        found = _zero_area_vector_stroke(child)
+        if found is not None:
+            return found
+    return None
+
+
+def _rasterizable_vector(node: DesignNode) -> bool:
+    """Whether a standalone VECTOR should rasterize via node export (53.5).
+
+    Icons/logomarks with real area (at least 8x8 px). Zero-area LINEs are the
+    divider shape (recovered as a section stroke, not a PNG); sub-8px
+    fragments are artifacts.
+    """
+    return (
+        node.type == DesignNodeType.VECTOR
+        and node.visible
+        and node.width is not None
+        and node.height is not None
+        and node.width >= _MIN_VECTOR_PX
+        and node.height >= _MIN_VECTOR_PX
+    )
+
+
+def _walk_for_images(
+    node: DesignNode,
+    results: list[ImagePlaceholder],
+    *,
+    skip_vectors: bool = False,
+) -> None:
+    """Collect IMAGE nodes, IMAGE-filled FRAMEs, and standalone vectors (53.5).
+
+    ``skip_vectors`` suppresses vector collection inside a subtree that is
+    already exported as an image (the frame's node render bakes its children
+    in — collecting the vector again would double-capture it).
+    """
     if node.type == DesignNodeType.IMAGE:
         results.append(
             ImagePlaceholder(
@@ -1280,6 +1472,7 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 node_name=node.name,
                 width=node.width,
                 height=node.height,
+                export_node_id=_crop_export_id(node),
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
                 stroke_color=node.stroke_color,
                 stroke_weight=node.stroke_weight,
@@ -1294,14 +1487,16 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 width=node.width,
                 height=node.height,
                 is_background=True,
+                export_node_id=_crop_export_id(node),
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
                 stroke_color=node.stroke_color,
                 stroke_weight=node.stroke_weight,
             )
         )
-        # Still recurse into children (frame has content over the bg)
+        # Still recurse into children (frame has content over the bg) — but
+        # the bg export renders the whole frame, so vectors are already baked.
         for child in node.children:
-            _walk_for_images(child, results)
+            _walk_for_images(child, results, skip_vectors=True)
     elif (
         node.type in (DesignNodeType.FRAME, DesignNodeType.GROUP)
         and len(node.children) == 1
@@ -1324,9 +1519,25 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 stroke_weight=node.stroke_weight,
             )
         )
+    elif not skip_vectors and _rasterizable_vector(node):
+        # 53.5 — standalone icon/logomark vector: the Figma image API
+        # rasterizes the node (BOOLEAN_OPERATION subtrees composite in the
+        # render), so downstream export/URL/alt plumbing works unchanged.
+        # No recursion — the export bakes the whole subtree.
+        results.append(
+            ImagePlaceholder(
+                node_id=node.id,
+                node_name=node.name,
+                width=node.width,
+                height=node.height,
+                export_node_id=node.id,
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
+            )
+        )
     else:
         for child in node.children:
-            _walk_for_images(child, results)
+            _walk_for_images(child, results, skip_vectors=skip_vectors)
 
 
 def _corner_spec_or_none(spec: CornerRadiusSpec) -> CornerRadiusSpec | None:
@@ -1334,6 +1545,98 @@ def _corner_spec_or_none(spec: CornerRadiusSpec) -> CornerRadiusSpec | None:
     if spec.scalar is None and spec.per_corner is None:
         return None
     return spec
+
+
+# 53.3d — reproducibility classifier bounds. Boring and conservative (raster
+# only when certain): visible rotation beyond ±1° or sibling pairs whose
+# bboxes clearly overlap (≥25% of the smaller box; near-parent-sized backdrop
+# layers excluded).
+_ROTATION_TOLERANCE_DEG = 1.0
+_OVERLAP_MIN_RATIO = 0.25
+_BACKDROP_COVERAGE = 0.95
+
+
+def _overlapping_children(node: DesignNode) -> tuple[str, str] | None:
+    """First clearly-overlapping visible child pair, if any (53.3d)."""
+    boxes: list[tuple[str, float, float, float, float]] = []
+    parent_area: float | None = None
+    if node.width is not None and node.height is not None:
+        parent_area = node.width * node.height
+    for child in node.children:
+        if not child.visible:
+            continue
+        if child.x is None or child.y is None or child.width is None or child.height is None:
+            continue
+        area = child.width * child.height
+        if parent_area is not None and area >= _BACKDROP_COVERAGE * parent_area:
+            continue  # backdrop layer (hero image under text), not a content overlap
+        boxes.append((child.id, child.x, child.y, child.width, child.height))
+    for i, (a_id, ax, ay, aw, ah) in enumerate(boxes):
+        for b_id, bx, by, bw, bh in boxes[i + 1 :]:
+            ix = min(ax + aw, bx + bw) - max(ax, bx)
+            iy = min(ay + ah, by + bh) - max(ay, by)
+            if ix <= 0.0 or iy <= 0.0:
+                continue
+            smaller = min(aw * ah, bw * bh)
+            if smaller > 0.0 and ix * iy >= _OVERLAP_MIN_RATIO * smaller:
+                return (a_id, b_id)
+    return None
+
+
+def _unreproducible_reason(node: DesignNode) -> str | None:
+    """Why the fixed-seed renderer cannot reproduce this subtree (53.3d).
+
+    ``None`` when the subtree is reproducible. THIS is the reproducibility
+    classifier — z-order/overlap and rotation are the two properties the
+    table renderer cannot express (ceiling doc §2), so the section falls back
+    to one exported image of the whole frame when the flag is on.
+    """
+    if not node.visible:
+        return None
+    if node.rotation is not None and abs(node.rotation) > _ROTATION_TOLERANCE_DEG:
+        return f"rotation:{node.id}"
+    overlap = _overlapping_children(node)
+    if overlap is not None:
+        return f"overlap:{overlap[0]}+{overlap[1]}"
+    for child in node.children:
+        reason = _unreproducible_reason(child)
+        if reason is not None:
+            return reason
+    return None
+
+
+def _is_reproducible(node: DesignNode) -> bool:
+    """Whether the fixed-seed renderer can reproduce this subtree (53.3d)."""
+    return _unreproducible_reason(node) is None
+
+
+def _collect_effects_summary(node: DesignNode) -> str | None:
+    """Aggregate dropped-effect summaries across a section subtree (53.3a).
+
+    Per-node ``DesignNode.effects_summary`` values (``"<count>:<TYPE,...>"``)
+    are merged into one section-level summary of the same shape so the
+    converter can surface the loss as a warning. ``None`` when the subtree
+    carries no effects.
+    """
+    total = 0
+    types: set[str] = set()
+
+    def _walk(n: DesignNode) -> None:
+        nonlocal total
+        if n.effects_summary:
+            count_str, _, type_csv = n.effects_summary.partition(":")
+            try:
+                total += int(count_str)
+            except ValueError:
+                total += 1
+            types.update(t for t in type_csv.split(",") if t)
+        for child in n.children:
+            _walk(child)
+
+    _walk(node)
+    if total == 0:
+        return None
+    return f"{total}:{','.join(sorted(types))}"
 
 
 def validate_image_dimensions(

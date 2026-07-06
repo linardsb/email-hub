@@ -441,6 +441,13 @@ flags:
     removal_date: "2026-09-10"
     status: deprecated
 
+  - name: DESIGN_SYNC__FRAME_EXPORT_FALLBACK_ENABLED
+    description: Phase 53.3d — non-reproducible section subtrees (rotation beyond ±1°, overlapping siblings) render as one exported frame image instead of mis-extracted content. Default OFF (corpus carries no such subtrees); the fork-(c) escape hatch seam
+    owner: design-team
+    created: "2026-07-06"
+    removal_date: "2026-10-06"
+    status: beta
+
   # ── Observability ───────────────────────────────────────────────────────────
   - name: OTEL__ENABLED
     description: OpenTelemetry instrumentation (FastAPI, SQLAlchemy, httpx) with OTLP export

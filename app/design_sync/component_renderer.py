@@ -86,6 +86,19 @@ _COLUMN_DIV_MAXWIDTH_RE = re.compile(r'(<div class="column"[^>]*?max-width:\s*)(
 # Fractions within this absolute deviation of equal keep the seed's equal
 # widths (existing equal-column baselines stay byte-stable).
 _COLUMN_FRACTION_TOLERANCE = 0.05
+# F9 (phase-53f-column-width-budget) — the fixed-width MSO ghost table whose
+# first cell is a column cell. The outer section table and the RC-F7 card
+# wrapper carry width="100%", so neither can match.
+_COLUMN_GHOST_TABLE_WIDTH_RE = re.compile(
+    r'(<table\b[^>]*\bwidth=")(\d+)("[^>]*>\s*<tr>\s*<td width="\d+" valign="top")'
+)
+# The RC-F7 card wrapper's cell, onto which the section's _cell padding
+# override relocates (matcher applies _inner before _cell) — the in-section
+# horizontal inset a column budget must absorb.
+_CARD_WRAPPER_CELL_RE = re.compile(
+    r'<table\b[^>]*\bclass="product-card _inner"[^>]*>\s*<tr>\s*<td\b[^>]*\bstyle="([^"]*)"'
+)
+_PADDING_PX_RE = re.compile(r"(-?\d+(?:\.\d+)?)px")
 
 
 def _distribute_widths(total: int, fractions: tuple[float, ...]) -> list[int]:
@@ -93,6 +106,53 @@ def _distribute_widths(total: int, fractions: tuple[float, ...]) -> list[int]:
     widths = [int(total * f) for f in fractions[:-1]]
     widths.append(total - sum(widths))
     return widths
+
+
+def _style_horizontal_padding_px(style: str) -> int:
+    """Left+right padding (px) of a style-attribute body, CSS order semantics.
+
+    The ``padding:`` shorthand (1/2/3/4-value) sets both sides; a later
+    ``padding-left``/``padding-right`` longhand overrides its side (the
+    RC-D-prime partial-padding path emits longhands). Non-px values are
+    unknowable at render time and contribute nothing — every renderer-emitted
+    inset is integer px, and "no shrink" is the fail-safe direction.
+    """
+
+    def _px(raw_value: str) -> float | None:
+        raw_value = raw_value.strip()
+        if raw_value == "0":
+            return 0.0
+        m = _PADDING_PX_RE.fullmatch(raw_value)
+        return float(m.group(1)) if m else None
+
+    left = right = 0.0
+    for decl in style.split(";"):
+        prop, _, raw = decl.partition(":")
+        prop = prop.strip().lower()
+        if prop == "padding":
+            parts = raw.split()
+            if not parts:
+                continue
+            if len(parts) == 1:
+                lr_tokens = (parts[0], parts[0])
+            elif len(parts) in (2, 3):
+                lr_tokens = (parts[1], parts[1])
+            else:
+                lr_tokens = (parts[3], parts[1])
+            l_px, r_px = _px(lr_tokens[0]), _px(lr_tokens[1])
+            if l_px is not None:
+                left = l_px
+            if r_px is not None:
+                right = r_px
+        elif prop == "padding-left":
+            value = _px(raw)
+            if value is not None:
+                left = value
+        elif prop == "padding-right":
+            value = _px(raw)
+            if value is not None:
+                right = value
+    return int(left + right)
 
 
 def _find_matching_close(html_str: str, tag_name: str, start: int) -> int | None:
@@ -403,6 +463,15 @@ _OUTER_CLASS_BG_INSERT_RE = re.compile(
     r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_outer(?:\s[^"]*)?"[^>]*style=")'
     r'(?![^"]*background-color:)'
 )
+# 53.3b — background-image variants of the two _outer patterns above.
+_OUTER_CLASS_BGIMG_RE = re.compile(
+    r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_outer(?:\s[^"]*)?"[^>]*style="[^"]*?)'
+    r"background-image:\s*[^;\"]+([;\"\'])"
+)
+_OUTER_CLASS_BGIMG_INSERT_RE = re.compile(
+    r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_outer(?:\s[^"]*)?"[^>]*style=")'
+    r'(?![^"]*background-image:)'
+)
 _INNER_CLASS_BGCOLOR_RE = re.compile(
     r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_inner(?:\s[^"]*)?"[^>]*style="[^"]*?)'
     r"background-color:\s*[^;\"]+([;\"\'])"
@@ -524,6 +593,13 @@ class ComponentRenderer:
 
         # 3b. A8 (Phase 53 D2): per-column widths from measured design fractions
         result_html = self._apply_column_width_fractions(result_html, match)
+
+        # 3c. F9 (phase-53f-column-width-budget): rescale the column budget into
+        # the box the RC-F7 card wrapper's relocated _cell padding leaves.
+        if match.component_slug.startswith("column-layout"):
+            result_html = self._shrink_column_ghost_widths(
+                result_html, self._card_wrapper_inset(result_html)
+            )
 
         # 4. Strip remaining placeholder URLs
         result_html = self._strip_placeholder_urls(result_html)
@@ -678,9 +754,13 @@ class ComponentRenderer:
         for i, rendered in enumerate(rendered_items):
             top_px = item_spacing.first_top if i == 0 else item_spacing.subsequent_top
             padding = f"{top_px}px {item_spacing.horizontal}px 0"
-            rows.append(
-                f'<tr>\n  <td style="padding:{padding}">\n    {rendered.html}\n  </td>\n</tr>'
-            )
+            item_html = rendered.html
+            # F9 (phase-53f-column-width-budget): the row cell's horizontal
+            # padding narrows the member's live box below the column seeds'
+            # 600px budget — rescale the member's column surfaces to fit.
+            if rendered.component_slug.startswith("column-layout"):
+                item_html = self._shrink_column_ghost_widths(item_html, 2 * item_spacing.horizontal)
+            rows.append(f'<tr>\n  <td style="padding:{padding}">\n    {item_html}\n  </td>\n</tr>')
             all_dark_classes.update(rendered.dark_mode_classes)
             all_images.extend(rendered.images)
 
@@ -1124,6 +1204,10 @@ class ComponentRenderer:
                         # flips white. Insert the surface instead.
                         replaced = self._insert_first_table_bg_color(result, val)
                     result = replaced
+                elif prop == "background-image":
+                    # 53.3b — reattached section gradient; Outlook keeps the
+                    # solid bgcolor stamped by the background-color override.
+                    result = self._apply_outer_bg_image(result, val)
                 else:
                     # Legacy components without _outer class (non-bg props).
                     result = self._replace_first_css_prop(result, prop, val)
@@ -1205,8 +1289,26 @@ class ComponentRenderer:
                 # cta-secondary).
                 class_name = "cta-primary" if target == "_cta_primary" else "cta-secondary"
                 result = self._apply_cta_pair_override(result, class_name, prop, val)
+            elif target == "_divider" and prop == "border-top":
+                # 53.5 — divider rule from the design's LINE stroke.
+                result = self._replace_divider_border(result, val)
 
         return result
+
+    _DIVIDER_BORDER_RE = re.compile(
+        r'(class="(?:[^"]*\s)?divider-line(?:\s[^"]*)?"[^>]*style="[^"]*?)'
+        r"border-top:\s*[^;\"]+([;\"\'])"
+    )
+
+    def _replace_divider_border(self, html_str: str, value: str) -> str:
+        """Replace ``border-top`` on the ``divider-line`` element (53.5).
+
+        The divider seeds render their rule as an inline ``border-top`` on a
+        ``class="divider-line"`` div; the design's LINE stroke supplies the
+        real colour + thickness. No-op when the seed has no such element.
+        """
+        safe = html.escape(value, quote=True)
+        return self._DIVIDER_BORDER_RE.sub(rf"\g<1>border-top:{safe}\g<2>", html_str)
 
     def _replace_first_css_prop(self, html_str: str, prop: str, value: str) -> str:
         """Replace the first occurrence of a CSS property in a style attribute."""
@@ -1386,6 +1488,32 @@ class ComponentRenderer:
 
         # First VISIBLE presentation table: role="presentation" + width="100%"
         # in any attribute order (the fixed-width MSO ghost is skipped).
+        pattern = re.compile(r'<table\b(?=[^>]*\brole="presentation")(?=[^>]*\bwidth="100%")[^>]*>')
+        return pattern.sub(_inject, html_str, count=1)
+
+    def _apply_outer_bg_image(self, html_str: str, value: str) -> str:
+        """Upsert ``background-image`` onto the section's outer surface (53.3b).
+
+        Targets the ``class="_outer"`` element when present (replace-or-insert,
+        mirroring :meth:`_replace_outer_bg_color`); otherwise upserts into the
+        first visible presentation table — the section's outer table; the
+        fixed-width MSO ghost is skipped. Outlook ignores CSS gradients and
+        keeps the solid ``bgcolor`` stamped by the background-color override
+        (no VML gradient in v1 — ceiling doc §2).
+        """
+        safe = html.escape(value, quote=True)
+        if _OUTER_CLASS_PRESENT_RE.search(html_str):
+            result = _OUTER_CLASS_BGIMG_RE.sub(rf"\g<1>background-image:{safe}\g<2>", html_str)
+            return _OUTER_CLASS_BGIMG_INSERT_RE.sub(rf"\g<1>background-image:{safe};", result)
+
+        def _inject(match: re.Match[str]) -> str:
+            tag = match.group(0)
+            style_match = re.search(r'style="([^"]*)"', tag)
+            if style_match is None:
+                return f'{tag[:-1]} style="background-image:{safe};">'
+            new_body = self._upsert_style_decl(style_match.group(1), "background-image", safe)
+            return tag[: style_match.start(1)] + new_body + tag[style_match.end(1) :]
+
         pattern = re.compile(r'<table\b(?=[^>]*\brole="presentation")(?=[^>]*\bwidth="100%")[^>]*>')
         return pattern.sub(_inject, html_str, count=1)
 
@@ -1863,6 +1991,60 @@ class ComponentRenderer:
             return pattern.sub(_sub, source)
 
         return _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
+
+    def _card_wrapper_inset(self, html_str: str) -> int:
+        """Horizontal inset the RC-F7 card wrapper cell applies inside a section.
+
+        ``_wrap_col_bg_inner_card`` inserts the wrapper with ``padding:0``; the
+        section's ``_cell`` padding override then relocates onto that cell
+        (matcher order: ``_inner`` before ``_cell``), narrowing the box the
+        column seeds must fit. 0 when no wrapper is present.
+        """
+        m = _CARD_WRAPPER_CELL_RE.search(html_str)
+        return _style_horizontal_padding_px(m.group(1)) if m else 0
+
+    def _shrink_column_ghost_widths(self, html_str: str, inset_px: int) -> str:
+        """Rescale column widths into a content box narrowed by ``inset_px`` (F9).
+
+        Column seeds hardcode per-column pixel widths summing to the full
+        600px context; a horizontal inset the renderer applies around them —
+        a repeating-group row's cell padding, the RC-F7 card wrapper's
+        relocated ``_cell`` padding — shrinks the live box below that total,
+        so the ``display:inline-block`` divs wrap and every multi-column
+        section renders stacked. Shrink the CURRENT ghost total by the inset,
+        redistributing by the current widths' own fractions (an A8
+        redistribution survives untouched), across all three surfaces
+        together: ghost ``<td width``, div ``max-width``, and the ghost
+        ``<table width>`` total. A8's all-or-nothing invariant holds — any
+        surface-count mismatch no-ops the whole rewrite, so MSO and non-MSO
+        widths cannot diverge. Zero/degenerate insets return the input
+        byte-identical.
+        """
+        if inset_px <= 0:
+            return html_str
+        td_matches = list(_COLUMN_TD_WIDTH_RE.finditer(html_str))
+        div_matches = list(_COLUMN_DIV_MAXWIDTH_RE.finditer(html_str))
+        ghost_tables = list(_COLUMN_GHOST_TABLE_WIDTH_RE.finditer(html_str))
+        if not td_matches or len(td_matches) != len(div_matches) or len(ghost_tables) != 1:
+            return html_str
+        current = [int(m.group(2)) for m in td_matches]
+        total = sum(current)
+        target = total - inset_px
+        if target < len(current):
+            return html_str  # degenerate box — keep the seed widths
+
+        widths = _distribute_widths(target, tuple(w / total for w in current))
+
+        def _rewrite(pattern: re.Pattern[str], source: str) -> str:
+            counter = iter(widths)
+
+            def _sub(m: re.Match[str]) -> str:
+                return f"{m.group(1)}{next(counter)}{m.group(3)}"
+
+            return pattern.sub(_sub, source)
+
+        result = _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
+        return _COLUMN_GHOST_TABLE_WIDTH_RE.sub(rf"\g<1>{target}\g<3>", result, count=1)
 
     def _add_annotations(self, html_str: str, match: ComponentMatch) -> str:
         """Add builder annotations for visual builder sync."""

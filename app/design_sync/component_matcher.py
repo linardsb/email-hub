@@ -6,6 +6,7 @@ import html
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.design_sync.figma.layout_analyzer import (
@@ -18,6 +19,9 @@ from app.design_sync.figma.layout_analyzer import (
     ImagePlaceholder,
     TextBlock,
 )
+
+if TYPE_CHECKING:
+    from app.design_sync.protocol import ExtractedGradient
 
 logger = get_logger(__name__)
 
@@ -73,13 +77,14 @@ def match_section(
     container_width: int = 600,
     image_urls: dict[str, str] | None = None,
     global_design_image: bytes | None = None,  # noqa: ARG001  Phase 50.1 pass-through; consumed in 50.5
+    gradients: list[ExtractedGradient] | None = None,
 ) -> ComponentMatch:
     """Match a single EmailSection to a component slug with slot fills."""
     # Column layouts override section type for CONTENT sections
     if section.column_layout != ColumnLayout.SINGLE:
         slug = _match_column_layout(section)
         fills = _build_column_fills(section, image_urls=image_urls)
-        overrides = _build_token_overrides(section)
+        overrides = _build_token_overrides(section, gradients=gradients)
         return ComponentMatch(
             section_idx=idx,
             section=section,
@@ -91,7 +96,7 @@ def match_section(
 
     slug, confidence = _match_by_type(section)
     fills = _build_slot_fills(slug, section, container_width, image_urls=image_urls)
-    overrides = _build_token_overrides(section)
+    overrides = _build_token_overrides(section, gradients=gradients)
 
     return ComponentMatch(
         section_idx=idx,
@@ -110,6 +115,7 @@ def match_all(
     container_width: int = 600,
     image_urls: dict[str, str] | None = None,
     global_design_image: bytes | None = None,
+    gradients: list[ExtractedGradient] | None = None,
 ) -> list[ComponentMatch]:
     """Match all sections in order."""
     return [
@@ -119,6 +125,7 @@ def match_all(
             container_width=container_width,
             image_urls=image_urls,
             global_design_image=global_design_image,
+            gradients=gradients,
         )
         for idx, section in enumerate(sections)
     ]
@@ -132,6 +139,7 @@ async def match_section_with_vlm_fallback(
     image_urls: dict[str, str] | None = None,
     screenshot: bytes | None = None,
     candidate_types: list[str] | None = None,
+    gradients: list[ExtractedGradient] | None = None,
 ) -> ComponentMatch:
     """Match section with optional VLM fallback for low-confidence matches.
 
@@ -146,6 +154,7 @@ async def match_section_with_vlm_fallback(
         image_urls: Mapping of node IDs to image URLs.
         screenshot: PNG bytes of the section screenshot (required for VLM).
         candidate_types: Component type slugs from the manifest (required for VLM).
+        gradients: Extracted gradients for ``gradient_ref`` resolution (53.3b).
 
     Returns:
         ComponentMatch — either the original heuristic match or a VLM-improved one.
@@ -153,7 +162,9 @@ async def match_section_with_vlm_fallback(
     from app.core.config import get_settings
     from app.design_sync.tuning import LOW_MATCH_CONFIDENCE_THRESHOLD
 
-    match = match_section(section, idx, container_width=container_width, image_urls=image_urls)
+    match = match_section(
+        section, idx, container_width=container_width, image_urls=image_urls, gradients=gradients
+    )
 
     threshold = LOW_MATCH_CONFIDENCE_THRESHOLD
     settings = get_settings()
@@ -175,7 +186,7 @@ async def match_section_with_vlm_fallback(
     # Rebuild match with VLM-classified component type
     new_slug = vlm_result.component_type
     fills = _build_slot_fills(new_slug, section, container_width, image_urls=image_urls)
-    overrides = _build_token_overrides(section)
+    overrides = _build_token_overrides(section, gradients=gradients)
 
     return ComponentMatch(
         section_idx=idx,
@@ -736,14 +747,22 @@ _GENERIC_ALT_TOKENS = frozenset(
     {"mj-image", "mj-text", "image", "photo", "picture", "img", "frame", "banner"}
 )
 _FIGMA_NODE_ID_RE = re.compile(r"^\d+[:_]\d+")
+# 53.5 — Figma auto-generated layer names ("Vector 3", "Ellipse 12", "Union").
+# Rasterized standalone vectors carry these by default; they say nothing about
+# the content and must fall back like the lone generic tokens above.
+_FIGMA_AUTO_NAME_RE = re.compile(
+    r"(?i)^(vector|line|ellipse|star|polygon|rectangle|boolean ?operation"
+    r"|frame|group|instance|union|subtract|intersect|exclude)\s*\d*$"
+)
 
 
 def _is_descriptive_alt(name: str | None) -> bool:
     """True when a Figma layer name is usable as alt text (Phase 53 B5).
 
-    Rejects the Mode E-alt leak: empty, a lone G3-neg generic token, MJML
-    internals (``(mjml:`` / ``(type:``), or a raw Figma node-id. A name that
-    passes is safe to emit verbatim and clears the G3-neg conformance gate.
+    Rejects the Mode E-alt leak: empty, a lone G3-neg generic token, a Figma
+    auto-generated layer name ("Vector 3" — 53.5), MJML internals
+    (``(mjml:`` / ``(type:``), or a raw Figma node-id. A name that passes is
+    safe to emit verbatim and clears the G3-neg conformance gate.
     """
     stripped = (name or "").strip()
     lowered = stripped.lower()
@@ -753,6 +772,7 @@ def _is_descriptive_alt(name: str | None) -> bool:
         and "(mjml:" not in lowered
         and "(type:" not in lowered
         and not _FIGMA_NODE_ID_RE.match(stripped)
+        and not _FIGMA_AUTO_NAME_RE.match(stripped)
     )
 
 
@@ -874,6 +894,30 @@ def _wrap_column_table(rows: list[str]) -> str:
     )
 
 
+def _ordered_column_elements(
+    group: ColumnGroup,
+) -> list[ImagePlaceholder | TextBlock | ButtonElement]:
+    """Column content in design tree order (F10).
+
+    ``content_order`` (node ids captured pre-order at group construction)
+    interleaves the three category lists back into the design's vertical
+    order — a tag pill (``ButtonElement``) above the heading, a product name
+    above its spec-icon rows. Groups without it (older persisted documents,
+    the content-group conversion) keep the legacy images→texts→buttons
+    order, as do any ids the tuple doesn't cover (stable sort).
+    """
+    combined: list[ImagePlaceholder | TextBlock | ButtonElement] = [
+        *group.images,
+        *group.texts,
+        *group.buttons,
+    ]
+    if not group.content_order:
+        return combined
+    position = {node_id: i for i, node_id in enumerate(group.content_order)}
+    unknown = len(position)
+    return sorted(combined, key=lambda element: position.get(element.node_id, unknown))
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -883,19 +927,21 @@ def _build_column_fill_html(
 
     Each image, text and CTA is wrapped as a ``<tr><td>`` row inside one inner
     ``<table>`` (Phase 53 B2) so the column renders as a well-formed nested
-    table instead of collapsing orphan rows in email clients.
+    table instead of collapsing orphan rows in email clients. Rows follow the
+    design's vertical order via ``content_order`` (F10), not category buckets.
     """
     rows: list[str] = []
-    for img in group.images:
-        rows.append(_column_image_row(img, image_urls, column_width=group.width))
-    for text in group.texts:
-        if _is_placeholder(text.content):
-            continue
-        rows.append(_column_text_row(text, is_heading=text.is_heading))
-    for btn in group.buttons:
-        if _is_placeholder(btn.text):
-            continue
-        rows.append(_column_cta_row(btn))
+    for element in _ordered_column_elements(group):
+        if isinstance(element, ImagePlaceholder):
+            rows.append(_column_image_row(element, image_urls, column_width=group.width))
+        elif isinstance(element, TextBlock):
+            if _is_placeholder(element.content):
+                continue
+            rows.append(_column_text_row(element, is_heading=element.is_heading))
+        else:
+            if _is_placeholder(element.text):
+                continue
+            rows.append(_column_cta_row(element))
     return _wrap_column_table(rows)
 
 
@@ -1325,13 +1371,15 @@ def _fills_text_block(
             continue
         btn_url = html.escape(_safe_url(btn.url))
         bg = _safe_color(btn.fill_color, "#0066cc")
-        # Solid-fill buttons keep white label text (the conventional readable
-        # choice). An *outlined* button — one carrying a stroke, e.g. white fill +
-        # dark label + coloured border — instead renders its designed text colour
-        # + border, so it doesn't collapse to invisible white-on-white from the
-        # hardcoded color:#ffffff. Stroke presence is the unambiguous outlined
-        # signal; solid buttons' text_color is left alone (often a Figma default).
-        fg = "#ffffff"
+        # Label colour follows the design (F11, phase-53-b8-text-block-solid-
+        # cta-text-color): white only when no text_color was extracted,
+        # mirroring _column_cta_row. c7's raw_figma Button (white fill, BLACK
+        # text fill, 2px inside stroke) settled the b8 open question — extracted
+        # text fills are visual intent, not Figma defaults. An *outlined* button
+        # (stroke present) additionally renders its border and keeps the darker
+        # #1a1a1a absence-fallback so a missing label colour can't collapse to
+        # white-on-white on its typically light fill.
+        fg = _safe_color(btn.text_color, "#ffffff")
         border = ""
         if btn.stroke_color and btn.stroke_weight:
             stroke = _safe_color(btn.stroke_color, "")
@@ -2043,7 +2091,31 @@ def _cta_overrides(btn: ButtonElement, target: str) -> list[TokenOverride]:
     return out
 
 
-def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
+def _linear_gradient_css(gradient: ExtractedGradient) -> str | None:
+    """CSS ``linear-gradient(...)`` for a reattached section gradient (53.3b).
+
+    Linear only — radial/angular/diamond keep the solid fallback (ceiling doc
+    §2). Every stop is hex-validated and positions are clamped to 0-100%, so
+    the emitted value is CSS-injection-safe (matches the ``_HEX_COLOR_RE``
+    guard on colors).
+    """
+    if gradient.type != "linear" or len(gradient.stops) < 2:
+        return None
+    stops: list[str] = []
+    for hex_color, position in gradient.stops:
+        if not _HEX_COLOR_RE.match(hex_color or ""):
+            return None
+        pct = max(0.0, min(100.0, float(position) * 100))
+        stops.append(f"{hex_color} {pct:.0f}%")
+    angle = float(gradient.angle) % 360
+    return f"linear-gradient({angle:.0f}deg, {', '.join(stops)})"
+
+
+def _build_token_overrides(
+    section: EmailSection,
+    *,
+    gradients: list[ExtractedGradient] | None = None,
+) -> list[TokenOverride]:
     """Extract token overrides from section properties."""
     overrides: list[TokenOverride] = []
 
@@ -2057,6 +2129,36 @@ def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
     elif section.bg_color:
         # No nested card detected — preserve Phase 49 contract (bg_color → _outer).
         overrides.append(TokenOverride("background-color", "_outer", section.bg_color))
+
+    # 53.3b — reattached gradient background (capture landed at 52.5). The
+    # solid fallback goes first — it also stamps the MSO ``bgcolor`` attribute
+    # (no VML gradient in v1) — then the CSS gradient for supporting clients.
+    if section.gradient_ref and gradients:
+        gradient = next((g for g in gradients if g.node_id == section.gradient_ref), None)
+        if gradient is not None:
+            has_solid = bool(section.container_bg or section.bg_color)
+            if not has_solid and _HEX_COLOR_RE.match(gradient.fallback_hex or ""):
+                overrides.append(TokenOverride("background-color", "_outer", gradient.fallback_hex))
+            gradient_css = _linear_gradient_css(gradient)
+            if gradient_css:
+                overrides.append(TokenOverride("background-image", "_outer", gradient_css))
+
+    # 53.5 — divider rule colour/thickness from the design's zero-area LINE
+    # stroke (adopted onto the section by layout analysis). The divider seed
+    # renders its rule as ``border-top`` on the ``divider-line`` element.
+    if (
+        section.section_type == EmailSectionType.DIVIDER
+        and section.stroke_color
+        and _HEX_COLOR_RE.match(section.stroke_color)
+    ):
+        weight = (
+            section.stroke_weight if section.stroke_weight and section.stroke_weight > 0 else 1.0
+        )
+        # Sub-pixel design strokes floor to 1px — "0px solid" is an invisible rule.
+        weight_px = max(1, round(weight))
+        overrides.append(
+            TokenOverride("border-top", "_divider", f"{weight_px}px solid {section.stroke_color}")
+        )
 
     # Inner card border radius (Phase 50.4)
     if section.inner_radius is not None:

@@ -847,6 +847,10 @@ class DocumentColumn:
     texts: list[DocumentText] = field(default_factory=list[DocumentText])
     images: list[DocumentImage] = field(default_factory=list[DocumentImage])
     buttons: list[DocumentButton] = field(default_factory=list[DocumentButton])
+    # F10 — mirrors ColumnGroup.content_order (design tree order of the
+    # content node ids). Older persisted documents lack it → () → the
+    # renderer keeps the legacy category order.
+    content_order: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -862,6 +866,8 @@ class DocumentColumn:
             d["images"] = [i.to_json() for i in self.images]
         if self.buttons:
             d["buttons"] = [b.to_json() for b in self.buttons]
+        if self.content_order:
+            d["content_order"] = list(self.content_order)
         return d
 
     @classmethod
@@ -874,6 +880,7 @@ class DocumentColumn:
             texts=[DocumentText.from_json(t) for t in data.get("texts", [])],
             images=[DocumentImage.from_json(i) for i in data.get("images", [])],
             buttons=[DocumentButton.from_json(b) for b in data.get("buttons", [])],
+            content_order=tuple(data.get("content_order", [])),
         )
 
     @classmethod
@@ -886,6 +893,7 @@ class DocumentColumn:
             texts=[DocumentText.from_text_block(t) for t in c.texts],
             images=[DocumentImage.from_image_placeholder(i) for i in c.images],
             buttons=[DocumentButton.from_button_element(b) for b in c.buttons],
+            content_order=c.content_order,
         )
 
     def to_column_group(self) -> ColumnGroup:
@@ -897,6 +905,7 @@ class DocumentColumn:
             texts=[t.to_text_block() for t in self.texts],
             images=[i.to_image_placeholder() for i in self.images],
             buttons=[b.to_button_element() for b in self.buttons],
+            content_order=self.content_order,
         )
 
 
@@ -1021,6 +1030,10 @@ class DocumentSection:
     stroke_weight: float | None = None
     # D3 follow-up — same-row peel id (see EmailSection.peel_row_id).
     peel_row_id: str | None = None
+    # 53.3b — gradient source node id (see EmailSection.gradient_ref).
+    gradient_ref: str | None = None
+    # 53.3a — dropped-effects summary (see EmailSection.effects_summary).
+    effects_summary: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"id": self.id, "type": self.type}
@@ -1094,6 +1107,10 @@ class DocumentSection:
             d["stroke_color"] = self.stroke_color
         if self.stroke_weight is not None:
             d["stroke_weight"] = self.stroke_weight
+        if self.gradient_ref is not None:
+            d["gradient_ref"] = self.gradient_ref
+        if self.effects_summary is not None:
+            d["effects_summary"] = self.effects_summary
         return d
 
     @classmethod
@@ -1139,6 +1156,8 @@ class DocumentSection:
             vlm_confidence=data.get("vlm_confidence"),
             stroke_color=data.get("stroke_color"),
             stroke_weight=data.get("stroke_weight"),
+            gradient_ref=data.get("gradient_ref"),
+            effects_summary=data.get("effects_summary"),
         )
 
     def to_email_section(self) -> EmailSection:
@@ -1189,6 +1208,8 @@ class DocumentSection:
             stroke_color=self.stroke_color,
             stroke_weight=self.stroke_weight,
             peel_row_id=self.peel_row_id,
+            gradient_ref=self.gradient_ref,
+            effects_summary=self.effects_summary,
         )
 
     @classmethod
@@ -1250,6 +1271,8 @@ class DocumentSection:
             vlm_confidence=section.vlm_confidence,
             stroke_color=section.stroke_color,
             stroke_weight=section.stroke_weight,
+            gradient_ref=section.gradient_ref,
+            effects_summary=section.effects_summary,
         )
 
 
@@ -1501,6 +1524,11 @@ class EmailDesignDocument:
                 layout_kwargs["button_name_hints"] = bnh
         if vlm_classifications:
             layout_kwargs["vlm_classifications"] = vlm_classifications
+        # 53.3b — the gradient capture (52.5) records source node ids; hand
+        # them to layout analysis so sections reattach their gradients.
+        gradient_node_ids = frozenset(g.node_id for g in tokens.gradients if g.node_id)
+        if gradient_node_ids:
+            layout_kwargs["gradient_node_ids"] = gradient_node_ids
         layout = analyze_layout(structure, **layout_kwargs)
 
         # 4. Derive container width (clamped 400-800, config override priority)

@@ -156,6 +156,19 @@ class DesignNode:
     style_runs: tuple[StyleRun, ...] = ()
     visible: bool = True  # Figma "visible" property (default True per API spec)
     opacity: float = 1.0  # Figma node opacity 0.0-1.0 (default 1.0)
+    # Image-fill crop mode (53.3c) — Figma ``scaleMode`` of the consumed IMAGE
+    # fill. "FILL" is the no-crop default; FIT/CROP/TILE are crop instructions
+    # the HTML <img> can't express, so the node itself is exported instead
+    # (the Figma render bakes the crop).
+    scale_mode: str | None = None
+    # Node rotation in degrees, Figma REST convention (53.3d) — rotations
+    # beyond ±1° are not reproducible in email HTML and trigger the
+    # frame-export fallback when enabled.
+    rotation: float | None = None
+    # Dropped visual effects + non-default blend mode (53.3a) as
+    # ``"<count>:<TYPE,...>"`` — carried into conversion warnings; email HTML
+    # cannot reproduce shadows/blurs/blends (ceiling doc §2).
+    effects_summary: str | None = None
 
 
 @dataclass(frozen=True)

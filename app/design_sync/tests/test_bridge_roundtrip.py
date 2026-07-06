@@ -101,6 +101,9 @@ def _full_image(prefix: str) -> ImagePlaceholder:
         is_background=True,
         export_node_id=f"{prefix}-export-99",
         corner_radius_spec=CornerRadiusSpec(scalar=None, per_corner=(8.0, 8.0, 0.0, 0.0)),
+        # 53.5 — non-button border (52.5 capture; schema gained the fields).
+        stroke_color="#334455",
+        stroke_weight=1.5,
     )
 
 
@@ -182,6 +185,12 @@ def _full_section() -> EmailSection:
         inner_card_fixed_width=480,
         is_physical_card_surface=True,
         physical_card_signals=("aspect_ratio", "rounded_corners"),
+        # 53.3b/a — gradient reattach ref + dropped-effects summary.
+        gradient_ref="grad-node-1",
+        effects_summary="2:DROP_SHADOW,LAYER_BLUR",
+        # 53.5 — divider stroke (lifted from the zero-area LINE child).
+        stroke_color="#545454",
+        stroke_weight=2.0,
     )
 
 
