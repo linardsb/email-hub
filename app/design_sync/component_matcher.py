@@ -1351,13 +1351,15 @@ def _fills_text_block(
             continue
         btn_url = html.escape(_safe_url(btn.url))
         bg = _safe_color(btn.fill_color, "#0066cc")
-        # Solid-fill buttons keep white label text (the conventional readable
-        # choice). An *outlined* button — one carrying a stroke, e.g. white fill +
-        # dark label + coloured border — instead renders its designed text colour
-        # + border, so it doesn't collapse to invisible white-on-white from the
-        # hardcoded color:#ffffff. Stroke presence is the unambiguous outlined
-        # signal; solid buttons' text_color is left alone (often a Figma default).
-        fg = "#ffffff"
+        # Label colour follows the design (F11, phase-53-b8-text-block-solid-
+        # cta-text-color): white only when no text_color was extracted,
+        # mirroring _column_cta_row. c7's raw_figma Button (white fill, BLACK
+        # text fill, 2px inside stroke) settled the b8 open question — extracted
+        # text fills are visual intent, not Figma defaults. An *outlined* button
+        # (stroke present) additionally renders its border and keeps the darker
+        # #1a1a1a absence-fallback so a missing label colour can't collapse to
+        # white-on-white on its typically light fill.
+        fg = _safe_color(btn.text_color, "#ffffff")
         border = ""
         if btn.stroke_color and btn.stroke_weight:
             stroke = _safe_color(btn.stroke_color, "")
