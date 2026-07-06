@@ -667,6 +667,132 @@ class TestDesignImportServiceOrchestrator:
             # Should not raise
             await svc.run_conversion(999)
 
+    @pytest.mark.asyncio
+    async def test_run_conversion_selected_nodes_skip_document_path(
+        self,
+        mock_db: AsyncMock,
+        mock_repo: AsyncMock,
+        mock_design_service: AsyncMock,
+    ) -> None:
+        """A selected-nodes import must NOT convert the whole-file snapshot document.
+
+        Guards phase-53f-document-path-ignores-node-selection: the snapshot
+        document has no node filtering, so imports with selected_node_ids go
+        through the legacy path (get_design_structure + _filter_structure).
+        """
+        user = _make_user()
+        design_import = _make_import(status="converting")  # selected_node_ids non-empty
+        snap = MagicMock()
+        snap.document_json = {"schema": "email-design-document-v1"}
+
+        mock_repo.get_import_with_assets.return_value = design_import
+        mock_repo.get_connection.return_value = _make_connection()
+        mock_repo.get_import.return_value = design_import
+        mock_repo.update_import_status = AsyncMock()
+        mock_repo.get_latest_snapshot.return_value = snap
+
+        layout = MagicMock()
+        layout.sections = []
+        layout.file_name = "Design.fig"
+        mock_design_service.analyze_layout.return_value = layout
+        mock_design_service.get_tokens.return_value = MagicMock(colors=[], typography=[])
+        # Short-circuit the legacy branch after proving it was entered.
+        mock_design_service.get_design_structure.side_effect = RuntimeError("stop-legacy")
+
+        scaffolder_resp = ScaffolderResponse(
+            html="<html>generated</html>", model="test", confidence=0.9, qa_passed=True
+        )
+        svc = DesignImportService(user=user)
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.design_sync.import_service.get_scoped_db_context", return_value=mock_ctx),
+            patch(
+                "app.design_sync.import_service.DesignSyncRepository",
+                return_value=mock_repo,
+            ),
+            patch(
+                "app.design_sync.import_service.TokenConversionService",
+                return_value=mock_design_service,
+            ),
+            patch(
+                "app.design_sync.import_service.AssetsService",
+                return_value=mock_design_service,
+            ),
+            patch(
+                "app.design_sync.email_design_document.EmailDesignDocument.from_json"
+            ) as from_json_mock,
+            patch.object(svc, "_call_scaffolder", return_value=scaffolder_resp),
+            patch.object(svc, "_create_template", return_value=42),
+        ):
+            await svc.run_conversion(design_import.id)
+
+        from_json_mock.assert_not_called()
+        mock_design_service.get_design_structure.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_conversion_whole_file_import_uses_document_path(
+        self,
+        mock_db: AsyncMock,
+        mock_repo: AsyncMock,
+        mock_design_service: AsyncMock,
+    ) -> None:
+        """With no node selection, the snapshot document path is still preferred."""
+        user = _make_user()
+        design_import = _make_import(status="converting")
+        design_import.selected_node_ids = []  # whole-file import
+        snap = MagicMock()
+        snap.document_json = {"schema": "email-design-document-v1"}
+
+        mock_repo.get_import_with_assets.return_value = design_import
+        mock_repo.get_connection.return_value = _make_connection()
+        mock_repo.get_import.return_value = design_import
+        mock_repo.update_import_status = AsyncMock()
+        mock_repo.get_latest_snapshot.return_value = snap
+
+        layout = MagicMock()
+        layout.sections = []
+        layout.file_name = "Design.fig"
+        mock_design_service.analyze_layout.return_value = layout
+        mock_design_service.get_tokens.return_value = MagicMock(colors=[], typography=[])
+        mock_design_service.get_design_structure.side_effect = RuntimeError("stop-legacy")
+
+        scaffolder_resp = ScaffolderResponse(
+            html="<html>generated</html>", model="test", confidence=0.9, qa_passed=True
+        )
+        svc = DesignImportService(user=user)
+        mock_ctx = AsyncMock()
+        mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
+        mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.design_sync.import_service.get_scoped_db_context", return_value=mock_ctx),
+            patch(
+                "app.design_sync.import_service.DesignSyncRepository",
+                return_value=mock_repo,
+            ),
+            patch(
+                "app.design_sync.import_service.TokenConversionService",
+                return_value=mock_design_service,
+            ),
+            patch(
+                "app.design_sync.import_service.AssetsService",
+                return_value=mock_design_service,
+            ),
+            patch(
+                "app.design_sync.email_design_document.EmailDesignDocument.from_json",
+                side_effect=ValueError("stub document"),
+            ) as from_json_mock,
+            patch.object(svc, "_call_scaffolder", return_value=scaffolder_resp),
+            patch.object(svc, "_create_template", return_value=42),
+        ):
+            await svc.run_conversion(design_import.id)
+
+        from_json_mock.assert_called_once()
+        assert from_json_mock.call_args.args[-1] == snap.document_json
+
     def test_placeholder_images_replaced_broad(self) -> None:
         """images.placeholder.com URL should be replaced by asset URL."""
         html = '<img src="https://images.placeholder.com/600x400" alt="Hero" />'
@@ -745,6 +871,36 @@ class TestDesignImportServiceOrchestrator:
         )
         fixed = DesignImportService._fix_text_contrast(html)
         # Innermost background is dark → black text must become white.
+        assert "color:#ffffff" in fixed
+        assert "color:#000000" not in fixed
+
+    def test_contrast_fix_outlined_button_own_light_bg_preserved(self) -> None:
+        """An inline CTA carrying its own light background keeps its dark label.
+
+        Regression for phase-53f-app-snapshot-serializer-drops-render-fields'
+        last mechanism: the LEGO 'Explore now' outlined pill (white fill, black
+        label, on a dark purple band) was repainted white-on-white because the
+        anchor's own background-color was invisible to the bg-range scan.
+        """
+        html = (
+            '<table style="background-color:#4E3092;"><tr><td style="color:#FFFFFF;">'
+            "Conjure up even more joy"
+            '<a href="#" style="background-color:#FFFFFF;color:#000000;'
+            'border:2px solid #000000;border-radius:25px;">Explore now</a>'
+            "</td></tr></table>"
+        )
+        fixed = DesignImportService._fix_text_contrast(html)
+        assert "color:#000000;border:2px solid #000000" in fixed
+        assert "color:#ffffff;border" not in fixed.lower()
+
+    def test_contrast_fix_dark_button_own_bg_still_corrected(self) -> None:
+        """Dark-on-dark text inside a button's OWN dark background is fixed."""
+        html = (
+            '<table bgcolor="#ffffff"><tr><td>'
+            '<a href="#" style="background-color:#0d0d1a;color:#000000;">Shop</a>'
+            "</td></tr></table>"
+        )
+        fixed = DesignImportService._fix_text_contrast(html)
         assert "color:#ffffff" in fixed
         assert "color:#000000" not in fixed
 

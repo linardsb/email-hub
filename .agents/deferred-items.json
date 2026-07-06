@@ -597,7 +597,7 @@
       ],
       "symptom_if_broken": "A3 advisory numbers quietly become single-fixture (case 5, an under-segmenter) on any machine without a prior local export — fork/regression judgments made on them over-weight one fixture class; a future gate wired to multi-fixture scores fails on fresh checkouts with missing-asset errors.",
       "closes_when": "Either per-case assets are committed (as case 5's are) for every fixture the metric reports on, or CI provisions FIGMA_TOKEN and runs the export script deterministically before scoring; until then the pixel metric must stay advisory and case-5-only in CI.",
-      "notes": "Phase 53 Track F F1 (2026-07-04, fix/phase-53f-f1-multi-image) enlarged the referenced-but-unexported set: emitting ALL section images now references hero nodes the pre-F1 converter dropped — c7 2833:1881 and c8 2833:2264 have NO on-disk assets/<id>.png (only their images[0] strips 2833:1879 / 2833:2262 do), and are unrecoverable this session (c7 cached S3 URL 403-expired, c8 never cached, FIGMA_TOKEN unset). The scorer renders both heroes blank, so F1's visual/pixel win cannot be measured until these two nodes are re-exported (c7 −0.011 / c8 +0.009 are broken-image artifacts). F1's HTML-level acceptance (heroes present as <img>, in regen baselines 7/8) is met independent of the assets."
+      "notes": "Phase 53 Track F F1 (2026-07-04, fix/phase-53f-f1-multi-image) enlarged the referenced-but-unexported set: emitting ALL section images now references hero nodes the pre-F1 converter dropped — c7 2833:1881 and c8 2833:2264 have NO on-disk assets/<id>.png (only their images[0] strips 2833:1879 / 2833:2262 do), and are unrecoverable this session (c7 cached S3 URL 403-expired, c8 never cached, FIGMA_TOKEN unset). The scorer renders both heroes blank, so F1's visual/pixel win cannot be measured until these two nodes are re-exported (c7 −0.011 / c8 +0.009 are broken-image artifacts). F1's HTML-level acceptance (heroes present as <img>, in regen baselines 7/8) is met independent of the assets. 2026-07-06 OPS RESTORE (still local-only, entry stays open): scripts/export-case-assets.py re-run for cases 5-10 using the live connection-5 DB token (decrypt via app.design_sync.crypto; .env DESIGN_SYNC__FIGMA_PAT is EXPIRED per Figma /v1/me) restored every gap node incl. the F1 heroes (c7 2833:1881 798KB, c8 2833:2264 2.1MB) and F4b c9 col-icons (2833:2113 / 2833:2126, the 320B thermometer composite-verified real). expected.html md5-identical on all 6, git clean; case-5 re-export byte-identical to the committed PNGs (no same-input variance at scale=2). Scores: c7 0.719->0.770 (+0.051), c8 0.802->0.782 (F3-class height-band artifact of the real hero; section_min 0.688 flat), c9 +0.001 (section_min 0.353->0.361), c5/c6/c10 flat. c10 re-export stalled in Figma 429 backoff; June set already complete. closes_when remains unmet: assets still gitignored, CI still has no FIGMA_TOKEN."
     },
     {
       "id": "flags-2026-06-15-batch-reschedule",
@@ -676,7 +676,9 @@
       "introduced": "2026-04-03",
       "introduced_commit": "9c7168f2",
       "summary": "The design_sync converter's _score_extended_candidates scored 5 slugs that have no _build_slot_fills builder, so a Figma section matching one rendered the seed's placeholder text verbatim (fakeimg.pl images, 'Shop Now'/'Read More' CTAs, 'Feature icon' alts). F4d removed the 5 scoring blocks (and their now-dead patterns/params); only builder-backed event-card and col-icon remain scorable. The 5 stay valid manual component-library components (component_manifest.yaml + seeds + test_new_components.py untouched) — only the converter's auto-match path was the defect.",
-      "code_refs": ["app/design_sync/component_matcher.py:388 (_score_extended_candidates)"],
+      "code_refs": [
+        "app/design_sync/component_matcher.py:388 (_score_extended_candidates)"
+      ],
       "symptom_if_broken": "A design-sync import section renders raw seed placeholder text (fakeimg.pl image, 'Shop Now'/'Read More' CTA, 'Feature icon' alt) because it matched a builder-less extended component type.",
       "closes_when": "The 5 builder-less slugs are removed from _score_extended_candidates so only builder-backed slugs can be scored — done in F4d; verified by inspection that no corpus fixture (cases 5-10) matched any of them.",
       "closed_commit": "pending commit",
@@ -738,7 +740,7 @@
       "id": "phase-53f-f7-text-block-cta-hardcoded-radius",
       "phase": "53.f",
       "title": "_fills_text_block hardcodes border-radius:4px, discarding btn.border_radius",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "pending",
@@ -749,7 +751,10 @@
       ],
       "symptom_if_broken": "A text-block section CTA renders square (border-radius:4px) even when the design specifies a rounded/pill radius. Concretely c5 'Discover →', c6 'Order your fall favorite', c7 'Explore now' show 4px instead of their 25px design radius.",
       "closes_when": "_fills_text_block threads btn.border_radius (fallback '4', mirroring _column_cta_row:843), and the c5/c6/c7 expected.html baselines are regenerated + diff-audited (text-block CTA border-radius 4px→25px only) with the ladder unchanged (13/9/8/10/8/12).",
-      "notes": "Split out of RC-F7 half-2 during the pill recovery (2026-07-05). User-ratified (2026-07-05) to recover only the 7 c5 column pills via the fixture patch and DEFER this shared render-path fix, because fixing it moves the c6/c7 baselines (they are NOT byte-identical after) and belongs in its own scoped effort. Companion to phase-53f-f7-stale-case5-fixture-drops-pill-radius (closed by the fixture patch) — that was the fixture staleness; this is the residual render-path bug that keeps the section-[1] Discover pill square."
+      "notes": "Split out of RC-F7 half-2 during the pill recovery (2026-07-05). User-ratified (2026-07-05) to recover only the 7 c5 column pills via the fixture patch and DEFER this shared render-path fix, because fixing it moves the c6/c7 baselines (they are NOT byte-identical after) and belongs in its own scoped effort. Companion to phase-53f-f7-stale-case5-fixture-drops-pill-radius (closed by the fixture patch) — that was the fixture staleness; this is the residual render-path bug that keeps the section-[1] Discover pill square.",
+      "closed_date": "2026-07-06",
+      "closed_commit": "pending commit",
+      "resolution": "FIXED (branch fix/phase-53f-app-render-field-parity) exactly per closes_when: _fills_text_block threads btn.border_radius with fallback '4' mirroring _column_cta_row (component_matcher.py); c5/c6/c7 expected.html regenerated and diff-audited — exactly 3 changed lines, all text-block CTA border-radius 4px->25px ('Discover ->', 'Order your fall favorite', 'Explore now'); c8 regen churn was trailing-whitespace-only and reverted; c9/c10 byte-identical; ladder 13/9/8/10/8/12 held (snapshot regression 34 passed/1 xfail). Guarded by TestTextBlockCTARadius (RED-proven) in test_cta_fidelity.py. A3: c7 0.770->0.771, c5/c6 flat (sub-rounding pill deltas, cf. the F7-pills row)."
     },
     {
       "id": "phase-53f-f7-image-gallery-membership-card",
@@ -841,6 +846,48 @@
       "symptom_if_broken": "c7 tip cards render the 'Art prints'/'Stationery' pill after the body and above the CTA (design: eyebrow pill above the heading); c7 treats cards render pieces/points icons above the product name.",
       "closes_when": "_build_column_fill_html merges images/texts/buttons by node y/tree order (or pre-heading button-like nodes ride stacked_before like F6 eyebrows); c7 baseline regenerated + diff-audited; ladder unchanged (13/9/8/10/8/12).",
       "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out, composite-verified). Pairs with phase-53f-f7-text-block-cta-hardcoded-radius / phase-53-b8-text-block-solid-cta-text-color for the full pill/CTA fidelity story."
+    },
+    {
+      "id": "phase-53f-app-snapshot-serializer-drops-render-fields",
+      "phase": "53f",
+      "title": "App-side conversions cannot reach harness fidelity: snapshot _file_structure cache + protocol DesignNode bridge drop the Track-B render fields (stroke/radius/text-align; text_color dies downstream)",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-07-06",
+      "introduced_commit": "pending commit",
+      "summary": "Validating the ceiling-doc §3 ops caveat end-to-end (2026-07-06, imports 39/41 on connection 5) disproved its remedy: after a fresh connection re-sync (snapshot 20, fresh _file_structure with text_color) and cache-free conversions, the LEGO 'Explore now' CTA still renders white-on-white, borderless, r4 — byte-identical output (70686B) to the stale 2026-04 render — while the harness (same renderer code, data/debug/7/structure.json) renders black-on-white + 2px border + r4. Mechanism: run_conversion's legacy path consumes protocol DesignNodes rebuilt from snapshot.tokens_json._file_structure via cached_dict_to_node, whose schema has NO corner_radius/stroke_weight/stroke_color/text_align (the sync serializer never persists them either — fresh snapshot has 0 occurrences), and text_color survives the cache but is dropped in the downstream protocol->converter bridge (fresh-vs-March snapshot outputs are byte-identical). The harness bypasses all of this by loading structure.json with the converter-native deserializer.",
+      "code_refs": [
+        "app/design_sync/services/_serialization.py:135 (cached_dict_to_node — reduced field map)",
+        "app/design_sync/services/assets_service.py:302 (get_cached_structure — snapshot _file_structure preferred over live fetch)",
+        "app/design_sync/import_service.py:270 (legacy path: normalize_tree + EmailDesignDocument.from_legacy on protocol nodes)",
+        "app/design_sync/tests/regression_runner.py:48 (run_case_conversion — the harness path that works)"
+      ],
+      "symptom_if_broken": "Any app-side design import renders CTAs/pills without stroke, radius, per-node text color or alignment (e.g. invisible white-on-white outlined buttons), even immediately after a connection re-sync — while the fixture harness scores the same design correctly. Users judge the converter far below its harness numbers.",
+      "closes_when": "An app-side POST /imports conversion of the LEGO frame (connection-5 class data) renders 'Explore now' with text_color + stroke parity with data/debug/7/expected.html (r25 additionally needs phase-53f-f7-text-block-cta-hardcoded-radius), guarded by a test that round-trips a DesignNode with stroke/radius/text-align through the snapshot cache serializer and the protocol->converter bridge.",
+      "notes": "Found while executing the 2026-07-06 asset-restore ops task. Same inert-serializer-bridge class as RC-A/RC-B (Phase 52). Validation artifacts left in the dev DB: imports 39 (tmpl 42, pre-sync) and 41 (tmpl 44, post-sync forced-legacy via nulled snapshot-20 document_json) — both byte-identical to stale tmpl 41 (import 38, 2026-07-05). Stale tmpl 28 (import 26, 2026-04-19) additionally lacks text-align/centering. The ceiling doc §3 ops caveat is amended to point here.",
+      "closed_date": "2026-07-06",
+      "closed_commit": "pending commit",
+      "resolution": "FIXED same day (branch fix/phase-53f-app-render-field-parity). Two mechanisms, one of them mis-hypothesized at filing: (1) serialize_node/cached_dict_to_node extended to round-trip every DesignNode render field (corner_radius, corner_radii, stroke_weight, stroke_color, text_align, primary/counter_axis_align, style_runs, image_ref, hyperlink, line_height_relative, visible, opacity) — guarded by test_serialization_roundtrip.py incl. a dataclass-fields parity test that fails when DesignNode grows a field the cache pair does not carry. (2) The 'text_color dies in the protocol->converter bridge' hypothesis was WRONG — normalize_tree/_filter_structure use dataclasses.replace (lossless) and ButtonElement carried #000000 correctly; the label was repainted by the _sanitize_email_html post-pass: _fix_text_contrast treated only table/td/tr as background carriers and started ranges after the opening tag, so an inline CTA's own white pill background was invisible and its style-attr color was judged against the dark band. Fixed by adding 'a' to the bg-tag set and starting ranges at the opening tag; guarded by test_contrast_fix_outlined_button_own_light_bg_preserved / test_contrast_fix_dark_button_own_bg_still_corrected. End-to-end closes_when met: POST /connections/sync (snapshot 21, stroke x277/corner_radius x631/text_align x2615 in _file_structure) -> import 43 -> tmpl 46 renders 'Explore now' background #FFFFFF / color #000000 / border 2px solid #000000 / border-radius 25px with the heading text-align:center — full parity with data/debug/7/expected.html (r25 via the text-block radius fix, same branch). Screenshot-verified on the purple band."
+    },
+    {
+      "id": "phase-53f-document-path-ignores-node-selection",
+      "phase": "53f",
+      "title": "run_conversion document path ignores selected_node_ids — converts the whole design file when snapshot.document_json exists",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-07-06",
+      "introduced_commit": "pending commit",
+      "summary": "When the latest DesignTokenSnapshot carries document_json (a fresh POST /connections/sync now writes one — 691KB for connection 5), run_conversion prefers EmailDesignDocument.from_json(snapshot.document_json) and converts it WITHOUT filtering to the import's selected_node_ids. Observed 2026-07-06: import 40 (145 selected LEGO nodes) produced a 2,056,671-byte template (tmpl 43) containing zero occurrences of 'Explore now'/'LEGO'/any of the email's content — the whole community-file document was converted instead of the selected frame.",
+      "code_refs": [
+        "app/design_sync/import_service.py:203 (document path: from_json(snapshot.document_json), no node filtering)",
+        "app/design_sync/services/import_service.py:91 (start_conversion entry)"
+      ],
+      "symptom_if_broken": "After any connection re-sync on current code, every subsequent design import converts the entire file into a multi-MB template with none of the selected email's content — looks like total converter failure but is a path-selection bug.",
+      "closes_when": "The document path filters the document to the import's selected_node_ids (or run_conversion falls back to the legacy path when selected_node_ids is non-empty), with a test converting a selected-nodes import against a multi-frame snapshot document.",
+      "notes": "Ops workaround used for the 2026-07-06 validation and LEFT IN PLACE for connection 5: snapshot 20's document_json set to NULL in the dev DB so the legacy path engages (a future sync will regenerate document_json and re-expose this bug). Blocks meaningful use of the fresh document_json snapshots that re-sync now produces.",
+      "closed_date": "2026-07-06",
+      "closed_commit": "pending commit",
+      "resolution": "FIXED same day (branch fix/phase-53f-app-render-field-parity) via the closes_when's sanctioned fallback: run_conversion takes the snapshot document path only when design_import.selected_node_ids is empty; selected-nodes imports use the legacy path, which filters via _filter_structure. Guarded by test_run_conversion_selected_nodes_skip_document_path (RED-proven on pre-fix code) + test_run_conversion_whole_file_import_uses_document_path (document path preserved for whole-file imports). Live-proven: snapshot 21 HAS document_json, yet imports 42/43 (145 selected LEGO nodes) produced the 71,869-byte LEGO email, not the 2MB whole-file output. The interim dev-DB workaround (snapshot 20 document_json nulled) is obsolete but harmless — snapshot 21 supersedes it."
     }
   ],
   "tooling_followups": [
