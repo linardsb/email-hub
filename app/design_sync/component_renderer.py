@@ -463,6 +463,15 @@ _OUTER_CLASS_BG_INSERT_RE = re.compile(
     r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_outer(?:\s[^"]*)?"[^>]*style=")'
     r'(?![^"]*background-color:)'
 )
+# 53.3b — background-image variants of the two _outer patterns above.
+_OUTER_CLASS_BGIMG_RE = re.compile(
+    r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_outer(?:\s[^"]*)?"[^>]*style="[^"]*?)'
+    r"background-image:\s*[^;\"]+([;\"\'])"
+)
+_OUTER_CLASS_BGIMG_INSERT_RE = re.compile(
+    r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_outer(?:\s[^"]*)?"[^>]*style=")'
+    r'(?![^"]*background-image:)'
+)
 _INNER_CLASS_BGCOLOR_RE = re.compile(
     r'(<(?:table|td)\b[^>]*class="(?:[^"]*\s)?_inner(?:\s[^"]*)?"[^>]*style="[^"]*?)'
     r"background-color:\s*[^;\"]+([;\"\'])"
@@ -1195,6 +1204,10 @@ class ComponentRenderer:
                         # flips white. Insert the surface instead.
                         replaced = self._insert_first_table_bg_color(result, val)
                     result = replaced
+                elif prop == "background-image":
+                    # 53.3b — reattached section gradient; Outlook keeps the
+                    # solid bgcolor stamped by the background-color override.
+                    result = self._apply_outer_bg_image(result, val)
                 else:
                     # Legacy components without _outer class (non-bg props).
                     result = self._replace_first_css_prop(result, prop, val)
@@ -1457,6 +1470,32 @@ class ComponentRenderer:
 
         # First VISIBLE presentation table: role="presentation" + width="100%"
         # in any attribute order (the fixed-width MSO ghost is skipped).
+        pattern = re.compile(r'<table\b(?=[^>]*\brole="presentation")(?=[^>]*\bwidth="100%")[^>]*>')
+        return pattern.sub(_inject, html_str, count=1)
+
+    def _apply_outer_bg_image(self, html_str: str, value: str) -> str:
+        """Upsert ``background-image`` onto the section's outer surface (53.3b).
+
+        Targets the ``class="_outer"`` element when present (replace-or-insert,
+        mirroring :meth:`_replace_outer_bg_color`); otherwise upserts into the
+        first visible presentation table — the section's outer table; the
+        fixed-width MSO ghost is skipped. Outlook ignores CSS gradients and
+        keeps the solid ``bgcolor`` stamped by the background-color override
+        (no VML gradient in v1 — ceiling doc §2).
+        """
+        safe = html.escape(value, quote=True)
+        if _OUTER_CLASS_PRESENT_RE.search(html_str):
+            result = _OUTER_CLASS_BGIMG_RE.sub(rf"\g<1>background-image:{safe}\g<2>", html_str)
+            return _OUTER_CLASS_BGIMG_INSERT_RE.sub(rf"\g<1>background-image:{safe};", result)
+
+        def _inject(match: re.Match[str]) -> str:
+            tag = match.group(0)
+            style_match = re.search(r'style="([^"]*)"', tag)
+            if style_match is None:
+                return f'{tag[:-1]} style="background-image:{safe};">'
+            new_body = self._upsert_style_decl(style_match.group(1), "background-image", safe)
+            return tag[: style_match.start(1)] + new_body + tag[style_match.end(1) :]
+
         pattern = re.compile(r'<table\b(?=[^>]*\brole="presentation")(?=[^>]*\bwidth="100%")[^>]*>')
         return pattern.sub(_inject, html_str, count=1)
 

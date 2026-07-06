@@ -19,6 +19,8 @@ logger = get_logger(__name__)
 _SAFE_FILENAME_RE = re.compile(r"^[a-zA-Z0-9_-]+\.(png|jpg|svg|pdf)$")
 _DOWNLOAD_SEMAPHORE = asyncio.Semaphore(10)
 _DOWNLOAD_TIMEOUT = 60.0
+# 53.3d — audit-trail threshold for oversized stored assets (~200 KB).
+_OVERSIZE_WARN_BYTES = 200_000
 
 
 def _sanitize_node_id(node_id: str) -> str:
@@ -132,6 +134,14 @@ class DesignAssetService:
                 continue
 
             data = _try_resize_image(result, max_width, fmt)
+            # 53.3d — frame-export fallbacks can raster whole sections; Gmail's
+            # 102 KB clip is per-HTML, not per-image, but keep the audit trail.
+            if len(data) > _OVERSIZE_WARN_BYTES:
+                logger.warning(
+                    "design_sync.asset_oversized",
+                    node_id=node_id,
+                    size_bytes=len(data),
+                )
             asset_path = _get_asset_path(connection_id, node_id, fmt)
             asset_path.write_bytes(data)
 

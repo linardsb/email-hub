@@ -134,6 +134,9 @@ def _node_from_dict(data: dict[str, Any]) -> DesignNode:
         style_runs=style_runs,
         visible=data.get("visible", True),
         opacity=data.get("opacity", 1.0),
+        scale_mode=data.get("scale_mode"),
+        rotation=data.get("rotation"),
+        effects_summary=data.get("effects_summary"),
     )
 
 

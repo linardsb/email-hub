@@ -6,6 +6,7 @@ import html
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from app.core.logging import get_logger
 from app.design_sync.figma.layout_analyzer import (
@@ -18,6 +19,9 @@ from app.design_sync.figma.layout_analyzer import (
     ImagePlaceholder,
     TextBlock,
 )
+
+if TYPE_CHECKING:
+    from app.design_sync.protocol import ExtractedGradient
 
 logger = get_logger(__name__)
 
@@ -73,13 +77,14 @@ def match_section(
     container_width: int = 600,
     image_urls: dict[str, str] | None = None,
     global_design_image: bytes | None = None,  # noqa: ARG001  Phase 50.1 pass-through; consumed in 50.5
+    gradients: list[ExtractedGradient] | None = None,
 ) -> ComponentMatch:
     """Match a single EmailSection to a component slug with slot fills."""
     # Column layouts override section type for CONTENT sections
     if section.column_layout != ColumnLayout.SINGLE:
         slug = _match_column_layout(section)
         fills = _build_column_fills(section, image_urls=image_urls)
-        overrides = _build_token_overrides(section)
+        overrides = _build_token_overrides(section, gradients=gradients)
         return ComponentMatch(
             section_idx=idx,
             section=section,
@@ -91,7 +96,7 @@ def match_section(
 
     slug, confidence = _match_by_type(section)
     fills = _build_slot_fills(slug, section, container_width, image_urls=image_urls)
-    overrides = _build_token_overrides(section)
+    overrides = _build_token_overrides(section, gradients=gradients)
 
     return ComponentMatch(
         section_idx=idx,
@@ -110,6 +115,7 @@ def match_all(
     container_width: int = 600,
     image_urls: dict[str, str] | None = None,
     global_design_image: bytes | None = None,
+    gradients: list[ExtractedGradient] | None = None,
 ) -> list[ComponentMatch]:
     """Match all sections in order."""
     return [
@@ -119,6 +125,7 @@ def match_all(
             container_width=container_width,
             image_urls=image_urls,
             global_design_image=global_design_image,
+            gradients=gradients,
         )
         for idx, section in enumerate(sections)
     ]
@@ -132,6 +139,7 @@ async def match_section_with_vlm_fallback(
     image_urls: dict[str, str] | None = None,
     screenshot: bytes | None = None,
     candidate_types: list[str] | None = None,
+    gradients: list[ExtractedGradient] | None = None,
 ) -> ComponentMatch:
     """Match section with optional VLM fallback for low-confidence matches.
 
@@ -146,6 +154,7 @@ async def match_section_with_vlm_fallback(
         image_urls: Mapping of node IDs to image URLs.
         screenshot: PNG bytes of the section screenshot (required for VLM).
         candidate_types: Component type slugs from the manifest (required for VLM).
+        gradients: Extracted gradients for ``gradient_ref`` resolution (53.3b).
 
     Returns:
         ComponentMatch — either the original heuristic match or a VLM-improved one.
@@ -153,7 +162,9 @@ async def match_section_with_vlm_fallback(
     from app.core.config import get_settings
     from app.design_sync.tuning import LOW_MATCH_CONFIDENCE_THRESHOLD
 
-    match = match_section(section, idx, container_width=container_width, image_urls=image_urls)
+    match = match_section(
+        section, idx, container_width=container_width, image_urls=image_urls, gradients=gradients
+    )
 
     threshold = LOW_MATCH_CONFIDENCE_THRESHOLD
     settings = get_settings()
@@ -175,7 +186,7 @@ async def match_section_with_vlm_fallback(
     # Rebuild match with VLM-classified component type
     new_slug = vlm_result.component_type
     fills = _build_slot_fills(new_slug, section, container_width, image_urls=image_urls)
-    overrides = _build_token_overrides(section)
+    overrides = _build_token_overrides(section, gradients=gradients)
 
     return ComponentMatch(
         section_idx=idx,
@@ -2071,7 +2082,31 @@ def _cta_overrides(btn: ButtonElement, target: str) -> list[TokenOverride]:
     return out
 
 
-def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
+def _linear_gradient_css(gradient: ExtractedGradient) -> str | None:
+    """CSS ``linear-gradient(...)`` for a reattached section gradient (53.3b).
+
+    Linear only — radial/angular/diamond keep the solid fallback (ceiling doc
+    §2). Every stop is hex-validated and positions are clamped to 0-100%, so
+    the emitted value is CSS-injection-safe (matches the ``_HEX_COLOR_RE``
+    guard on colors).
+    """
+    if gradient.type != "linear" or len(gradient.stops) < 2:
+        return None
+    stops: list[str] = []
+    for hex_color, position in gradient.stops:
+        if not _HEX_COLOR_RE.match(hex_color or ""):
+            return None
+        pct = max(0.0, min(100.0, float(position) * 100))
+        stops.append(f"{hex_color} {pct:.0f}%")
+    angle = float(gradient.angle) % 360
+    return f"linear-gradient({angle:.0f}deg, {', '.join(stops)})"
+
+
+def _build_token_overrides(
+    section: EmailSection,
+    *,
+    gradients: list[ExtractedGradient] | None = None,
+) -> list[TokenOverride]:
     """Extract token overrides from section properties."""
     overrides: list[TokenOverride] = []
 
@@ -2085,6 +2120,19 @@ def _build_token_overrides(section: EmailSection) -> list[TokenOverride]:
     elif section.bg_color:
         # No nested card detected — preserve Phase 49 contract (bg_color → _outer).
         overrides.append(TokenOverride("background-color", "_outer", section.bg_color))
+
+    # 53.3b — reattached gradient background (capture landed at 52.5). The
+    # solid fallback goes first — it also stamps the MSO ``bgcolor`` attribute
+    # (no VML gradient in v1) — then the CSS gradient for supporting clients.
+    if section.gradient_ref and gradients:
+        gradient = next((g for g in gradients if g.node_id == section.gradient_ref), None)
+        if gradient is not None:
+            has_solid = bool(section.container_bg or section.bg_color)
+            if not has_solid and _HEX_COLOR_RE.match(gradient.fallback_hex or ""):
+                overrides.append(TokenOverride("background-color", "_outer", gradient.fallback_hex))
+            gradient_css = _linear_gradient_css(gradient)
+            if gradient_css:
+                overrides.append(TokenOverride("background-image", "_outer", gradient_css))
 
     # Inner card border radius (Phase 50.4)
     if section.inner_radius is not None:

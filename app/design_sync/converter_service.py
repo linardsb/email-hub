@@ -29,6 +29,7 @@ from app.design_sync.protocol import (
     DesignNode,
     DesignNodeType,
     ExtractedColor,
+    ExtractedGradient,
     ExtractedTokens,
     _NodeProps,
 )
@@ -294,6 +295,22 @@ class DesignConverterService:
         layout = document.to_layout_description()
         container_width = document.layout.container_width
         compat = ConverterCompatibility(target_clients=target_clients)
+
+        # 53.3a — dropped effects (shadows/blurs/blends are not reproducible in
+        # email HTML, ceiling doc §2) surface as warnings instead of silence.
+        for section in layout.sections:
+            if section.effects_summary:
+                count_str, _, type_csv = section.effects_summary.partition(":")
+                logger.info(
+                    "design_sync.effects_dropped",
+                    node_id=section.node_id,
+                    effect_count=count_str,
+                    effect_types=type_csv,
+                )
+                warnings.append(
+                    f"Section '{section.node_name or section.node_id}' drops "
+                    f"{count_str} visual effect(s) ({type_csv}) not reproducible in email HTML"
+                )
 
         if not layout.sections:
             logger.warning("design_sync.convert_document_no_sections")
@@ -566,6 +583,7 @@ class DesignConverterService:
             container_width=container_width,
             image_urls=image_urls,
             global_design_image=global_design_image,
+            gradients=tokens.gradients,
         )
         if output_format == "tree" and get_settings().design_sync.tree_bridge_enabled:
             tree_result = self._try_tree_bridge(
@@ -601,6 +619,7 @@ class DesignConverterService:
         container_width: int,
         image_urls: dict[str, str] | None,
         global_design_image: bytes | None = None,
+        gradients: list[ExtractedGradient] | None = None,
     ) -> MatchPhase:
         """Detect repeating sibling groups (Phase 49.1) and match sections to components."""
         from app.design_sync.component_matcher import match_all
@@ -642,6 +661,7 @@ class DesignConverterService:
             container_width=container_width,
             image_urls=image_urls,
             global_design_image=global_design_image,
+            gradients=gradients,
         )
         return MatchPhase(
             matches=matches,

@@ -30,7 +30,10 @@ def test_design_sync_field_count_bounded() -> None:
     # ≤45 was the aspiration, but the do-not-touch set (vlm_verify_*/
     # custom_component_*/sibling_*/…) reserves ~20 fields for PR-2, so PR-1's
     # safe pool tops out at 8 → 57. PR-2 (retire-feature) drives toward ≤30.
-    assert len(DesignSyncConfig.model_fields) <= 57
+    # +1 (58): 53.3d ``frame_export_fallback_enabled`` — plan-mandated kill
+    # switch, cull-tracked in feature-flags.yaml (removal 2026-10-06); counts
+    # against the PR-2 retirement pool, not new sprawl headroom.
+    assert len(DesignSyncConfig.model_fields) <= 58
 
 
 def test_constantized_fields_removed() -> None:
