@@ -1289,8 +1289,26 @@ class ComponentRenderer:
                 # cta-secondary).
                 class_name = "cta-primary" if target == "_cta_primary" else "cta-secondary"
                 result = self._apply_cta_pair_override(result, class_name, prop, val)
+            elif target == "_divider" and prop == "border-top":
+                # 53.5 — divider rule from the design's LINE stroke.
+                result = self._replace_divider_border(result, val)
 
         return result
+
+    _DIVIDER_BORDER_RE = re.compile(
+        r'(class="(?:[^"]*\s)?divider-line(?:\s[^"]*)?"[^>]*style="[^"]*?)'
+        r"border-top:\s*[^;\"]+([;\"\'])"
+    )
+
+    def _replace_divider_border(self, html_str: str, value: str) -> str:
+        """Replace ``border-top`` on the ``divider-line`` element (53.5).
+
+        The divider seeds render their rule as an inline ``border-top`` on a
+        ``class="divider-line"`` div; the design's LINE stroke supplies the
+        real colour + thickness. No-op when the seed has no such element.
+        """
+        safe = html.escape(value, quote=True)
+        return self._DIVIDER_BORDER_RE.sub(rf"\g<1>border-top:{safe}\g<2>", html_str)
 
     def _replace_first_css_prop(self, html_str: str, prop: str, value: str) -> str:
         """Replace the first occurrence of a CSS property in a style attribute."""

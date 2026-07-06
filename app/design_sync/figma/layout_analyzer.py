@@ -520,6 +520,17 @@ def analyze_layout(
             elif parent_wrapper_id and parent_wrapper_id in gradient_node_ids:
                 gradient_ref = parent_wrapper_id
 
+        # 53.5 — divider rule recovery: the visible rule of an ``mj-divider``
+        # is the stroke of a zero-area LINE child, not the section frame's own
+        # (usually empty) stroke. Adopt it so the matcher can thread colour +
+        # thickness into the divider seed.
+        stroke_color = node.stroke_color
+        stroke_weight = node.stroke_weight
+        if section_type == EmailSectionType.DIVIDER and stroke_color is None:
+            line_stroke = _zero_area_vector_stroke(node)
+            if line_stroke is not None:
+                stroke_color, stroke_weight = line_stroke
+
         sections.append(
             EmailSection(
                 section_type=section_type,
@@ -554,8 +565,8 @@ def analyze_layout(
                 inner_card_fixed_width=inner_card_fixed_width,
                 is_physical_card_surface=is_physical_card_surface,
                 physical_card_signals=physical_card_signals,
-                stroke_color=node.stroke_color,
-                stroke_weight=node.stroke_weight,
+                stroke_color=stroke_color,
+                stroke_weight=stroke_weight,
                 peel_row_id=peel_row_id,
                 gradient_ref=gradient_ref,
                 effects_summary=_collect_effects_summary(node),
@@ -1393,8 +1404,67 @@ def _crop_export_id(node: DesignNode) -> str | None:
     return None
 
 
-def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
-    """Walk tree collecting IMAGE nodes and FRAME nodes with IMAGE fills."""
+# 53.5 — standalone-vector recovery bounds. A dimension at or under the
+# epsilon marks an mj-divider-class LINE (rule, not artwork); anything under
+# the minimum on either axis is an export artifact, not an icon.
+_ZERO_AREA_EPS = 1.0
+_MIN_VECTOR_PX = 8.0
+
+
+def _zero_area_vector_stroke(node: DesignNode) -> tuple[str, float | None] | None:
+    """Stroke of the first zero-area stroked VECTOR in a subtree (53.5).
+
+    The ``mj-divider`` shape: a LINE with height (or width) ≈ 0 whose visible
+    rule IS its stroke. Rasterizing a 0-px PNG is useless — the parent divider
+    section adopts the stroke instead, so the divider seed renders the real
+    rule colour/thickness.
+    """
+    if (
+        node.type == DesignNodeType.VECTOR
+        and node.visible
+        and node.stroke_color is not None
+        and (
+            (node.height is not None and node.height <= _ZERO_AREA_EPS)
+            or (node.width is not None and node.width <= _ZERO_AREA_EPS)
+        )
+    ):
+        return (node.stroke_color, node.stroke_weight)
+    for child in node.children:
+        found = _zero_area_vector_stroke(child)
+        if found is not None:
+            return found
+    return None
+
+
+def _rasterizable_vector(node: DesignNode) -> bool:
+    """Whether a standalone VECTOR should rasterize via node export (53.5).
+
+    Icons/logomarks with real area (at least 8x8 px). Zero-area LINEs are the
+    divider shape (recovered as a section stroke, not a PNG); sub-8px
+    fragments are artifacts.
+    """
+    return (
+        node.type == DesignNodeType.VECTOR
+        and node.visible
+        and node.width is not None
+        and node.height is not None
+        and node.width >= _MIN_VECTOR_PX
+        and node.height >= _MIN_VECTOR_PX
+    )
+
+
+def _walk_for_images(
+    node: DesignNode,
+    results: list[ImagePlaceholder],
+    *,
+    skip_vectors: bool = False,
+) -> None:
+    """Collect IMAGE nodes, IMAGE-filled FRAMEs, and standalone vectors (53.5).
+
+    ``skip_vectors`` suppresses vector collection inside a subtree that is
+    already exported as an image (the frame's node render bakes its children
+    in — collecting the vector again would double-capture it).
+    """
     if node.type == DesignNodeType.IMAGE:
         results.append(
             ImagePlaceholder(
@@ -1423,9 +1493,10 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 stroke_weight=node.stroke_weight,
             )
         )
-        # Still recurse into children (frame has content over the bg)
+        # Still recurse into children (frame has content over the bg) — but
+        # the bg export renders the whole frame, so vectors are already baked.
         for child in node.children:
-            _walk_for_images(child, results)
+            _walk_for_images(child, results, skip_vectors=True)
     elif (
         node.type in (DesignNodeType.FRAME, DesignNodeType.GROUP)
         and len(node.children) == 1
@@ -1448,9 +1519,25 @@ def _walk_for_images(node: DesignNode, results: list[ImagePlaceholder]) -> None:
                 stroke_weight=node.stroke_weight,
             )
         )
+    elif not skip_vectors and _rasterizable_vector(node):
+        # 53.5 — standalone icon/logomark vector: the Figma image API
+        # rasterizes the node (BOOLEAN_OPERATION subtrees composite in the
+        # render), so downstream export/URL/alt plumbing works unchanged.
+        # No recursion — the export bakes the whole subtree.
+        results.append(
+            ImagePlaceholder(
+                node_id=node.id,
+                node_name=node.name,
+                width=node.width,
+                height=node.height,
+                export_node_id=node.id,
+                stroke_color=node.stroke_color,
+                stroke_weight=node.stroke_weight,
+            )
+        )
     else:
         for child in node.children:
-            _walk_for_images(child, results)
+            _walk_for_images(child, results, skip_vectors=skip_vectors)
 
 
 def _corner_spec_or_none(spec: CornerRadiusSpec) -> CornerRadiusSpec | None:

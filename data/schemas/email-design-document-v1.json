@@ -291,7 +291,9 @@
           "default": null
         },
         "gradient_ref": { "type": ["string", "null"], "default": null, "maxLength": 200 },
-        "effects_summary": { "type": ["string", "null"], "default": null, "maxLength": 500 }
+        "effects_summary": { "type": ["string", "null"], "default": null, "maxLength": 500 },
+        "stroke_color": { "type": ["string", "null"], "default": null, "maxLength": 50 },
+        "stroke_weight": { "type": ["number", "null"], "default": null }
       }
     },
     "content_group": {
@@ -403,7 +405,9 @@
         "corner_radius_spec": {
           "oneOf": [{ "$ref": "#/$defs/corner_radius_spec" }, { "type": "null" }],
           "default": null
-        }
+        },
+        "stroke_color": { "type": ["string", "null"], "default": null, "maxLength": 50 },
+        "stroke_weight": { "type": ["number", "null"], "default": null }
       }
     },
     "button": {

@@ -747,14 +747,22 @@ _GENERIC_ALT_TOKENS = frozenset(
     {"mj-image", "mj-text", "image", "photo", "picture", "img", "frame", "banner"}
 )
 _FIGMA_NODE_ID_RE = re.compile(r"^\d+[:_]\d+")
+# 53.5 — Figma auto-generated layer names ("Vector 3", "Ellipse 12", "Union").
+# Rasterized standalone vectors carry these by default; they say nothing about
+# the content and must fall back like the lone generic tokens above.
+_FIGMA_AUTO_NAME_RE = re.compile(
+    r"(?i)^(vector|line|ellipse|star|polygon|rectangle|boolean ?operation"
+    r"|frame|group|instance|union|subtract|intersect|exclude)\s*\d*$"
+)
 
 
 def _is_descriptive_alt(name: str | None) -> bool:
     """True when a Figma layer name is usable as alt text (Phase 53 B5).
 
-    Rejects the Mode E-alt leak: empty, a lone G3-neg generic token, MJML
-    internals (``(mjml:`` / ``(type:``), or a raw Figma node-id. A name that
-    passes is safe to emit verbatim and clears the G3-neg conformance gate.
+    Rejects the Mode E-alt leak: empty, a lone G3-neg generic token, a Figma
+    auto-generated layer name ("Vector 3" — 53.5), MJML internals
+    (``(mjml:`` / ``(type:``), or a raw Figma node-id. A name that passes is
+    safe to emit verbatim and clears the G3-neg conformance gate.
     """
     stripped = (name or "").strip()
     lowered = stripped.lower()
@@ -764,6 +772,7 @@ def _is_descriptive_alt(name: str | None) -> bool:
         and "(mjml:" not in lowered
         and "(type:" not in lowered
         and not _FIGMA_NODE_ID_RE.match(stripped)
+        and not _FIGMA_AUTO_NAME_RE.match(stripped)
     )
 
 
@@ -2133,6 +2142,23 @@ def _build_token_overrides(
             gradient_css = _linear_gradient_css(gradient)
             if gradient_css:
                 overrides.append(TokenOverride("background-image", "_outer", gradient_css))
+
+    # 53.5 — divider rule colour/thickness from the design's zero-area LINE
+    # stroke (adopted onto the section by layout analysis). The divider seed
+    # renders its rule as ``border-top`` on the ``divider-line`` element.
+    if (
+        section.section_type == EmailSectionType.DIVIDER
+        and section.stroke_color
+        and _HEX_COLOR_RE.match(section.stroke_color)
+    ):
+        weight = (
+            section.stroke_weight if section.stroke_weight and section.stroke_weight > 0 else 1.0
+        )
+        # Sub-pixel design strokes floor to 1px — "0px solid" is an invisible rule.
+        weight_px = max(1, round(weight))
+        overrides.append(
+            TokenOverride("border-top", "_divider", f"{weight_px}px solid {section.stroke_color}")
+        )
 
     # Inner card border radius (Phase 50.4)
     if section.inner_radius is not None:
