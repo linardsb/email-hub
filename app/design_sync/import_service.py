@@ -202,9 +202,19 @@ class DesignImportService:
                         )
                         _conn_id = str(design_import.connection_id)
 
-                        # Prefer document path when snapshot has document_json
+                        # Prefer document path when snapshot has document_json —
+                        # but only for whole-file imports: the snapshot document
+                        # covers the entire file and has no node filtering, so a
+                        # selected-nodes import must use the legacy path (which
+                        # filters via _filter_structure) or it converts every
+                        # frame in the file (phase-53f-document-path-ignores-
+                        # node-selection).
                         snapshot = await repo.get_latest_snapshot(design_import.connection_id)
-                        if snapshot and snapshot.document_json:
+                        if (
+                            snapshot
+                            and snapshot.document_json
+                            and not design_import.selected_node_ids
+                        ):
                             from app.design_sync.email_design_document import (
                                 EmailDesignDocument,
                             )
@@ -856,8 +866,11 @@ class DesignImportService:
         # Match opening tags that carry an explicit background (light OR dark).
         # Accepts ``bgcolor="..."`` plus ``background`` shorthand and the
         # ``background-color`` longhand so nested light cards are detected too.
+        # ``a`` is included because inline CTAs paint their own pill background
+        # — an outlined button (white fill, dark label) on a dark band must be
+        # judged against its own fill, not the band.
         _BG_TAG = re.compile(
-            r"<(table|td|tr)(\s[^>]*?)(?:"
+            r"<(table|td|tr|a)(\s[^>]*?)(?:"
             r'bgcolor="(#[0-9a-fA-F]{3,6})"'
             r"|"
             r"background(?:-color)?\s*:\s*(#[0-9a-fA-F]{3,6})"
@@ -866,7 +879,10 @@ class DesignImportService:
         )
 
         # Collect byte-ranges for ALL backgrounded sections (light + dark),
-        # depth-matched so nested tables don't bleed into each other.
+        # depth-matched so nested tables don't bleed into each other. Ranges
+        # start at the OPENING tag so an element's own inline ``color:`` (in
+        # the same style attribute as its background) is judged against its
+        # own background, not the enclosing one.
         bg_ranges: list[tuple[int, int, bool]] = []  # (start, end, is_dark)
         for m in _BG_TAG.finditer(html_str):
             bg_hex = m.group(3) or m.group(4)
@@ -875,7 +891,7 @@ class DesignImportService:
             is_dark = relative_luminance(bg_hex) < 0.2
             tag_name = m.group(1).lower()
             close_idx = DesignImportService._matching_close_index(html_str, m.end(), tag_name)
-            bg_ranges.append((m.end(), close_idx, is_dark))
+            bg_ranges.append((m.start(), close_idx, is_dark))
 
         if not any(is_dark for _, _, is_dark in bg_ranges):
             return html_str

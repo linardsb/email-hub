@@ -365,6 +365,43 @@ class TestColumnFillButtonProperties:
         assert "border:2px solid #333333" in html
 
 
+class TestTextBlockCTARadius:
+    """The text-block inline CTA honours ButtonElement.border_radius.
+
+    Guards phase-53f-f7-text-block-cta-hardcoded-radius: `_fills_text_block`
+    hardcoded `border-radius:4px`, flattening every designed pill radius on the
+    text-block path (c5 'Discover →', c6 'Order your fall favorite', c7/LEGO
+    'Explore now' at r25).
+    """
+
+    def _body_html(self, btn: ButtonElement) -> str:
+        from app.design_sync.component_matcher import _fills_text_block
+
+        section = _make_section(EmailSectionType.CONTENT, buttons=[btn])
+        fills = _fills_text_block(section, 600)
+        body = next(f for f in fills if f.slot_id == "body")
+        return body.value
+
+    def test_designed_radius_renders(self) -> None:
+        html = self._body_html(
+            _button(
+                "Explore now",
+                fill_color="#FFFFFF",
+                text_color="#000000",
+                stroke_color="#000000",
+                stroke_weight=2.0,
+                border_radius=25.0,
+            )
+        )
+        assert "border-radius:25px" in html
+        assert "border:2px solid #000000" in html
+        assert "color:#000000" in html
+
+    def test_missing_radius_keeps_4px_fallback(self) -> None:
+        html = self._body_html(_button("Shop Now", fill_color="#0066cc"))
+        assert "border-radius:4px" in html
+
+
 # ---------------------------------------------------------------------------
 # 15. Multiple CTAs with different colors
 # ---------------------------------------------------------------------------

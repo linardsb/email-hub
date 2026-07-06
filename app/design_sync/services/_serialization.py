@@ -7,9 +7,10 @@ methods of the same names — no state dependencies.
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any, Final, cast
 
-from app.design_sync.protocol import DesignNode, DesignNodeType
+from app.design_sync.protocol import DesignNode, DesignNodeType, StyleRun
 from app.design_sync.schemas import DesignNodeResponse
 
 _THUMBNAIL_NODE_TYPES: Final[set[str]] = {
@@ -67,6 +68,32 @@ def serialize_node(node: DesignNode) -> dict[str, Any]:
         d["text_transform"] = node.text_transform
     if node.text_decoration is not None:
         d["text_decoration"] = node.text_decoration
+    if node.line_height_relative is not None:
+        d["line_height_relative"] = node.line_height_relative
+    if node.image_ref is not None:
+        d["image_ref"] = node.image_ref
+    if node.hyperlink is not None:
+        d["hyperlink"] = node.hyperlink
+    if node.corner_radius is not None:
+        d["corner_radius"] = node.corner_radius
+    if node.corner_radii is not None:
+        d["corner_radii"] = list(node.corner_radii)
+    if node.text_align is not None:
+        d["text_align"] = node.text_align
+    if node.primary_axis_align is not None:
+        d["primary_axis_align"] = node.primary_axis_align
+    if node.counter_axis_align is not None:
+        d["counter_axis_align"] = node.counter_axis_align
+    if node.stroke_weight is not None:
+        d["stroke_weight"] = node.stroke_weight
+    if node.stroke_color is not None:
+        d["stroke_color"] = node.stroke_color
+    if node.style_runs:
+        d["style_runs"] = [dataclasses.asdict(sr) for sr in node.style_runs]
+    if not node.visible:
+        d["visible"] = False
+    if node.opacity != 1.0:
+        d["opacity"] = node.opacity
     return d
 
 
@@ -145,6 +172,11 @@ def cached_dict_to_node(data: dict[str, Any]) -> DesignNode:
         list[dict[str, Any]],
         [c for c in data.get("children", []) if isinstance(c, dict)],
     )
+    raw_radii = cast(list[float] | None, data.get("corner_radii"))
+    raw_runs = cast(
+        list[dict[str, Any]],
+        [sr for sr in data.get("style_runs", []) if isinstance(sr, dict)],
+    )
     return DesignNode(
         id=str(data.get("id", "")),
         name=str(data.get("name", "")),
@@ -168,7 +200,20 @@ def cached_dict_to_node(data: dict[str, Any]) -> DesignNode:
         font_size=data.get("font_size"),
         font_weight=int(raw_fw) if isinstance(raw_fw, (int, float)) else None,
         line_height_px=data.get("line_height_px"),
+        line_height_relative=data.get("line_height_relative"),
         letter_spacing_px=data.get("letter_spacing_px"),
         text_transform=data.get("text_transform"),
         text_decoration=data.get("text_decoration"),
+        image_ref=data.get("image_ref"),
+        hyperlink=data.get("hyperlink"),
+        corner_radius=data.get("corner_radius"),
+        corner_radii=tuple(raw_radii) if raw_radii else None,
+        text_align=data.get("text_align"),
+        primary_axis_align=data.get("primary_axis_align"),
+        counter_axis_align=data.get("counter_axis_align"),
+        stroke_weight=data.get("stroke_weight"),
+        stroke_color=data.get("stroke_color"),
+        style_runs=tuple(StyleRun(**sr) for sr in raw_runs),
+        visible=bool(data.get("visible", True)),
+        opacity=float(data.get("opacity", 1.0)),
     )

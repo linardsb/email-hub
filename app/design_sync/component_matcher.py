@@ -1338,11 +1338,12 @@ def _fills_text_block(
             if stroke:
                 fg = _safe_color(btn.text_color, "#1a1a1a")
                 border = f"border:{max(1, round(btn.stroke_weight))}px solid {stroke};"
+        radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
         cta_parts.append(
             f'<a href="{btn_url}" style="display:inline-block;'
             f"padding:10px 24px;background-color:{bg};color:{fg};"
             f"text-decoration:none;{_cta_label_typography(btn)}{border}"
-            f'border-radius:4px;">{_safe_text(btn.text)}</a>'
+            f'border-radius:{radius}px;">{_safe_text(btn.text)}</a>'
         )
     if cta_parts:
         cta_html = "\n".join(cta_parts)

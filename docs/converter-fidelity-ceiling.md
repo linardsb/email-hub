@@ -101,16 +101,21 @@ design runs ingested before the Track B–F extraction upgrades render *below* t
 on identical renderer code — their DB-stored structures lack radius/stroke/text-color/
 alignment fields (observed on a 2026-04-03 LEGO run: invisible outlined CTA, 4px pills,
 left-aligned headings). Re-run design-sync on stale runs before judging fidelity.
-**2026-07-06 end-to-end validation: the re-run remedy is NOT sufficient on current code.**
-A full API re-run on the stale LEGO connection (live token, conversion cache cleared and
-bypassed, connection re-synced → fresh snapshot, three fresh imports incl. a forced
-legacy-path conversion) still renders 'Explore now' white-on-white/borderless/r4,
-byte-identical to the stale April output — the snapshot `_file_structure` serializer and
-the protocol `DesignNode` bridge drop the Track-B fields before the renderer ever sees
-them, and the fresh-sync `document_json` path converts the whole file (selection ignored).
-Harness fixtures are unaffected (same renderer renders the CTA black-on-white + 2px from
-`structure.json`). Fixes tracked in §4 (last two rows); until they land, app-side runs
-understate converter fidelity **regardless of re-syncing**.
+**2026-07-06 end-to-end validation → fixed same day.** The morning validation DISPROVED
+the re-run remedy on then-current code: a full API re-run (live token, cache cleared and
+bypassed, re-sync, three fresh imports incl. a forced legacy-path conversion) still
+rendered 'Explore now' white-on-white/borderless/r4 — the snapshot `_file_structure`
+serializer dropped the Track-B fields, the `_fix_text_contrast` post-pass repainted the
+label against the band instead of the pill's own background, and a fresh-sync
+`document_json` hijacked selected-node imports into whole-file conversions. All four
+mechanisms were fixed the same day (`fix/phase-53f-app-render-field-parity`): the cache
+serializer round-trips every `DesignNode` render field (parity-guarded test), selected-node
+imports always take the legacy filtered path, the text-block CTA threads the designed
+radius, and the contrast fixer honours an element's own background. Post-fix, `POST
+/connections/sync` + re-import renders the LEGO CTA **black-on-white + 2px + r25** with
+centered headings — harness parity through the API, screenshot-verified. **Ops note:**
+runs synced before this fix still serve field-less snapshots — one re-sync + re-import
+per connection after deploy.
 
 ## 4. Residual gaps (tracked, not hidden)
 
@@ -125,8 +130,8 @@ understate converter fidelity **regardless of re-syncing**.
 | Decorative standalone VECTOR/LINE nodes fall through extraction (`layout_analyzer.py`) | TODO.md **53.5** | Open — `DocumentVector` class or rasterize/inline-PNG |
 | **Column width budget:** column seeds hardcode 600px-context pixel widths (MSO ghost `td width` + div `max-width`); any horizontal inset (band `_cell` padding, F7 card padding) shrinks the live content box below the seed total, so the inline-block columns wrap and **2-col layouts render stacked** (c7 all 6 benefit cards, c8 spec grid, c10 product grid). Detection is correct — A8 fractions redistribute but never rescale the total | `phase-53f-column-width-budget` (deferred-items) | Open — F9-class renderer-side rescale; Track-F close-out finding (plan §4 row 4's "detection widening" is the wrong lever) |
 | In-column content ordering: `_build_column_fill_html` emits images→texts→buttons buckets, discarding design y-order (tag pills render below body instead of eyebrow-above-heading; card icons above product names) | `phase-53f-column-category-order` (deferred-items) | Open — y-order merge in the column fill builder |
-| **App-side render-field drop:** snapshot `_file_structure` cache + `cached_dict_to_node` protocol schema lack `corner_radius`/`stroke_weight`/`stroke_color`/`text_align` (and `text_color` dies in the protocol→converter bridge) — app conversions render invisible/unstyled CTAs even after a fresh re-sync, while the harness renders the same design correctly | `phase-53f-app-snapshot-serializer-drops-render-fields` (deferred-items) | Open — same inert-serializer-bridge class as RC-A/RC-B; disproves the §3 re-run remedy on current code |
-| **Document-path selection bug:** with `snapshot.document_json` present (fresh syncs write one), `run_conversion` converts the whole-file document and ignores `selected_node_ids` (observed: 2MB template with zero email content) | `phase-53f-document-path-ignores-node-selection` (deferred-items) | Open — filter to selection or fall back to legacy path; dev-DB workaround: connection 5's snapshot-20 `document_json` nulled |
+| **App-side render-field drop:** snapshot `_file_structure` cache + `cached_dict_to_node` protocol schema lacked `corner_radius`/`stroke_weight`/`stroke_color`/`text_align`, and the `_fix_text_contrast` post-pass repainted CTA labels against the band instead of the pill's own background (the filing's "protocol bridge" hypothesis was wrong — the bridges are lossless) | `phase-53f-app-snapshot-serializer-drops-render-fields` (deferred-items) | **CLOSED 2026-07-06** (`fix/phase-53f-app-render-field-parity`) — serializer round-trips all render fields (dataclass-parity test) + contrast fixer honours own-background; LEGO CTA harness parity through the API |
+| **Document-path selection bug:** with `snapshot.document_json` present (fresh syncs write one), `run_conversion` converted the whole-file document and ignored `selected_node_ids` (observed: 2MB template with zero email content) | `phase-53f-document-path-ignores-node-selection` (deferred-items) | **CLOSED 2026-07-06** (same branch) — selected-node imports always take the legacy filtered path; document path reserved for whole-file imports (both directions tested) |
 
 ## 5. How to talk about converter fidelity (the contract)
 
