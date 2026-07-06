@@ -53,6 +53,22 @@ class NoHealthyCredentialsError(ServiceUnavailableError):
         super().__init__(f"No healthy credentials available for service: {service}")
 
 
+class ToolCapExceededError(ServiceUnavailableError):
+    """Agent exceeded the per-session tool-call cap (503).
+
+    51.3 — completes the K_max trio (run-seconds + token caps). Subclassing
+    ``ServiceUnavailableError`` inherits the 503 mapping in
+    ``app_exception_handler``; ``reason`` is the stable machine-readable tag.
+    """
+
+    reason = "tool_cap_exceeded"
+
+    def __init__(self, *, agent: str, limit: int) -> None:
+        self.agent = agent
+        self.limit = limit
+        super().__init__(f"Agent '{agent}' exceeded the tool-call cap ({limit} calls per run)")
+
+
 class CyclicDependencyError(DomainValidationError):
     """Pipeline DAG contains a cycle."""
 

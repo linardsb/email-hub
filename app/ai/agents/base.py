@@ -18,6 +18,7 @@ import json
 import time
 import uuid
 from collections.abc import AsyncIterator
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -36,7 +37,7 @@ from app.ai.security.prompt_guard import scan_for_injection
 from app.ai.shared import extract_confidence, extract_html, sanitize_html_xss
 from app.ai.token_budget import TokenBudgetManager
 from app.core.config import get_settings
-from app.core.exceptions import ServiceUnavailableError
+from app.core.exceptions import ServiceUnavailableError, ToolCapExceededError
 from app.core.logging import get_logger
 from app.qa_engine.checks import ALL_CHECKS
 from app.qa_engine.schemas import QACheckResult
@@ -48,6 +49,58 @@ CONFIDENCE_INSTRUCTION = (
     "\n\nEnd your response with <!-- CONFIDENCE: X.XX --> where X.XX is your "
     "confidence (0.00-1.00) in the output quality."
 )
+
+
+class _ToolCallCounter:
+    """Per-``process()`` tool-call budget + planning-step trail (51.3, K_max).
+
+    One instance is created by the security envelope for each run and
+    published through ``_ACTIVE_RUN_COUNTER`` so tool call sites and
+    structured pipelines can record into the active run without threading
+    state through every ``_process_impl``/``_process_structured`` signature.
+    Per-session by construction — never a module global — so concurrent
+    ``process()`` invocations (separate asyncio tasks) cannot share or
+    clobber each other's counts.
+    """
+
+    def __init__(self, *, agent: str, limit: int) -> None:
+        self.agent = agent
+        self.limit = limit
+        self.calls = 0
+        self.planning_steps: list[str] = []
+
+    def record_call(self) -> None:
+        """Count one tool call; the call after the cap is blocked, not made."""
+        if self.calls >= self.limit:
+            raise ToolCapExceededError(agent=self.agent, limit=self.limit)
+        self.calls += 1
+
+    def record_step(self, step: str) -> None:
+        self.planning_steps.append(step)
+
+
+_ACTIVE_RUN_COUNTER: ContextVar[_ToolCallCounter | None] = ContextVar(
+    "agent_run_tool_counter", default=None
+)
+
+
+def record_tool_call() -> None:
+    """Count one tool call against the active run's cap.
+
+    Raises ``ToolCapExceededError`` on the ``agent_max_tool_calls + 1``-th
+    call of a single ``process()`` run. No-op outside an agent run (evals,
+    scripts) — the envelope owns enforcement.
+    """
+    counter = _ACTIVE_RUN_COUNTER.get()
+    if counter is not None:
+        counter.record_call()
+
+
+def record_planning_step(step: str) -> None:
+    """Append one planning step to the active run's audit trail (no-op outside)."""
+    counter = _ACTIVE_RUN_COUNTER.get()
+    if counter is not None:
+        counter.record_step(step)
 
 
 class BaseAgentService:
@@ -368,6 +421,13 @@ class BaseAgentService:
             raise ServiceUnavailableError(f"Agent '{self.agent_name}' is disabled")
 
         decision = "ok"
+        # G4 (51.3) — per-run tool-call budget. Set BEFORE wait_for creates the
+        # inner task so the task's context copy carries the counter; the object
+        # is shared, so calls recorded inside are visible here in the finally.
+        counter = _ToolCallCounter(
+            agent=self.agent_name, limit=settings.security.agent_max_tool_calls
+        )
+        counter_token = _ACTIVE_RUN_COUNTER.set(counter)
         try:
             return await asyncio.wait_for(
                 self._process_impl(request, context_blocks, telemetry),
@@ -384,13 +444,28 @@ class BaseAgentService:
                 f"Agent '{self.agent_name}' timed out after "
                 f"{settings.security.agent_max_run_seconds}s"
             ) from exc
+        except ToolCapExceededError:
+            decision = "cap_exceeded"
+            logger.warning(
+                "ai.agent_tool_cap_exceeded",
+                agent=self.agent_name,
+                limit=settings.security.agent_max_tool_calls,
+            )
+            raise
         except Exception:
             if decision == "ok":
                 decision = "error"
             raise
         finally:
+            _ACTIVE_RUN_COUNTER.reset(counter_token)
             duration_ms = int((time.monotonic() - started_at) * 1000)
-            log_agent_decision(**telemetry, duration_ms=duration_ms, decision=decision)
+            log_agent_decision(
+                **telemetry,
+                duration_ms=duration_ms,
+                decision=decision,
+                tool_calls_made=counter.calls,
+                planning_steps=counter.planning_steps,
+            )
 
     async def _process_impl(
         self,

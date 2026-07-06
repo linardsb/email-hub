@@ -17,6 +17,7 @@ _SAFE_MESSAGES: dict[str, str] = {
     "ForbiddenError": "Access denied",
     "ConflictError": "Resource conflict",
     "ServiceUnavailableError": "Service temporarily unavailable",
+    "ToolCapExceededError": "Agent tool-call limit exceeded",
     # Auth errors
     "InvalidCredentialsError": "Invalid email or password",
     "AccountLockedError": "Account is temporarily locked",
