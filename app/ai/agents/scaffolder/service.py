@@ -7,7 +7,7 @@ import dataclasses
 from collections.abc import AsyncIterator
 from typing import Any
 
-from app.ai.agents.base import BaseAgentService
+from app.ai.agents.base import BaseAgentService, record_planning_step
 from app.ai.agents.scaffolder.assembler import AssemblyError, TemplateAssembler
 from app.ai.agents.scaffolder.pipeline import PipelineError, ScaffolderPipeline
 from app.ai.agents.scaffolder.prompt import (
@@ -155,6 +155,7 @@ class ScaffolderService(CRAGMixin, BaseAgentService):
         )
 
         # Phase 1: LLM decisions (3-pass structured JSON)
+        record_planning_step("structured_pipeline")
         pipeline = ScaffolderPipeline(provider, model)
         try:
             plan = await pipeline.execute(req.brief, brand_config=req.brand_config)
@@ -167,6 +168,7 @@ class ScaffolderService(CRAGMixin, BaseAgentService):
             raise AIExecutionError("scaffolder structured pipeline failed") from e
 
         # Phase 2: Deterministic assembly (no LLM)
+        record_planning_step("template_assembly")
         assembler = TemplateAssembler()
         try:
             html = assembler.assemble(plan)
@@ -179,10 +181,12 @@ class ScaffolderService(CRAGMixin, BaseAgentService):
             raise AIExecutionError("scaffolder template assembly failed") from e
 
         # Phase 3: XSS sanitize (template HTML is trusted, but slot fills are not)
+        record_planning_step("xss_sanitize")
         html = sanitize_html_xss(html, profile=self.sanitization_profile)
 
         # Phase 3.5: CRAG validation loop
         if settings.knowledge.crag_enabled:
+            record_planning_step("crag_validation")
             html, _crag_corrections = await self._crag_validate_and_correct(
                 html,
                 system_prompt=CRAG_SYSTEM_PROMPT,
@@ -193,6 +197,7 @@ class ScaffolderService(CRAGMixin, BaseAgentService):
         qa_results: list[QACheckResult] | None = None
         qa_passed: bool | None = None
         if self._should_run_qa(request):
+            record_planning_step("qa_gate")
             qa_results, qa_passed = await self._run_qa(html)
 
         return ScaffolderResponse(

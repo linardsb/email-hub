@@ -33,11 +33,18 @@ def log_agent_decision(
     tokens_in: int,
     tokens_out: int,
     decision: str,
+    tool_calls_made: int = 0,
+    planning_steps: list[str] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> None:
     """Emit one structured line per agent run: ai.agent_decision.
 
-    decision is one of: "ok" | "refused" | "error" | "timeout" | "disabled".
+    decision is one of: "ok" | "refused" | "error" | "timeout" | "disabled" |
+    "cap_exceeded".
+
+    ``tool_calls_made`` / ``planning_steps`` are the 51.3 additions — additive
+    only, with defaults, so pre-51.3 call sites and existing log consumers
+    (Phase 44.9 Loki dashboards) keep their exact schema and see stable keys.
     """
     payload: dict[str, Any] = {
         "agent": agent,
@@ -51,6 +58,8 @@ def log_agent_decision(
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
         "decision": decision,
+        "tool_calls_made": tool_calls_made,
+        "planning_steps": planning_steps if planning_steps is not None else [],
     }
     if extra:
         payload.update(extra)

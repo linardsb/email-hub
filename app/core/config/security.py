@@ -18,6 +18,10 @@ class SecurityConfig(BaseModel):
     # G4 — per-run hard caps (defense-in-depth on top of provider timeouts)
     agent_max_run_seconds: int = 90  # SECURITY__AGENT_MAX_RUN_SECONDS
     agent_max_total_tokens: int = 32000  # SECURITY__AGENT_MAX_TOTAL_TOKENS
+    # 51.3 — completes the K_max trio with a per-process() tool-call count cap.
+    # Deliberately permissive: no current agent makes tool calls, so 25 is a
+    # no-op until agentic tool loops land.
+    agent_max_tool_calls: int = 25  # SECURITY__AGENT_MAX_TOOL_CALLS
 
     # 51.1 — Default TTL (seconds) for credential revocations triggered by the
     # kill switch. ``None`` = permanent until ``POST /api/v1/credentials/revoke``
