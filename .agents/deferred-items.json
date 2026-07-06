@@ -910,6 +910,24 @@
       "symptom_if_broken": "After a fixture regen against live Figma, a design using AUTO/% line heights renders with default line-height in the regression corpus while the live import path renders the designed value — baseline diffs blame the wrong layer.",
       "closes_when": "_node_from_dict round-trips line_height_relative (one kwarg) and a bridge-roundtrip-style loader test pins every DesignNode field, OR the diagnose loader is replaced by a schema-driven serializer.",
       "notes": "Fix is one line + test, but it changes fixture-reload behaviour — do it in a phase that owns a baseline regen, not as a drive-by (53.3 shipped with byte-identical baselines)."
+    },
+    {
+      "id": "phase-53.5-nested-divider-render-gap",
+      "phase": "53.5",
+      "title": "Nested mj-divider rules don't render — column-child and band-absorbed dividers lose their stroke",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-07-06",
+      "introduced_commit": "adca13e0",
+      "summary": "53.5 recovers divider strokes only when the mj-divider frame IS a section (case 9). Case 8's LINE sits at mj-wrapper > mj-section > mj-column > mj-divider-Frame — a column child; the column fill builder has no divider row category, so the rule vanishes. Case 10's two divider sections DO adopt #C7CCCF via the 53.5 lift, but band grouping absorbs them as spacer-class separators before matching (absorb_spacers, ratified A2 behaviour) and the band renderer emits no rule.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_build_column_fill* — no divider category)",
+        "app/design_sync/sibling_detector.py (group_by_wrapper absorb_spacers)",
+        "app/design_sync/figma/layout_analyzer.py (_zero_area_vector_stroke — the recoverable signal)"
+      ],
+      "symptom_if_broken": "Designs whose horizontal rules live inside columns or inside band-grouped wrappers render without the rule; the design shows a visible separator, the email shows none (cases 8 and 10 today).",
+      "closes_when": "Column fills gain a divider row category (in-column, 51.x seam) AND band absorption carries the absorbed divider's stroke into a band-internal rule row — or segmentation changes make such dividers first-class sections.",
+      "notes": "The stroke signal is already captured and bridged (section.stroke_color / _zero_area_vector_stroke); this is a renderer-reach gap, not an ingest gap."
     }
   ],
   "tooling_followups": [
