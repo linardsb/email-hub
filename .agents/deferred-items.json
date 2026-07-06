@@ -816,10 +816,11 @@
       "id": "phase-53f-column-width-budget",
       "phase": "53.f",
       "title": "Column seeds' fixed 600px-context widths overflow padded content boxes — 2-col layouts render stacked",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
+      "closed_commit": "e6812b44",
       "summary": "column-layout-{2,3,4} seeds hardcode per-column pixel widths sized for a full 600px context (MSO ghost td width=300/200/150 + div max-width). Any horizontal inset — a band's _cell padding (24px/side), RC-F7's relocated card padding (20px/side) — shrinks the live content box below the seed total (c7 cards: ~512px vs 600px of columns), so the display:inline-block column divs wrap and multi-column sections render stacked. _apply_column_width_fractions (A8) redistributes the seed total by measured fractions but never RESCALES the total to the effective box; detection is CORRECT (sections match column-layout-* — plan 53-f §4 row 4's 'column-detection widening' is the wrong lever). Dominant remaining c7 full_image mechanism at Track-F close-out.",
       "code_refs": [
         "email-templates/components/column-layout-2.html:6 (ghost width=600 / td width=300 hardcodes)",
@@ -828,7 +829,7 @@
       ],
       "symptom_if_broken": "Any multi-column section inside a padded band or card renders its columns stacked vertically instead of side-by-side, and the email renders far taller than the design (c7 app export 4470px vs 3223px design; c7 all 6 benefit cards image-above-text; c7 user-info col4 wraps its 4th cell; c8 2x2 spec grid single-column; c10 product grid single-column).",
       "closes_when": "The renderer rescales column ghost td widths + div max-widths so their sum fits the effective content box (600 minus accumulated horizontal insets), preserving A8 fractions; c7/c8/c10 baselines regenerated + diff-audited showing side-by-side columns; ladder unchanged (13/9/8/10/8/12).",
-      "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out; composite-verified on harness + a LEGO app export vs the re-audited P50 target). F9-class renderer slice — no non-MJML fixture dependency. Interacts with phase-53f-f7-card-wrapper-outlook-ghost-overflow (both resolve in how column/card widths thread through the MSO ghost)."
+      "notes": "Diagnosed 2026-07-05 at Track-F close-out (plan 53-f §6 close-out; composite-verified on harness + a LEGO app export vs the re-audited P50 target). F9-class renderer slice — no non-MJML fixture dependency. Interacts with phase-53f-f7-card-wrapper-outlook-ghost-overflow (both resolve in how column/card widths thread through the MSO ghost). CLOSED 2026-07-06 (e6812b44, fix/phase-53f9-column-width-budget, plan 53-f9-column-width-budget.md): _shrink_column_ghost_widths rescales ghost td widths + div max-widths + the ghost table total together (A8 fractions + all-or-nothing preserved) at two call sites — render_section 3c (card wrapper inset) and render_repeating_group rows (2x band horizontal). closes_when met in full: c5/c7/c8/c9/c10 baselines regenerated + diff-audited width-only (c6 byte-identical; c8 sec[9] un-inset control untouched), composites show c7 cards side-by-side / c8 spec grid 2x2 / c10 grid 2-up, ladder 13/9/8/10/8/12 held. c7 0.771->0.794, c10 0.678->0.742. The Outlook ghost-overflow sibling STAYS OPEN (arithmetic now fits 512+88=600 but unverified in the Word engine)."
     },
     {
       "id": "phase-53f-column-category-order",
