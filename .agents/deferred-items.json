@@ -835,10 +835,11 @@
       "id": "phase-53f-column-category-order",
       "phase": "53.f",
       "title": "_build_column_fill_html emits images->texts->buttons buckets, discarding design y-order",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
+      "closed_commit": "12aebee1",
       "summary": "The column fill builder iterates group.images, then group.texts, then group.buttons, so in-column content renders category-bucketed instead of in design vertical order. A tag pill (a filled rect + label, classified as a ButtonElement) renders below the body text when the design places it above the heading — F6's eyebrow lift covers pre-heading TEXTS only — and product-card spec icons (images) render above the product name.",
       "code_refs": [
         "app/design_sync/component_matcher.py:889 (_build_column_fill_html category loops)",
