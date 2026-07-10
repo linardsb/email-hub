@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "next": "^16.2.10",
-    "turbo": "^2.10.2"
+    "turbo": "^2.10.4"
   },
   "pnpm": {
     "overrides": {
