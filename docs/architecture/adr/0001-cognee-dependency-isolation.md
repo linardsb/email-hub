@@ -2,7 +2,7 @@
 
 - **Status:** Proposed (discovery only — no code change in audit Phase 3 §3.6)
 - **Date:** 2026-04-28
-- **Driver:** `docs/merkle-email-hub-audit.md` §3.11; `.agents/plans/audit-implementation.md` Phase 3 §3.6
+- **Driver:** `docs/email-hub-audit.md` §3.11; `.agents/plans/audit-implementation.md` Phase 3 §3.6
 
 ## Context
 

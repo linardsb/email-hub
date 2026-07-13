@@ -1,6 +1,6 @@
 # Plan: Code Quality & Security Audit Implementation
 
-Source audit: `docs/merkle-email-hub-audit.md` (sections 3.1–3.13). Three phases by priority tier; one phase = one tracked deliverable. Total budget: ~3 weeks of focused work, gated by user approval between phases.
+Source audit: `docs/email-hub-audit.md` (sections 3.1–3.13). Three phases by priority tier; one phase = one tracked deliverable. Total budget: ~3 weeks of focused work, gated by user approval between phases.
 
 ## Context
 
@@ -344,7 +344,7 @@ The `ci-be` / `ci-fe` split exists because `make ci` includes `pnpm install --fr
 
 **Add CI badge to `README.md`** (one-liner, after the title):
 ```
-[![CI](https://github.com/<org>/merkle-email-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/<org>/merkle-email-hub/actions/workflows/ci.yml)
+[![CI](https://github.com/<org>/email-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/<org>/email-hub/actions/workflows/ci.yml)
 ```
 Substitute `<org>` with the actual GitHub organization at PR time.
 
@@ -398,13 +398,13 @@ trivy:
   steps:
     - uses: actions/checkout@v6
     - name: Build app image
-      run: docker build -t merkle-email-hub:ci .
+      run: docker build -t email-hub:ci .
     - name: Build db image
       run: docker build -t merkle-db:ci -f db/Dockerfile db/
     - name: Trivy scan app
       uses: aquasecurity/trivy-action@0.28.0
       with:
-        image-ref: merkle-email-hub:ci
+        image-ref: email-hub:ci
         exit-code: 1
         severity: HIGH,CRITICAL
         ignore-unfixed: true

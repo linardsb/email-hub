@@ -1,6 +1,6 @@
 # Workflow Documentation
 
-This folder contains documentation for each workflow available in the Merkle Email Hub Ecosystem.
+This folder contains documentation for each workflow available in the Email Hub Ecosystem.
 
 Workflows automate multi-step email operations — building, QA, translation, approval, and ESP delivery — into single-trigger pipelines powered by [Kestra](https://kestra.io/).
 

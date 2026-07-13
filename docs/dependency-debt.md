@@ -65,6 +65,6 @@ remain, with a one-line justification.
 uv run pip-audit --strict
 
 # Trivy (after §2.1 lands)
-docker build -t merkle-email-hub:local .
-trivy image --severity HIGH,CRITICAL --ignore-unfixed merkle-email-hub:local
+docker build -t email-hub:local .
+trivy image --severity HIGH,CRITICAL --ignore-unfixed email-hub:local
 ```

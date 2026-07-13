@@ -1,6 +1,6 @@
 # Command Reference
 
-Full `make` target catalogue for merkle-email-hub. The common targets (`dev`, `check`,
+Full `make` target catalogue for email-hub. The common targets (`dev`, `check`,
 `check-full`, `check-fe`, `test`, `eval-check`) are inlined in the root `CLAUDE.md`;
 everything else lives here. Run from the repo root.
 

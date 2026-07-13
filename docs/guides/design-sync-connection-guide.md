@@ -1,6 +1,6 @@
 # Design Sync Connection Guide
 
-Step-by-step guide for connecting design files (Figma, Sketch, Canva, Penpot) to the Merkle Email Hub. Covers setup, common errors, and rate limit avoidance.
+Step-by-step guide for connecting design files (Figma, Sketch, Canva, Penpot) to the Email Hub. Covers setup, common errors, and rate limit avoidance.
 
 ## Before You Start
 

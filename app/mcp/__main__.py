@@ -4,7 +4,7 @@ Usage:
     python -m app.mcp
 
 Configure in Claude Desktop / Cursor:
-    {"mcpServers": {"merkle-email-hub": {
+    {"mcpServers": {"email-hub": {
         "command": "python", "args": ["-m", "app.mcp"],
         "env": {"HUB_API_KEY": "your-api-key"}
     }}}

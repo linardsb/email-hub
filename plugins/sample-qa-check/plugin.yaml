@@ -5,6 +5,6 @@ plugin_type: qa_check
 entry_point: sample_qa_check.main
 permissions: []
 metadata:
-  author: "Merkle Email Hub"
+  author: "Email Hub"
   description: "Sample QA check plugin — verifies preheader text exists"
   tags: ["sample", "qa"]

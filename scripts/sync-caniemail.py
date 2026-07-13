@@ -60,7 +60,7 @@ def fetch_caniemail_data(*, verbose: bool = False) -> dict[str, object]:
 
     req = urllib.request.Request(  # noqa: S310
         CANIEMAIL_API_URL,
-        headers={"User-Agent": "merkle-email-hub/sync-caniemail"},
+        headers={"User-Agent": "email-hub/sync-caniemail"},
     )
     with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
         data: dict[str, object] = json.loads(resp.read().decode())

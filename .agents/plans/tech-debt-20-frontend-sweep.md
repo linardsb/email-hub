@@ -540,7 +540,7 @@ Mention in the PR description so the next session doesn't get cache-stale hits:
 
 - **jDocMunch reindex:** the jDocMunch index keys section IDs off `doc_path`.
   After this PR merges, run `index_local({ path: "<repo>", incremental: true,
-  use_ai_summaries: false })` against `local/merkle-email-hub` so
+  use_ai_summaries: false })` against `local/email-hub` so
   `search_sections` finds phases 0–39 under the new archive `doc_path` instead
   of returning stale hits for the old (now-removed) `doc_path: TODO-completed.md`
   rows. Until reindex runs, queries for archived phases may return no
