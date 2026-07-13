@@ -1,6 +1,6 @@
 ---
 name: accessibility-auditor
-version: "1.0"
+version: "1.1"
 description: >
   Audit and fix email HTML for WCAG 2.1 AA accessibility compliance. Handles
   alt text quality, color contrast ratios, semantic structure, table roles,
@@ -72,6 +72,7 @@ and fix all WCAG 2.1 AA violations while preserving the email's visual design.
 - `role="article"` and `aria-roledescription="email"` on outermost wrapper
 - `<title>` element in `<head>` matching email subject
 - Proper `<meta charset="utf-8">` declaration
+- Viewport meta must NOT disable zoom — `user-scalable=no` or `maximum-scale=1` blocks low-vision users from magnifying; remove these values
 
 ### Category 2: Table Accessibility
 - ALL layout tables MUST have `role="presentation"`
@@ -102,6 +103,7 @@ Product photos, hero images, event photos, team headshots, infographics.
 - NEVER use filenames (e.g., `hero-banner.jpg`)
 - NEVER use generic terms: "image", "photo", "picture", "graphic", "icon", "button", "banner", "img", "pic", "screenshot", "thumbnail", "untitled", "placeholder", "default"
 - NEVER start with: "Image of", "Photo of", "Picture of", "Graphic of", "An image", "A photo" — screen readers already announce "image"
+- NEVER repeat adjacent visible text as alt — if a headline `<td>` next to the image already says it, screen readers announce it twice; use `alt=""` or describe something the text doesn't
 
 #### 3c. Functional Images → describe the ACTION
 Images inside links, CTA buttons as images, social media icons in links.
@@ -142,6 +144,11 @@ Use brief alt + `aria-describedby` for extended description:
 | `#666666` on `#ffffff` | 5.74:1 | PASS |
 | `#333333` on `#ffffff` | 12.63:1 | PASS |
 
+**Contrast failure severity** (grade by user impact, not fix complexity):
+- **critical** — ratio below 2:1 (text effectively invisible to low-vision users)
+- **serious** — 2:1 or above, but more than 1.5 points below the required threshold
+- **moderate** — fails, but within 1.5 points of the required threshold
+
 ### Category 5: Visual Heading Hierarchy
 - Use `<td>` with larger `font-size` and `font-weight:bold` for heading-like text (no `<h1>`-`<h6>` tags — td-only layout)
 - Add `role="heading"` + `aria-level="N"` on heading `<td>` elements for screen reader access
@@ -151,6 +158,8 @@ Use brief alt + `aria-describedby` for extended description:
 - Descriptive link text (never "click here" or "read more" alone)
 - Links should make sense out of context
 - Distinguish visited and unvisited link states where possible
+- Links with identical text must point to the same destination — two "Learn more" links going to different URLs are indistinguishable in a screen reader's link list; make each text unique
+- NEVER put `role="button"` on `<a>` links — it tells screen reader users to press Space, which scrolls the page instead of activating the link
 
 ### Category 7: Screen Reader Landmarks
 Add ARIA landmark roles to the main structural sections of the email:
@@ -203,9 +212,9 @@ accessibility decisions. Do NOT modify the HTML — the assembly code will apply
     {"img_selector": "img.logo", "category": "complex", "alt_text": "Acme Corp", "is_decorative": false}
   ],
   "structural_fixes": [
-    {"issue_type": "missing_lang", "selector": "html", "fix_value": "en"},
-    {"issue_type": "missing_role", "selector": "table.layout", "fix_value": "presentation"},
-    {"issue_type": "heading_order", "selector": "h3.section-title", "fix_value": "h2"}
+    {"issue_type": "missing_lang", "selector": "html", "fix_value": "en", "severity": "serious"},
+    {"issue_type": "missing_role", "selector": "table.layout", "fix_value": "presentation", "severity": "serious"},
+    {"issue_type": "heading_order", "selector": "h3.section-title", "fix_value": "h2", "severity": "moderate"}
   ],
   "reasoning": "3 images need alt text, 2 structural fixes for WCAG AA compliance"
 }
@@ -215,8 +224,9 @@ accessibility decisions. Do NOT modify the HTML — the assembly code will apply
 - `category` must be: content, decorative, functional, or complex
 - Decorative images get `alt=""` and `is_decorative: true`
 - Content images get descriptive alt text (2-25 words)
-- `issue_type` must be: missing_lang, missing_role, missing_scope, missing_alt, heading_order, link_text, color_contrast, missing_landmark
+- `issue_type` must be: missing_lang, missing_role, missing_scope, missing_alt, heading_order, link_text, color_contrast, missing_landmark, zoom_disabled
 - `fix_value` is the attribute value to set
+- `severity` must be: critical, serious, moderate, or mild — grade by impact on the user, not by how hard the fix is (for color_contrast use the contrast severity bands from Category 4)
 - Respond ONLY with valid JSON
 
 ## Client Rendering Lookup

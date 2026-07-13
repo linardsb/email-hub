@@ -1,4 +1,4 @@
-# [REDACTED] Email Innovation Hub
+# Email Innovation Hub
 
 [![CI](https://github.com/linardsb/email-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/linardsb/email-hub/actions/workflows/ci.yml)
 
