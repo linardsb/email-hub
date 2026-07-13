@@ -42,6 +42,7 @@ that have no upstream fix; each entry needs an expiration date and re-check trig
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-39826 | HIGH | Go stdlib `html/template` — a `<script>` tag with an empty `type` attribute breaks contextual auto-escaping. Same `gobinary`; gosu renders no HTML templates. | 2026-08-31 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-42504 | HIGH | Go stdlib `mime`/`net/textproto` — decoding a maliciously-crafted MIME header with many parts causes DoS. Same `gobinary`; gosu does not decode MIME headers. | 2026-08-31 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-27145 | HIGH | Go stdlib `crypto/x509` DoS via excessive processing of DNS names during certificate parsing. Same `gobinary` (`/usr/local/bin/gosu`); gosu does not parse certificates. | 2026-08-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-39822 | HIGH | Go stdlib `os.Root` symlink-following — a symlink under an `os.Root` can escape the intended root dir. Same `gobinary` (`/usr/local/bin/gosu`); gosu performs no `os.Root`-scoped traversal of untrusted paths. | 2026-08-31 | Linards |
 
 **Re-check trigger:** when pgvector publishes a new `pg16` image (different digest from
 `sha256:7d400e34…`), pull it and re-run Trivy. If the scanner no longer detects the embedded
