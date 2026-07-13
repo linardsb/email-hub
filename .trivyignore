@@ -31,3 +31,4 @@ CVE-2026-39825  # expires:2026-08-31 — go stdlib net/http/httputil ReverseProx
 CVE-2026-39826  # expires:2026-08-31 — go stdlib html/template <script> type-attr escaping in pg16 base gobinary
 CVE-2026-42504  # expires:2026-08-31 — go stdlib mime/textproto MIME-header decode DoS in pg16 base gobinary
 CVE-2026-27145  # expires:2026-08-31 — go stdlib crypto/x509 DoS via excessive DNS-name processing in pg16 base gobinary
+CVE-2026-39822  # expires:2026-08-31 — go stdlib os.Root symlink-following in pg16 base gobinary
