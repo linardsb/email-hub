@@ -1,4 +1,4 @@
-# Tech Debt Audit — merkle-email-hub
+# Tech Debt Audit — email-hub
 
 **Generated:** 2026-04-26
 **Branch:** `audit/phase-2-ci-gates`

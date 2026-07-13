@@ -94,7 +94,7 @@ def _refresh_ttl_seconds() -> int:
     return get_settings().auth.refresh_token_expire_days * 86400
 ```
 
-Update the **single** callsite at `app/auth/routes.py:91` (`revoke_token(payload.jti, ttl_seconds=REFRESH_TOKEN_TTL_SECONDS)`). Verify nothing else imports the old constant: `rg "REFRESH_TOKEN_TTL_SECONDS" /Users/Berzins/Desktop/merkle-email-hub` — preflight already confirmed only this one match.
+Update the **single** callsite at `app/auth/routes.py:91` (`revoke_token(payload.jti, ttl_seconds=REFRESH_TOKEN_TTL_SECONDS)`). Verify nothing else imports the old constant: `rg "REFRESH_TOKEN_TTL_SECONDS" /Users/Berzins/Desktop/email-hub` — preflight already confirmed only this one match.
 
 ### C3. F029 — Enrich existing Redis fail-open log
 
@@ -151,7 +151,7 @@ Each of C1 / C2 / C3 is an independent single-file revert (`app/auth/token.py` f
 - [ ] `create_access_token` and `create_refresh_token` emit `iat` (verified by C1d's `test_create_*_token_emits_iat`).
 - [ ] `decode_token` rejects tokens missing any of `exp` / `iat` / `type` / `jti` — three new C1d tests green.
 - [ ] `app/tests/test_jwt_algorithm.py` updated so its hand-crafted tokens carry `iat` and continue to exercise algorithm rejection.
-- [ ] Refresh TTL follows `AuthConfig.refresh_token_expire_days` — `test_refresh_ttl_follows_config` green; `rg "REFRESH_TOKEN_TTL_SECONDS" /Users/Berzins/Desktop/merkle-email-hub` returns no matches after the rename.
+- [ ] Refresh TTL follows `AuthConfig.refresh_token_expire_days` — `test_refresh_ttl_follows_config` green; `rg "REFRESH_TOKEN_TTL_SECONDS" /Users/Berzins/Desktop/email-hub` returns no matches after the rename.
 - [ ] Revocation Redis fail-open emits enriched warning under the existing `auth.token.revocation_check_degraded` key — `test_revocation_check_fails_open_emits_warning` green.
 - [ ] `make check-full` green; pyright still 0 errors on `app/auth/token.py` + `app/auth/routes.py` + new `app/auth/tests/test_token.py` (preflight baseline was 0).
 - [ ] Manual JWT probe (Verification block) returns 401 for tokens missing any required claim; 200 for a real `/auth/login` token.

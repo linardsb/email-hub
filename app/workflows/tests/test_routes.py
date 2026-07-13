@@ -39,7 +39,7 @@ def _mock_service() -> AsyncMock:
         flows=[
             FlowSummary(
                 id="email-build-and-qa",
-                namespace="merkle-email-hub",
+                namespace="email-hub",
                 description="Test",
             )
         ]

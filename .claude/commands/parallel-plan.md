@@ -24,7 +24,7 @@ Using jCodeMunch (repo from list_repos):
 4. find_references for key symbols that will need modification
 5. get_file_outline on app/core/config.py, app/core/exceptions.py, app/shared/schemas.py
 
-Using jDocMunch (repo: local/merkle-email-hub):
+Using jDocMunch (repo: local/email-hub):
 1. search_sections({ "query": "{feature keywords}", "doc_path": "CLAUDE.md" }) — architecture context
 2. search_sections({ "query": "{feature keywords}", "doc_path": "TODO.md" }) — task context
 

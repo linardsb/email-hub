@@ -1,6 +1,6 @@
 # Deploy to Hetzner + Coolify
 
-Full production deployment of Merkle Email Hub on a Hetzner VPS with Coolify. Single server runs everything: Next.js frontend, FastAPI backend, PostgreSQL, Redis, Maizzle sidecar, and nginx reverse proxy.
+Full production deployment of Email Hub on a Hetzner VPS with Coolify. Single server runs everything: Next.js frontend, FastAPI backend, PostgreSQL, Redis, Maizzle sidecar, and nginx reverse proxy.
 
 **Cost:** ~€4.50/mo (Hetzner CX22) + €0 (Coolify is free/open-source)
 
@@ -8,7 +8,7 @@ Full production deployment of Merkle Email Hub on a Hetzner VPS with Coolify. Si
 
 - A Hetzner Cloud account ([accounts.hetzner.com](https://accounts.hetzner.com))
 - A domain name (optional but recommended for SSL)
-- Your GitHub repo: `linardsb/merkle-email-hub`
+- Your GitHub repo: `linardsb/email-hub`
 - An Anthropic API key for the AI agent pipeline
 
 ---
@@ -60,7 +60,7 @@ This takes ~5 minutes. When done:
 
 1. In Coolify dashboard → **Sources** → **Add GitHub App**
 2. Follow the OAuth flow to connect your GitHub account
-3. Grant access to `linardsb/merkle-email-hub`
+3. Grant access to `linardsb/email-hub`
 
 ---
 
@@ -69,7 +69,7 @@ This takes ~5 minutes. When done:
 1. **Projects** → **Add New Project** → name it "Email Hub"
 2. Click into the project → **Add New Resource**
 3. Select **Docker Compose** → **GitHub Repository**
-4. Select `linardsb/merkle-email-hub` → branch `main`
+4. Select `linardsb/email-hub` → branch `main`
 5. Coolify detects `docker-compose.yml` automatically
 
 ---

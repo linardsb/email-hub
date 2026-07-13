@@ -4,7 +4,7 @@ Imports a design from Figma, builds an email from it via the AI blueprint engine
 
 **Flow ID:** `design-import-pipeline`
 **Trigger:** Manual
-**Namespace:** `merkle-email-hub`
+**Namespace:** `email-hub`
 
 ## When to Use
 

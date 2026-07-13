@@ -4,7 +4,7 @@ Standard email build pipeline that generates an email via the AI blueprint engin
 
 **Flow ID:** `email-build-and-qa`
 **Trigger:** Manual
-**Namespace:** `merkle-email-hub`
+**Namespace:** `email-hub`
 
 ## When to Use
 

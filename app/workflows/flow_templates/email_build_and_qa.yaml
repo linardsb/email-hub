@@ -1,5 +1,5 @@
 id: email-build-and-qa
-namespace: merkle-email-hub
+namespace: email-hub
 description: "Standard email build pipeline: blueprint → QA → chaos test → result"
 
 inputs:

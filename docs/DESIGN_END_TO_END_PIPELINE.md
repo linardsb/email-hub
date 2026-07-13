@@ -1,12 +1,12 @@
 # Design-to-Email Conversion Pipeline
 
-Complete end-to-end architecture of the Merkle Email Hub — from Figma design file to production-ready, QA-validated, multi-client HTML email.
+Complete end-to-end architecture of the Email Hub — from Figma design file to production-ready, QA-validated, multi-client HTML email.
 
 ---
 
 ## System Overview
 
-The Merkle Email Hub converts design files (Figma, Penpot, MJML, raw HTML) into production-ready email HTML through a **multi-stage pipeline** combining deterministic processing, AI agents, and comprehensive quality assurance.
+The Email Hub converts design files (Figma, Penpot, MJML, raw HTML) into production-ready email HTML through a **multi-stage pipeline** combining deterministic processing, AI agents, and comprehensive quality assurance.
 
 ### Core Components
 

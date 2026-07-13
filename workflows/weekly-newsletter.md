@@ -4,7 +4,7 @@ Automated weekly newsletter pipeline that builds, QA-checks, gets approval, and 
 
 **Flow ID:** `weekly-newsletter`
 **Trigger:** Scheduled — every Monday at 09:00 UTC
-**Namespace:** `merkle-email-hub`
+**Namespace:** `email-hub`
 **Cron:** `0 9 * * MON`
 
 ## When to Use

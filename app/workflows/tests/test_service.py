@@ -23,7 +23,7 @@ def _make_service(mock_client: AsyncMock | None = None) -> WorkflowService:
 def _make_flow(flow_id: str = "test-flow", **kwargs: Any) -> Flow:
     return Flow(
         id=flow_id,
-        namespace="merkle-email-hub",
+        namespace="email-hub",
         **kwargs,
     )
 
@@ -44,10 +44,10 @@ class TestListWorkflows:
             return_value=[
                 {
                     "id": "email-build-and-qa",
-                    "namespace": "merkle-email-hub",
+                    "namespace": "email-hub",
                     "description": "Bundled",
                 },
-                {"id": "remote-flow", "namespace": "merkle-email-hub", "description": "Duplicate"},
+                {"id": "remote-flow", "namespace": "email-hub", "description": "Duplicate"},
             ],
         ):
             result = await service.list_workflows()
@@ -151,8 +151,8 @@ class TestSyncFlowTemplates:
             service,
             "_list_bundled_templates",
             return_value=[
-                {"id": "email-build-and-qa", "namespace": "merkle-email-hub"},
-                {"id": "weekly-newsletter", "namespace": "merkle-email-hub"},
+                {"id": "email-build-and-qa", "namespace": "email-hub"},
+                {"id": "weekly-newsletter", "namespace": "email-hub"},
             ],
         ):
             count = await service.sync_flow_templates()

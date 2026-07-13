@@ -6,7 +6,7 @@ Synchronise all project documentation to reflect the current implementation stat
 
 ### 1a. Documentation (via jDocMunch — section-level reads, no full-file scans)
 
-Use jDocMunch (repo: `local/merkle-email-hub`) to read only the sections that matter.
+Use jDocMunch (repo: `local/email-hub`) to read only the sections that matter.
 
 **TODO.md** — search for relevant phases:
 - `search_sections({ "query": "upcoming phases", "max_results": 5 })` → `get_section` on matches

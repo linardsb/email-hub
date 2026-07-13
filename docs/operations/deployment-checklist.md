@@ -1,6 +1,6 @@
 # Deployment Checklist
 
-Step-by-step procedure for deploying the Merkle Email Hub. Run through each section in order.
+Step-by-step procedure for deploying the Email Hub. Run through each section in order.
 
 ---
 

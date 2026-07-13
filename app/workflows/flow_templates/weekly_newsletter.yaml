@@ -1,5 +1,5 @@
 id: weekly-newsletter
-namespace: merkle-email-hub
+namespace: email-hub
 description: "Scheduled weekly newsletter: cron trigger → build → QA → approve → push"
 
 triggers:

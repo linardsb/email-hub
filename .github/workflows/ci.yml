@@ -149,15 +149,15 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Build app image
-        run: docker build -t merkle-email-hub:ci .
+        run: docker build -t email-hub:ci .
 
       - name: Build db image
-        run: docker build -t merkle-db:ci -f db/Dockerfile db/
+        run: docker build -t email-hub-db:ci -f db/Dockerfile db/
 
       - name: Trivy scan — app
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: merkle-email-hub:ci
+          image-ref: email-hub:ci
           exit-code: '1'
           severity: HIGH,CRITICAL
           ignore-unfixed: true
@@ -166,7 +166,7 @@ jobs:
       - name: Trivy scan — db
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: merkle-db:ci
+          image-ref: email-hub-db:ci
           exit-code: '1'
           severity: HIGH,CRITICAL
           ignore-unfixed: true
