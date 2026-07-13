@@ -29,9 +29,11 @@ class A11yFix:
         "link_text",
         "color_contrast",
         "missing_landmark",
+        "zoom_disabled",
     ]
     selector: str
     fix_value: str
+    severity: Literal["critical", "serious", "moderate", "mild"] = "moderate"
 
 
 @dataclass(frozen=True)
