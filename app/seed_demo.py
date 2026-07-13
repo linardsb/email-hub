@@ -1,4 +1,4 @@
-"""Idempotent demo data seeder for the Merkle Email Hub.
+"""Idempotent demo data seeder for the Email Hub.
 
 Seeds the database with demo-worthy data: admin user, client org, project
 with design system, components from seeds, and a pre-configured ESP connection.

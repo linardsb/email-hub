@@ -4,7 +4,7 @@ End-to-end campaign pipeline that builds an email, translates it to multiple loc
 
 **Flow ID:** `multilingual-campaign`
 **Trigger:** Manual
-**Namespace:** `merkle-email-hub`
+**Namespace:** `email-hub`
 
 ## When to Use
 

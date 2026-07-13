@@ -25,7 +25,7 @@ Using jCodeMunch (repo from list_repos):
 5. find_references for key components/hooks that will need modification
 6. get_file_outline on cms/apps/web/src/app/layout.tsx, cms/apps/web/auth.ts, cms/apps/web/src/lib/auth-fetch.ts
 
-Using jDocMunch (repo: local/merkle-email-hub):
+Using jDocMunch (repo: local/email-hub):
 1. search_sections({ "query": "{feature keywords}", "doc_path": "CLAUDE.md" }) — architecture context
 2. search_sections({ "query": "frontend", "doc_path": "CLAUDE.md" }) — frontend conventions
 3. search_sections({ "query": "{feature keywords}", "doc_path": "TODO.md" }) — task context

@@ -395,9 +395,9 @@ Hard rules for parallel execution:
   tests, RE-REGEN its touched baselines, re-diff-audit, re-run the scorer, and fix its §6
   row before merging. Never resolve an `expected.html` conflict by hand-merging hunks —
   always regen from the rebased converter.
-- **Worktree setup:** lane B runs in `git worktree add ../merkle-email-hub-laneB <branch>`.
+- **Worktree setup:** lane B runs in `git worktree add ../email-hub-laneB <branch>`.
   The gitignored `data/debug/*/assets/` do NOT follow the worktree — copy them in
-  (`for c in 5 6 7 8 9 10; do cp -R data/debug/$c/assets ../merkle-email-hub-laneB/data/debug/$c/; done`)
+  (`for c in 5 6 7 8 9 10; do cp -R data/debug/$c/assets ../email-hub-laneB/data/debug/$c/; done`)
   or the render/scorer breaks (`phase-53.7-asset-reexport-prerequisite` class).
 - §6 log rows gain a lane marker (A/B) while lanes are in flight; the close-out session
   reconciles the table sequentially by merge date.

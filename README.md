@@ -1,6 +1,6 @@
-# [REDACTED] Email Innovation Hub
+# Email Innovation Hub
 
-[![CI](https://github.com/linardsb/merkle-email-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/linardsb/merkle-email-hub/actions/workflows/ci.yml)
+[![CI](https://github.com/linardsb/email-hub/actions/workflows/ci.yml/badge.svg)](https://github.com/linardsb/email-hub/actions/workflows/ci.yml)
 
 Centralised email development platform with AI-powered agents. Build, preview, QA, and export HTML emails from a single workspace — CMS-agnostic, security-first, GDPR-compliant.
 

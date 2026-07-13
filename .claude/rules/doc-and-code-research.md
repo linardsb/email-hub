@@ -6,7 +6,7 @@ globs: "**/*"
 # Document & Code Research Rules
 
 ## jDocMunch — Documentation Search
-Repo: `local/merkle-email-hub`
+Repo: `local/email-hub`
 
 **NEVER** call `get_document_outline` on large docs (TODO.md, PRD.md — 60+ sections each).
 
@@ -24,11 +24,11 @@ Repo: `local/merkle-email-hub`
 | Any .md > 200 lines | jDocMunch | Saves context |
 
 **Common section ID patterns for TODO.md:**
-- Phase N: `local/merkle-email-hub::TODO.md::redacted-email-innovation-hub-implementation-roadmap/phase-{N}-{slug}#2`
+- Phase N: `local/email-hub::TODO.md::redacted-email-innovation-hub-implementation-roadmap/phase-{N}-{slug}#2`
 - Subtask: append `/{subtask-slug}#3` to the phase ID
 
 ## jCodeMunch — Code Search
-Repo: `local/merkle-email-hub-0ddab3c4`
+Repo: `local/email-hub-0ddab3c4`
 
 **Use for cross-file research** (not for editing — use Read for that):
 - `search_symbols(repo, query, kind, file_pattern)` — find functions, classes, methods

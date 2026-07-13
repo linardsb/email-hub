@@ -30,7 +30,7 @@ Only `Read` the full file when you need to edit it.
 **Direct diagnosis:**
 - For bugs: find the component or page. Trace page → components → hooks → types.
 - For test failures: run `cd cms && pnpm --filter web test` and read output.
-- For type errors: run `cd cms && pnpm --filter @merkle-email-hub/web exec tsc --noEmit`.
+- For type errors: run `cd cms && pnpm --filter @email-hub/web exec tsc --noEmit`.
 - For design issues: grep for primitive Tailwind colors.
 
 ### 3. Root Cause Analysis
@@ -62,7 +62,7 @@ cd cms && pnpm --filter web lint:fix
 cd cms && pnpm --filter web format
 
 # Type check
-cd cms && pnpm --filter @merkle-email-hub/web exec tsc --noEmit
+cd cms && pnpm --filter @email-hub/web exec tsc --noEmit
 
 # Unit tests
 cd cms && pnpm --filter web test

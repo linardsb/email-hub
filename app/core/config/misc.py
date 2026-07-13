@@ -109,7 +109,7 @@ class KestraConfig(BaseModel):
     enabled: bool = False  # KESTRA__ENABLED
     api_url: str = "http://localhost:8080"  # KESTRA__API_URL
     api_token: str = ""  # KESTRA__API_TOKEN
-    namespace: str = "merkle-email-hub"  # KESTRA__NAMESPACE
+    namespace: str = "email-hub"  # KESTRA__NAMESPACE
     default_retry_attempts: int = 3  # KESTRA__DEFAULT_RETRY_ATTEMPTS
     default_retry_backoff_s: int = 30  # KESTRA__DEFAULT_RETRY_BACKOFF_S
     request_timeout_s: float = 30.0  # KESTRA__REQUEST_TIMEOUT_S

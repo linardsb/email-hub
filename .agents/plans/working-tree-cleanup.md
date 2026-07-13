@@ -181,7 +181,7 @@ Each file falls into one of three actions: **commit**, **gitignore**, or **delet
 | `docs/DESIGN_END_TO_END_PIPELINE.md` | **Commit** | All-caps name suggests user-authored design doc. Likely belongs in `docs/architecture/`. |
 | `docs/eval-review-tool.html` | **Decision** | 64KB HTML eval review tool. If it's a working developer tool, commit to `tools/` or `cms/apps/eval-review/`. If it's a generated artifact, delete + regenerate. Check `docs/eval-review-data.json` (PR 4) for sibling. |
 | `docs/html_converted_from_figma.html`, `shell_few_components.html` | **Delete** | Snake_case + descriptive names indicate one-off manual exports. Regenerable. |
-| `docs/merkle-email-hub-audit.md` | **Likely delete** | Possibly an older audit superseded by `TECH_DEBT_AUDIT.md`. Diff and decide. |
+| `docs/email-hub-audit.md` | **Likely delete** | Possibly an older audit superseded by `TECH_DEBT_AUDIT.md`. Diff and decide. |
 | `email-templates/Icons/` | **Commit** | Subfolders `editable-stroke/`, `Merkle Brand/`, `Small Icons/` — design assets. Track these. |
 | `email-templates/game_recap/` | **Commit or branch-local** | Sample template + Figma export + 3 jpgs. If it's a canonical demo, commit. If it's a one-off design exploration, gitignore via per-folder rule. |
 | `email-templates/reframe-2025.html` + `reframe-assets/` | **Commit** | 15-asset email template (hero, CTAs, social icons). Tracking is how the rest of `email-templates/` works. |

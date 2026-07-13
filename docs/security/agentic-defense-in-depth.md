@@ -109,7 +109,7 @@ These trails provide the necessary debugging substrate for sequence anomaly dete
 
 ---
 
-## Mapping to merkle-email-hub implementation
+## Mapping to email-hub implementation
 
 | Doc §  | Mandate                              | Status (as of 2026-04-30)                                          |
 | ------ | ------------------------------------ | ------------------------------------------------------------------ |

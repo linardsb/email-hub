@@ -1,6 +1,6 @@
 # Disaster Recovery
 
-Procedures for backing up, restoring, and recovering the Merkle Email Hub.
+Procedures for backing up, restoring, and recovering the Email Hub.
 
 ---
 

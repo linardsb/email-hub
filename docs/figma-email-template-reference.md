@@ -5,7 +5,7 @@
 **"The Ultimate Email Design System" (Community)**
 https://www.figma.com/design/VUlWjZGAEVZr3mK1EawsYR/The-Ultimate-Email-Design-System--Community-?node-id=0-1&p=f&t=LZrRjzxlmBlbfse4-0
 
-This is the reference example for how a well-structured Figma email design system should be organized for optimal import into the Merkle Email Hub via the Design Sync pipeline.
+This is the reference example for how a well-structured Figma email design system should be organized for optimal import into the Email Hub via the Design Sync pipeline.
 
 ---
 
@@ -174,7 +174,7 @@ When a user connects this Figma file via Design Sync (`/api/v1/design-sync`):
 ### Design system → Hub mapping
 
 ```
-Figma Design System          →  Merkle Email Hub
+Figma Design System          →  Email Hub
 ─────────────────────────────────────────────────
 Color styles/variables       →  Project DesignSystem.BrandPalette
 Text styles                  →  Project DesignSystem.Typography

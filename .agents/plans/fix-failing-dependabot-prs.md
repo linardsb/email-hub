@@ -217,7 +217,7 @@ Closes #92.
 ### Phase 0 — Repo prep
 - [ ] `git checkout main && git pull --ff-only origin main`
 - [ ] `git status` clean (the existing `M CLAUDE.md` and skill-version yaml changes are pre-existing and unrelated; either commit them separately first or stash them).
-- [ ] Confirm `gh auth status` is logged in as a user with push access to `linardsb/merkle-email-hub`.
+- [ ] Confirm `gh auth status` is logged in as a user with push access to `linardsb/email-hub`.
 
 ### Phase 1 — Bulk-merge 12 green PRs
 For each of: 80, 81, 82, 84, 85, 87, 90, 91, 93, 94, 95, 96:
@@ -225,7 +225,7 @@ For each of: 80, 81, 82, 84, 85, 87, 90, 91, 93, 94, 95, 96:
 
 After all 12 are queued/merged:
 - [ ] `git pull --ff-only origin main` to fast-forward local main.
-- [ ] Wait for the next `main` CI run (auto-triggered by the merge of #80) to confirm green: `gh run watch --repo linardsb/merkle-email-hub`.
+- [ ] Wait for the next `main` CI run (auto-triggered by the merge of #80) to confirm green: `gh run watch --repo linardsb/email-hub`.
 
 ### Phase 2 — Push fix commits sequentially
 
@@ -236,12 +236,12 @@ For each of C1 → C5 (do NOT batch):
 3. [ ] `git diff` — confirm only intended files changed (per `.claude/rules/parallel work awareness`).
 4. [ ] `git add <files>` (named, not `-A`); `git commit -m "<message>"`.
 5. [ ] `git push origin main`.
-6. [ ] `gh run watch --repo linardsb/merkle-email-hub` — confirm green before next commit.
+6. [ ] `gh run watch --repo linardsb/email-hub` — confirm green before next commit.
 7. [ ] `gh pr close <N> --comment "Superseded by $(git rev-parse HEAD) on main."`
 
 ### Phase 3 — Final sweep
-- [ ] `gh pr list --repo linardsb/merkle-email-hub --state open` → should show 0 dependabot PRs.
-- [ ] `gh run list --repo linardsb/merkle-email-hub --branch main --limit 3` → all green.
+- [ ] `gh pr list --repo linardsb/email-hub --state open` → should show 0 dependabot PRs.
+- [ ] `gh run list --repo linardsb/email-hub --branch main --limit 3` → all green.
 - [ ] Quick eyeball of `git log --oneline -20` to confirm 5 fix commits + ~12 squash merges landed in expected order.
 
 ---
