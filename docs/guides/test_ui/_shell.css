@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────────────────────────────
    Email Hub — Shared design tokens + shell for 10.13 page mockups.
-   Mirrors workflows/workspace-agentic-mockup.html. Do not introduce
+   Mirrors docs/guides/test_ui/workspace-agentic-mockup.html. Do not introduce
    new hex literals or new Tailwind primitives here — only reuse the
    tier-2 semantic tokens already defined in tokens.css.
    ───────────────────────────────────────────────────────────────────── */
