@@ -12,17 +12,17 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@maizzle/framework": "^6.0.4",
+    "@maizzle/framework": "^6.0.6",
     "dom-serializer": "^3.1.1",
     "express": "^5.2.1",
     "htmlparser2": "^12.0.0",
     "js-yaml": "^4.2.0",
     "lightningcss": "^1.28.0",
     "mjml": "^4.15.0",
-    "postcss": "^8.5.16"
+    "postcss": "^8.5.19"
   },
   "devDependencies": {
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "js-cookie": ">=3.0.7",
