@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "merkle-email-hub": {
+    "email-hub": {
       "command": "python",
       "args": ["-m", "app.mcp"],
       "env": {

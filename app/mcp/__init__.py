@@ -1,4 +1,4 @@
-"""MCP (Model Context Protocol) server for the Merkle Email Hub."""
+"""MCP (Model Context Protocol) server for the Email Hub."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 id: design-import-pipeline
-namespace: merkle-email-hub
+namespace: email-hub
 description: "Design import: sync → brief generation → build → QA → approval"
 
 inputs:

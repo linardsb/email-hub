@@ -19,7 +19,7 @@ scrape_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
     relabel_configs:
-      # Keep only containers from the merkle-email-hub project
+      # Keep only containers from the email-hub project
       - source_labels: ['__meta_docker_container_name']
         regex: '/(.*)'
         target_label: container_name

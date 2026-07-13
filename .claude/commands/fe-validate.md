@@ -10,7 +10,7 @@ If lint fails, auto-fix with `cd cms && pnpm --filter web lint:fix && pnpm --fil
 
 ## Level 2: TypeScript
 ```bash
-cd cms && pnpm --filter @merkle-email-hub/web exec tsc --noEmit
+cd cms && pnpm --filter @email-hub/web exec tsc --noEmit
 ```
 
 ## Level 3: Build

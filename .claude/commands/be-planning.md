@@ -18,7 +18,7 @@ Research the codebase and create a self-contained implementation plan.
    - `find_references(symbol_name)` — trace usage across codebase
    - `get_file_tree(path_prefix)` — discover feature layout
 
-   **jDocMunch** (repo: `local/merkle-email-hub`):
+   **jDocMunch** (repo: `local/email-hub`):
    - `search_sections(query, doc_path)` → `get_section(section_id)` for CLAUDE.md architecture context and TODO.md task context
    - `get_document_outline(doc_path)` for smaller docs (<50 sections) when you need full structure
 

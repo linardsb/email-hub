@@ -247,10 +247,10 @@ services:
       - SETUID
     labels:
       - traefik.enable=true
-      - "traefik.http.routers.merkle-nginx.rule=HostRegexp(`.+`)"
-      - traefik.http.routers.merkle-nginx.entrypoints=http
-      - traefik.http.routers.merkle-nginx.priority=1
-      - traefik.http.services.merkle-nginx.loadbalancer.server.port=80
+      - "traefik.http.routers.email-hub-nginx.rule=HostRegexp(`.+`)"
+      - traefik.http.routers.email-hub-nginx.entrypoints=http
+      - traefik.http.routers.email-hub-nginx.priority=1
+      - traefik.http.services.email-hub-nginx.loadbalancer.server.port=80
     deploy:
       resources:
         limits:

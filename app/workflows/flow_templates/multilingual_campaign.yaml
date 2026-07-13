@@ -1,5 +1,5 @@
 id: multilingual-campaign
-namespace: merkle-email-hub
+namespace: email-hub
 description: "Multilingual campaign: build → translate → per-locale QA → approve → push"
 
 inputs:

@@ -71,9 +71,9 @@ def create_mcp_server() -> FastMCP:
     Returns a FastMCP instance ready to be mounted or run standalone.
     """
     mcp = FastMCP(
-        name="Merkle Email Hub",
+        name="Email Hub",
         instructions=(
-            "You are connected to the Merkle Email Innovation Hub — a comprehensive platform "
+            "You are connected to the Email Innovation Hub — a comprehensive platform "
             "for building, testing, and optimizing HTML emails. Use the available tools to "
             "validate email HTML against client compatibility, check deliverability, optimize "
             "CSS for email clients, search email development knowledge, and more. "

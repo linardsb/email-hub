@@ -22,7 +22,7 @@ Use jCodeMunch `get_symbol` for anything else — don't read full files just for
 
 ## Step 3: Load Documentation (jDocMunch — section reads only)
 
-Using jDocMunch (repo: `local/merkle-email-hub`):
+Using jDocMunch (repo: `local/email-hub`):
 1. `search_sections({ "query": "project overview", "doc_path": "CLAUDE.md", "max_results": 3 })` → `get_section` on matches
 2. `search_sections({ "query": "frontend", "doc_path": "CLAUDE.md", "max_results": 3 })` → `get_section` on matches
 3. `search_sections({ "query": "architecture", "doc_path": "CLAUDE.md", "max_results": 3 })` → `get_section` on matches

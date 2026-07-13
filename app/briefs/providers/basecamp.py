@@ -52,7 +52,7 @@ class BasecampBriefProvider:
                 self._resolve_auth_url(),
                 headers={
                     "Authorization": f"Bearer {credentials['access_token']}",
-                    "User-Agent": "MerkleEmailHub (support@merkle.com)",
+                    "User-Agent": "EmailHub (support@merkle.com)",
                 },
             )
             resp.raise_for_status()
@@ -72,7 +72,7 @@ class BasecampBriefProvider:
         base_url = self._resolve_base_url(account_id)
         headers = {
             "Authorization": f"Bearer {credentials['access_token']}",
-            "User-Agent": "MerkleEmailHub (support@merkle.com)",
+            "User-Agent": "EmailHub (support@merkle.com)",
         }
 
         async with httpx.AsyncClient(timeout=settings.briefs.sync_timeout) as client:
@@ -139,7 +139,7 @@ class BasecampBriefProvider:
         base_url = self._resolve_base_url(account_id)
         headers = {
             "Authorization": f"Bearer {credentials['access_token']}",
-            "User-Agent": "MerkleEmailHub (support@merkle.com)",
+            "User-Agent": "EmailHub (support@merkle.com)",
         }
 
         async with httpx.AsyncClient(timeout=settings.briefs.sync_timeout) as client:

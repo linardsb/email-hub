@@ -54,7 +54,7 @@ class TestExecution:
         now = datetime.datetime.now(tz=datetime.UTC)
         execution = Execution(
             id="exec-1",
-            namespace="merkle-email-hub",
+            namespace="email-hub",
             flow_id="test-flow",
             status="RUNNING",
             started=now,
