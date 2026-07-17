@@ -11,7 +11,7 @@ dependencies = [
     "email-validator>=2.0.0",
     "cachetools>=7.1.4",
     "croniter>=6.2.4",
-    "fastapi>=0.139.0",
+    "fastapi>=0.139.2",
     "gunicorn>=23.0.0",
     "httpx>=0.28.1",
     "pydantic-settings>=2.14.2",
@@ -23,8 +23,8 @@ dependencies = [
     "structlog>=25.5.0",
     "tenacity>=9.0",
     "uvicorn[standard]>=0.51.0",
-    "anthropic>=0.116.0",
-    "openai>=2.45.0",
+    "anthropic>=0.117.0",
+    "openai>=2.46.0",
     "python-multipart>=0.0.31",
     "pgvector>=0.5.0",
     "pillow>=12.3.0",
@@ -79,7 +79,7 @@ graph = [
 ]
 observability = [
     "sentry-sdk[fastapi]>=2.64.0",
-    "opentelemetry-api>=1.43.0",
+    "opentelemetry-api>=1.44.0",
     "opentelemetry-sdk>=1.30.0",
     "opentelemetry-exporter-otlp-proto-http>=1.41.1",
     "opentelemetry-instrumentation-fastapi>=0.51b0",
@@ -89,13 +89,13 @@ observability = [
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
-    "mypy>=2.2.0",
+    "mypy>=2.3.0",
     "pip-audit>=2.10.1",
     "pyright>=1.1.411",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.15.21",
+    "ruff>=0.15.22",
     "types-jsonschema>=4.26.0.20260518",
     "types-lxml>=2026.2",
     "types-PyYAML>=6.0",
@@ -104,7 +104,7 @@ dev = [
     "playwright>=1.61.0",
     "mutmut>=3.6.0",
     "locust>=2.45.0",
-    "httpx2>=2.5.0",
+    "httpx2>=2.7.0",
 ]
 
 [tool.ruff]
