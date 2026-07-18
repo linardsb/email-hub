@@ -12,8 +12,10 @@ from app.design_sync.figma.layout_analyzer import (
     ColumnGroup,
     ColumnLayout,
     DesignLayoutDescription,
+    EmailSection,
     EmailSectionType,
     TextBlock,
+    _calculate_spacing,
     _classify_by_name,
     _detect_content_hierarchy,
     _has_large_image_child,
@@ -627,6 +629,57 @@ class TestSectionSpacing:
         assert layout.sections[0].spacing_after == 0.0
 
 
+class TestBandFrameSpacing:
+    """Track G G1 (M1): a band's y-extent is the wrapper FRAME, not its child
+    bboxes, so the wrapper's internal padding stays inside the band instead of
+    surfacing as a phantom white ``spacing_after`` gap between bands.
+    """
+
+    @staticmethod
+    def _sec(node_id: str, y: float, h: float, wid: str | None = None) -> EmailSection:
+        return EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id=node_id,
+            node_name=node_id,
+            y_position=y,
+            height=h,
+            parent_wrapper_id=wid,
+        )
+
+    def test_solo_before_band_collapses_to_frame_top(self) -> None:
+        # Solo section [100,140]; the following band's wrapper FRAME starts at
+        # 140 (butts the solo section) but its first child starts at 160 — the
+        # wrapper's 20px paddingTop. Frame-aware spacing must be 0, not 20.
+        solo = self._sec("solo", 100, 40)  # bottom = 140
+        first_child = self._sec("child", 160, 80, wid="W")  # child top = 160
+        out = _calculate_spacing([solo, first_child], {"W": (140.0, 300.0)})
+        assert out[0].spacing_after == 0.0
+
+    def test_without_bounds_keeps_phantom_child_gap(self) -> None:
+        # Same geometry, no frame map: the child-bbox gap (the M1 bug) survives.
+        solo = self._sec("solo", 100, 40)
+        first_child = self._sec("child", 160, 80, wid="W")
+        out = _calculate_spacing([solo, first_child], None)
+        assert out[0].spacing_after == 20.0
+
+    def test_band_to_band_uses_both_frame_edges(self) -> None:
+        # Last child of band A [.., bottom 240] → first child of band B; both
+        # gaps are wrapper padding, so the true inter-band gap is 0.
+        a_last = self._sec("a", 160, 80, wid="A")  # bottom 240
+        b_first = self._sec("b", 280, 80, wid="B")  # top 280
+        bounds = {"A": (140.0, 260.0), "B": (260.0, 400.0)}
+        out = _calculate_spacing([a_last, b_first], bounds)
+        assert out[0].spacing_after == 0.0
+
+    def test_intra_band_keeps_child_spacing(self) -> None:
+        # Two members of the SAME band keep child-based spacing (absorbed later
+        # by group_by_wrapper) — the frame edge is never substituted here.
+        a = self._sec("a", 160, 80, wid="W")  # bottom 240
+        b = self._sec("b", 260, 80, wid="W")  # top 260
+        out = _calculate_spacing([a, b], {"W": (140.0, 340.0)})
+        assert out[0].spacing_after == 20.0
+
+
 class TestPreheaderDetection:
     def test_preheader_by_name(self) -> None:
         structure = DesignFileStructure(
@@ -1193,6 +1246,64 @@ class TestHeadingDetectionFixes:
         headings = [t for t in result if t.is_heading]
         assert len(headings) == 1
         assert headings[0].content == "Heading"
+
+
+class TestUniformHeadingRule:
+    """Track G G2 (M2): single-text / uniform-size sections get a heading when
+    their font size is heading-scale (>=24px absolute floor).
+
+    The relative 1.3x-median rule has no signal when every text shares one
+    size, so 30px banner headlines ("Expect lots of treats this Halloween!")
+    landed in the body slot while the seed's heading slot ghosted empty.
+    """
+
+    def test_single_large_text_is_heading(self) -> None:
+        # c7 s8 — 30px/600 centered banner, the M2 evidence case.
+        texts = [
+            TextBlock(
+                node_id="a",
+                content="Expect lots of treats this Halloween!",
+                font_size=30.0,
+            )
+        ]
+        result = _detect_content_hierarchy(texts)
+        assert result[0].is_heading
+
+    def test_single_small_text_stays_body(self) -> None:
+        # c7 s0 — the 10px preheader must NOT flip.
+        texts = [TextBlock(node_id="a", content="Special Preview", font_size=10.0)]
+        result = _detect_content_hierarchy(texts)
+        assert not result[0].is_heading
+
+    def test_single_text_just_below_floor_stays_body(self) -> None:
+        # c9 s5/s6 — 20px lead paragraphs stay body (validated on all 6 fixtures).
+        texts = [TextBlock(node_id="a", content="A lead paragraph", font_size=20.0)]
+        result = _detect_content_hierarchy(texts)
+        assert not result[0].is_heading
+
+    def test_single_text_at_floor_is_heading(self) -> None:
+        # >=24px boundary is inclusive (c10 s4 carries exactly 24.0).
+        texts = [TextBlock(node_id="a", content="Shop the range", font_size=24.0)]
+        result = _detect_content_hierarchy(texts)
+        assert result[0].is_heading
+
+    def test_uniform_large_texts_all_headings(self) -> None:
+        # c5 s6 — six 40px display texts share one size: all heading-scale.
+        texts = [
+            TextBlock(node_id="a", content="BRISBANE", font_size=40.0),
+            TextBlock(node_id="b", content="MELBOURNE", font_size=40.0),
+        ]
+        result = _detect_content_hierarchy(texts)
+        assert all(t.is_heading for t in result)
+
+    def test_uniform_body_size_stays_body(self) -> None:
+        # 16px uniform body copy keeps the Bug-11 contract (no headings).
+        texts = [
+            TextBlock(node_id="a", content="One", font_size=16.0),
+            TextBlock(node_id="b", content="Two", font_size=16.0),
+        ]
+        result = _detect_content_hierarchy(texts)
+        assert not any(t.is_heading for t in result)
 
 
 class TestFooterClassificationFixes:

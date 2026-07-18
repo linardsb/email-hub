@@ -22,9 +22,15 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.design_sync.conversion_phases import MatchPhase
-from app.design_sync.converter_service import ConversionResult, DesignConverterService
+from app.design_sync.converter_service import (
+    ConversionResult,
+    DesignConverterService,
+    _paintable_band_bg,
+    _render_spacer,
+    _spacer_band_bg,
+)
 from app.design_sync.email_design_document import EmailDesignDocument
-from app.design_sync.figma.layout_analyzer import EmailSection
+from app.design_sync.figma.layout_analyzer import EmailSection, EmailSectionType
 from app.design_sync.protocol import (
     DesignFileStructure,
     DesignNode,
@@ -329,3 +335,65 @@ class TestOutputFormatParameter:
         )
         assert isinstance(result, MatchPhase)
         assert result.matches == []
+
+
+# ── Track G G1 (M2): inter-band spacer continuity ─────────────────────
+
+
+def _band_section(
+    node_id: str, *, bg: str | None = None, container: str | None = None
+) -> EmailSection:
+    return EmailSection(
+        section_type=EmailSectionType.CONTENT,
+        node_id=node_id,
+        node_name=node_id,
+        bg_color=bg,
+        container_bg=container,
+    )
+
+
+class TestSpacerBandContinuity:
+    """A genuine gap between two solid coloured bands inherits the following
+    band's bg (M2), so it reads as band continuation instead of a white slit;
+    gaps against the white body — and 0px spacers — stay transparent.
+    """
+
+    def test_painted_between_two_colored_bands(self) -> None:
+        curr = _band_section("a", bg="#AA1733")
+        nxt = _band_section("b", container="#296042")
+        assert _spacer_band_bg(curr, nxt) == "#296042"  # following band's bg
+
+    def test_not_painted_against_white_body(self) -> None:
+        curr = _band_section("a", bg="#AA1733")
+        nxt = _band_section("b", bg="#FFFFFF")
+        assert _spacer_band_bg(curr, nxt) is None
+
+    def test_not_painted_when_current_is_white(self) -> None:
+        curr = _band_section("a", bg="#ffffff")
+        nxt = _band_section("b", container="#AA1733")
+        assert _spacer_band_bg(curr, nxt) is None
+
+    def test_not_painted_at_document_end(self) -> None:
+        assert _spacer_band_bg(_band_section("a", bg="#AA1733"), None) is None
+
+    def test_paintable_band_bg_rejects_white_and_junk(self) -> None:
+        assert _paintable_band_bg(_band_section("a", bg="#AA1733")) == "#AA1733"
+        assert _paintable_band_bg(_band_section("a", bg="#FFFFFF")) is None
+        assert _paintable_band_bg(_band_section("a", bg="transparent")) is None
+        assert _paintable_band_bg(_band_section("a")) is None
+
+    def test_render_spacer_paints_when_visible(self) -> None:
+        html = _render_spacer(600, 20, "#AA1733")
+        assert "background-color:#AA1733;" in html
+        assert 'bgcolor="#AA1733"' in html
+
+    def test_render_spacer_transparent_by_default(self) -> None:
+        html = _render_spacer(600, 20)
+        assert "background-color" not in html
+        assert "bgcolor" not in html
+
+    def test_render_spacer_suppresses_zero_height_paint(self) -> None:
+        # "or suppress when the design gap is 0" — a 0px band is never painted.
+        html = _render_spacer(600, 0, "#AA1733")
+        assert "background-color" not in html
+        assert "bgcolor" not in html

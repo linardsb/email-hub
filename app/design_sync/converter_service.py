@@ -178,19 +178,67 @@ PenpotConversionResult = ConversionResult
 
 _DARK_MODE_CLASS_PREFIX = "dm-"
 
+
 # Inter-section spacer block. Outlook uses a ghost table; modern clients use the div.
-_SPACER_TEMPLATE = (
-    "<!--[if mso]>\n"
-    '<table role="presentation" width="{width}" align="center" '
-    'cellpadding="0" cellspacing="0" border="0"><tr>'
-    '<td height="{h}" style="font-size:0;line-height:0;'
-    'mso-line-height-rule:exactly;">&nbsp;</td></tr></table>\n'
-    "<![endif]-->\n"
-    "<!--[if !mso]><!-->\n"
-    '<div style="height:{h}px;line-height:{h}px;'
-    'font-size:1px;mso-line-height-rule:exactly;">&nbsp;</div>\n'
-    "<!--<![endif]-->"
-)
+def _render_spacer(width: int, h: int, bg: str | None = None) -> str:
+    """Render an inter-section spacer.
+
+    When *bg* is a solid band colour (Track G G1, M2) the gap is painted so it
+    reads as a continuation of the surrounding band instead of a white slit;
+    ``bg=None`` keeps the transparent, body-coloured spacer (byte-identical to
+    the pre-M2 output). Mechanism 1 zeroes the phantom inter-band gaps, so this
+    only fires on a *genuine* design gap that still sits between two bands. A
+    zero-height spacer is never painted ("suppress when the design gap is 0").
+    """
+    if h <= 0:
+        bg = None
+    bg_css = f"background-color:{bg};" if bg else ""
+    bg_attr = f' bgcolor="{bg}"' if bg else ""
+    return (
+        "<!--[if mso]>\n"
+        f'<table role="presentation" width="{width}" align="center" '
+        'cellpadding="0" cellspacing="0" border="0"><tr>'
+        f'<td height="{h}"{bg_attr} style="font-size:0;line-height:0;'
+        f'mso-line-height-rule:exactly;{bg_css}">&nbsp;</td></tr></table>\n'
+        "<![endif]-->\n"
+        "<!--[if !mso]><!-->\n"
+        f'<div style="height:{h}px;line-height:{h}px;'
+        f'font-size:1px;mso-line-height-rule:exactly;{bg_css}">&nbsp;</div>\n'
+        "<!--<![endif]-->"
+    )
+
+
+def _paintable_band_bg(section: EmailSection) -> str | None:
+    """The section's own solid, non-white band background, or ``None`` (M2).
+
+    A band's continuity colour is its wrapper fill (``container_bg``) or its
+    own solid fill (``bg_color``). Pure white is treated as the body colour —
+    a spacer against white stays transparent, never painted.
+    """
+    bg = section.container_bg or section.bg_color
+    if not bg or not bg.startswith("#"):
+        return None
+    normalized = bg.lstrip("#").lower()
+    if len(normalized) == 3:
+        normalized = "".join(c * 2 for c in normalized)
+    if len(normalized) != 6 or any(c not in "0123456789abcdef" for c in normalized):
+        return None
+    return None if normalized == "ffffff" else bg
+
+
+def _spacer_band_bg(curr: EmailSection, nxt: EmailSection | None) -> str | None:
+    """Colour for the spacer below *curr* (M2).
+
+    Only when BOTH sides are solid coloured bands does the gap inherit the
+    following band's bg; between a band and the white body it stays
+    transparent so real gaps above/below the email body aren't painted.
+    """
+    if nxt is None:
+        return None
+    next_bg = _paintable_band_bg(nxt)
+    if next_bg is not None and _paintable_band_bg(curr) is not None:
+        return next_bg
+    return None
 
 
 def dark_mode_style_block(
@@ -856,9 +904,7 @@ class DesignConverterService:
                         cached_spacing = row_matches[-1].spacing_after
                         if cached_spacing and cached_spacing > 0:
                             section_parts.append(
-                                _SPACER_TEMPLATE.format(
-                                    width=container_width, h=int(cached_spacing)
-                                )
+                                _render_spacer(container_width, int(cached_spacing))
                             )
                         continue
                     row_rendered = [renderer.render_section(mm) for mm in row_matches]
@@ -876,9 +922,7 @@ class DesignConverterService:
                     )
                     last_spacing = row_matches[-1].spacing_after
                     if last_spacing and last_spacing > 0:
-                        section_parts.append(
-                            _SPACER_TEMPLATE.format(width=container_width, h=int(last_spacing))
-                        )
+                        section_parts.append(_render_spacer(container_width, int(last_spacing)))
                     continue
                 # Singleton row id (defensive — stamping requires >1 member):
                 # fall through to the solo render below.
@@ -915,7 +959,14 @@ class DesignConverterService:
 
             if m.spacing_after and m.spacing_after > 0:
                 spacer_h = int(m.spacing_after)
-                section_parts.append(_SPACER_TEMPLATE.format(width=container_width, h=spacer_h))
+                next_section = (
+                    match.matches[flat_idx + 1].section
+                    if flat_idx + 1 < len(match.matches)
+                    else None
+                )
+                # _render_spacer suppresses the paint when spacer_h floors to 0.
+                spacer_bg = _spacer_band_bg(m.section, next_section)
+                section_parts.append(_render_spacer(container_width, spacer_h, spacer_bg))
 
         if get_settings().design_sync.bgcolor_propagation_enabled:
             from app.design_sync.bgcolor_propagator import propagate_adjacent_bgcolor

@@ -928,6 +928,63 @@
       "symptom_if_broken": "Designs whose horizontal rules live inside columns or inside band-grouped wrappers render without the rule; the design shows a visible separator, the email shows none (cases 8 and 10 today).",
       "closes_when": "Column fills gain a divider row category (in-column, 51.x seam) AND band absorption carries the absorbed divider's stroke into a band-internal rule row — or segmentation changes make such dividers first-class sections.",
       "notes": "The stroke signal is already captured and bridged (section.stroke_color / _zero_area_vector_stroke); this is a renderer-reach gap, not an ingest gap."
+    },
+    {
+      "id": "phase-53g-g1-band-spacing-continuity",
+      "phase": "53g",
+      "title": "G1 M1 — 20px white slits between coloured bands (phantom wrapper-frame padding)",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-07-07",
+      "introduced_commit": "a660262c",
+      "closed_commit": "uncommitted (working tree, branch investigate/converter-v2-deep-audit)",
+      "summary": "Grouped band sections took y/height from the CHILD bbox, so a band wrapper FRAME's internal top/bottom padding surfaced as a phantom white spacing_after gap between bands (c7 zigzag->lime idx3 + lime->gray idx16; the band the audit cited at A3 0.478). Fixed (M1) by threading each band wrapper's frame bbox (_wrapper_frame_bounds) into _calculate_spacing: a solo section before/after a band measures to the frame edge, not the child bbox, so spacing_after collapses 20->0 for both c7 slits. Two safety nets shipped alongside: M2 paints an inter-band spacer with the FOLLOWING band's bg when a real gap sits between two solid coloured bands (and only then; 0px gaps suppressed); M3 suppresses a section's own WHITE bg_color when it sits on a coloured wrapper (container_bg) with no inner_bg card.",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py (_wrapper_frame_bounds; _calculate_spacing(wrapper_bounds) — M1)",
+        "app/design_sync/converter_service.py (_render_spacer / _spacer_band_bg / _paintable_band_bg — M2)",
+        "app/design_sync/component_matcher.py (_build_token_overrides white-over-band guard; _is_white_hex — M3)"
+      ],
+      "symptom_if_broken": "White 20px slits reappear between coloured bands whose wrapper frames butt together (c7 zigzag->lime, lime->gray); or a full-width image on a coloured band renders a white box; or a genuine gap between two solid coloured bands renders body-white.",
+      "closes_when": "CLOSED — c7 spacing_after 20->0 for both slits (verified in composite, slits gone); full_image flat 0.794, lime band +0.051 / gray band +0.030; A3 no case regresses >0.005 (c5 0.840->0.838, c6 +0.014, c8 +0.005, c9 +0.006, c10 +0.006); ladder 13/9/8/10/8/12 held; RED-proven unit tests in test_layout_analyzer.TestBandFrameSpacing, test_converter_service.TestSpacerBandContinuity, test_component_matcher.TestWhiteBgOverBand; baseline diff-audit = only spacing/bg lines.",
+      "notes": "M2 generalization caveat (speculative carry-forward): it inherits the FOLLOWING band's bg, so a design that INTENTIONALLY keeps a white gap between two coloured bands would be mis-painted. In the corpus M2 fires only in c6 and is correct there (composite shows no white at the cream->red boundary; +0.014). M2 fires exactly where M1 structurally cannot reach: c6's red band is a peel frame (container_bg set, parent_wrapper_id=None), so wrapper_bounds never covers it. Red-vs-cream residual: c6's 50px gap is painted red (following band, prompt-compliant) — not confirmed red-vs-cream from the composite; left as prompt default. SEPARATE out-of-scope defect surfaced: the c7 zigzag GRAPHIC band (2833:1892) section_min 0.478->0.392 is height-accumulation drift of the thin 40px graphic (render's 'Membership Tip' sits lower than design), NOT this change — full_image stayed flat and the bands that carried slits improved.",
+      "closed": "2026-07-10"
+    },
+    {
+      "id": "phase-53g-g2-empty-slot-ghosts-heading-classification",
+      "phase": "53g",
+      "title": "G2 M2/M9 — empty-slot ghost rows + single-text heading classification + text-slot h-padding budget",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-07-07",
+      "introduced_commit": "a660262c",
+      "closed_commit": "uncommitted (working tree, branch investigate/converter-v2-deep-audit)",
+      "summary": "Three coupled text-slot defects (M2/M9). (1) _detect_content_hierarchy returned no heading for uniform-size sections, so single-text banners (c7 'Expect lots' 30px, c9 'NO SWEAT.' 44px, c10 24px) landed in the BODY slot while the seed heading slot ghosted; fixed with an absolute >=24px floor on the uniform branch (_UNIFORM_HEADING_MIN_PX — corpus gap: largest uniform body copy 20px, smallest uniform display text 24px). (2) B3's blank pass emptied unfilled text cells but kept their padded <td> (16-36px phantom rows; c7 preheader ~2x design height); _collapse_blanked_slot now drops the whole <tr> when the blanked cell is alone in its row (also letting the _cell padding override land on the next content cell) or zeroes the cell padding when the row is shared. (3) text-block slot h-padding rescales to the design content width (F9 budget mirrored): per-side clamp to max(0,(available-section.width)/2), shrink-only, skipped when the section carries explicit h-padding, tightened again inside band rows by the row inset.",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py (_detect_content_hierarchy uniform branch; _UNIFORM_HEADING_MIN_PX — M2 heading rule)",
+        "app/design_sync/component_renderer.py (_collapse_blanked_slot — M2 ghost collapse)",
+        "app/design_sync/component_renderer.py (_rescale_text_slot_h_padding; _section_has_explicit_h_padding; render_section step 3d + render_repeating_group band pass — M9)"
+      ],
+      "symptom_if_broken": "Unfilled heading/body seed slots render as phantom padded rows (preheader band ~2x design height); uniform-size banner text lands in the body slot with seed typography targets; heading text wraps because band+slot h-padding starves the design content width.",
+      "closes_when": "CLOSED — c7 preheader strip 30px vs design 28px (Playwright-measured); 'Expect lots' renders ONE line (content height 41px = 1 line-height) in the HEADING slot at 552px; c7 A3 0.794->0.804; ladder 13/9/8/10/8/12 held; RED-proven tests in test_layout_analyzer.TestUniformHeadingRule, test_component_renderer.TestBlankedSlotCollapse + TestTextSlotHPaddingBudget, test_repeating_group_renderer.TestBandTextSlotHPaddingBudget; baseline diff-audit: every changed line attributed (c7 32 lines = 16 G1 spacers + 16 G2; c5 22; c9 22; c10 22; c6/c8 byte-identical).",
+      "notes": "ACCEPTANCE TRADE needing ratification: A3 c9 0.687->0.680 (-0.007) and c5 0.838->0.833 (-0.005) while c7 +0.010, c6/c8/c10 flat. Root cause is NOT a G2 bug: the dropped phantom rows were error-cancelers for band paddings that never thread from the wrapper frame (see phase-53g-band-item-spacing-defaults entry). c9's banner section is now MORE accurate locally (render 77px vs design 71px, was 101px) but the band's default 20px top pad (design: 40px) no longer gets masked, shifting below-band content and costing full-image score. Uniform multi-text flip (c5 s6 6x40px) produced zero byte changes (gallery seed drops texts).",
+      "closed": "2026-07-14"
+    },
+    {
+      "id": "phase-53g-band-item-spacing-defaults-vs-wrapper-padding",
+      "phase": "53g",
+      "title": "Band rows render with default item spacing (20/16/24) — wrapper frame padding never threads into RepeatingGroup",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-14",
+      "introduced_commit": "pending",
+      "summary": "_resolve_item_spacing falls back to defaults (first_top=20, subsequent_top=16, horizontal=24) because wrapper-band grouping never populates RepeatingGroup.container_padding from the wrapper FRAME's real padding. Design truth differs: c9 wrapper 2833:2084 has padT=40 padL/R=40 padB=24; c7 wrapper 2833:1941 has 20 on all sides (render uses horizontal=24). Until G2, blanked-slot phantom rows partially masked the vertical deficit — G2's ghost collapse exposed it as a measurable full-image y-shift (c9 -0.007, c5 -0.005).",
+      "code_refs": [
+        "app/design_sync/component_renderer.py (_resolve_item_spacing — default fallbacks)",
+        "app/design_sync/sibling_detector.py (wrapper-band grouping — RepeatingGroup construction without container_padding)"
+      ],
+      "symptom_if_broken": "Banded content sits vertically offset vs the design (band top pad 20 vs design 40 in c9) and band horizontal insets are 24px regardless of the design's value; full-image A3 penalised below every band.",
+      "closes_when": "Wrapper-band grouping threads the wrapper frame's padding into RepeatingGroup.container_padding AND subsequent_top derives from member y-gaps (NOT top padding — the current container_padding branch reuses top for subsequent rows, which would inflate intra-band gaps). Verified: c9 banner offset within ~4px of design, c9 A3 recovers >=0.687, c5 >=0.838, no band case regresses.",
+      "notes": "Fast closure path: populate container_padding at the wrapper-band grouping site from the wrapper node's padding_(top/right/bottom/left), and fix _resolve_item_spacing's subsequent_top to use inter-member y-deltas (element_gaps / child y-geometry) with the current 16px default as fallback. Blast radius: every banded case (c5/c7/c9/c10) — F9 column budgets and the G2 M9 text budget both read the row inset, so they follow automatically, but baselines churn corpus-wide; needs its own diff-audited session."
     }
   ],
   "tooling_followups": [

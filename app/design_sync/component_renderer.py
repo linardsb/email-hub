@@ -155,6 +155,64 @@ def _style_horizontal_padding_px(style: str) -> int:
     return int(left + right)
 
 
+# G2 (M9) — the text-block heading/body slot cells whose padding shorthand the
+# h-padding budget may shrink. Slug-gated at both call sites, so only the
+# text-block seed's two slots are ever touched.
+_TEXT_SLOT_HB_STYLE_RE = re.compile(
+    r'(<td\b[^>]*\bdata-slot="(?:heading|body)"[^>]*style=")([^"]*)(")'
+)
+_PADDING_SHORTHAND_VALUE_RE = re.compile(r"padding\s*:\s*([^;\"]+)")
+
+
+def _section_has_explicit_h_padding(section: EmailSection) -> bool:
+    """True when the design supplied left/right padding for the section (G2, M9).
+
+    That padding reaches the slot cell via the ``_cell`` override and is design
+    truth — the h-padding budget must not fight it.
+    """
+    return section.padding_left is not None or section.padding_right is not None
+
+
+def _expand_padding_shorthand(value: str) -> tuple[float, float, float, float] | None:
+    """Expand a px-only ``padding:`` shorthand value to (top, right, bottom, left).
+
+    Returns ``None`` for non-px units or malformed values — "no shrink" is the
+    fail-safe direction (mirrors :func:`_style_horizontal_padding_px`).
+    """
+    values: list[float] = []
+    for part in value.split():
+        m = re.fullmatch(r"(\d+(?:\.\d+)?)(?:px)?", part.strip())
+        if m is None:
+            return None
+        values.append(float(m.group(1)))
+    if len(values) == 1:
+        return (values[0], values[0], values[0], values[0])
+    if len(values) == 2:
+        return (values[0], values[1], values[0], values[1])
+    if len(values) == 3:
+        return (values[0], values[1], values[2], values[1])
+    if len(values) == 4:
+        return (values[0], values[1], values[2], values[3])
+    return None
+
+
+def _format_padding_shorthand(top: float, right: float, bottom: float, left: float) -> str:
+    """Render four px sides back to the shortest equivalent CSS shorthand."""
+
+    def _px(v: float) -> str:
+        if v == 0:
+            return "0"
+        return f"{int(v)}px" if v.is_integer() else f"{v}px"
+
+    if right == left:
+        if top == bottom:
+            if top == right:
+                return _px(top)
+            return f"{_px(top)} {_px(right)}"
+        return f"{_px(top)} {_px(right)} {_px(bottom)}"
+    return f"{_px(top)} {_px(right)} {_px(bottom)} {_px(left)}"
+
+
 def _find_matching_close(html_str: str, tag_name: str, start: int) -> int | None:
     """Return the index of the ``</tag_name>`` closing the element at ``start``.
 
@@ -601,6 +659,19 @@ class ComponentRenderer:
                 result_html, self._card_wrapper_inset(result_html)
             )
 
+        # 3d. G2 (M9): text-slot h-padding budget — the seed's 24px insets can
+        # narrow the live text box below the section's design width (c7's
+        # 560px banner wrapped at 504px). Skipped when the section carries
+        # explicit h-padding: that reached the cell via the _cell override and
+        # is design truth. Band members get a second, tighter pass in
+        # render_repeating_group (the row inset isn't known here).
+        if match.component_slug == "text-block" and not _section_has_explicit_h_padding(
+            match.section
+        ):
+            result_html = self._rescale_text_slot_h_padding(
+                result_html, match.section.width, self._container_width
+            )
+
         # 4. Strip remaining placeholder URLs
         result_html = self._strip_placeholder_urls(result_html)
 
@@ -760,6 +831,17 @@ class ComponentRenderer:
             # 600px budget — rescale the member's column surfaces to fit.
             if rendered.component_slug.startswith("column-layout"):
                 item_html = self._shrink_column_ghost_widths(item_html, 2 * item_spacing.horizontal)
+            # G2 (M9): the same row inset tightens the text-slot h-padding
+            # budget — c7's 560px banner needs the slot inset at 0 once the
+            # band's 24px/side is applied (600 - 48 = 552 < 560).
+            if rendered.component_slug == "text-block":
+                section = matches[i].section
+                if not _section_has_explicit_h_padding(section):
+                    item_html = self._rescale_text_slot_h_padding(
+                        item_html,
+                        section.width,
+                        self._container_width - 2 * item_spacing.horizontal,
+                    )
             rows.append(f'<tr>\n  <td style="padding:{padding}">\n    {item_html}\n  </td>\n</tr>')
             all_dark_classes.update(rendered.dark_mode_classes)
             all_images.extend(rendered.images)
@@ -919,7 +1001,36 @@ class ComponentRenderer:
             if not _is_blankable_text(inner_match.group(1)):
                 continue
             result = self._fill_text_slot(result, slot_id, SlotFill(slot_id, ""))
+            result = self._collapse_blanked_slot(result, slot_id)
         return result
+
+    def _collapse_blanked_slot(self, html_str: str, slot_id: str) -> str:
+        """Remove the padded ghost a blanked text slot leaves behind (G2, M2).
+
+        A blanked ``<td>`` keeps its seed padding, so an unfilled heading slot
+        rendered as a phantom 16-36px row (the c7 preheader band was ~2x the
+        design's height). When the blanked cell is alone in its row the whole
+        ``<tr>`` is dropped — this also lets the ``_cell`` padding override
+        land on the next content cell instead of the ghost. When the cell
+        shares its row, only its padding is zeroed so siblings don't shift.
+        """
+        solo_row_re = re.compile(
+            rf'<tr\b[^>]*>\s*<td\b[^>]*\bdata-slot="{re.escape(slot_id)}"[^>]*>\s*</td>\s*</tr>\s*'
+        )
+        result, dropped = solo_row_re.subn("", html_str, count=1)
+        if dropped:
+            return result
+
+        open_m = re.search(rf'<td\b[^>]*\bdata-slot="{re.escape(slot_id)}"[^>]*>', html_str)
+        if open_m is None:
+            return html_str
+        td_tag = open_m.group(0)
+        style_m = re.search(r'style="([^"]*)"', td_tag)
+        if style_m is None:
+            return html_str
+        stripped = re.sub(r"padding[^:;\"]*:\s*[^;\"]+;?\s*", "", style_m.group(1))
+        new_tag = td_tag.replace(style_m.group(0), f'style="padding:0;{stripped}"', 1)
+        return html_str.replace(td_tag, new_tag, 1)
 
     def _prune_unfilled_ctas(self, html_str: str, nonempty_filled: set[str]) -> str:
         """Remove CTA anchors (and their button chrome) that got no real fill.
@@ -2045,6 +2156,44 @@ class ComponentRenderer:
 
         result = _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
         return _COLUMN_GHOST_TABLE_WIDTH_RE.sub(rf"\g<1>{target}\g<3>", result, count=1)
+
+    def _rescale_text_slot_h_padding(
+        self,
+        html_str: str,
+        section_width: float | None,
+        available_width: int,
+    ) -> str:
+        """Shrink text-slot h-padding to the design's content width (G2, M9).
+
+        The text-block seed hardcodes 24px horizontal slot padding; stacked
+        with a band row's inset that starved c7's 560px-wide banner down to
+        504px, so it wrapped. Mirrors the F9 width budget: per-side padding
+        clamps to ``max(0, (available - section_width) / 2)`` — shrink-only,
+        so narrow cards (budget >> seed) and already-tight seeds are
+        byte-identical. Non-px or missing padding shorthands are left alone.
+        """
+        if not section_width or section_width <= 0:
+            return html_str
+        budget = max(0.0, float(int(available_width - section_width) // 2))
+
+        def _shrink_style(m: re.Match[str]) -> str:
+            style = m.group(2)
+            pad_m = _PADDING_SHORTHAND_VALUE_RE.search(style)
+            if pad_m is None:
+                return m.group(0)
+            sides = _expand_padding_shorthand(pad_m.group(1))
+            if sides is None:
+                return m.group(0)
+            top, right, bottom, left = sides
+            new_right = min(right, budget)
+            new_left = min(left, budget)
+            if new_right == right and new_left == left:
+                return m.group(0)
+            new_value = _format_padding_shorthand(top, new_right, bottom, new_left)
+            new_style = style[: pad_m.start(1)] + new_value + style[pad_m.end(1) :]
+            return f"{m.group(1)}{new_style}{m.group(3)}"
+
+        return _TEXT_SLOT_HB_STYLE_RE.sub(_shrink_style, html_str)
 
     def _add_annotations(self, html_str: str, match: ComponentMatch) -> str:
         """Add builder annotations for visual builder sync."""

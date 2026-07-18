@@ -194,9 +194,14 @@ class TestTokenOverrides:
             "background-color:#f5f0e8" in result.html or "background-color: #f5f0e8" in result.html
         )
 
+    # G2 (M2): unfilled text slots now collapse (row drop), so override
+    # targets must carry a fill — matching reality, where overrides ride
+    # sections that have content.
+
     def test_heading_font_override(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "text-block",
+            fills=[SlotFill("heading", "Title")],
             overrides=[TokenOverride("font-family", "_heading", "Georgia, serif")],
         )
         result = renderer.render_section(match)
@@ -205,6 +210,7 @@ class TestTokenOverrides:
     def test_heading_color_override(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "text-block",
+            fills=[SlotFill("heading", "Title")],
             overrides=[TokenOverride("color", "_heading", "#FFFFFF")],
         )
         result = renderer.render_section(match)
@@ -213,6 +219,7 @@ class TestTokenOverrides:
     def test_body_color_override(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "text-block",
+            fills=[SlotFill("body", "Body copy")],
             overrides=[TokenOverride("color", "_body", "#AABBCC")],
         )
         result = renderer.render_section(match)
@@ -224,6 +231,7 @@ class TestTokenOverrides:
         """Regression: color override must not match background-color: property."""
         match = _make_match(
             "text-block",
+            fills=[SlotFill("heading", "Title")],
             overrides=[
                 TokenOverride("background-color", "_outer", "#FE5117"),
                 TokenOverride("color", "_heading", "#FFFFFF"),
@@ -252,6 +260,7 @@ class TestTokenOverrideExpansion:
         """data-slot="headline" (hero-block) gets heading font override."""
         match = _make_match(
             "hero-block",
+            fills=[SlotFill("headline", "Hero")],
             overrides=[TokenOverride("font-family", "_heading", "Helvetica, sans-serif")],
         )
         result = renderer.render_section(match)
@@ -261,6 +270,7 @@ class TestTokenOverrideExpansion:
         """data-slot="title" (product-card) gets heading font override."""
         match = _make_match(
             "product-card",
+            fills=[SlotFill("title", "Product")],
             overrides=[TokenOverride("font-family", "_heading", "Georgia, serif")],
         )
         result = renderer.render_section(match)
@@ -270,6 +280,7 @@ class TestTokenOverrideExpansion:
         """data-slot="body_text" (article-card) gets body font override."""
         match = _make_match(
             "article-card",
+            fills=[SlotFill("body_text", "Article body")],
             overrides=[TokenOverride("font-family", "_body", "Verdana, sans-serif")],
         )
         result = renderer.render_section(match)
@@ -279,6 +290,7 @@ class TestTokenOverrideExpansion:
         """data-slot="description" (event-card) gets body font override."""
         match = _make_match(
             "event-card",
+            fills=[SlotFill("description", "Event description")],
             overrides=[TokenOverride("font-family", "_body", "Trebuchet MS, sans-serif")],
         )
         result = renderer.render_section(match)
@@ -329,6 +341,7 @@ class TestTokenOverrideExpansion:
         """data-slot="heading" gets font-size override."""
         match = _make_match(
             "text-block",
+            fills=[SlotFill("heading", "Title")],
             overrides=[TokenOverride("font-size", "_heading", "28px")],
         )
         result = renderer.render_section(match)
@@ -338,6 +351,7 @@ class TestTokenOverrideExpansion:
         """data-slot="body" gets font-size override."""
         match = _make_match(
             "text-block",
+            fills=[SlotFill("body", "Body copy")],
             overrides=[TokenOverride("font-size", "_body", "18px")],
         )
         result = renderer.render_section(match)
@@ -382,6 +396,7 @@ class TestTokenOverrideExpansion:
         """Original data-slot='heading' still works after expansion (regression)."""
         match = _make_match(
             "text-block",
+            fills=[SlotFill("heading", "Title")],
             overrides=[
                 TokenOverride("font-family", "_heading", "Georgia, serif"),
                 TokenOverride("color", "_heading", "#112233"),
@@ -784,9 +799,11 @@ class TestBlankUnfilledTextSlots:
 
     def test_unfilled_td_text_slot_blanked(self, renderer: ComponentRenderer) -> None:
         # headline is filled; subtext gets no fill and must not leak its seed.
+        # G2 (M2): the subtext td is alone in its row, so the whole padded row
+        # is dropped — a blanked-but-padded <td> was a phantom 16-36px ghost.
         match = _make_match("hero-block", fills=[SlotFill("headline", "Summer Sale!")])
         result = renderer.render_section(match)
-        assert self._td_inner(result.html, "subtext") == ""
+        assert 'data-slot="subtext"' not in result.html
         assert "Summer Sale!" in result.html
 
     def test_filled_td_slot_not_blanked(self, renderer: ComponentRenderer) -> None:
@@ -912,6 +929,133 @@ class TestBlankUnfilledTextSlots:
         assert _is_blankable_text('<a href="#">Home</a>') is False
         assert _is_blankable_text("&nbsp;") is False
         assert _is_blankable_text("") is False
+
+
+class TestBlankedSlotCollapse:
+    """Track G G2 (M2): a blanked text slot must not leave a padded ghost.
+
+    B3's blank pass emptied unfilled text cells but kept their padded <td>,
+    so the c7 preheader band rendered ~2x design height and "Expect lots…"
+    carried a 36px ghost row above it. Solo rows are dropped whole; a cell
+    sharing its row with other content keeps the row but zeroes its padding.
+    """
+
+    def test_text_block_unfilled_heading_row_dropped(self, renderer: ComponentRenderer) -> None:
+        # c7 s0 preheader shape: body filled, heading unfilled → the heading
+        # row (seed padding: 24px 24px 12px = 36px ghost) is dropped whole.
+        match = _make_match("text-block", fills=[SlotFill("body", "Special preview inside")])
+        result = renderer.render_section(match)
+        assert 'data-slot="heading"' not in result.html
+        assert "Special preview inside" in result.html
+
+    def test_shared_row_cell_keeps_row_but_zeroes_padding(
+        self, renderer: ComponentRenderer
+    ) -> None:
+        # A blanked cell that shares its row with content must not shift the
+        # sibling — the row survives, only the ghost padding goes.
+        html_in = (
+            '<table><tr><td data-slot="side_note" style="padding: 12px 24px; '
+            'font-size:14px;">Seed note</td>'
+            "<td>Keep me</td></tr></table>"
+        )
+        result = renderer._blank_unfilled_text_slots(html_in, set())
+        assert "Keep me" in result
+        assert "Seed note" not in result
+        assert 'data-slot="side_note"' in result
+        assert "padding:0" in result
+        assert "padding: 12px 24px" not in result
+
+    def test_preserved_footer_slots_keep_their_rows(self, renderer: ComponentRenderer) -> None:
+        # Legally-required footer fields never blank, so they never collapse.
+        result = renderer.render_section(_make_match("footer"))
+        assert 'data-slot="company_name"' in result.html
+        assert 'data-slot="company_address"' in result.html
+
+
+class TestTextSlotHPaddingBudget:
+    """Track G G2 (M9): text-block slot h-padding rescales to the design's
+    content width (F9 budget idea mirrored onto text slots).
+
+    Seed slots hardcode 24px horizontal padding; stacked with a band's 24px
+    row inset that left c7's 560px-wide 30px banner only 504px — it wrapped.
+    The slot's h-padding shrinks (never grows) so the live text box reaches
+    the section's design width where the budget allows.
+    """
+
+    @staticmethod
+    def _fills() -> list[SlotFill]:
+        return [SlotFill("heading", "Big Title"), SlotFill("body", "Body copy")]
+
+    def test_slot_h_padding_shrinks_to_design_width(self, renderer: ComponentRenderer) -> None:
+        # 560px design box in a 600px container → 20px per side budget.
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="s1",
+            node_name="banner",
+            width=560.0,
+        )
+        match = _make_match("text-block", fills=self._fills(), section=section)
+        result = renderer.render_section(match)
+        assert "padding: 24px 20px 12px" in result.html
+        assert "padding: 0 20px 24px" in result.html
+
+    def test_full_width_section_zeroes_slot_h_padding(self, renderer: ComponentRenderer) -> None:
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="s1",
+            node_name="banner",
+            width=600.0,
+        )
+        match = _make_match("text-block", fills=self._fills(), section=section)
+        result = renderer.render_section(match)
+        assert "padding: 24px 0 12px" in result.html
+        assert "padding: 0 0 24px" in result.html
+
+    def test_no_width_keeps_seed_padding(self, renderer: ComponentRenderer) -> None:
+        match = _make_match("text-block", fills=self._fills())
+        result = renderer.render_section(match)
+        assert "padding: 24px 24px 12px" in result.html
+
+    def test_narrow_section_never_grows_padding(self, renderer: ComponentRenderer) -> None:
+        # 292px card: budget (600-292)/2 = 154 >> seed 24 — min-clamp keeps 24.
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="s1",
+            node_name="card",
+            width=292.0,
+        )
+        match = _make_match("text-block", fills=self._fills(), section=section)
+        result = renderer.render_section(match)
+        assert "padding: 24px 24px 12px" in result.html
+
+    def test_explicit_design_padding_skips_budget(self, renderer: ComponentRenderer) -> None:
+        # A section carrying its own h-padding is design truth (_cell override
+        # path) — the budget must not fight it.
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="s1",
+            node_name="padded",
+            width=600.0,
+            padding_left=30.0,
+            padding_right=30.0,
+        )
+        match = _make_match("text-block", fills=self._fills(), section=section)
+        result = renderer.render_section(match)
+        assert "padding: 24px 24px 12px" in result.html
+
+    def test_non_text_block_slug_untouched(self, renderer: ComponentRenderer) -> None:
+        # Slug-gated: a hero-block renders byte-identically with or without a
+        # section width — only text-block enters the budget.
+        fills = [SlotFill("headline", "Hi"), SlotFill("subtext", "There")]
+        with_width = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="frame_1",
+            node_name="TestSection",
+            width=600.0,
+        )
+        a = renderer.render_section(_make_match("hero-block", fills=fills, section=with_width))
+        b = renderer.render_section(_make_match("hero-block", fills=fills))
+        assert a.html == b.html
 
 
 class TestFindMatchingClose:

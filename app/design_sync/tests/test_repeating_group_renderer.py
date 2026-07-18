@@ -156,6 +156,43 @@ class TestRenderRepeatingGroup:
         assert isinstance(result.images, list)
 
 
+class TestBandTextSlotHPaddingBudget:
+    """Track G G2 (M9): the band row's horizontal inset tightens the text-block
+    slot padding budget further (mirrors F9's column-ghost shrink hook).
+
+    c7 "Expect lots…": 560px design box, band 24px + slot 24px left 504px —
+    the group pass must take the slot h-padding to 0 (600-48 = 552 < 560).
+    """
+
+    def test_band_inset_tightens_slot_budget_to_zero(self, renderer: ComponentRenderer) -> None:
+        sections = [
+            EmailSection(
+                section_type=EmailSectionType.CONTENT,
+                node_id=f"s{i}",
+                node_name=f"banner {i}",
+                width=560.0,
+                height=61.0,
+            )
+            for i in range(2)
+        ]
+        group = RepeatingGroup(sections=sections, container_bgcolor="#AFCA01")
+        matches = [
+            _make_group_match(
+                "text-block",
+                i,
+                s,
+                fills=[SlotFill("heading", f"Banner {i}"), SlotFill("body", "copy")],
+            )
+            for i, s in enumerate(sections)
+        ]
+
+        result = renderer.render_repeating_group(group, matches)
+
+        # per-side budget inside the band: (600 - 2*24 - 560) / 2 < 0 → 0
+        assert "padding: 24px 0 12px" in result.html
+        assert "padding: 24px 20px 12px" not in result.html
+
+
 class TestEdgeCases:
     """Edge case handling for repeating group renderer."""
 
