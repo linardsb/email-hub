@@ -133,6 +133,12 @@ class ButtonElement:
     font_family: str | None = None
     # Rule 8 (Phase 50.5) — per-corner radii on tag/pill non-CTA frames.
     corner_radius_spec: CornerRadiusSpec | None = None
+    # Auto-layout padding (Track G · G3) — the button frame's designed box
+    # geometry, captured so the renderer emits it instead of a hardcode.
+    padding_top: float | None = None
+    padding_right: float | None = None
+    padding_bottom: float | None = None
+    padding_left: float | None = None
 
 
 @dataclass(frozen=True)
@@ -1771,7 +1777,11 @@ def _walk_for_buttons(
                         height=node.height,
                         fill_color=node.fill_color,
                         url=btn_url,
-                        border_radius=node.corner_radius,
+                        # Absent Figma cornerRadius = square; normalize None→0.0
+                        # so square buttons render square (not the 4px fallback).
+                        border_radius=(
+                            node.corner_radius if node.corner_radius is not None else 0.0
+                        ),
                         text_color=btn_text_color,
                         stroke_color=node.stroke_color,
                         stroke_weight=node.stroke_weight,
@@ -1780,6 +1790,10 @@ def _walk_for_buttons(
                         font_weight=text_children[0].font_weight,
                         font_family=text_children[0].font_family,
                         corner_radius_spec=_corner_spec_or_none(rule_8_corner_radius(node)),
+                        padding_top=node.padding_top,
+                        padding_right=node.padding_right,
+                        padding_bottom=node.padding_bottom,
+                        padding_left=node.padding_left,
                     )
                 )
                 return  # Don't recurse into button internals

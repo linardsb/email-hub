@@ -695,6 +695,71 @@ class TestLosslessCapture:
         assert back.stroke_weight == 2.0
         assert back.images[0].stroke_weight == 1.0
 
+    def test_button_padding_roundtrip_and_bridges(self) -> None:
+        """Track G · G3 — the four padding fields survive JSON round-trip AND
+        both ButtonElement bridges; a designed 0.0 padding is preserved (the
+        #327 falsy-zero trap). Missing any one bridge drops padding silently.
+        """
+        button = DocumentButton(
+            node_id="b1",
+            text="Shop now",
+            border_radius=0.0,
+            padding_top=0.0,  # a real designed 0 — must survive, not be dropped
+            padding_right=20.0,
+            padding_bottom=12.0,
+            padding_left=20.0,
+        )
+        # is-not-None guard (not truthiness) → the real 0.0 is emitted.
+        assert button.to_json()["padding_top"] == 0.0
+        # JSON round-trip
+        restored = DocumentButton.from_json(button.to_json())
+        assert (
+            restored.padding_top,
+            restored.padding_right,
+            restored.padding_bottom,
+            restored.padding_left,
+        ) == (0.0, 20.0, 12.0, 20.0)
+        # DocumentButton -> ButtonElement bridge
+        be = button.to_button_element()
+        assert (be.padding_top, be.padding_right, be.padding_bottom, be.padding_left) == (
+            0.0,
+            20.0,
+            12.0,
+            20.0,
+        )
+        # ButtonElement -> DocumentButton bridge
+        back = DocumentButton.from_button_element(be)
+        assert (back.padding_top, back.padding_right, back.padding_bottom, back.padding_left) == (
+            0.0,
+            20.0,
+            12.0,
+            20.0,
+        )
+
+    def test_button_padding_passes_schema(self) -> None:
+        """The new flat padding props are declared, so a padded button's
+        ``to_json`` validates against the ``additionalProperties: false`` schema.
+        """
+        doc = _make_document(
+            sections=[
+                DocumentSection(
+                    id="s1",
+                    type="hero",
+                    buttons=[
+                        DocumentButton(
+                            node_id="b1",
+                            text="Go",
+                            padding_top=5.0,
+                            padding_right=10.0,
+                            padding_bottom=5.0,
+                            padding_left=10.0,
+                        )
+                    ],
+                )
+            ],
+        )
+        assert EmailDesignDocument.validate(doc.to_json()) == []
+
     def test_peel_row_fields_roundtrip_and_bridge(self) -> None:
         """D3 follow-up — x_position + peel_row_id survive JSON and both bridges."""
         section = DocumentSection(

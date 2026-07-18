@@ -432,7 +432,11 @@
         "corner_radius_spec": {
           "oneOf": [{ "$ref": "#/$defs/corner_radius_spec" }, { "type": "null" }],
           "default": null
-        }
+        },
+        "padding_top": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "padding_right": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "padding_bottom": { "type": ["number", "null"], "minimum": 0, "default": null },
+        "padding_left": { "type": ["number", "null"], "minimum": 0, "default": null }
       }
     },
     "column": {

@@ -736,6 +736,11 @@ class DocumentButton:
     font_weight: int | None = None
     font_family: str | None = None
     corner_radius_spec: DocumentCornerRadiusSpec | None = None
+    # Auto-layout padding (Track G · G3) — bridged losslessly from ButtonElement.
+    padding_top: float | None = None
+    padding_right: float | None = None
+    padding_bottom: float | None = None
+    padding_left: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {"node_id": self.node_id, "text": self.text}
@@ -765,6 +770,15 @@ class DocumentButton:
             d["font_family"] = self.font_family
         if self.corner_radius_spec is not None:
             d["corner_radius_spec"] = self.corner_radius_spec.to_json()
+        # is not None (not truthiness) so a designed 0.0 padding survives.
+        if self.padding_top is not None:
+            d["padding_top"] = self.padding_top
+        if self.padding_right is not None:
+            d["padding_right"] = self.padding_right
+        if self.padding_bottom is not None:
+            d["padding_bottom"] = self.padding_bottom
+        if self.padding_left is not None:
+            d["padding_left"] = self.padding_left
         return d
 
     @classmethod
@@ -788,6 +802,10 @@ class DocumentButton:
             corner_radius_spec=(
                 DocumentCornerRadiusSpec.from_json(crs) if crs is not None else None
             ),
+            padding_top=data.get("padding_top"),
+            padding_right=data.get("padding_right"),
+            padding_bottom=data.get("padding_bottom"),
+            padding_left=data.get("padding_left"),
         )
 
     @classmethod
@@ -812,6 +830,10 @@ class DocumentButton:
                 if b.corner_radius_spec is not None
                 else None
             ),
+            padding_top=b.padding_top,
+            padding_right=b.padding_right,
+            padding_bottom=b.padding_bottom,
+            padding_left=b.padding_left,
         )
 
     def to_button_element(self) -> ButtonElement:
@@ -833,6 +855,10 @@ class DocumentButton:
             corner_radius_spec=(
                 self.corner_radius_spec.to_spec() if self.corner_radius_spec is not None else None
             ),
+            padding_top=self.padding_top,
+            padding_right=self.padding_right,
+            padding_bottom=self.padding_bottom,
+            padding_left=self.padding_left,
         )
 
 

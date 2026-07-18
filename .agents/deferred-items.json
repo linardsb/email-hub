@@ -985,6 +985,47 @@
       "symptom_if_broken": "Banded content sits vertically offset vs the design (band top pad 20 vs design 40 in c9) and band horizontal insets are 24px regardless of the design's value; full-image A3 penalised below every band.",
       "closes_when": "Wrapper-band grouping threads the wrapper frame's padding into RepeatingGroup.container_padding AND subsequent_top derives from member y-gaps (NOT top padding — the current container_padding branch reuses top for subsequent rows, which would inflate intra-band gaps). Verified: c9 banner offset within ~4px of design, c9 A3 recovers >=0.687, c5 >=0.838, no band case regresses.",
       "notes": "Fast closure path: populate container_padding at the wrapper-band grouping site from the wrapper node's padding_(top/right/bottom/left), and fix _resolve_item_spacing's subsequent_top to use inter-member y-deltas (element_gaps / child y-geometry) with the current 16px default as fallback. Blast radius: every banded case (c5/c7/c9/c10) — F9 column budgets and the G2 M9 text budget both read the row inset, so they follow automatically, but baselines churn corpus-wide; needs its own diff-audited session."
+    },
+    {
+      "id": "phase-53g-g3-button-box-geometry",
+      "phase": "53g",
+      "title": "CTA box geometry hardcoded — button padding never captured; absent Figma radius rendered 4px not square",
+      "status": "closed",
+      "severity": "known-bug",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "closed_commit": "pending",
+      "summary": "Both CTA render sites emitted a hardcoded padding:10px 24px and fell back to border-radius:4px when the design carried no corner radius. ButtonElement/DocumentButton had no padding fields, so the button frame's auto-layout padding (present in every structure.json) died before the renderer; and an absent Figma cornerRadius (a square frame) parsed to None → 4px, flattening every square pill/CTA. G3 threads padding_(top/right/bottom/left) through the 9-surface ingest→document→render chain and normalizes absent radius to 0.0 at capture.",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py (_walk_for_buttons — padding capture + border_radius None→0.0)",
+        "app/design_sync/figma/layout_analyzer.py (ButtonElement — padding_* fields)",
+        "app/design_sync/email_design_document.py (DocumentButton — padding_* + to_json/from_json/from_button_element/to_button_element)",
+        "app/design_sync/component_matcher.py (_cta_padding_css + _column_cta_row + _fills_text_block)",
+        "data/schemas/email-design-document-v1.json (button def — flat padding_* props)"
+      ],
+      "symptom_if_broken": "CTAs render padding:10px 24px regardless of design; genuinely-square buttons (c7 Art prints/Stationery, c8/c10 CTAs) render border-radius:4px instead of 0px; c7 pills not 5px/10px.",
+      "closes_when": "Padding captured onto ButtonElement/DocumentButton and emitted at both render sites via _cta_padding_css; absent radius normalized to square 0.0; corpus baselines regenerated (c5 pills 12px, c7 pills 5px/10px square + mains 12px/20px r25, c8 24px/60px square, c10 radius 0px).",
+      "notes": "Corpus-safe: every None-radius button across cases 7/8/9/10 is ABSENT cornerRadius in raw_figma = square-in-design (zero rounded-but-dropped). Scalar half of M3; per-corner radius (r12/r18 via corner_radius_spec) is Prompt 5/51.3. A3 vs Task-0 baseline: c5 +0.005, c8 +0.001, c7 -0.001 (design-correct square pills; coarse full-image scorer nets slightly down while c7 section_median rises +0.001); no case regresses >0.005. c6/c9 byte-identical (c6 design padding coincidentally 10/24; c9 buttons dropped upstream)."
+    },
+    {
+      "id": "phase-53g-g3-template-cta-padding-uncovered",
+      "phase": "53g",
+      "title": "Template CTA path (cta-pair/cta/cta-button) keeps hardcoded padding — design padding not threaded",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "summary": "G3 threads design padding into the two matcher render sites (_column_cta_row, _fills_text_block) but NOT the template-based CTA path. email-templates/components/{cta,cta-pair,cta-button}.html carry their own hardcoded padding (15px 30px / 12px 32px) that _replace_cta_* fills color/url into but never swaps. CTA-typed sections with >=2 buttons route to cta-pair (match_section). Unexercised by the current corpus (verified — no case renders through cta-pair today), so no baseline moves, but a future >=2-button CTA section would emit template padding, not design padding.",
+      "code_refs": [
+        "email-templates/components/cta-pair.html (hardcoded padding)",
+        "email-templates/components/cta.html",
+        "email-templates/components/cta-button.html",
+        "app/design_sync/component_renderer.py:1071-1149 (_replace_cta_* — fills color/url, not padding)",
+        "app/design_sync/component_matcher.py (_cta_overrides — emits border-radius incl. new 0.0 for square, but not padding)"
+      ],
+      "symptom_if_broken": "A CTA-typed section with >=2 buttons renders template padding (15px 30px) instead of the design's captured padding; radius honored (via _cta_overrides) but box padding wrong.",
+      "closes_when": "Prompt 5/51.3 composite pill work threads design padding into the seed CTAs (cta-pair.html etc.) via a padding token override in _cta_overrides, OR routes >=2-button CTA sections through the matcher render sites.",
+      "notes": "G3's border_radius None→0.0 normalization DOES reach _cta_overrides (was skipped when None; now emits border-radius:0px for square) — a latent correctness improvement on the template path, but padding remains untouched there. Cross-ref phase-53-b8-non-cta-multibutton-drop (case 9 buttons dropped upstream — separate defect)."
     }
   ],
   "tooling_followups": [
