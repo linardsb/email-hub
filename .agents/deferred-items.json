@@ -1034,8 +1034,8 @@
       "status": "closed",
       "severity": "soft",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
-      "closed_commit": "pending",
+      "introduced_commit": "f9671753",
+      "closed_commit": "f9671753",
       "summary": "51.1 composite-slot seam built + proven by its first consumer (own-row text-block CTA). SlotFill gains slot_type='composite' + a trailing composite: CompositeSlot|None field (render-time only, never serialised). CompositeSlot + render_composite (one children loop, depth<=3 cap, inherent recursion) live in component_matcher.py. component_renderer dispatches composite -> _fill_composite_slot -> _splice_rows_after_slot (mirror of _splice_rows_before_slot; depth-counted _find_matching_close for nested-table bodies). _fills_text_block emits the CTA as a composite 'cta_row' fill (after_slot body/heading ladder, cell_style 'padding:0 24px 24px') instead of folding anchors into the body <td> where they hugged the left padding.",
       "code_refs": [
         "app/design_sync/component_matcher.py (SlotFill.composite; CompositeSlot; render_composite; _fills_text_block cta_row fill)",
@@ -1052,7 +1052,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
+      "introduced_commit": "f9671753",
       "summary": "render_composite (51.1) renders a child's .value verbatim (terminal) or recurses on a nested composite child; it does NOT run template substitution on a child (no _fill_slots(sub_template, sub_fills, ...) sub-renderer). Own-row CTA needs only terminal pre-built anchor HTML, so a general sub-template renderer would ship with zero real consumers + synthetic-only tests (Simplicity First). The depth-cap + recursion SEAM is built; the general sub-template child is the deferred half — a deliberate scope-cut ratified in the G4 plan (OQ 1).",
       "code_refs": [
         "app/design_sync/component_matcher.py:render_composite (terminal .value / nested-composite recursion only)"
@@ -1068,7 +1068,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
+      "introduced_commit": "f9671753",
       "summary": "In the EmailTree path (tree_bridge_enabled, non-default), tree_bridge._fill_to_slot_value SKIPS composite fills (returns None) rather than emitting them. Emitting an HtmlSlot keyed to 'cta_row' would fail validate_tree_against_manifest ('slot cta_row not defined for component text-block') -> CompilationError -> forced fallback to the legacy renderer for EVERY text-block-with-CTA email. Skipping keeps the tree compile valid but drops the CTA in the tree path (pre-G4 the button LABEL survived as tag-stripped text folded in the body). The G4 plan AC 'CTA not dropped in the tree path' is therefore NOT met — the mechanism to render it (a template slot) is 51.2 territory. The dominant renderer path (expected.html corpus) is unaffected; own-row CTA ships there.",
       "code_refs": [
         "app/design_sync/tree_bridge.py:_fill_to_slot_value (composite branch returns None — kills the unknown_slot_type warning without injecting an undefined slot)",
