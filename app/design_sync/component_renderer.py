@@ -8,7 +8,12 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.core.logging import get_logger
-from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
+from app.design_sync.component_matcher import (
+    ComponentMatch,
+    SlotFill,
+    TokenOverride,
+    render_composite,
+)
 from app.design_sync.figma.layout_analyzer import EmailSection
 from app.design_sync.sibling_detector import RepeatingGroup
 
@@ -937,6 +942,8 @@ class ComponentRenderer:
                 result = self._fill_image_slot(result, slot_id, fill)
             elif fill.slot_type == "cta":
                 result = self._fill_cta_slot(result, slot_id, fill)
+            elif fill.slot_type == "composite":
+                result = self._fill_composite_slot(result, fill)
             else:
                 result = self._fill_text_slot(result, slot_id, fill)
 
@@ -1244,6 +1251,38 @@ class ComponentRenderer:
             return html_str
         tr_start = opens[-1].start()
         return html_str[:tr_start] + before + html_str[tr_start:]
+
+    @staticmethod
+    def _splice_rows_after_slot(html_str: str, slot_id: str, after: str) -> str:
+        """Inject ``<tr>`` rows after the ``<tr>`` enclosing a text slot's ``<td>`` (51.1).
+
+        Anchors on the row-open ``<tr...>`` nearest before the ``<td data-slot=...>``,
+        then finds THAT row's matching ``</tr>`` via :func:`_find_matching_close`
+        (counting nested ``<tr>`` depth) so a body cell wrapping a
+        ``_per_node_body_html`` ``<table>`` (c10) is not truncated at the inner row —
+        a forward ``find("</tr>")`` would splice the composite INSIDE the body cell.
+        Defensive no-op if the slot / its row open / its matching close isn't found —
+        a composite whose ``after_slot`` isn't in the template keeps pre-51.1 output
+        rather than dropping a row mid-table.
+        """
+        m = re.search(rf'<td\b[^>]*\bdata-slot="{re.escape(slot_id)}"', html_str)
+        if not m:
+            return html_str
+        opens = list(re.finditer(r"<tr\b[^>]*>", html_str[: m.start()]))
+        if not opens:
+            return html_str
+        close_start = _find_matching_close(html_str, "tr", opens[-1].end())
+        if close_start is None:
+            return html_str
+        tr_end = close_start + len("</tr>")
+        return html_str[:tr_end] + after + html_str[tr_end:]
+
+    def _fill_composite_slot(self, html_str: str, fill: SlotFill) -> str:
+        """Splice a composite slot's rendered row after its reference slot (51.1)."""
+        if fill.composite is None:
+            return html_str
+        row = render_composite(fill.composite)
+        return self._splice_rows_after_slot(html_str, fill.composite.after_slot, row)
 
     def _fill_cta_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Update href on a data-slot link element."""

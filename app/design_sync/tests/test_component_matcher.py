@@ -885,13 +885,19 @@ class TestButtonInTextBlock:
             buttons=[ButtonElement(node_id="b1", text="Shop Now", fill_color="#0066cc")],
         )
         m = match_section(s, 0)
+        # G4 (51.1): the CTA is emitted as its own composite "cta_row" fill, NOT
+        # folded into the body slot. The body slot carries only body text now.
         body = next(f for f in m.slot_fills if f.slot_id == "body")
-        assert "<a " in body.value
-        assert "Shop Now" in body.value
-        assert "background-color:#0066cc" in body.value
+        assert "<a " not in body.value
+        cta = next(f for f in m.slot_fills if f.slot_id == "cta_row")
+        assert cta.composite is not None
+        cta_html = "".join(c.value for c in cta.composite.children)
+        assert "<a " in cta_html
+        assert "Shop Now" in cta_html
+        assert "background-color:#0066cc" in cta_html
         # No designed text_color → white absence-fallback (F11); no stroke → no border.
-        assert "color:#ffffff" in body.value
-        assert "border:" not in body.value
+        assert "color:#ffffff" in cta_html
+        assert "border:" not in cta_html
 
     def test_text_block_renders_all_buttons(self) -> None:
         """phase-53-b8-non-cta-multibutton-drop: a content/text-block section can
@@ -924,14 +930,20 @@ class TestButtonInTextBlock:
         )
         m = match_section(s, 0)
         assert m.component_slug == "text-block"
+        # G4 (51.1): both anchors move to the composite "cta_row" row, one per
+        # child; the body slot no longer carries them.
         body = next(f for f in m.slot_fills if f.slot_id == "body")
-        assert "SHOP THE COLLECTION" in body.value
-        assert "DISCOVER EIGER EXTREME 6.0" in body.value
-        assert body.value.count("<a ") == 2
+        assert "<a " not in body.value
+        cta = next(f for f in m.slot_fills if f.slot_id == "cta_row")
+        assert cta.composite is not None
+        cta_html = "\n".join(c.value for c in cta.composite.children)
+        assert "SHOP THE COLLECTION" in cta_html
+        assert "DISCOVER EIGER EXTREME 6.0" in cta_html
+        assert cta_html.count("<a ") == 2
         # designed colours + stroke used, not collapsed to invisible white-on-white
-        assert "color:#010101" in body.value
-        assert "border:1px solid #FE5219" in body.value
-        assert "color:#ffffff" not in body.value
+        assert "color:#010101" in cta_html
+        assert "border:1px solid #FE5219" in cta_html
+        assert "color:#ffffff" not in cta_html
 
 
 class TestURLValidation:

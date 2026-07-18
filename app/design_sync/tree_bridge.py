@@ -201,6 +201,19 @@ def _fill_to_slot_value(fill: SlotFill, section: EmailSection) -> SlotValue | No
             return HtmlSlot(html=fill.value)
         return None
 
+    if fill.slot_type == "composite":
+        # 51.1: the composite is a renderer-path primitive with no tree-path
+        # equivalent yet. It MUST be skipped here (return None), NOT emitted as a
+        # slot: its id (``cta_row``) has no ``data-slot`` in the text-block seed,
+        # and ``validate_tree_against_manifest`` REJECTS undefined slots with a
+        # CompilationError — which would poison the whole tree compile and force a
+        # fallback to the legacy renderer for every text-block-with-CTA email.
+        # Skipping keeps the tree compile valid (CTA simply absent) until 51.2
+        # lands the ``data-slot-composite`` template mode. Having the dedicated
+        # branch also avoids the per-render ``unknown_slot_type`` warning.
+        # Ledger: phase-53g-g4-tree-html-slot-row-shape.
+        return None
+
     # Unknown slot type — log and use HtmlSlot fallback
     logger.warning(
         "tree_bridge.unknown_slot_type",
