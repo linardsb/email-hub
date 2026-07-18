@@ -618,6 +618,17 @@ def _is_placeholder(text: str) -> bool:
 
 _HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}){1,2}$")
 
+
+def _is_white_hex(color: str | None) -> bool:
+    """True when *color* is pure white (``#fff``/``#ffffff``), case-insensitive."""
+    if not color or not _HEX_COLOR_RE.match(color):
+        return False
+    h = color.lstrip("#").lower()
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
+    return h == "ffffff"
+
+
 # Allowlists for typographic enum properties (Phase 52.4). Values outside the
 # set are dropped so a malformed ``text_transform``/``text_decoration`` from the
 # design can never reach the rendered CSS (defence-in-depth against injection).
@@ -2126,8 +2137,13 @@ def _build_token_overrides(
     # Inner card background (Phase 50.4 — nested-card surface)
     if section.inner_bg:
         overrides.append(TokenOverride("background-color", "_inner", section.inner_bg))
-    elif section.bg_color:
+    elif section.bg_color and not (section.container_bg and _is_white_hex(section.bg_color)):
         # No nested card detected — preserve Phase 49 contract (bg_color → _outer).
+        # Track G G1 (M3): a section's own WHITE fill must not paint over a
+        # coloured band. A full-width image (or any section) on a coloured
+        # wrapper inherits container_bg — the seed default #ffffff would
+        # otherwise slit the band with white. A genuine white card carries
+        # inner_bg (branch above), so this only suppresses the leak case.
         overrides.append(TokenOverride("background-color", "_outer", section.bg_color))
 
     # 53.3b — reattached gradient background (capture landed at 52.5). The

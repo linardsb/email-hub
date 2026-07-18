@@ -5,9 +5,11 @@ from __future__ import annotations
 from app.design_sync.component_matcher import (
     _build_column_fill_html,
     _build_slot_fills,
+    _build_token_overrides,
     _derive_image_alt,
     _is_descriptive_alt,
     _is_placeholder,
+    _is_white_hex,
     _safe_color,
     _safe_url,
     match_all,
@@ -1925,3 +1927,77 @@ class TestDeriveImageAlt:
         for name in ("mj-image", "(type: logo)", "", "2833:1869", "Gallery image 1"):
             alt = _derive_image_alt(self._img(name))
             assert alt.lower() not in forbidden
+
+
+# ── Track G G1 (M3): white fill must not paint over a coloured band ────
+
+
+class TestWhiteBgOverBand:
+    """A section's own WHITE fill must not override its coloured wrapper band
+    (container_bg). A full-width image on a coloured band inherits the band,
+    not the seed's default #ffffff; a genuine white card carries inner_bg.
+    """
+
+    @staticmethod
+    def _outer_values(section: EmailSection) -> list[str]:
+        return [
+            o.value
+            for o in _build_token_overrides(section)
+            if o.css_property == "background-color" and o.target_class == "_outer"
+        ]
+
+    def test_white_bg_suppressed_over_colored_band(self) -> None:
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="img",
+            node_name="Full width image",
+            container_bg="#AFCA01",
+            bg_color="#FFFFFF",
+        )
+        outer = self._outer_values(section)
+        assert "#FFFFFF" not in outer  # white does not slit the band
+        assert outer == ["#AFCA01"]  # only the band colour survives
+
+    def test_own_white_bg_kept_without_a_band(self) -> None:
+        # No container_bg → a genuinely white section keeps its white outer.
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="img",
+            node_name="Full width image",
+            bg_color="#FFFFFF",
+        )
+        assert self._outer_values(section) == ["#FFFFFF"]
+
+    def test_nonwhite_bg_still_overrides_band(self) -> None:
+        # A section with its own SOLID (non-white) fill keeps precedence.
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="s",
+            node_name="Section",
+            container_bg="#AFCA01",
+            bg_color="#123456",
+        )
+        assert "#123456" in self._outer_values(section)
+
+    def test_white_card_inner_bg_unaffected(self) -> None:
+        # A genuine white card carries inner_bg → band stays outer, card inner.
+        section = EmailSection(
+            section_type=EmailSectionType.CONTENT,
+            node_id="card",
+            node_name="Card",
+            container_bg="#AFCA01",
+            bg_color="#FFFFFF",
+            inner_bg="#FFFFFF",
+        )
+        overrides = _build_token_overrides(section)
+        outer = [o.value for o in overrides if o.target_class == "_outer"]
+        inner = [o.value for o in overrides if o.target_class == "_inner"]
+        assert outer == ["#AFCA01"]
+        assert inner == ["#FFFFFF"]
+
+    def test_is_white_hex(self) -> None:
+        assert _is_white_hex("#FFFFFF")
+        assert _is_white_hex("#fff")
+        assert not _is_white_hex("#AFCA01")
+        assert not _is_white_hex(None)
+        assert not _is_white_hex("white")

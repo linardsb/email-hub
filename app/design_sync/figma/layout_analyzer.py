@@ -355,6 +355,10 @@ def analyze_layout(
     # with ≥2 section children into per-child sections, propagating the
     # wrapper fill. Gated to MJML naming + ``wrapper_unwrap_enabled`` flag.
     candidates = _expand_container_wrappers(raw_candidates, convention)
+    # Band wrapper frame extents (Track G G1, M1) — the wrapper's own
+    # coloured padding lives INSIDE the band, so inter-band spacing measures
+    # to the frame edge, not the first/last child bbox.
+    wrapper_bounds = _wrapper_frame_bounds(raw_candidates, convention)
 
     # Determine overall width from the widest top-level frame
     overall_width = max(
@@ -577,7 +581,7 @@ def analyze_layout(
     sections.sort(key=lambda s: s.y_position if s.y_position is not None else 0.0)
 
     # Calculate spacing between sections
-    sections = _calculate_spacing(sections)
+    sections = _calculate_spacing(sections, wrapper_bounds)
 
     # Boundary classification (Phase 50.2) — needs the y-sorted sections
     if global_design_image is not None:
@@ -701,6 +705,35 @@ def _expand_container_wrappers(
         else:
             expanded.append((node, None, None, None))
     return expanded
+
+
+def _wrapper_frame_bounds(
+    candidates: list[DesignNode],
+    naming: NamingConvention,
+) -> dict[str, tuple[float, float]]:
+    """Map each band wrapper id → ``(frame_top, frame_bottom)`` (Track G G1, M1).
+
+    A band's visual y-extent is the wrapper FRAME (its fill + internal
+    padding), not the bounding box of its child sections. ``_calculate_spacing``
+    would otherwise measure the gap to a band from its first child's top —
+    which sits ``paddingTop`` below the frame — turning the wrapper's own
+    coloured top/bottom padding into a phantom white ``spacing_after`` gap
+    between bands (the 20px slits in M1).
+
+    Mirrors the gating and ``_is_container_wrapper`` predicate of
+    :func:`_expand_container_wrappers` so the two agree on exactly which frames
+    became bands; returns ``{}`` when unwrap is off (no section carries a
+    ``parent_wrapper_id`` then, so the map is never consulted).
+    """
+    if naming != NamingConvention.MJML:
+        return {}
+    if not get_settings().design_sync.wrapper_unwrap_enabled:
+        return {}
+    bounds: dict[str, tuple[float, float]] = {}
+    for node in candidates:
+        if _is_container_wrapper(node) and node.y is not None and node.height is not None:
+            bounds[node.id] = (node.y, node.y + node.height)
+    return bounds
 
 
 def _peel_rows(grandkids: list[DesignNode]) -> list[list[DesignNode]]:
@@ -1835,6 +1868,11 @@ _GROUPABLE_TYPES = frozenset(
     }
 )
 
+# G2 (M2) — absolute heading floor for uniform-size sections, where the
+# relative 1.3x-median rule has no signal. 24px sits between the corpus's
+# largest uniform body copy (20px) and smallest uniform display text (24px).
+_UNIFORM_HEADING_MIN_PX = 24.0
+
 
 def _extract_content_groups(
     node: DesignNode,
@@ -1882,13 +1920,28 @@ def _extract_content_groups(
 
 
 def _detect_content_hierarchy(texts: list[TextBlock]) -> list[TextBlock]:
-    """Mark headings based on relative font size (1.3x median = heading)."""
+    """Mark headings based on relative font size (1.3x median = heading).
+
+    Uniform-size sections (including single-text banners) carry no relative
+    signal, so the median rule never fired and 30px display text landed in
+    the body slot while the seed heading slot ghosted empty (Track G G2, M2).
+    For those, an absolute heading-scale floor decides: >=24px is a heading
+    (validated against all 6 corpus fixtures — the largest uniform body copy
+    is 20px, the smallest uniform display text 24px).
+    """
     if not texts:
         return texts
 
     sizes = [t.font_size for t in texts if t.font_size is not None]
-    if not sizes or len(set(sizes)) == 1:
-        return texts  # Uniform sizes → no headings
+    if not sizes:
+        return texts
+
+    if len(set(sizes)) == 1:
+        if sizes[0] < _UNIFORM_HEADING_MIN_PX:
+            return texts
+        return [
+            dataclasses.replace(t, is_heading=True) if t.font_size is not None else t for t in texts
+        ]
 
     median_size = statistics.median(sizes)
     threshold = median_size * 1.3
@@ -1901,17 +1954,42 @@ def _detect_content_hierarchy(texts: list[TextBlock]) -> list[TextBlock]:
     ]
 
 
-def _calculate_spacing(sections: list[EmailSection]) -> list[EmailSection]:
-    """Calculate spacing between consecutive sections."""
+def _calculate_spacing(
+    sections: list[EmailSection],
+    wrapper_bounds: dict[str, tuple[float, float]] | None = None,
+) -> list[EmailSection]:
+    """Calculate spacing between consecutive sections.
+
+    A band's y-extent is the wrapper FRAME, not its child sections (Track G
+    G1, M1). When a section ends or begins a band, its facing edge is taken
+    from ``wrapper_bounds`` (the frame's top/bottom) rather than the child
+    bbox, so the wrapper's own coloured padding stays inside the band instead
+    of surfacing as a white ``spacing_after`` gap between adjacent bands.
+    Sections that share a ``parent_wrapper_id`` keep child-based spacing —
+    intra-band gaps are absorbed by ``group_by_wrapper`` and never emitted.
+    """
     if len(sections) < 2:
         return sections
 
+    bounds = wrapper_bounds or {}
     result: list[EmailSection] = []
     for i, section in enumerate(sections):
         spacing: float | None = None
         if i < len(sections) - 1:
+            nxt = sections[i + 1]
+            same_band = (
+                section.parent_wrapper_id is not None
+                and section.parent_wrapper_id == nxt.parent_wrapper_id
+            )
             current_bottom = _section_bottom(section)
-            next_top = sections[i + 1].y_position
+            next_top = nxt.y_position
+            if not same_band:
+                curr_frame = bounds.get(section.parent_wrapper_id or "")
+                if curr_frame is not None:
+                    current_bottom = curr_frame[1]  # band frame bottom
+                next_frame = bounds.get(nxt.parent_wrapper_id or "")
+                if next_frame is not None:
+                    next_top = next_frame[0]  # band frame top
             if current_bottom is not None and next_top is not None:
                 spacing = max(0.0, next_top - current_bottom)
 
