@@ -1026,6 +1026,57 @@
       "symptom_if_broken": "A CTA-typed section with >=2 buttons renders template padding (15px 30px) instead of the design's captured padding; radius honored (via _cta_overrides) but box padding wrong.",
       "closes_when": "Prompt 5/51.3 composite pill work threads design padding into the seed CTAs (cta-pair.html etc.) via a padding token override in _cta_overrides, OR routes >=2-button CTA sections through the matcher render sites.",
       "notes": "G3's border_radius None→0.0 normalization DOES reach _cta_overrides (was skipped when None; now emits border-radius:0px for square) — a latent correctness improvement on the template path, but padding remains untouched there. Cross-ref phase-53-b8-non-cta-multibutton-drop (case 9 buttons dropped upstream — separate defect)."
+    },
+    {
+      "id": "phase-53g-g4-composite-slot-infra",
+      "phase": "53g",
+      "title": "Composite-slot infrastructure (51.1) + own-row text-block CTA first consumer (M8)",
+      "status": "closed",
+      "severity": "soft",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "closed_commit": "pending",
+      "summary": "51.1 composite-slot seam built + proven by its first consumer (own-row text-block CTA). SlotFill gains slot_type='composite' + a trailing composite: CompositeSlot|None field (render-time only, never serialised). CompositeSlot + render_composite (one children loop, depth<=3 cap, inherent recursion) live in component_matcher.py. component_renderer dispatches composite -> _fill_composite_slot -> _splice_rows_after_slot (mirror of _splice_rows_before_slot; depth-counted _find_matching_close for nested-table bodies). _fills_text_block emits the CTA as a composite 'cta_row' fill (after_slot body/heading ladder, cell_style 'padding:0 24px 24px') instead of folding anchors into the body <td> where they hugged the left padding.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (SlotFill.composite; CompositeSlot; render_composite; _fills_text_block cta_row fill)",
+        "app/design_sync/component_renderer.py (_fill_composite_slot; _splice_rows_after_slot; _fill_slots composite branch)"
+      ],
+      "symptom_if_broken": "A text-block-family CTA renders left-hugging inline inside the body <td> instead of centered on its own row; or a composite fill leaks into a non-consumer path and shifts a byte-compat baseline.",
+      "closes_when": "composite variant + sub-renderer + own-row CTA shipped, corpus regenerated (MET: Phase 53g G4)",
+      "notes": "Blast-radius correction: the plan Task-0.5 coverage map predicted only {6,7,10} move (it grepped the textblock-body class + a non-greedy .*?</td> that stops at nested-body inner cells), but _fills_text_block serves ~10 slugs so the REAL corpus move is {5,6,7,8,10} (c9 byte-identical). Zero collateral: git diff = 24 insertions / 0 deletions, only composite CTA rows; _column_cta_row (c5's 8 pills, c8's column CTAs) untouched. A3 trade (ratifiable, cf G2/G3): c8/c10 up (full +.001/+.006, median +.002/+.005), c6/c9 flat, c7 full -.009 (structural floor — own-row adds the body's unavoidable 24px gap the pixel-diff penalizes on downstream alignment; the design composite CONFIRMS own-row is correct and c7 section median is +.002), c5 median -.024 (own-row surfaces a PRE-EXISTING color-extraction miss: c5's CTA is #0066cc = the _safe_color fallback, not MAAP's palette — out of scope, cf phase-53-b8-text-block-solid-cta-text-color). c8 regen trailing-ws churn stripped (same pre-commit-hook mechanism as prior tracks). Guarded by test_composite_slot.py + TestOwnRowCTAComposite (test_cta_fidelity.py)."
+    },
+    {
+      "id": "phase-53g-g4-general-sub-template-recursion",
+      "phase": "53g",
+      "title": "Composite children are terminal-only — no general sub-template renderer (51.2)",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "summary": "render_composite (51.1) renders a child's .value verbatim (terminal) or recurses on a nested composite child; it does NOT run template substitution on a child (no _fill_slots(sub_template, sub_fills, ...) sub-renderer). Own-row CTA needs only terminal pre-built anchor HTML, so a general sub-template renderer would ship with zero real consumers + synthetic-only tests (Simplicity First). The depth-cap + recursion SEAM is built; the general sub-template child is the deferred half — a deliberate scope-cut ratified in the G4 plan (OQ 1).",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:render_composite (terminal .value / nested-composite recursion only)"
+      ],
+      "symptom_if_broken": "A composite child needing template slot substitution (e.g. a card body holding a pill row with its own fills) has no renderer — it would emit its raw .value or nothing.",
+      "closes_when": "51.2 (card/pills) lands the first genuine depth>=2 sub-template consumer, adding the sub-template child path + the data-slot-composite anchor mode.",
+      "blocked_by": ["phase-53g-g4-composite-slot-infra"]
+    },
+    {
+      "id": "phase-53g-g4-tree-html-slot-row-shape",
+      "phase": "53g",
+      "title": "Own-row CTA absent in the tree-bridge path (composite skipped to keep the compile valid)",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "summary": "In the EmailTree path (tree_bridge_enabled, non-default), tree_bridge._fill_to_slot_value SKIPS composite fills (returns None) rather than emitting them. Emitting an HtmlSlot keyed to 'cta_row' would fail validate_tree_against_manifest ('slot cta_row not defined for component text-block') -> CompilationError -> forced fallback to the legacy renderer for EVERY text-block-with-CTA email. Skipping keeps the tree compile valid but drops the CTA in the tree path (pre-G4 the button LABEL survived as tag-stripped text folded in the body). The G4 plan AC 'CTA not dropped in the tree path' is therefore NOT met — the mechanism to render it (a template slot) is 51.2 territory. The dominant renderer path (expected.html corpus) is unaffected; own-row CTA ships there.",
+      "code_refs": [
+        "app/design_sync/tree_bridge.py:_fill_to_slot_value (composite branch returns None — kills the unknown_slot_type warning without injecting an undefined slot)",
+        "app/components/tree_compiler.py:compile / validate_tree_against_manifest (rejects undefined slots)"
+      ],
+      "symptom_if_broken": "A text-block-with-CTA email rendered through the tree path shows no CTA button; before G4 it showed the button label as body text.",
+      "closes_when": "51.2 adds a data-slot-composite (or cta_row) slot to the relevant seeds + a TreeCompiler composite-fill path, so tree_bridge can emit the composite and it renders. Guarded by test_undefined_slot_breaks_compile + test_composite_skipped_at_bridge (test_tree_bridge.py).",
+      "blocked_by": ["phase-53g-g4-composite-slot-infra"]
     }
   ],
   "tooling_followups": [

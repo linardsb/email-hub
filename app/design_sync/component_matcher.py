@@ -32,7 +32,7 @@ class SlotFill:
 
     slot_id: str
     value: str
-    slot_type: str = "text"  # "text" | "image" | "cta" | "attr"
+    slot_type: str = "text"  # "text" | "image" | "cta" | "attr" | "composite"
     attr_overrides: dict[str, str] = field(default_factory=dict[str, str])
     # Extra ``<tr>`` rows to splice around this slot's own row at render time.
     # F1 (RC-F1): a multi-image section fills its seed's single image slot with
@@ -45,6 +45,30 @@ class SlotFill:
     # Empty for every other fill. Render-time only (never serialised) — no bridge sites.
     stacked_before: str = ""
     stacked_after: str = ""
+    # 51.1 composite-slot infra: set only when ``slot_type == "composite"``. Carries a
+    # rendered sub-component (e.g. own-row CTA) spliced as its own ``<tr>`` after the
+    # reference slot's row. LAST field so the positional rebuild in ``tree_bridge``
+    # (image-alt only) is unaffected. Render-time only — never serialised (§NOTES A).
+    composite: CompositeSlot | None = None
+
+
+@dataclass(frozen=True)
+class CompositeSlot:
+    """A rendered sub-component spliced as its own row (51.1 composite-slot infra).
+
+    ``children`` are rendered in order and joined by ``child_separator``, then
+    wrapped in one centered ``<tr><td>`` row. A child whose ``slot_type`` is
+    ``"composite"`` re-enters :func:`render_composite` at ``depth+1`` (recursion is
+    inherent, depth-capped); a terminal child contributes its ``value``. The
+    own-row CTA (51.1's first consumer) exercises depth 1 with terminal
+    pre-built ``<a>`` anchor children.
+    """
+
+    children: tuple[SlotFill, ...]
+    after_slot: str  # data-slot id whose <tr> the composite splices after
+    cell_style: str = ""  # inline style for the wrapping <td>
+    align: str = "center"
+    child_separator: str = ""  # joins rendered children (own-row CTA uses "\n")
 
 
 @dataclass(frozen=True)
@@ -908,6 +932,34 @@ def _column_cta_row(btn: ButtonElement) -> str:
     return f"<tr><td>{anchor}</td></tr>"
 
 
+_MAX_COMPOSITE_DEPTH = 3
+
+
+def render_composite(cs: CompositeSlot, depth: int = 1) -> str:
+    """Render a composite slot's children into one centered ``<tr>`` row (51.1).
+
+    Recursion is inherent: a child with ``slot_type == "composite"`` re-enters at
+    ``depth+1``, capped at ``_MAX_COMPOSITE_DEPTH``. Own-row CTA (51.1's first
+    consumer) exercises depth 1 only — children are terminal text fills carrying
+    pre-built ``<a>`` anchor HTML. General sub-template child rendering is deferred
+    to 51.2. A mislabeled composite child with no payload (``composite is None``)
+    degrades to its ``value`` rather than crashing.
+    """
+    if depth > _MAX_COMPOSITE_DEPTH:
+        logger.warning("design_sync.composite.max_depth", depth=depth)
+        return ""
+    parts: list[str] = []
+    for child in cs.children:
+        if child.slot_type == "composite" and child.composite is not None:
+            parts.append(render_composite(child.composite, depth + 1))
+        else:
+            parts.append(child.value)
+    return (
+        f'<tr><td align="{cs.align}" style="{cs.cell_style}">'
+        f"{cs.child_separator.join(parts)}</td></tr>"
+    )
+
+
 def _wrap_column_table(rows: list[str]) -> str:
     """Wrap column rows in one inner ``<table>`` (Phase 53 B2).
 
@@ -1431,14 +1483,41 @@ def _fills_text_block(
             f'border-radius:{radius}px;">{_safe_text(btn.text)}</a>'
         )
     if cta_parts:
-        cta_html = "\n".join(cta_parts)
-        # Append to existing body fill or create new one
-        body_fill = next((f for f in fills if f.slot_id == "body"), None)
-        if body_fill:
-            idx = fills.index(body_fill)
-            fills[idx] = SlotFill("body", body_fill.value + "\n" + cta_html)
+        # 51.1 own-row CTA (M8): emit the CTA as a composite row spliced after the
+        # body (or heading) row instead of folding the anchors INTO the body <td>
+        # (where they inherited the body cell's left padding and hugged the left
+        # edge). The wrapping <td align="center"> centers the anchors on their own
+        # row like the design. Anchor markup (G3 geometry) is unchanged.
+        anchor_slot = (
+            "body"
+            if any(f.slot_id == "body" for f in fills)
+            else "heading"
+            if any(f.slot_id == "heading" for f in fills)
+            else None
+        )
+        if anchor_slot is not None:
+            fills.append(
+                SlotFill(
+                    "cta_row",
+                    "",
+                    slot_type="composite",
+                    composite=CompositeSlot(
+                        children=tuple(SlotFill("cta_anchor", a) for a in cta_parts),
+                        after_slot=anchor_slot,
+                        # The reference (body) cell already contributes its own
+                        # bottom padding (24px) as the above-CTA gap, matching the
+                        # design's body->CTA spacing; so top=0 here avoids doubling
+                        # it. 24px sides mirror the body's horizontal padding; 24px
+                        # bottom keeps the template's vertical rhythm below the CTA.
+                        cell_style="padding:0 24px 24px;",
+                        child_separator="\n",  # preserve the old fold's inter-anchor gap
+                    ),
+                )
+            )
         else:
-            fills.append(SlotFill("body", cta_html))
+            # Fallback (no text anchor slot — not hit by the corpus): keep the
+            # pre-51.1 inline behaviour so a CTA is never dropped.
+            fills.append(SlotFill("body", "\n".join(cta_parts)))
 
     return fills
 

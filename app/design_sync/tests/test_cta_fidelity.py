@@ -8,11 +8,13 @@ import pytest
 
 from app.design_sync.component_matcher import (
     ComponentMatch,
+    CompositeSlot,
     SlotFill,
     TokenOverride,
     _build_column_fill_html,
     _build_slot_fills,
     _cta_padding_css,
+    _fills_text_block,
     match_section,
 )
 from app.design_sync.component_renderer import ComponentRenderer
@@ -325,6 +327,63 @@ class TestRendererCTAOverrides:
         )
         result = renderer.render_section(match)
         assert "color:#000000" in result.html
+
+
+# ---------------------------------------------------------------------------
+# 51.1 own-row CTA — _fills_text_block emits a composite CTA row
+# ---------------------------------------------------------------------------
+
+
+class TestOwnRowCTAComposite:
+    """The text-block CTA renders centered on its own row (spliced after the body)
+    instead of folded into the body <td> where it hugged the left padding."""
+
+    def _text_section(self, buttons: list[ButtonElement]) -> EmailSection:
+        return _make_section(
+            EmailSectionType.CONTENT,
+            texts=[
+                TextBlock(node_id="h1", content="Heading", is_heading=True),
+                TextBlock(node_id="b1", content="Body copy.", is_heading=False),
+            ],
+            buttons=buttons,
+        )
+
+    def test_builder_emits_composite_cta_row(self) -> None:
+        fills = _fills_text_block(self._text_section([_button("Explore now")]), 600)
+        cta = next(f for f in fills if f.slot_id == "cta_row")
+        assert cta.slot_type == "composite"
+        assert isinstance(cta.composite, CompositeSlot)
+        assert cta.composite.after_slot == "body"
+        assert any("<a " in c.value and "Explore now" in c.value for c in cta.composite.children)
+
+    def test_body_fill_no_longer_carries_anchor(self) -> None:
+        fills = _fills_text_block(self._text_section([_button("Explore now")]), 600)
+        body = next(f for f in fills if f.slot_id == "body")
+        assert "<a " not in body.value  # no longer folded into body
+
+    def test_render_places_cta_in_centered_row_after_body(
+        self, renderer: ComponentRenderer
+    ) -> None:
+        section = self._text_section([_button("Explore now", fill_color="#4e3092")])
+        fills = _fills_text_block(section, 600)
+        match = _make_match("text-block", fills=fills, section=section)
+        html = renderer.render_section(match).html
+        body_cell = html.split('data-slot="body"')[1].split("</td>")[0]
+        assert "<a " not in body_cell  # anchor moved out of the body cell
+        assert re.search(r'<td align="center"[^>]*>\s*<a [^>]*>Explore now</a>', html)
+        assert html.index("Explore now") > html.index('data-slot="body"')
+
+    def test_multi_button_both_in_one_centered_row(self, renderer: ComponentRenderer) -> None:
+        section = self._text_section([_button("SHOP"), _button("DISCOVER")])
+        fills = _fills_text_block(section, 600)
+        cta = next(f for f in fills if f.slot_id == "cta_row")
+        assert cta.composite is not None
+        assert len(cta.composite.children) == 2
+        match = _make_match("text-block", fills=fills, section=section)
+        html = renderer.render_section(match).html
+        row_match = re.search(r'<td align="center"[^>]*>(.*?)</td>', html, re.DOTALL)
+        assert row_match is not None
+        assert "SHOP" in row_match.group(1) and "DISCOVER" in row_match.group(1)
 
 
 # ---------------------------------------------------------------------------

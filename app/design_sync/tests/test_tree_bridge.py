@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from app.components.tree_compiler import TreeCompiler
 from app.components.tree_schema import (
     ButtonSlot,
     EmailTree,
@@ -9,7 +12,13 @@ from app.components.tree_schema import (
     ImageSlot,
     TextSlot,
 )
-from app.design_sync.component_matcher import ComponentMatch, SlotFill, TokenOverride
+from app.core.exceptions import CompilationError
+from app.design_sync.component_matcher import (
+    ComponentMatch,
+    CompositeSlot,
+    SlotFill,
+    TokenOverride,
+)
 from app.design_sync.figma.layout_analyzer import (
     ButtonElement,
     ColumnLayout,
@@ -256,6 +265,76 @@ class TestHtmlSlotConversion:
         fills = [SlotFill(slot_id="empty", value="   ", slot_type="attr")]
         result = _convert_slot_fills(fills, sec)
         assert "empty" not in result
+
+
+class TestCompositeSlotConversion:
+    """51.1 composite fills in the tree path.
+
+    The composite is a renderer-path primitive with no tree-path equivalent yet,
+    so the bridge SKIPS it (returns None) — it is NOT emitted as a ``cta_row``
+    slot. Emitting an undefined slot would fail manifest validation and poison the
+    whole tree compile (proven by ``test_undefined_slot_breaks_compile``). Full
+    tree-path rendering waits on 51.2's ``data-slot-composite`` mode. Documented
+    here so the deferral is a tested, honest fact rather than an assumption.
+    """
+
+    def _composite_fills(self) -> list[SlotFill]:
+        anchor = '<a href="#" style="display:inline-block;">Explore now</a>'
+        return [
+            SlotFill(slot_id="body", value="Body copy", slot_type="text"),
+            SlotFill(
+                slot_id="cta_row",
+                value="",
+                slot_type="composite",
+                composite=CompositeSlot(
+                    children=(SlotFill("cta_anchor", anchor),),
+                    after_slot="body",
+                    cell_style="padding:0 24px 24px;",
+                    child_separator="\n",
+                ),
+            ),
+        ]
+
+    def test_composite_skipped_at_bridge(self) -> None:
+        # The dedicated branch returns None → cta_row is absent from the result
+        # (no unknown_slot_type warning, no undefined slot reaching the compiler).
+        result = _convert_slot_fills(self._composite_fills(), _section())
+        assert "cta_row" not in result
+
+    def test_body_slot_is_plain_text_without_anchor(self) -> None:
+        # The body slot still converts cleanly; the CTA anchor is simply absent in
+        # the tree path (moved to the renderer-only composite).
+        result = _convert_slot_fills(self._composite_fills(), _section())
+        body = result["body"]
+        assert isinstance(body, TextSlot)
+        assert "<a " not in body.text
+
+    def test_undefined_slot_breaks_compile(self) -> None:
+        # WHY the bridge must skip (not emit) the composite: an undefined slot on a
+        # text-block section fails manifest validation → CompilationError, which
+        # would force a fallback to the legacy renderer for every text-block-with-
+        # CTA email. 51.2's data-slot-composite mode defines the slot and closes it.
+        tree = EmailTree.model_validate(
+            {
+                "metadata": {"subject": "T", "preheader": "P"},
+                "sections": [
+                    {
+                        "component_slug": "text-block",
+                        "slot_fills": {
+                            "body": {"type": "text", "text": "Body copy"},
+                            "cta_row": {
+                                "type": "html",
+                                "html": (
+                                    '<tr><td align="center"><a href="#">Explore now</a></td></tr>'
+                                ),
+                            },
+                        },
+                    }
+                ],
+            }
+        )
+        with pytest.raises(CompilationError, match="cta_row"):
+            TreeCompiler().compile(tree)
 
 
 class TestTokenOverrides:
