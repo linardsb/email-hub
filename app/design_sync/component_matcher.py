@@ -751,6 +751,26 @@ def _cta_label_typography(btn: ButtonElement) -> str:
     return ";".join(decls) + ";"
 
 
+def _cta_padding_css(btn: ButtonElement) -> str:
+    """Build the CTA ``<a>`` padding shorthand from designed box geometry (G3).
+
+    Prefers the button frame's captured auto-layout ``padding_*`` (collapsing to
+    the 2-value shorthand when symmetric, else the 4-value form). When padding is
+    absent, derives a vertical value from the button height (SPECULATIVE — no
+    corpus fixture lacks padding; covered by a synthetic unit test only), and
+    finally falls back to the pre-G3 ``10px 24px`` hardcode.
+    """
+    pt, pr, pb, pl = btn.padding_top, btn.padding_right, btn.padding_bottom, btn.padding_left
+    if pt is not None and pr is not None and pb is not None and pl is not None:
+        if pt == pb and pl == pr:
+            return f"{pt:.0f}px" if pt == pl else f"{pt:.0f}px {pr:.0f}px"
+        return f"{pt:.0f}px {pr:.0f}px {pb:.0f}px {pl:.0f}px"
+    if btn.height is not None and btn.font_size is not None:
+        v = max(0, round((btn.height - btn.font_size * 1.2) / 2))
+        return f"{v}px 24px"
+    return "10px 24px"
+
+
 # Figma layer names that leak MJML/element internals as alt text (Phase 53 B5).
 # These surface as meaningless screen-reader text (``mj-image, (mjml:mj-image),
 # (type: logo)``) and ``mj-image`` is itself a G3-neg generic token.
@@ -871,6 +891,9 @@ def _column_cta_row(btn: ButtonElement) -> str:
     btn_url = html.escape(_safe_url(btn.url))
     bg = _safe_color(btn.fill_color, "#0066cc")
     txt_color = _safe_color(btn.text_color, "#ffffff")
+    # else "4": belt-and-suspenders for non-ingest / pre-G3 buttons. Ingest
+    # (_walk_for_buttons) now yields explicit 0.0 for square, so the corpus never
+    # reaches this branch; kept at 4 (not 0) to preserve legacy-data behavior.
     radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
     border_css = ""
     if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
@@ -878,7 +901,7 @@ def _column_cta_row(btn: ButtonElement) -> str:
         border_css = f"border:{sw}px solid {btn.stroke_color};"
     anchor = (
         f'<a href="{btn_url}" style="display:inline-block;'
-        f"padding:10px 24px;background-color:{bg};color:{txt_color};"
+        f"padding:{_cta_padding_css(btn)};background-color:{bg};color:{txt_color};"
         f"text-decoration:none;{_cta_label_typography(btn)}"
         f'border-radius:{radius}px;{border_css}">{_safe_text(btn.text)}</a>'
     )
@@ -1397,10 +1420,13 @@ def _fills_text_block(
             if stroke:
                 fg = _safe_color(btn.text_color, "#1a1a1a")
                 border = f"border:{max(1, round(btn.stroke_weight))}px solid {stroke};"
+        # else "4": belt-and-suspenders — ingest now yields explicit 0.0 for
+        # square buttons, so the corpus never reaches this branch (see the
+        # matching note in _column_cta_row).
         radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
         cta_parts.append(
             f'<a href="{btn_url}" style="display:inline-block;'
-            f"padding:10px 24px;background-color:{bg};color:{fg};"
+            f"padding:{_cta_padding_css(btn)};background-color:{bg};color:{fg};"
             f"text-decoration:none;{_cta_label_typography(btn)}{border}"
             f'border-radius:{radius}px;">{_safe_text(btn.text)}</a>'
         )

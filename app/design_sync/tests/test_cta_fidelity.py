@@ -12,6 +12,7 @@ from app.design_sync.component_matcher import (
     TokenOverride,
     _build_column_fill_html,
     _build_slot_fills,
+    _cta_padding_css,
     match_section,
 )
 from app.design_sync.component_renderer import ComponentRenderer
@@ -39,18 +40,29 @@ def _button(
     stroke_color: str | None = None,
     stroke_weight: float | None = None,
     url: str | None = "https://example.com",
+    padding_top: float | None = None,
+    padding_right: float | None = None,
+    padding_bottom: float | None = None,
+    padding_left: float | None = None,
+    height: float | None = 48,
+    font_size: float | None = None,
 ) -> ButtonElement:
     return ButtonElement(
         node_id="btn_1",
         text=text,
         width=220,
-        height=48,
+        height=height,
         fill_color=fill_color,
         url=url,
         border_radius=border_radius,
         text_color=text_color,
         stroke_color=stroke_color,
         stroke_weight=stroke_weight,
+        padding_top=padding_top,
+        padding_right=padding_right,
+        padding_bottom=padding_bottom,
+        padding_left=padding_left,
+        font_size=font_size,
     )
 
 
@@ -679,3 +691,110 @@ class TestFillsCtaEmptyDiscipline:
         by_id = {f.slot_id: f for f in fills}
         assert by_id["cta_text"].value == ""
         assert by_id["cta_url"].value == ""
+
+
+class TestCtaPaddingCss:
+    """Track G · G3 — ``_cta_padding_css`` maps captured auto-layout padding to
+    the CSS shorthand, with a height-derived speculative fallback and the pre-G3
+    ``10px 24px`` final hardcode.
+    """
+
+    def test_symmetric_two_value(self) -> None:
+        btn = _button(padding_top=5.0, padding_right=10.0, padding_bottom=5.0, padding_left=10.0)
+        assert _cta_padding_css(btn) == "5px 10px"
+
+    def test_all_equal_collapses_to_one_value(self) -> None:
+        btn = _button(padding_top=12.0, padding_right=12.0, padding_bottom=12.0, padding_left=12.0)
+        assert _cta_padding_css(btn) == "12px"
+
+    def test_asymmetric_four_value(self) -> None:
+        btn = _button(padding_top=1.0, padding_right=2.0, padding_bottom=3.0, padding_left=4.0)
+        assert _cta_padding_css(btn) == "1px 2px 3px 4px"
+
+    def test_designed_zero_padding_preserved(self) -> None:
+        btn = _button(padding_top=0.0, padding_right=0.0, padding_bottom=0.0, padding_left=0.0)
+        assert _cta_padding_css(btn) == "0px"
+
+    def test_height_fallback_when_padding_absent(self) -> None:
+        # No padding → derive vertical from height: round((44 - 16*1.2)/2) = 12.
+        btn = _button(height=44.0, font_size=16.0)
+        assert _cta_padding_css(btn) == "12px 24px"
+
+    def test_final_hardcode_when_no_padding_no_font(self) -> None:
+        btn = _button(height=48.0, font_size=None)
+        assert _cta_padding_css(btn) == "10px 24px"
+
+
+class TestButtonBoxGeometry:
+    """Track G · G3 — both CTA render sites emit the button's captured padding
+    (via _cta_padding_css) and a square-in-design radius (0.0 → 0px).
+    """
+
+    def _column_html(self, btn: ButtonElement) -> str:
+        group = ColumnGroup(
+            column_idx=0,
+            node_id="col_1",
+            node_name="Column",
+            texts=[],
+            images=[],
+            buttons=[btn],
+        )
+        return _build_column_fill_html(group)
+
+    def _text_block_html(self, btn: ButtonElement) -> str:
+        from app.design_sync.component_matcher import _fills_text_block
+
+        section = _make_section(EmailSectionType.CONTENT, buttons=[btn])
+        fills = _fills_text_block(section, 600)
+        return next(f for f in fills if f.slot_id == "body").value
+
+    def test_column_site_emits_padding_and_square_radius(self) -> None:
+        btn = _button(
+            "Art prints",
+            fill_color="#000000",
+            text_color="#ffffff",
+            border_radius=0.0,
+            padding_top=5.0,
+            padding_right=10.0,
+            padding_bottom=5.0,
+            padding_left=10.0,
+        )
+        html = self._column_html(btn)
+        assert "padding:5px 10px" in html
+        assert "border-radius:0px" in html
+
+    def test_text_block_site_emits_padding_and_square_radius(self) -> None:
+        btn = _button(
+            "Stationery",
+            fill_color="#000000",
+            text_color="#ffffff",
+            border_radius=0.0,
+            padding_top=5.0,
+            padding_right=10.0,
+            padding_bottom=5.0,
+            padding_left=10.0,
+        )
+        html = self._text_block_html(btn)
+        assert "padding:5px 10px" in html
+        assert "border-radius:0px" in html
+
+    def test_main_button_padding_and_rounded_radius(self) -> None:
+        btn = _button(
+            "Shop now",
+            fill_color="#4e3092",
+            text_color="#ffffff",
+            border_radius=25.0,
+            padding_top=12.0,
+            padding_right=20.0,
+            padding_bottom=12.0,
+            padding_left=20.0,
+        )
+        html = self._column_html(btn)
+        assert "padding:12px 20px" in html
+        assert "border-radius:25px" in html
+
+    def test_speculative_height_fallback_renders(self) -> None:
+        # No captured padding → helper derives vertical from height (h44/f16 → 12).
+        btn = _button("Shop Now", fill_color="#0066cc", height=44.0, font_size=16.0)
+        html = self._column_html(btn)
+        assert "padding:12px 24px" in html

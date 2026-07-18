@@ -9,6 +9,7 @@ import pytest
 from app.design_sync.brief_generator import generate_brief
 from app.design_sync.diagnose.report import load_structure_from_json
 from app.design_sync.figma.layout_analyzer import (
+    ButtonElement,
     ColumnGroup,
     ColumnLayout,
     DesignLayoutDescription,
@@ -19,6 +20,7 @@ from app.design_sync.figma.layout_analyzer import (
     _classify_by_name,
     _detect_content_hierarchy,
     _has_large_image_child,
+    _walk_for_buttons,
     analyze_layout,
     compute_column_width_fractions,
 )
@@ -2236,3 +2238,67 @@ class TestPeelRows:
         expanded = _expand_container_wrappers([stacked], NamingConvention.MJML)
         by_id = {node.id: row_id for node, _, _, row_id in expanded}
         assert by_id == {"top": None, "bottom": None}
+
+
+class TestButtonBoxGeometryCapture:
+    """Track G · G3 — ``_walk_for_buttons`` captures the button frame's
+    auto-layout padding onto ``ButtonElement`` and normalizes an absent Figma
+    ``cornerRadius`` (None) to a square ``0.0`` rather than leaving it None.
+    """
+
+    @staticmethod
+    def _button_node(
+        *,
+        corner_radius: float | None,
+        padding: tuple[float, float, float, float] = (5.0, 10.0, 5.0, 10.0),
+    ) -> DesignNode:
+        return DesignNode(
+            id="btn",
+            name="button-cta",
+            type=DesignNodeType.FRAME,
+            x=0,
+            y=0,
+            width=200,
+            height=48,
+            fill_color="#4e3092",
+            corner_radius=corner_radius,
+            padding_top=padding[0],
+            padding_right=padding[1],
+            padding_bottom=padding[2],
+            padding_left=padding[3],
+            children=[
+                DesignNode(
+                    id="btn-text",
+                    name="label",
+                    type=DesignNodeType.TEXT,
+                    x=10,
+                    y=10,
+                    width=180,
+                    height=28,
+                    text_content="Shop now",
+                ),
+            ],
+        )
+
+    def test_padding_captured_and_absent_radius_becomes_square(self) -> None:
+        results: list[ButtonElement] = []
+        _walk_for_buttons(self._button_node(corner_radius=None), results)
+        assert len(results) == 1
+        btn = results[0]
+        assert (btn.padding_top, btn.padding_right, btn.padding_bottom, btn.padding_left) == (
+            5.0,
+            10.0,
+            5.0,
+            10.0,
+        )
+        # Absent Figma radius (None) is a square frame → normalized to 0.0.
+        assert btn.border_radius == 0.0
+
+    def test_explicit_radius_survives_capture(self) -> None:
+        results: list[ButtonElement] = []
+        _walk_for_buttons(
+            self._button_node(corner_radius=25.0, padding=(12.0, 20.0, 12.0, 20.0)), results
+        )
+        assert len(results) == 1
+        assert results[0].border_radius == 25.0
+        assert results[0].padding_right == 20.0
