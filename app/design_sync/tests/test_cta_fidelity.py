@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -13,7 +15,9 @@ from app.design_sync.component_matcher import (
     TokenOverride,
     _build_column_fill_html,
     _build_slot_fills,
+    _cta_overrides,
     _cta_padding_css,
+    _cta_radius_css,
     _fills_text_block,
     match_section,
 )
@@ -26,7 +30,9 @@ from app.design_sync.figma.layout_analyzer import (
     ImagePlaceholder,
     TextBlock,
 )
+from app.design_sync.frame_rules import CornerRadiusSpec
 from app.design_sync.protocol import DesignNode, DesignNodeType
+from app.design_sync.tests.regression_runner import run_case_conversion
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -857,3 +863,153 @@ class TestButtonBoxGeometry:
         btn = _button("Shop Now", fill_color="#0066cc", height=44.0, font_size=16.0)
         html = self._column_html(btn)
         assert "padding:12px 24px" in html
+
+
+# Per-corner longhand string (TL,TR,BR,BL) for an asymmetric r12/r18 pill —
+# shared by the helper and render-site tests below.
+_PER_CORNER_SPEC = CornerRadiusSpec(scalar=None, per_corner=(12.0, 12.0, 18.0, 18.0))
+_PER_CORNER_LONGHANDS = (
+    "border-top-left-radius:12px;"
+    "border-top-right-radius:12px;"
+    "border-bottom-right-radius:18px;"
+    "border-bottom-left-radius:18px"
+)
+
+
+class TestCtaRadiusCss:
+    """Track G · G5 — ``_cta_radius_css`` emits the four per-corner longhands when
+    the button carries ``corner_radius_spec.per_corner`` (Rule 8 asymmetric pill),
+    else the scalar ``border-radius`` shorthand. The scalar branch is byte-identical
+    to the pre-G5 inline emission (``{r:.0f}px``, legacy ``4`` fallback when absent) —
+    every corpus button has ``corner_radii: null``, so the per-corner branch is
+    synthetic-only defensive plumbing.
+    """
+
+    def test_per_corner_emits_four_longhands_in_order(self) -> None:
+        btn = replace(_button(), corner_radius_spec=_PER_CORNER_SPEC)
+        assert _cta_radius_css(btn) == _PER_CORNER_LONGHANDS
+
+    def test_scalar_radius_shorthand(self) -> None:
+        assert _cta_radius_css(_button(border_radius=25.0)) == "border-radius:25px"
+
+    def test_designed_zero_radius_is_square(self) -> None:
+        assert _cta_radius_css(_button(border_radius=0.0)) == "border-radius:0px"
+
+    def test_absent_radius_keeps_legacy_4px_fallback(self) -> None:
+        assert _cta_radius_css(_button(border_radius=None)) == "border-radius:4px"
+
+    def test_scalar_spec_without_per_corner_uses_scalar(self) -> None:
+        # A spec carrying only ``scalar`` (no ``per_corner``) must NOT trigger the
+        # longhand branch — the render still reads ``btn.border_radius``.
+        btn = replace(
+            _button(border_radius=25.0),
+            corner_radius_spec=CornerRadiusSpec(scalar=25.0, per_corner=None),
+        )
+        assert _cta_radius_css(btn) == "border-radius:25px"
+
+
+class TestCtaRadiusRenderSites:
+    """Track G · G5 — per-corner longhands reach all three button radius sites:
+    the two inline ``<a>`` sites (column + text-block) and the ``_cta_overrides``
+    TokenOverride form.
+    """
+
+    def test_column_site_emits_longhands(self) -> None:
+        btn = replace(
+            _button("Art prints", fill_color="#4e3092", text_color="#ffffff"),
+            corner_radius_spec=_PER_CORNER_SPEC,
+        )
+        group = ColumnGroup(
+            column_idx=0,
+            node_id="col_1",
+            node_name="Column",
+            texts=[],
+            images=[],
+            buttons=[btn],
+        )
+        html = _build_column_fill_html(group)
+        assert _PER_CORNER_LONGHANDS in html
+        # The scalar shorthand must be suppressed (``border-radius:`` is not a
+        # substring of the ``border-*-radius:`` longhands).
+        assert "border-radius:" not in html
+
+    def test_text_block_site_emits_longhands(self) -> None:
+        btn = replace(
+            _button("Stationery", fill_color="#4e3092", text_color="#ffffff"),
+            corner_radius_spec=_PER_CORNER_SPEC,
+        )
+        section = _make_section(EmailSectionType.CONTENT, buttons=[btn])
+        fills = _fills_text_block(section, 600)
+        body = next(f for f in fills if f.slot_id == "body").value
+        assert _PER_CORNER_LONGHANDS in body
+        assert "border-radius:" not in body
+
+    def test_cta_overrides_emits_four_longhand_overrides(self) -> None:
+        btn = replace(_button(border_radius=None), corner_radius_spec=_PER_CORNER_SPEC)
+        radius = {
+            o.css_property: o.value
+            for o in _cta_overrides(btn, "_cta")
+            if o.css_property.endswith("-radius")
+        }
+        assert radius == {
+            "border-top-left-radius": "12px",
+            "border-top-right-radius": "12px",
+            "border-bottom-right-radius": "18px",
+            "border-bottom-left-radius": "18px",
+        }
+
+    def test_cta_overrides_scalar_radius_unchanged(self) -> None:
+        # No per_corner → a single scalar border-radius override (byte-identical
+        # to the pre-G5 corpus emission).
+        radius = [
+            o
+            for o in _cta_overrides(_button(border_radius=0.0), "_cta")
+            if "radius" in o.css_property
+        ]
+        assert len(radius) == 1
+        assert radius[0].css_property == "border-radius"
+        assert radius[0].value == "0px"
+
+
+# Byte-identical reference for the corpus tag-pills, recorded from the committed
+# ``data/debug/{7,5}/expected.html`` at the G5 branch point (post-G3/G4/F10).
+_C7_ART_PRINTS = (
+    '<a href="#" style="display:inline-block;padding:5px 10px;'
+    "background-color:#4E3092;color:#FFFFFF;text-decoration:none;"
+    "font-family:Noto Sans,sans-serif;font-size:10px;font-weight:700;"
+    'border-radius:0px;">Art prints</a>'
+)
+_C7_STATIONERY = _C7_ART_PRINTS.replace(">Art prints<", ">Stationery<")
+_C5_MELBOURNE = (
+    '<a href="#" style="display:inline-block;padding:12px;'
+    "background-color:#222222;color:#FFFFFF;text-decoration:none;"
+    "font-family:Helvetica,sans-serif;font-size:14px;font-weight:400;"
+    'border-radius:25px;">Melbourne</a>'
+)
+
+_DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
+
+
+class TestPillGuardByteIdentical:
+    """Track G · G5 — the corpus tag-pills stay byte-identical after G5.
+
+    Renders case 7 (c7 'Art prints'/'Stationery' square #4E3092 pills, r0) and
+    case 5 ('Melbourne' r25 #222222 city pills) through the real converter and
+    pins each pill's ``<a>`` style string. CI-runnable without the gitignored
+    pixel assets — ``run_case_conversion`` reads only ``structure.json`` +
+    ``tokens.json``. Load-bearing net for the "G5 is corpus byte-identical" claim.
+    """
+
+    def _render(self, case_id: str) -> str:
+        result = run_case_conversion(_DEBUG_DIR / case_id)
+        if result is None:
+            pytest.skip(f"case {case_id}: missing structure.json/tokens.json")
+        return result.html
+
+    def test_c7_square_pills_byte_identical(self) -> None:
+        html = self._render("7")
+        assert _C7_ART_PRINTS in html
+        assert _C7_STATIONERY in html
+
+    def test_c5_rounded_city_pill_byte_identical(self) -> None:
+        assert _C5_MELBOURNE in self._render("5")

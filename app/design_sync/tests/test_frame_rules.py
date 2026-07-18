@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from app.design_sync.component_matcher import (
-    TokenOverride,
     _build_token_overrides,
 )
 from app.design_sync.figma.layout_analyzer import (
@@ -18,8 +17,6 @@ from app.design_sync.figma.layout_analyzer import (
 )
 from app.design_sync.frame_rules import (
     CornerRadiusSpec,
-    PillAlignment,
-    rule_7_pill_alignment,
     rule_8_corner_radius,
     rule_10_image_corner_radii,
     rule_11_card_width_from_dominant_image,
@@ -76,44 +73,6 @@ def _section(
         inner_bg=inner_bg,
         inner_card_fixed_width=inner_card_fixed_width,
     )
-
-
-# ---------------------------------------------------------------------------
-# Rule 7 — pill alignment from x-offset
-# ---------------------------------------------------------------------------
-
-
-class TestRule7PillAlignment:
-    def test_left_aligned_pill(self) -> None:
-        parent = _node(x=20, width=560)
-        pill = _node(x=20, width=80)
-        result = rule_7_pill_alignment(pill, parent)
-        assert isinstance(result, PillAlignment)
-        assert result.align == "left"
-
-    def test_right_aligned_pill(self) -> None:
-        parent = _node(x=20, width=560)  # right edge = 580
-        pill = _node(x=500, width=80)  # right edge = 580
-        result = rule_7_pill_alignment(pill, parent)
-        assert result.align == "right"
-
-    def test_centered_pill(self) -> None:
-        parent = _node(x=0, width=600)
-        pill = _node(x=260, width=80)
-        result = rule_7_pill_alignment(pill, parent)
-        assert result.align == "center"
-
-    def test_within_tolerance_treated_as_left(self) -> None:
-        parent = _node(x=20, width=560)
-        pill = _node(x=23, width=80)  # 3px offset, under 4px tolerance
-        result = rule_7_pill_alignment(pill, parent)
-        assert result.align == "left"
-
-    def test_outside_tolerance_falls_back_to_center(self) -> None:
-        parent = _node(x=20, width=560)
-        pill = _node(x=30, width=80)  # 10px offset, exceeds tolerance
-        result = rule_7_pill_alignment(pill, parent)
-        assert result.align == "center"
 
 
 # ---------------------------------------------------------------------------
@@ -259,20 +218,6 @@ class TestTokenOverrideEmissions:
             "border-bottom-right-radius": "0px",
             "border-bottom-left-radius": "6px",
         }
-
-    def test_pill_alignment_emits_text_align_on_heading(self) -> None:
-        text = TextBlock(
-            node_id="t1",
-            content="Tag",
-            is_heading=True,
-            layout_align="left",
-        )
-        section = _section(texts=[text])
-        overrides = _build_token_overrides(section)
-        assert (
-            TokenOverride(css_property="text-align", target_class="_heading", value="left")
-            in overrides
-        )
 
 
 # ---------------------------------------------------------------------------

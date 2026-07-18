@@ -382,7 +382,6 @@
         "text_decoration": { "type": ["string", "null"], "default": null, "maxLength": 20 },
         "hyperlink": { "type": ["string", "null"], "default": null, "maxLength": 2000 },
         "role_hint": { "type": ["string", "null"], "default": null, "maxLength": 20 },
-        "layout_align": { "type": ["string", "null"], "default": null, "maxLength": 20 },
         "style_runs": {
           "type": "array",
           "items": { "$ref": "#/$defs/style_run" },

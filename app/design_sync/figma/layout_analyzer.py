@@ -89,9 +89,6 @@ class TextBlock:
     text_decoration: str | None = None  # underline|line-through
     source_frame_id: str | None = None  # Parent frame that contains this text
     role_hint: str | None = None  # "heading" | "body" | "label" | "cta"
-    # Rule 7 (Phase 50.5) — alignment derived from x-offset against parent column.
-    # Populated only when the text was identified as a tag/pill candidate.
-    layout_align: str | None = None  # "left" | "center" | "right" | None
 
 
 @dataclass(frozen=True)

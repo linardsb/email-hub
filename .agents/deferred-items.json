@@ -1077,6 +1077,45 @@
       "symptom_if_broken": "A text-block-with-CTA email rendered through the tree path shows no CTA button; before G4 it showed the button label as body text.",
       "closes_when": "51.2 adds a data-slot-composite (or cta_row) slot to the relevant seeds + a TreeCompiler composite-fill path, so tree_bridge can emit the composite and it renders. Guarded by test_undefined_slot_breaks_compile + test_composite_skipped_at_bridge (test_tree_bridge.py).",
       "blocked_by": ["phase-53g-g4-composite-slot-infra"]
+    },
+    {
+      "id": "phase-53g-g5-tag-pill-slot",
+      "phase": "53g",
+      "title": "Tag-pill slot (51.3) — per-corner radius threaded to button render sites; inert Rule 7 retired",
+      "status": "closed",
+      "severity": "soft",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "closed_commit": "pending",
+      "summary": "G5 threads CornerRadiusSpec.per_corner (Rule 8 — r12/r18 asymmetric pills) to the three button radius render sites via a shared _cta_radius_css helper (mirroring the image per-corner emitter), and retires the inert Rule 7 pill-alignment path (rule_7_pill_alignment was never called; TextBlock/DocumentText.layout_align never assigned in prod; the _build_token_overrides consumer loop inert). The corpus already renders pills at design fidelity post-G3/G4/F10 (c7 'Art prints'/'Stationery' 5px 10px #4E3092/#FFFFFF/700 square; c5 city pills 12px #222222/#FFFFFF r25) — every corpus button carries corner_radii:null, so the per-corner branch is defensive plumbing and the whole change is corpus byte-identical. Satisfies the per-corner deferral noted in phase-53g-g3-button-box-geometry.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_cta_radius_css helper)",
+        "app/design_sync/component_matcher.py (_column_cta_row + _fills_text_block CTA emit + _cta_overrides — the 3 radius sites)",
+        "app/design_sync/frame_rules.py (rule_7_pill_alignment + PillAlignment + Alignment REMOVED; rule_8_corner_radius kept)",
+        "app/design_sync/figma/layout_analyzer.py (TextBlock.layout_align REMOVED)",
+        "app/design_sync/email_design_document.py (DocumentText.layout_align + to_json/from_json/from_text_block/to_text_block passthroughs REMOVED)",
+        "data/schemas/email-design-document-v1.json (text-block layout_align property REMOVED)"
+      ],
+      "symptom_if_broken": "A designed asymmetric pill (per_corner e.g. 12,12,18,18) renders a single scalar border-radius instead of the 4 longhands; OR a corpus pill (c7 square #4E3092, c5 r25) diverges byte-for-byte from its expected.html; OR a dangling layout_align / rule_7 reference remains.",
+      "closes_when": "per-corner emitted at all button render sites + Rule 7 removed, corpus byte-identical (git diff --ignore-all-space data/debug empty), synthetic per-corner + c7/c5 pill guard tests green (MET: Phase 53g G5)",
+      "notes": "Corpus byte-identical by design (Option a) — no expected.html regen committed (verified: full-corpus regen of cases 5/6/7/8/9/10 → git diff --ignore-all-space data/debug empty; the only raw diff is the pre-existing c8 trailing-ws churn). The prompt's 'A3 c7 up' is unmeetable here because c7 pills already match the design; the 0.794 residual is the membership-card shell + spec mini-table owned by G6/G7. Guarded by TestCtaRadiusCss + TestCtaRadiusRenderSites + TestPillGuardByteIdentical (test_cta_fidelity.py) plus the retargeted test_frame_rules.py / test_bridge_roundtrip.py. c7/c5 structure.json+tokens.json are committed (only the PNG pixel assets are gitignored) → the pill guard is a real CI gate."
+    },
+    {
+      "id": "phase-53g-g5-pill-white-on-light-latent",
+      "phase": "53g",
+      "title": "Pill with absent text_color on a light fill would render white-on-light (invisible)",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-18",
+      "introduced_commit": "pending",
+      "summary": "The filled-pill/CTA default label color is white (_column_cta_row txt_color and _fills_text_block fg both fall back to #ffffff). A pill whose text_color was NOT captured AND whose fill is light would render white-on-light (invisible). No corpus fixture exercises this — every corpus pill carries a captured text_color (c7 #FFFFFF, c5 #FFFFFF, both on dark fills), so white-bold is design-correct-as-captured, not a default. G5 deliberately does NOT add speculative luminance-based inversion (Simplicity First); the safe effective rule already holds — honor captured values, keep white as the filled-pill fallback, never force dark.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_column_cta_row — txt_color = _safe_color(btn.text_color, '#ffffff'))",
+        "app/design_sync/component_matcher.py (_fills_text_block — fg = _safe_color(btn.text_color, '#ffffff'); stroke-gated #1a1a1a darker fallback for outlined buttons)"
+      ],
+      "symptom_if_broken": "A pill/CTA with absent text_color on a light (near-white) fill renders an invisible white label.",
+      "closes_when": "A real fixture surfaces a light-fill absent-text_color pill, OR a luminance-based label-color fallback ships (cf the stroke-gated dark-text precedent phase-53-b8-text-block-solid-cta-text-color).",
+      "notes": "Latent only — the stroke-gated branch in _fills_text_block already darkens to #1a1a1a for OUTLINED buttons; the uncovered case is a FILLED light pill with no stroke and no captured text color. Cross-ref phase-53-b8-text-block-solid-cta-text-color (the stroke-gated dark-text precedent)."
     }
   ],
   "tooling_followups": [

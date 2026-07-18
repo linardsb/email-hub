@@ -535,7 +535,6 @@ class DocumentText:
     text_decoration: str | None = None  # underline|line-through
     hyperlink: str | None = None
     role_hint: str | None = None  # heading|body|label|cta
-    layout_align: str | None = None  # left|center|right
     style_runs: tuple[DocumentStyleRun, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
@@ -564,8 +563,6 @@ class DocumentText:
             d["hyperlink"] = self.hyperlink
         if self.role_hint is not None:
             d["role_hint"] = self.role_hint
-        if self.layout_align is not None:
-            d["layout_align"] = self.layout_align
         if self.style_runs:
             d["style_runs"] = [r.to_json() for r in self.style_runs]
         return d
@@ -587,7 +584,6 @@ class DocumentText:
             text_decoration=data.get("text_decoration"),
             hyperlink=data.get("hyperlink"),
             role_hint=data.get("role_hint"),
-            layout_align=data.get("layout_align"),
             style_runs=tuple(DocumentStyleRun.from_json(r) for r in data.get("style_runs", [])),
         )
 
@@ -608,7 +604,6 @@ class DocumentText:
             text_decoration=t.text_decoration,
             hyperlink=t.hyperlink,
             role_hint=t.role_hint,
-            layout_align=t.layout_align,
             style_runs=tuple(DocumentStyleRun.from_style_run(r) for r in t.style_runs),
         )
 
@@ -628,7 +623,6 @@ class DocumentText:
             text_decoration=self.text_decoration,
             hyperlink=self.hyperlink,
             role_hint=self.role_hint,
-            layout_align=self.layout_align,
             style_runs=tuple(r.to_style_run() for r in self.style_runs),
         )
 

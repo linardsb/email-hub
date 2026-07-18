@@ -795,6 +795,31 @@ def _cta_padding_css(btn: ButtonElement) -> str:
     return "10px 24px"
 
 
+def _cta_radius_css(btn: ButtonElement) -> str:
+    """Build the CTA ``<a>`` border-radius CSS from designed corner geometry (G5).
+
+    Emits the four per-corner longhands when the button frame carries an
+    asymmetric ``corner_radius_spec.per_corner`` (Rule 8 — e.g. r12/r18 pills),
+    else the scalar ``border-radius`` shorthand. The scalar branch is
+    byte-identical to the pre-G5 inline emission (``{r:.0f}px``, legacy ``4``
+    fallback when the radius is absent): every corpus button has
+    ``corner_radii: null`` so the per-corner branch is defensive plumbing
+    exercised only by synthetic tests. Mirrors the image per-corner emitter in
+    ``_build_token_overrides`` (Rule 10) — same TL,TR,BR,BL order.
+    """
+    spec = getattr(btn, "corner_radius_spec", None)
+    if spec is not None and spec.per_corner is not None:
+        tl, tr, br, bl = spec.per_corner
+        return (
+            f"border-top-left-radius:{tl:.0f}px;"
+            f"border-top-right-radius:{tr:.0f}px;"
+            f"border-bottom-right-radius:{br:.0f}px;"
+            f"border-bottom-left-radius:{bl:.0f}px"
+        )
+    r = btn.border_radius if btn.border_radius is not None else 4
+    return f"border-radius:{r:.0f}px"
+
+
 # Figma layer names that leak MJML/element internals as alt text (Phase 53 B5).
 # These surface as meaningless screen-reader text (``mj-image, (mjml:mj-image),
 # (type: logo)``) and ``mj-image`` is itself a G3-neg generic token.
@@ -915,10 +940,6 @@ def _column_cta_row(btn: ButtonElement) -> str:
     btn_url = html.escape(_safe_url(btn.url))
     bg = _safe_color(btn.fill_color, "#0066cc")
     txt_color = _safe_color(btn.text_color, "#ffffff")
-    # else "4": belt-and-suspenders for non-ingest / pre-G3 buttons. Ingest
-    # (_walk_for_buttons) now yields explicit 0.0 for square, so the corpus never
-    # reaches this branch; kept at 4 (not 0) to preserve legacy-data behavior.
-    radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
     border_css = ""
     if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
         sw = f"{btn.stroke_weight:.0f}" if btn.stroke_weight else "1"
@@ -927,7 +948,7 @@ def _column_cta_row(btn: ButtonElement) -> str:
         f'<a href="{btn_url}" style="display:inline-block;'
         f"padding:{_cta_padding_css(btn)};background-color:{bg};color:{txt_color};"
         f"text-decoration:none;{_cta_label_typography(btn)}"
-        f'border-radius:{radius}px;{border_css}">{_safe_text(btn.text)}</a>'
+        f'{_cta_radius_css(btn)};{border_css}">{_safe_text(btn.text)}</a>'
     )
     return f"<tr><td>{anchor}</td></tr>"
 
@@ -1472,15 +1493,11 @@ def _fills_text_block(
             if stroke:
                 fg = _safe_color(btn.text_color, "#1a1a1a")
                 border = f"border:{max(1, round(btn.stroke_weight))}px solid {stroke};"
-        # else "4": belt-and-suspenders — ingest now yields explicit 0.0 for
-        # square buttons, so the corpus never reaches this branch (see the
-        # matching note in _column_cta_row).
-        radius = f"{btn.border_radius:.0f}" if btn.border_radius is not None else "4"
         cta_parts.append(
             f'<a href="{btn_url}" style="display:inline-block;'
             f"padding:{_cta_padding_css(btn)};background-color:{bg};color:{fg};"
             f"text-decoration:none;{_cta_label_typography(btn)}{border}"
-            f'border-radius:{radius}px;">{_safe_text(btn.text)}</a>'
+            f'{_cta_radius_css(btn)};">{_safe_text(btn.text)}</a>'
         )
     if cta_parts:
         # 51.1 own-row CTA (M8): emit the CTA as a composite row spliced after the
@@ -2198,7 +2215,16 @@ def _cta_overrides(btn: ButtonElement, target: str) -> list[TokenOverride]:
         out.append(TokenOverride("background-color", target, btn.fill_color))
     if btn.text_color and _HEX_COLOR_RE.match(btn.text_color):
         out.append(TokenOverride("color", target, btn.text_color))
-    if btn.border_radius is not None:
+    # Per-corner radius (G5) — mirror the image emitter's 4 longhands; falls back
+    # to the scalar shorthand for the corpus (all buttons carry corner_radii:null).
+    spec = getattr(btn, "corner_radius_spec", None)
+    if spec is not None and spec.per_corner is not None:
+        tl, tr, br, bl = spec.per_corner
+        out.append(TokenOverride("border-top-left-radius", target, f"{tl:.0f}px"))
+        out.append(TokenOverride("border-top-right-radius", target, f"{tr:.0f}px"))
+        out.append(TokenOverride("border-bottom-right-radius", target, f"{br:.0f}px"))
+        out.append(TokenOverride("border-bottom-left-radius", target, f"{bl:.0f}px"))
+    elif btn.border_radius is not None:
         out.append(TokenOverride("border-radius", target, f"{btn.border_radius:.0f}px"))
     if btn.stroke_color and _HEX_COLOR_RE.match(btn.stroke_color):
         out.append(TokenOverride("border-color", target, btn.stroke_color))
@@ -2305,17 +2331,12 @@ def _build_token_overrides(
         overrides.append(TokenOverride("border-bottom-right-radius", target, f"{br:.0f}px"))
         overrides.append(TokenOverride("border-bottom-left-radius", target, f"{bl:.0f}px"))
 
-    # Rule 7 (Phase 50.5) — tag/pill alignment surfaced on the heading slot
-    # until 51.3 ships the tag slot proper. Picks the first text whose
-    # ``layout_align`` was populated by tag detection.
-    for text in section.texts:
-        if text.layout_align in ("left", "center", "right"):
-            overrides.append(TokenOverride("text-align", "_heading", text.layout_align))
-            break
+    # Pills render via captured text_color/font_weight + column y-order (Rule 8
+    # radius, F10 content_order); no separate alignment slot is needed. The inert
+    # Rule 7 tag-alignment path (a never-populated ``layout_align``) was retired
+    # in G5/51.3 — see phase-53g-g5-tag-pill-slot.
 
     # Gap 11 (Phase 50.6) — text-align from the text-node's own attribute.
-    # Emitted after Rule 7 so an explicit ``text_align`` wins over the
-    # tag-detection heuristic via last-write-wins in the renderer.
     for text in section.texts:
         align = text.text_align.lower() if text.text_align else None
         if text.is_heading and align in ("left", "center", "right", "justify"):
