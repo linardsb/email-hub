@@ -1,4 +1,4 @@
-"""Pure FRAME-tree rules — codified detection rules 7, 8, 10, 11.
+"""Pure FRAME-tree rules — codified detection rules 8, 10, 11.
 
 Codifies rules from docs/architecture/opus-figma-to-html-process.md §8.3.
 Each rule is a pure function: takes Figma node data, returns a structured
@@ -10,20 +10,8 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Literal
 
 from app.design_sync.protocol import DesignNode, DesignNodeType
-
-Alignment = Literal["left", "center", "right"]
-
-
-@dataclass(frozen=True)
-class PillAlignment:
-    """Output of Rule 7."""
-
-    align: Alignment
-    pill_x: float
-    parent_x: float
 
 
 @dataclass(frozen=True)
@@ -40,25 +28,6 @@ class CardWidthSpec:
 
     fixed_width_px: int
     use_class: str = "wf"
-
-
-def rule_7_pill_alignment(
-    pill: DesignNode,
-    parent_column: DesignNode,
-    *,
-    tolerance_px: float = 4.0,
-) -> PillAlignment:
-    """Pill / tag alignment from child x-coordinate (not heuristic)."""
-    pill_x = pill.x if pill.x is not None else 0.0
-    pill_w = pill.width if pill.width is not None else 0.0
-    parent_x = parent_column.x if parent_column.x is not None else 0.0
-    parent_w = parent_column.width if parent_column.width is not None else 0.0
-
-    if abs(pill_x - parent_x) <= tolerance_px:
-        return PillAlignment(align="left", pill_x=pill_x, parent_x=parent_x)
-    if abs((pill_x + pill_w) - (parent_x + parent_w)) <= tolerance_px:
-        return PillAlignment(align="right", pill_x=pill_x, parent_x=parent_x)
-    return PillAlignment(align="center", pill_x=pill_x, parent_x=parent_x)
 
 
 def rule_8_corner_radius(node: DesignNode) -> CornerRadiusSpec:

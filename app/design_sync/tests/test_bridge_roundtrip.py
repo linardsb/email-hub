@@ -88,7 +88,6 @@ def _full_text_block(prefix: str) -> TextBlock:
         text_transform="uppercase",
         text_decoration="underline",
         role_hint="heading",
-        layout_align="right",
     )
 
 
@@ -247,7 +246,6 @@ def test_text_fields_survive() -> None:
     assert t.text_transform == original.text_transform
     assert t.text_decoration == original.text_decoration
     assert t.role_hint == original.role_hint
-    assert t.layout_align == original.layout_align
     assert t.hyperlink == original.hyperlink
     assert t.style_runs == original.style_runs
     assert isinstance(t.style_runs, tuple)
@@ -356,7 +354,6 @@ def _text_blocks(draw: st.DrawFn) -> TextBlock:
         text_transform=draw(st.one_of(st.none(), st.sampled_from(["uppercase", "lowercase"]))),
         text_decoration=draw(st.one_of(st.none(), st.sampled_from(["underline", "line-through"]))),
         role_hint=draw(st.one_of(st.none(), st.sampled_from(["heading", "body", "cta"]))),
-        layout_align=draw(st.one_of(st.none(), st.sampled_from(["left", "center", "right"]))),
         style_runs=tuple(
             draw(
                 st.lists(
@@ -431,7 +428,6 @@ _TEXT_FIELDS = (
     "text_decoration",
     "hyperlink",
     "role_hint",
-    "layout_align",
     "style_runs",
 )
 _IMAGE_FIELDS = ("export_node_id", "corner_radius_spec")
