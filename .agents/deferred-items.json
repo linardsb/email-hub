@@ -763,7 +763,8 @@
       "id": "phase-53f-f7-image-gallery-membership-card",
       "phase": "53.f",
       "title": "LEGO membership card [19] (image-gallery seed) has no _inner/col-bg target, stays surface-less",
-      "status": "deferred",
+      "status": "closed",
+      "closed_commit": "fix/phase-53g6-card-composite (squash SHA stamped post-merge)",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
@@ -778,7 +779,25 @@
       "blocked_by": [
         "phase-51-converter-fidelity-51.2"
       ],
-      "notes": "Split from phase-53f-f7-column-seed-no-inner at RC-F7 card-surface execution (2026-07-05). The column-layout half (6 benefit cards) shipped; this image-gallery half was explicitly scoped out (different seed) and deferred to 51.1."
+      "notes": "Split from phase-53f-f7-column-seed-no-inner at RC-F7 card-surface execution (2026-07-05). The column-layout half (6 benefit cards) shipped; this image-gallery half was explicitly scoped out (different seed) and deferred to 51.1.",
+      "closure_note": "Closed 2026-07-19 by Track G · G6 / 51.2 (plan .agents/plans/53-g6-card-composite.md). The card-shell now routes to a new `_fills_card` builder (component_matcher.py) hosted by the registered `td` seed (single `content` slot, no seed-default mustache) instead of image-gallery: `_fills_card` orders children by column_groups[0].content_order, RESTORES the dropped identity TEXT, and wraps logo/text/barcode/shape as stacked rows via `render_card_table` (white bgcolor + border-radius:18px + border-collapse:separate/overflow:hidden). Width=max(image width)=440 (Rule 11; inner_card_fixed_width is None here — the images sit nested below the card frame so rule_11's direct-child check doesn't fire). Rule 9 by construction: no dark-mode class on the card. Detection predicate (is_physical_card_surface AND inner_bg AND images AND texts AND column_layout==SINGLE) is probe-proven unique to c7 section 14 across all 6 fixtures. NOTE: the closes_when above UNDER-described the fix — it anticipated '1 added wrapper on section [19]', but the real change also restores the dropped TEXT and stacks y-ordered rows (c7 diff +27/-48, isolated to section 14). c7 fidelity vs documented Track-F baseline (local, gmail_web, full_image): full_image 0.771->0.893, section_median 0.804->0.909, section_min 0.351->0.778 (the membership-card band was the 0.351 case floor; post-fix the case floor rose to 0.778 — the new worst band is a different/adjacent region, to be identified when G7 lands). c5/c6/c8/c9/c10 byte-identical (only c7 expected.html changed); ladder 13/9/8/10/8/12 held. Two render-integration traps fixed inside the card fill (NOT the shared machinery): the container-bg override's _replace_first_css_prop clobbers the first inline background-color, so the card's white rides on the bgcolor ATTR only; and data-node-id is omitted from card images so _apply_image_corner_radius (Rule 10) can't stamp per-corner radii the card already clips via overflow:hidden. `phase-53g-g4-general-sub-template-recursion` stays DEFERRED — the card's children are terminal leaves (no sub-template substitution)."
+    },
+    {
+      "id": "phase-53g6-card-tree-path-text-only",
+      "phase": "53g",
+      "title": "Card-with-N-children degrades to plain text in the tree-bridge path (HTML stripped)",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-19",
+      "introduced_commit": "fix/phase-53g6-card-composite",
+      "summary": "_fills_card returns SlotFill('content', <card table html>, slot_type='text'). In the DEFAULT renderer path _fill_text_slot inserts the value RAW (correct card). In the EmailTree path (tree_bridge_enabled, non-default / flag-off) tree_bridge._fill_to_slot_value strips ALL HTML tags from a text fill (_HTML_TAG_RE.sub('', fill.value)) and returns TextSlot(text=...), so the card collapses to the bare identity text ('Andy email@brand.emaillove.com') — the white r18 shell, the 440px images, and the layout are lost. No single slot_type renders raw table HTML in BOTH paths (slot_type='attr' -> HtmlSlot works in the tree path but breaks the renderer's attr handling). Same class as phase-53g-g4-tree-html-slot-row-shape.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_fills_card (returns slot_type='text' carrying card-table HTML)",
+        "app/design_sync/tree_bridge.py:_fill_to_slot_value (text branch strips HTML -> TextSlot)"
+      ],
+      "symptom_if_broken": "A LEGO-style membership card rendered through the tree path shows only the identity text, no card/images; the renderer (default) path is correct.",
+      "closes_when": "tree_bridge grows an HtmlSlot-capable path for the card fill (or the card routes through a composite/html slot type the TreeCompiler renders as raw HTML), and the tree-path c7 card matches the renderer-path card.",
+      "notes": "Non-blocking: the corpus (expected.html) + fidelity scorer + snapshot gate all use the DEFAULT renderer path, where the card is correct (c7 full_image 0.771->0.893). The tree path is opt-in (converter_service tree_bridge_enabled). Ledgered per the no-silent-caps discipline, mirroring the G4 own-row-CTA tree-path deferral (phase-53g-g4-tree-html-slot-row-shape)."
     },
     {
       "id": "phase-53f-f7-column-seed-no-inner",

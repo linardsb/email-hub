@@ -340,6 +340,23 @@ def _score_candidates(
     col_groups = section.column_groups or []
     groups_with_mixed = sum(1 for g in col_groups if g.images and g.texts)
 
+    # card-with-N-children (51.2 / Rule 1 + Rule 11): a physical card frame
+    # (white fill + corner radius) whose heterogeneous children — logo, identity
+    # TEXT, barcode, shape — must collapse to ONE rounded white table with the
+    # children stacked as rows at the dominant image width, not a 3-across image
+    # gallery that drops the TEXT. Probe-proven unique to the LEGO membership
+    # card across the corpus; scored above image-gallery/editorial-2. Hosted by
+    # the ``td`` (Table Cell) seed — a clean single ``content`` slot, no seed-
+    # default mustache (``cell`` leaves ``{{ align || … }}`` unresolved) — no new seed.
+    if (
+        section.is_physical_card_surface
+        and section.inner_bg
+        and section.images
+        and section.texts
+        and section.column_layout == ColumnLayout.SINGLE
+    ):
+        candidates.append(("td", 0.99))
+
     # product-grid: 2+ column groups each with image + text
     if len(col_groups) >= 2 and groups_with_mixed >= 2:
         candidates.append(("product-grid", 0.95))
@@ -506,6 +523,7 @@ def _build_slot_fills(
         "product-grid": _fills_product_grid,
         "category-nav": _fills_category_nav,
         "image-gallery": _fills_image_gallery,
+        "td": _fills_card,  # 51.2 physical card-with-N-children (Rule 1 + 11)
         "cta-button": _fills_cta,
         "email-footer": _fills_footer,
         "spacer": _fills_spacer,
@@ -1124,6 +1142,92 @@ def _stacked_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None)
         f'data-node-id="{html.escape(img.node_id)}" />'
     )
     return f'<tr><td style="padding:0;text-align:center;font-size:0;line-height:0;">{tag}</td></tr>'
+
+
+def render_card_table(
+    rows: list[str],
+    *,
+    width: int,
+    bg: str,
+    radius: int,
+    align: str = "center",
+) -> str:
+    """Wrap card child rows in one rounded, fixed-width table (51.2 / Rule 1 + Rule 11).
+
+    ``rows`` are full ``<tr>…</tr>`` strings (image or text rows) rendered in
+    design y-order. ``border-collapse:separate`` + ``overflow:hidden`` clip the
+    corners so ``border-radius`` bites (mirrors ``_replace_inner_radius``). The
+    card carries NO dark-mode class → a physical card's white surface never
+    flips in dark mode (Rule 9, satisfied by construction). Reusable by the
+    later spec-mini-table / footer row composites (G7/G8).
+
+    The white surface is carried by the ``bgcolor`` ATTR only — never an inline
+    ``background-color`` — because the section's container-bg override clobbers
+    the first inline ``background-color`` in the component (``_replace_first_css_prop``
+    when the ``td`` host has no ``_outer`` class). With no inline bg here, that
+    override correctly falls through to paint the ``td`` outer (the band). ``bg`` is
+    routed through :func:`_safe_color` so this reusable primitive stays hex-safe for
+    future (G7/G8) callers, not just the validated ``inner_bg`` this ships with.
+    """
+    safe_bg = _safe_color(bg, "#FFFFFF")
+    body = "".join(rows)
+    return (
+        f'<table role="presentation" width="{width}" align="{align}" '
+        f'cellpadding="0" cellspacing="0" border="0" bgcolor="{safe_bg}" class="wf" '
+        f'style="border-radius:{radius}px;'
+        f'border-collapse:separate;overflow:hidden;">{body}</table>'
+    )
+
+
+def _card_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None, padding: str) -> str:
+    """One image row inside a card (mirrors ``_stacked_image_row``; per-row padding).
+
+    Reuses the width-pin (Rule 11: sub-``_STACK_NATURAL_WIDTH_MAX`` images render
+    at native width, so the 440-wide card images render 440) and the gate-safe
+    :func:`_derive_image_alt`. Deliberately omits ``data-node-id`` so the Rule-10
+    per-image corner-radius override (``_apply_image_corner_radius``) can't stamp
+    individual radii — the card clips its own corners via ``overflow:hidden``.
+    """
+    url = _resolve_image_url(img.node_id, image_urls)
+    width = int(img.width) if img.width else None
+    if width is not None and width < _STACK_NATURAL_WIDTH_MAX:
+        size_css = f"width:{width}px;max-width:{width}px;"
+    else:
+        size_css = "width:100%;max-width:600px;"
+    width_attr = f' width="{width}"' if width is not None else ""
+    tag = (
+        f'<img src="{html.escape(url)}" '
+        f'alt="{html.escape(_derive_image_alt(img))}"{width_attr} '
+        f'style="display:block;{size_css}height:auto;border:0;" />'
+    )
+    return (
+        f'<tr><td style="padding:{padding};text-align:center;'
+        f'font-size:0;line-height:0;">{tag}</td></tr>'
+    )
+
+
+def _card_text_row(text: TextBlock, bg: str) -> str:
+    r"""One text row inside a card (full inline font props; ``\n`` → ``<br>``)."""
+    content = _safe_text(text.content).replace("\n", "<br />")
+    # font-family: escaped (quote=True) so a design font name can't break out of the
+    # style attr; web-safe fallback appended when absent (mirrors _column_text_row).
+    if text.font_family:
+        ff = html.escape(text.font_family, quote=True)
+        if "," not in ff:
+            ff = f"{ff},sans-serif"
+    else:
+        ff = "Arial,sans-serif"
+    fs = int(text.font_size) if text.font_size else 14
+    lh = int(text.line_height) if text.line_height else 19
+    fw = text.font_weight if text.font_weight is not None else 600
+    tc = _safe_color(text.text_color, "#000000")
+    # bgcolor ATTR (not inline background-color) — see render_card_table docstring.
+    return (
+        f'<tr><td align="center" bgcolor="{_safe_color(bg, "#FFFFFF")}" style="'
+        f"padding:10px 24px 0 24px;font-family:{ff};font-size:{fs}px;"
+        f"line-height:{lh}px;font-weight:{fw};color:{tc};"
+        f'mso-line-height-rule:exactly;">{content}</td></tr>'
+    )
 
 
 def _stacked_image_rows(
@@ -1760,6 +1864,72 @@ def _fills_image_gallery(
             )
         )
     return fills
+
+
+def _fills_card(
+    section: EmailSection,
+    _cw: int,
+    *,
+    image_urls: dict[str, str] | None = None,
+    **_kw: object,
+) -> list[SlotFill]:
+    """Fill a physical card-with-N-children (51.2 / Rule 1 + Rule 11).
+
+    Renders the card's heterogeneous children (logo/identity-text/barcode/shape)
+    as stacked rows inside ONE white rounded table at the dominant image width,
+    instead of the image-gallery seed that lays them out as 3-across tiles and
+    drops the identity TEXT. Child order comes from ``content_order`` (the F10
+    interleave restorer) — the category lists lose the image↔text interleave.
+    Returns a single ``content`` text fill for the ``td`` seed (fill-a-cell,
+    not a splice); ``_fill_text_slot`` inserts the table HTML raw.
+    """
+    images_by_id = {im.node_id: im for im in section.images}
+    texts_by_id = {t.node_id: t for t in section.texts}
+    # Y-order from content_order (the F10 interleave restorer) filtered to the ids
+    # we actually carry, then any remaining images/texts appended in stored order —
+    # so every child renders even when content_order is absent or references stale
+    # ids (the category lists otherwise lose the image↔text interleave).
+    known = tuple(images_by_id) + tuple(texts_by_id)
+    content_order = (
+        section.column_groups[0].content_order
+        if section.column_groups and section.column_groups[0].content_order
+        else ()
+    )
+    order = [nid for nid in content_order if nid in images_by_id or nid in texts_by_id]
+    order += [nid for nid in known if nid not in order]
+
+    rows: list[str] = []
+    images_seen = 0
+    bg = section.inner_bg or "#FFFFFF"
+    for node_id in order:
+        if node_id in images_by_id:
+            # First image carries the card's top inset; the rest sit flush so the
+            # rounded corners clip cleanly (design: logo 20px top, others 0).
+            padding = "20px 0 0 0" if images_seen == 0 else "0"
+            rows.append(_card_image_row(images_by_id[node_id], image_urls, padding))
+            images_seen += 1
+        elif node_id in texts_by_id:
+            rows.append(_card_text_row(texts_by_id[node_id], bg))
+
+    if not rows:  # unreachable (the predicate guarantees images AND texts) — defensive
+        return []
+
+    # Rule 11: card width = dominant child-image native width (the nested images
+    # aren't direct frame children, so rule_11's ``inner_card_fixed_width`` is
+    # None here — read the widths directly).
+    width = max((int(im.width) for im in section.images if im.width), default=600)
+    return [
+        SlotFill(
+            "content",
+            render_card_table(
+                rows,
+                width=width,
+                bg=bg,
+                radius=int(section.inner_radius) if section.inner_radius is not None else 0,
+            ),
+            slot_type="text",
+        )
+    ]
 
 
 def _fills_cta(
