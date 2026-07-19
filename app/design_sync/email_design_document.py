@@ -868,9 +868,12 @@ class DocumentColumn:
     images: list[DocumentImage] = field(default_factory=list[DocumentImage])
     buttons: list[DocumentButton] = field(default_factory=list[DocumentButton])
     # F10 — mirrors ColumnGroup.content_order (design tree order of the
-    # content node ids). Older persisted documents lack it → () → the
+    # content node ids). Older persisted documents lack it -> () -> the
     # renderer keeps the legacy category order.
     content_order: tuple[str, ...] = ()
+    # G7 (M6) — mirrors ColumnGroup stroke (border-left divider source).
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -888,6 +891,10 @@ class DocumentColumn:
             d["buttons"] = [b.to_json() for b in self.buttons]
         if self.content_order:
             d["content_order"] = list(self.content_order)
+        if self.stroke_color is not None:
+            d["stroke_color"] = self.stroke_color
+        if self.stroke_weight is not None:
+            d["stroke_weight"] = self.stroke_weight
         return d
 
     @classmethod
@@ -901,6 +908,8 @@ class DocumentColumn:
             images=[DocumentImage.from_json(i) for i in data.get("images", [])],
             buttons=[DocumentButton.from_json(b) for b in data.get("buttons", [])],
             content_order=tuple(data.get("content_order", [])),
+            stroke_color=data.get("stroke_color"),
+            stroke_weight=data.get("stroke_weight"),
         )
 
     @classmethod
@@ -914,6 +923,8 @@ class DocumentColumn:
             images=[DocumentImage.from_image_placeholder(i) for i in c.images],
             buttons=[DocumentButton.from_button_element(b) for b in c.buttons],
             content_order=c.content_order,
+            stroke_color=c.stroke_color,
+            stroke_weight=c.stroke_weight,
         )
 
     def to_column_group(self) -> ColumnGroup:
@@ -926,6 +937,8 @@ class DocumentColumn:
             images=[i.to_image_placeholder() for i in self.images],
             buttons=[b.to_button_element() for b in self.buttons],
             content_order=self.content_order,
+            stroke_color=self.stroke_color,
+            stroke_weight=self.stroke_weight,
         )
 
 

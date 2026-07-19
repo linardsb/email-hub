@@ -91,6 +91,13 @@ _COLUMN_DIV_MAXWIDTH_RE = re.compile(r'(<div class="column"[^>]*?max-width:\s*)(
 # Fractions within this absolute deviation of equal keep the seed's equal
 # widths (existing equal-column baselines stay byte-stable).
 _COLUMN_FRACTION_TOLERANCE = 0.05
+# G7 (M6) — a column-layout section is a hug-content (auto-layout HUG) row when
+# its design columns sum to at most this fraction of the section's own width.
+# c7 user-info: Sum240 / 440 = 0.55 (hug); product cards Sum500 / 560 = 0.89 (fill).
+_HUG_MAX_FRACTION = 0.7
+# G7 (M6) — validate a column stroke color before it reaches inline CSS (a
+# malformed/injection value is dropped, never emitted as a border).
+_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}){1,2}$")
 # F9 (phase-53f-column-width-budget) — the fixed-width MSO ghost table whose
 # first cell is a column cell. The outer section table and the RC-F7 card
 # wrapper carry width="100%", so neither can match.
@@ -659,10 +666,20 @@ class ComponentRenderer:
 
         # 3c. F9 (phase-53f-column-width-budget): rescale the column budget into
         # the box the RC-F7 card wrapper's relocated _cell padding leaves.
-        if match.component_slug.startswith("column-layout"):
+        if match.component_slug.startswith("column-layout") and not self._is_hug_row(match):
             result_html = self._shrink_column_ghost_widths(
                 result_html, self._card_wrapper_inset(result_html)
             )
+
+        # 3c-hug (G7, M6): a hug-content column row (Sum design cols << section
+        # width) renders at its design widths, centered, instead of equal-split.
+        # The F9 shrink sites (here + render_repeating_group) skip hug rows so a
+        # band/card inset can't re-shrink the content strip below its design px.
+        result_html = self._apply_hug_column_widths(result_html, match)
+
+        # 3d-divider (G7, M6): a column's captured Figma stroke -> border-left
+        # divider on its content cell (c7 user-info #D9D9D9/1px count group).
+        result_html = self._apply_column_dividers(result_html, match)
 
         # 3d. G2 (M9): text-slot h-padding budget — the seed's 24px insets can
         # narrow the live text box below the section's design width (c7's
@@ -833,8 +850,12 @@ class ComponentRenderer:
             item_html = rendered.html
             # F9 (phase-53f-column-width-budget): the row cell's horizontal
             # padding narrows the member's live box below the column seeds'
-            # 600px budget — rescale the member's column surfaces to fit.
-            if rendered.component_slug.startswith("column-layout"):
+            # 600px budget — rescale the member's column surfaces to fit. A G7
+            # hug row is content-sized (already fits any box) so it is exempt —
+            # otherwise the inset would compress its design widths.
+            if rendered.component_slug.startswith("column-layout") and not self._is_hug_row(
+                matches[i]
+            ):
                 item_html = self._shrink_column_ghost_widths(item_html, 2 * item_spacing.horizontal)
             # G2 (M9): the same row inset tightens the text-slot h-padding
             # budget — c7's 560px banner needs the slot inset at 0 once the
@@ -1681,18 +1702,18 @@ class ComponentRenderer:
         column so the surface is uniform — per-column wrapping would leave the
         band exposed below the shorter column (col_1 image vs col_2 text differ
         in height). ``product-card`` is a static dark-mode class
-        (``converter_service.py`` → ``#2d2d44``), so the card flips to the
+        (``converter_service.py`` -> ``#2d2d44``), so the card flips to the
         nested-card shade in dark mode with no dark-CSS change. Byte-identical
         no-op when no ``col[234]-bg`` cell is present (non-column seed).
         """
         safe = html.escape(color, quote=True)
         cell_match = _COL_BG_CELL_OPEN_RE.search(html_str)
         if cell_match is None:
-            return html_str  # not a column-layout seed → byte-identical no-op
+            return html_str  # not a column-layout seed -> byte-identical no-op
         content_start = cell_match.end()
         close = _find_matching_close(html_str, "td", content_start)
         if close is None:
-            return html_str  # unbalanced markup → leave untouched
+            return html_str  # unbalanced markup -> leave untouched
         body = html_str[content_start:close]
         # NB: no ``border-collapse`` in the base style. When ``inner_radius`` is
         # set, :meth:`_replace_inner_radius` PREPENDS ``border-collapse:separate;
@@ -1999,14 +2020,14 @@ class ComponentRenderer:
         bleed into each other (a global ``re.sub`` would paint both).
 
         Color surfaces per property:
-          * ``background-color`` → the ``bgcolor`` attribute (filled primary)
+          * ``background-color`` -> the ``bgcolor`` attribute (filled primary)
             AND the ``border:Npx solid <hex>`` shorthand. The shorthand sync is
             load-bearing: the outlined secondary has no ``bgcolor`` attribute,
             so its border is the only surface carrying its fill color.
-          * ``color`` → text color on the inner ``<td>`` and ``<a>``.
-          * ``border-color`` / ``border-width`` → the border shorthand (emitted
+          * ``color`` -> text color on the inner ``<td>`` and ``<a>``.
+          * ``border-color`` / ``border-width`` -> the border shorthand (emitted
             after ``background-color`` so an explicit stroke wins the border).
-          * ``border-radius`` → the ``border-radius`` declaration.
+          * ``border-radius`` -> the ``border-radius`` declaration.
         """
         block_re = re.compile(
             rf'(<table\b[^>]*\bclass="[^"]*\b{re.escape(class_name)}\b[^"]*"[^>]*>)'
@@ -2195,6 +2216,93 @@ class ComponentRenderer:
 
         result = _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
         return _COLUMN_GHOST_TABLE_WIDTH_RE.sub(rf"\g<1>{target}\g<3>", result, count=1)
+
+    def _is_hug_row(self, match: ComponentMatch) -> bool:
+        """True when a column-layout section is an auto-layout HUG row (G7, M6).
+
+        Its design columns sum to at most ``_HUG_MAX_FRACTION`` of the section's
+        own width, so it renders at content width centered — the F9
+        column-width-budget shrink (which fits FULL-width column seeds into a
+        narrowed inset box) must NOT apply to it, or it would compress the
+        content strip below its design px. A missing column width declines the
+        row (the measurement can't be trusted).
+        """
+        if not match.component_slug.startswith("column-layout"):
+            return False
+        groups = match.section.column_groups
+        width = match.section.width
+        if not groups or not width or width <= 0:
+            return False
+        col_px = [g.width for g in groups if g.width and g.width > 0]
+        if len(col_px) != len(groups):
+            return False
+        return sum(col_px) <= width * _HUG_MAX_FRACTION
+
+    def _apply_hug_column_widths(self, html_str: str, match: ComponentMatch) -> str:
+        """Render a hug-content column row at its design widths, centered (G7, M6).
+
+        c7's ``Andy | 0`` user-info strip is 4 x 60px columns in a 440px section;
+        the equal-split seed spreads them to 4 x 150px. Pin each ghost
+        ``<td>``/div to its design px and set the ghost table total to their sum,
+        so the seed's own ``text-align:center`` (non-MSO) / ghost ``align="center"``
+        (MSO) centers the content strip. Gated by :meth:`_is_hug_row`, which also
+        gates the F9 shrink sites off so the design widths are final. All-or-
+        nothing like A8: a surface-count mismatch no-ops the whole rewrite so
+        MSO and non-MSO widths never diverge.
+        """
+        if not self._is_hug_row(match):
+            return html_str
+        # _is_hug_row guarantees every width is present (the None-filter is a no-op
+        # here, but keeps mypy narrowed and avoids a falsy-default anti-pattern).
+        col_px = [round(g.width) for g in match.section.column_groups if g.width is not None]
+
+        td_matches = list(_COLUMN_TD_WIDTH_RE.finditer(html_str))
+        div_matches = list(_COLUMN_DIV_MAXWIDTH_RE.finditer(html_str))
+        ghost_tables = list(_COLUMN_GHOST_TABLE_WIDTH_RE.finditer(html_str))
+        if (
+            len(td_matches) != len(col_px)
+            or len(div_matches) != len(col_px)
+            or len(ghost_tables) != 1
+        ):
+            return html_str
+
+        def _rewrite(pattern: re.Pattern[str], source: str) -> str:
+            counter = iter(col_px)
+
+            def _sub(m: re.Match[str]) -> str:
+                return f"{m.group(1)}{next(counter)}{m.group(3)}"
+
+            return pattern.sub(_sub, source)
+
+        result = _rewrite(_COLUMN_DIV_MAXWIDTH_RE, _rewrite(_COLUMN_TD_WIDTH_RE, html_str))
+        return _COLUMN_GHOST_TABLE_WIDTH_RE.sub(rf"\g<1>{sum(col_px)}\g<3>", result, count=1)
+
+    def _apply_column_dividers(self, html_str: str, match: ComponentMatch) -> str:
+        """Emit a hug-row column's captured Figma stroke as a ``border-left`` divider (G7, M6).
+
+        In a compact centered hug row (c7's ``Andy | 0`` user-info strip) a
+        per-column stroke reads as a vertical divider between cells — emit it as
+        ``border-left`` on that column's content cell (``data-slot="col_N"``,
+        1-indexed), NOT a full ``border`` box (which would draw a rectangle). The
+        color is hex-validated before it reaches CSS.
+
+        Scoped to hug rows: a full-width column layout's stroke is ambiguous (a
+        box border, or a stroke that shouldn't paint a left edge on the first
+        column — c9's ``Place | Temperature`` columns carry a #545454 stroke that
+        must NOT become a border), and disambiguating needs true per-side
+        ``individualStrokeWeights`` — ledgered as phase-53g-g7-per-side-stroke-capture.
+        """
+        if not self._is_hug_row(match):
+            return html_str
+        result = html_str
+        for idx, group in enumerate(match.section.column_groups, start=1):
+            color = group.stroke_color
+            if not color or not _HEX_COLOR_RE.match(color):
+                continue
+            weight = int(group.stroke_weight) if group.stroke_weight else 1
+            pattern = re.compile(rf'(<td data-slot="col_{idx}"[^>]*?style=")')
+            result = pattern.sub(rf"\g<1>border-left:{weight}px solid {color};", result, count=1)
+        return result
 
     def _rescale_text_slot_h_padding(
         self,

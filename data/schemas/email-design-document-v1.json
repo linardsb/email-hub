@@ -447,6 +447,9 @@
         "node_id": { "type": "string", "maxLength": 200 },
         "node_name": { "type": "string", "maxLength": 200 },
         "width": { "type": ["number", "null"], "default": null },
+        "content_order": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "stroke_color": { "type": ["string", "null"], "default": null },
+        "stroke_weight": { "type": ["number", "null"], "default": null },
         "texts": {
           "type": "array",
           "items": { "$ref": "#/$defs/text" },
