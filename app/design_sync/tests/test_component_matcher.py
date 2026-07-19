@@ -457,10 +457,13 @@ class TestFooterSlotFills:
     """Test email-footer slot fill generation."""
 
     def test_footer_with_texts(self) -> None:
-        """Footer texts become footer_editorial with bare text + br separators.
+        """Footer texts become per-node editorial rows; footer_legal is the
+        rebuilt compliance block (Track G · G8 / 51.6).
 
-        F5 (RC-F5): the builder fills only the editorial cell; the seed's
-        ``footer_legal`` unsub/legal rows are preserved separately.
+        Supersedes RC-F5's preserve-verbatim approach: the builder now actively
+        owns ``footer_legal`` (always emitting the ``{{unsubscribeUrl}}`` row and
+        dropping the seed's placeholder ©/address literals when FooterConfig is
+        absent).
         """
         s = _make_section(
             EmailSectionType.FOOTER,
@@ -473,16 +476,22 @@ class TestFooterSlotFills:
         fills_by_id = {f.slot_id: f for f in m.slot_fills}
         assert "footer_editorial" in fills_by_id
         assert "footer_content" not in fills_by_id
-        assert "footer_legal" not in fills_by_id  # preserved seed, never filled
+        assert "footer_legal" in fills_by_id  # G8: builder now owns the legal row
         assert "<p " not in fills_by_id["footer_editorial"].value
         assert "Contact Us" in fills_by_id["footer_editorial"].value
         assert "unsubscribe" in fills_by_id["footer_editorial"].value
+        legal = fills_by_id["footer_legal"].value
+        assert "{{unsubscribeUrl}}" in legal  # compliance row always present
+        assert "Company Name" not in legal  # no placeholder leakage
+        assert "Business Street" not in legal
 
     def test_footer_empty_section(self) -> None:
-        """Empty FOOTER section produces no fills."""
+        """Empty FOOTER still emits the footer_legal compliance row (G8 invariant)."""
         s = _make_section(EmailSectionType.FOOTER)
         m = match_section(s, 0)
-        assert m.slot_fills == []
+        fills_by_id = {f.slot_id: f for f in m.slot_fills}
+        assert "footer_editorial" not in fills_by_id
+        assert "{{unsubscribeUrl}}" in fills_by_id["footer_legal"].value
 
     def test_footer_html_escape(self) -> None:
         """Footer text is HTML-escaped."""
