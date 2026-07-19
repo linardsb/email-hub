@@ -6,7 +6,7 @@ import html
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeGuard
 
 from app.core.logging import get_logger
 from app.design_sync.figma.layout_analyzer import (
@@ -256,7 +256,7 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
 
     if st == EmailSectionType.HERO:
         if has_images and (has_texts or has_buttons):
-            # Subtitle+title pair: 2+ headings → hero-text (richer slots)
+            # Subtitle+title pair: 2+ headings -> hero-text (richer slots)
             heading_count = sum(1 for t in section.texts if t.is_heading)
             if heading_count >= 2:
                 return "hero-text", 1.0
@@ -277,7 +277,7 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         return slug, confidence
 
     if st == EmailSectionType.CTA:
-        # Two or more buttons → dual-CTA seed (primary + secondary slots).
+        # Two or more buttons -> dual-CTA seed (primary + secondary slots).
         # B8: a single button keeps the standalone cta-button seed.
         if len(section.buttons) >= 2:
             return "cta-pair", 1.0
@@ -296,7 +296,7 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         return "spacer", 1.0
 
     if st == EmailSectionType.NAV:
-        # Vertical nav: stacked items (no column groups) → nav-hamburger
+        # Vertical nav: stacked items (no column groups) -> nav-hamburger
         if not section.column_groups and len(section.texts) >= 3:
             return "nav-hamburger", 0.95
         return "navigation-bar", 1.0
@@ -310,7 +310,7 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
 
 
 def _all_images_are_icons(section: EmailSection, threshold: float = 30.0) -> bool:
-    """Check if all images in a section are tiny icons (≤ threshold px)."""
+    """Check if all images in a section are tiny icons (<= threshold px)."""
     if not section.images:
         return False
     return all(
@@ -374,7 +374,7 @@ def _score_candidates(
         candidates.append(("image-grid", 0.85))
 
     # editorial-2: needs genuine two-column structure, not just one col_group
-    # with mixed content. Two signals: (a) ≥2 col_groups each contributing content,
+    # with mixed content. Two signals: (a) >=2 col_groups each contributing content,
     # or (b) 1 col_group that is narrow enough to be a real column (<70% of section width).
     if len(col_groups) >= 2:
         groups_with_content = sum(1 for g in col_groups if (g.images or g.texts))
@@ -627,6 +627,25 @@ def _safe_text(text: str) -> str:
     return html.escape(text, quote=False)
 
 
+# Hard line separators Figma stores inside a single TEXT node: LF, CRLF, and the
+# Unicode LINE/PARAGRAPH separators (U+2028/U+2029). The c7 spec value ``+260``
+# cell uses U+2028, so a ``\n``-only replace would silently drop it.
+_LINE_SEP_RE = re.compile("\r\n|[\n\r\u2028\u2029]")
+
+
+def _multiline_to_br(text: str) -> str:
+    r"""HTML-escape, then convert hard line breaks to ``<br />`` (Track G · G7 / 51.5).
+
+    Figma encodes stacked value/label text (``617\nPieces``) and 2-line labels
+    as ONE TEXT node with a hard separator + uniform font; ``_safe_text`` alone
+    leaves the separator, which collapses to whitespace in email clients. Escape
+    runs first so any markup in the content is neutralised before the trusted
+    ``<br />`` is inserted. The 51.5 "multi-line splitter" reduces to this
+    normalization — the data carries no per-line font weight, so no node split.
+    """
+    return _LINE_SEP_RE.sub("<br />", html.escape(text, quote=False))
+
+
 def _headings_from_groups(groups: list[ContentGroup]) -> list[TextBlock]:
     """Collect heading texts from content groups."""
     result: list[TextBlock] = []
@@ -766,7 +785,7 @@ def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
 
     decls.append("mso-line-height-rule:exactly")
     style = ";".join(decls) + ";"
-    return f'<tr><td style="{style}">{_safe_text(text.content)}</td></tr>'
+    return f'<tr><td style="{style}">{_multiline_to_br(text.content)}</td></tr>'
 
 
 def _cta_label_typography(btn: ButtonElement) -> str:
@@ -903,7 +922,7 @@ def _image_fills_column(img_width: float | None, column_width: float | None) -> 
     """Whether a column image should keep the responsive ``width:100%`` fill (F3).
 
     A column-filling image (as wide as its column — the ``bannerimg`` case)
-    keeps ``width:100%``. A small icon/decoration (≤64px, or narrower than 90%
+    keeps ``width:100%``. A small icon/decoration (<=64px, or narrower than 90%
     of its column) is instead pinned to its design width so it renders at
     natural size rather than ballooning to the column edge (RC-F3). Degrades to
     the pre-F3 responsive default when the design width is unknown.
@@ -1028,7 +1047,7 @@ def _ordered_column_elements(
     interleaves the three category lists back into the design's vertical
     order — a tag pill (``ButtonElement``) above the heading, a product name
     above its spec-icon rows. Groups without it (older persisted documents,
-    the content-group conversion) keep the legacy images→texts→buttons
+    the content-group conversion) keep the legacy images->texts->buttons
     order, as do any ids the tuple doesn't cover (stable sort).
     """
     combined: list[ImagePlaceholder | TextBlock | ButtonElement] = [
@@ -1043,6 +1062,124 @@ def _ordered_column_elements(
     return sorted(combined, key=lambda element: position.get(element.node_id, unknown))
 
 
+# Spec mini-table (G7 · 51.4, M4): a run of adjacent (icon <= this wide, label
+# shorter than this) pairs inside a column renders as ONE centered horizontal row
+# of ``[icon | value/label]`` cells instead of stacked full-width rows. Only c7's
+# product-card spec runs match on the corpus (c8 grids are text-only, c9 icons are
+# 34px) — see the G7 routing map.
+_SPEC_ICON_MAX_WIDTH = 30
+_SPEC_LABEL_MAX_CHARS = 40
+
+_SpecPair = tuple[ImagePlaceholder, TextBlock]
+
+
+def _is_spec_icon(el: ImagePlaceholder | TextBlock | ButtonElement) -> TypeGuard[ImagePlaceholder]:
+    return (
+        isinstance(el, ImagePlaceholder)
+        and el.width is not None
+        and el.width <= _SPEC_ICON_MAX_WIDTH
+    )
+
+
+def _is_spec_label(el: ImagePlaceholder | TextBlock | ButtonElement) -> TypeGuard[TextBlock]:
+    return isinstance(el, TextBlock) and len(el.content.strip()) < _SPEC_LABEL_MAX_CHARS
+
+
+def _group_spec_pairs(
+    elements: list[ImagePlaceholder | TextBlock | ButtonElement],
+) -> list[ImagePlaceholder | TextBlock | ButtonElement | list[_SpecPair]]:
+    """Fold adjacent ``(icon, label)`` runs into spec-mini-table groups (51.4).
+
+    Scans the F10-ordered column elements; a maximal run of >=2 consecutive
+    ``(icon <= _SPEC_ICON_MAX_WIDTH, text < _SPEC_LABEL_MAX_CHARS)`` pairs becomes
+    one ``list[_SpecPair]`` in place (a horizontal mini-table); everything else —
+    the product name, the CTA, a lone icon+text — passes through unchanged, so a
+    non-spec column is untouched.
+    """
+    result: list[ImagePlaceholder | TextBlock | ButtonElement | list[_SpecPair]] = []
+    i = 0
+    n = len(elements)
+    while i < n:
+        pairs: list[_SpecPair] = []
+        j = i
+        while j + 1 < n:
+            icon = elements[j]
+            label = elements[j + 1]
+            if not (_is_spec_icon(icon) and _is_spec_label(label)):
+                break
+            pairs.append((icon, label))  # TypeGuards narrow icon/label above
+            j += 2
+        if len(pairs) >= 2:
+            result.append(pairs)
+            i = j
+        else:
+            result.append(elements[i])
+            i += 1
+    return result
+
+
+def _spec_icon_img(img: ImagePlaceholder, image_urls: dict[str, str] | None) -> str:
+    """One spec icon ``<img>`` at native width (mirrors ``_column_image_row``'s icon)."""
+    url = _resolve_image_url(img.node_id, image_urls)
+    if img.width:
+        w = int(img.width)
+        style = f"display:block;width:{w}px;max-width:{w}px;height:auto;border:0;"
+        width_attr = f' width="{w}"'
+    else:
+        style = "display:block;height:auto;border:0;"
+        width_attr = ""
+    return (
+        f'<img src="{html.escape(url)}" '
+        f'alt="{html.escape(_derive_image_alt(img))}"{width_attr} style="{style}" />'
+    )
+
+
+def _spec_label_style(text: TextBlock) -> str:
+    """Compact inline typography for a spec value/label cell (mirrors ``_column_text_row``)."""
+    decls = ["text-align:left"]
+    if text.font_family:
+        family = html.escape(text.font_family, quote=True)
+        if "," not in family:
+            family = f"{family},sans-serif"
+        decls.append(f"font-family:{family}")
+    else:
+        decls.append("font-family:Arial,sans-serif")
+    decls.append(f"font-size:{int(text.font_size) if text.font_size else 11}px")
+    if text.font_weight is not None:
+        decls.append(f"font-weight:{text.font_weight}")
+    decls.append(f"color:{_safe_color(text.text_color)}")
+    if text.line_height is not None:
+        decls.append(f"line-height:{round(text.line_height)}px")
+    decls.append("mso-line-height-rule:exactly")
+    return ";".join(decls) + ";"
+
+
+def _spec_minitable_row(pairs: list[_SpecPair], image_urls: dict[str, str] | None) -> str:
+    """Render a spec run as ONE centered horizontal ``[icon | value/label]`` row (51.4).
+
+    Each pair is an icon cell (native width) + a value/label cell (stacked via
+    :func:`_multiline_to_br`, design typography), in a content-width nested table
+    centered inside the column — so the row reads ``[icon] 617/Pieces  [icon]
+    +260/Insiders`` like the design instead of four stacked full-width rows.
+    """
+    cells: list[str] = []
+    for idx, (icon, label) in enumerate(pairs):
+        gap = "padding-left:16px;" if idx > 0 else ""  # gap between pairs
+        cells.append(
+            f'<td valign="middle" style="{gap}padding-right:6px;'
+            f'font-size:0;line-height:0;">{_spec_icon_img(icon, image_urls)}</td>'
+        )
+        cells.append(
+            f'<td valign="middle" style="{_spec_label_style(label)}">'
+            f"{_multiline_to_br(label.content)}</td>"
+        )
+    inner = (
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
+        f'align="center"><tr>{"".join(cells)}</tr></table>'
+    )
+    return f'<tr><td align="center" style="padding:0 0 8px;">{inner}</td></tr>'
+
+
 def _build_column_fill_html(
     group: ColumnGroup,
     *,
@@ -1054,10 +1191,14 @@ def _build_column_fill_html(
     ``<table>`` (Phase 53 B2) so the column renders as a well-formed nested
     table instead of collapsing orphan rows in email clients. Rows follow the
     design's vertical order via ``content_order`` (F10), not category buckets.
+    An adjacent ``(icon, label)`` run collapses to one centered mini-table row
+    (G7 · 51.4) instead of stacking each icon and label full-width.
     """
     rows: list[str] = []
-    for element in _ordered_column_elements(group):
-        if isinstance(element, ImagePlaceholder):
+    for element in _group_spec_pairs(_ordered_column_elements(group)):
+        if isinstance(element, list):
+            rows.append(_spec_minitable_row(element, image_urls))
+        elif isinstance(element, ImagePlaceholder):
             rows.append(_column_image_row(element, image_urls, column_width=group.width))
         elif isinstance(element, TextBlock):
             if _is_placeholder(element.content):
@@ -1157,7 +1298,7 @@ def render_card_table(
     ``rows`` are full ``<tr>…</tr>`` strings (image or text rows) rendered in
     design y-order. ``border-collapse:separate`` + ``overflow:hidden`` clip the
     corners so ``border-radius`` bites (mirrors ``_replace_inner_radius``). The
-    card carries NO dark-mode class → a physical card's white surface never
+    card carries NO dark-mode class -> a physical card's white surface never
     flips in dark mode (Rule 9, satisfied by construction). Reusable by the
     later spec-mini-table / footer row composites (G7/G8).
 
@@ -1207,7 +1348,7 @@ def _card_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None, pa
 
 
 def _card_text_row(text: TextBlock, bg: str) -> str:
-    r"""One text row inside a card (full inline font props; ``\n`` → ``<br>``)."""
+    r"""One text row inside a card (full inline font props; ``\n`` -> ``<br>``)."""
     content = _safe_text(text.content).replace("\n", "<br />")
     # font-family: escaped (quote=True) so a design font name can't break out of the
     # style attr; web-safe fallback appended when absent (mirrors _column_text_row).
@@ -1460,7 +1601,7 @@ def _per_node_body_texts(section: EmailSection) -> list[TextBlock]:
     # RC-F6: once an eyebrow is lifted above the heading, the shared ``_body``
     # target (first-body typography) becomes the eyebrow's, which would mis-style
     # a lone post-heading paragraph — so anchor every body node per-id, not just
-    # when there are ≥2.
+    # when there are >=2.
     if _pre_heading_body_texts(section):
         return texts
     return texts if len(texts) >= 2 else []
@@ -2439,7 +2580,7 @@ def _build_token_overrides(
     if section.inner_bg:
         overrides.append(TokenOverride("background-color", "_inner", section.inner_bg))
     elif section.bg_color and not (section.container_bg and _is_white_hex(section.bg_color)):
-        # No nested card detected — preserve Phase 49 contract (bg_color → _outer).
+        # No nested card detected — preserve Phase 49 contract (bg_color -> _outer).
         # Track G G1 (M3): a section's own WHITE fill must not paint over a
         # coloured band. A full-width image (or any section) on a coloured
         # wrapper inherits container_bg — the seed default #ffffff would
@@ -2562,7 +2703,7 @@ def _build_token_overrides(
     overrides.extend(_typography_overrides(section.texts, is_heading=False, target="_body"))
 
     # RC-D-prime (phase-52.4b) — per-node typography. _fills_text_block emits one
-    # <td data-node-id> anchor per body text when a section carries ≥2; these
+    # <td data-node-id> anchor per body text when a section carries >=2; these
     # overrides give each node its own typography instead of flattening every
     # run onto the first body's values. The first-match blocks above keep
     # styling the seed's shared heading/body slots.

@@ -152,8 +152,12 @@ class ColumnGroup:
     # F10 — node ids of the extracted content in design tree (pre-order) order.
     # The three category lists above lose the interleave; this restores it at
     # render time. Empty on groups built before the field existed (older
-    # persisted documents) → callers fall back to category order.
+    # persisted documents) -> callers fall back to category order.
     content_order: tuple[str, ...] = ()
+    # G7 (M6) — the source column frame's uniform stroke, rendered as a
+    # border-left divider between hug-row cells (c7 user-info #D9D9D9/1px).
+    stroke_color: str | None = None
+    stroke_weight: float | None = None
 
 
 @dataclass(frozen=True)
@@ -281,7 +285,7 @@ _SECTION_PATTERNS: dict[EmailSectionType, list[str]] = {
     EmailSectionType.NAV: ["nav", "navigation", "menu", "links", "mj-navbar"],
 }
 
-# MJML → EmailSectionType mapping
+# MJML -> EmailSectionType mapping
 _MJ_SECTION_MAP: dict[str, EmailSectionType] = {
     "mj-section": EmailSectionType.CONTENT,
     "mj-wrapper": EmailSectionType.CONTENT,
@@ -289,7 +293,7 @@ _MJ_SECTION_MAP: dict[str, EmailSectionType] = {
     "mj-navbar": EmailSectionType.NAV,
 }
 
-# MJML → content role mapping
+# MJML -> content role mapping
 _MJ_CONTENT_ROLES: dict[str, str] = {
     "mj-image": "image",
     "mj-text": "text",
@@ -355,7 +359,7 @@ def analyze_layout(
             convention = _detect_naming_convention(raw_candidates)
 
     # Wrapper unwrap pre-pass (Phase 50.3) — expand coloured ``mj-wrapper``s
-    # with ≥2 section children into per-child sections, propagating the
+    # with >=2 section children into per-child sections, propagating the
     # wrapper fill. Gated to MJML naming + ``wrapper_unwrap_enabled`` flag.
     candidates = _expand_container_wrappers(raw_candidates, convention)
     # Band wrapper frame extents (Track G G1, M1) — the wrapper's own
@@ -488,7 +492,7 @@ def analyze_layout(
 
         # Physical-card identity exception (Phase 50.7) — runs on sections that
         # already carry a card surface (inner_bg). Phase 50.8 adds a bounded
-        # subtree-walk fallback for nested cards (e.g. LEGO ``mj-wrapper`` →
+        # subtree-walk fallback for nested cards (e.g. LEGO ``mj-wrapper`` ->
         # ``mj-section``) where ``_detect_inner_bg`` cannot reach the card.
         # Rule 9 (Phase 52.7) reads ``is_physical_card_surface`` to skip the
         # dark-mode flip.
@@ -657,7 +661,7 @@ def _expand_container_wrappers(
 ) -> list[tuple[DesignNode, str | None, str | None, str | None]]:
     """Wrapper unwrap pre-pass (Phase 50.3, Gap 1).
 
-    A ``mj-wrapper`` (or any FRAME with a coloured fill plus ≥2 ``mj-section``
+    A ``mj-wrapper`` (or any FRAME with a coloured fill plus >=2 ``mj-section``
     children) is treated as one ``EmailSection`` by ``analyze_layout`` today;
     that collapses heading + cards / heading + product rows into a single
     component. This pass replaces such a wrapper with its children, propagating
@@ -714,7 +718,7 @@ def _wrapper_frame_bounds(
     candidates: list[DesignNode],
     naming: NamingConvention,
 ) -> dict[str, tuple[float, float]]:
-    """Map each band wrapper id → ``(frame_top, frame_bottom)`` (Track G G1, M1).
+    """Map each band wrapper id -> ``(frame_top, frame_bottom)`` (Track G G1, M1).
 
     A band's visual y-extent is the wrapper FRAME (its fill + internal
     padding), not the bounding box of its child sections. ``_calculate_spacing``
@@ -769,7 +773,7 @@ def _peel_rows(grandkids: list[DesignNode]) -> list[list[DesignNode]]:
 
 
 def _is_container_wrapper(node: DesignNode) -> bool:
-    """A container wrapper has a non-default fill AND ≥2 section children."""
+    """A container wrapper has a non-default fill AND >=2 section children."""
     if not node.fill_color:
         return False
     section_children = [c for c in node.children if _is_section_child(c)]
@@ -786,8 +790,8 @@ _PEEL_MIN_CARD_HEIGHT = 48.0
 def _peelable_grandkids(node: DesignNode) -> list[DesignNode] | None:
     """Constrained one-level peel target check (Phase 53 D3, spike §C2b).
 
-    The under-segmenter shape is ``mj-wrapper → single mj-section → N column
-    grandkids``: the ≥2-section-child unwrap predicate sees one direct child,
+    The under-segmenter shape is ``mj-wrapper -> single mj-section -> N column
+    grandkids``: the >=2-section-child unwrap predicate sees one direct child,
     so the grandkid cards never surface. By MJML semantics that shape is ONE
     section — whether it should instead count as N sections is decided by what
     the columns *mean* (53.1 gate: proven semantic, no structural rule).
@@ -964,21 +968,21 @@ def _classify_mj_section(
     if content_roles == {"spacer"}:
         return EmailSectionType.SPACER, 0.95
 
-    # Image-only at top → HERO
+    # Image-only at top -> HERO
     if content_roles == {"image"} and index <= 1:
         return EmailSectionType.HERO, 0.90
 
-    # Text + button + image → rich content
+    # Text + button + image -> rich content
     if "image" in content_roles and "text" in content_roles and "button" in content_roles:
         return EmailSectionType.CONTENT, 0.85
     if "button" in content_roles and "text" in content_roles and "image" not in content_roles:
-        # Many texts with short content → likely NAV
+        # Many texts with short content -> likely NAV
         texts = _extract_texts(node)
         if len(texts) >= 4 and all(len(t.content) <= 30 for t in texts):
             return EmailSectionType.NAV, 0.85
         return EmailSectionType.CONTENT, 0.85
 
-    # Last section with only text → FOOTER
+    # Last section with only text -> FOOTER
     if index == total - 1 and content_roles <= {"text"}:
         return EmailSectionType.FOOTER, 0.85
 
@@ -1051,23 +1055,23 @@ def _classify_by_content(
     has_buttons = len(buttons) > 0
     all_text = " ".join(t.content for t in texts) if has_texts else ""
 
-    # Full-width image near top → hero (strong signal)
+    # Full-width image near top -> hero (strong signal)
     if _has_large_image_child(node) and not has_texts and index <= 1:
         return EmailSectionType.HERO, 0.85
 
-    # Large image + text overlay near top (tall section) → hero
+    # Large image + text overlay near top (tall section) -> hero
     if _has_large_image_child(node) and has_texts and index <= 1:
         height = node.height if node.height is not None else 0
         if height >= 300:
             return EmailSectionType.HERO, 0.85
 
-    # Text + button near top with large heading → hero
+    # Text + button near top with large heading -> hero
     if has_texts and has_buttons and not has_images and index <= 2:
         heading_sizes = [t.font_size for t in texts if t.font_size and t.font_size > 20]
         if heading_sizes:
             return EmailSectionType.HERO, 0.75
 
-    # Section with ©/copyright/unsubscribe text near bottom → footer (strong signal)
+    # Section with ©/copyright/unsubscribe text near bottom -> footer (strong signal)
     if (
         has_texts
         and (_LEGAL_TEXT_RE.search(all_text) or _UNSUBSCRIBE_RE.search(all_text))
@@ -1075,19 +1079,19 @@ def _classify_by_content(
     ):
         return EmailSectionType.FOOTER, 0.85
 
-    # Social platform URLs → social (strong signal)
+    # Social platform URLs -> social (strong signal)
     if has_texts and _SOCIAL_URL_RE.search(all_text):
         return EmailSectionType.SOCIAL, 0.75
 
-    # Button-only section → CTA
+    # Button-only section -> CTA
     if has_buttons and not has_texts and not has_images:
         return EmailSectionType.CTA, 0.70
 
-    # Many short texts → navigation
+    # Many short texts -> navigation
     if len(texts) >= 4 and all(len(t.content) < 30 for t in texts):
         return EmailSectionType.NAV, 0.70
 
-    # Small text at bottom → footer (weaker signal)
+    # Small text at bottom -> footer (weaker signal)
     if index >= total - 2 and has_texts and not has_images:
         avg_size = sum(t.font_size if t.font_size is not None else 14 for t in texts) / len(texts)
         if avg_size <= 13:
@@ -1143,13 +1147,13 @@ def _classify_by_position(
     if index == total - 2 and height <= 150:
         return EmailSectionType.SOCIAL, 0.50
 
-    # Tall section near the top with or without large image → hero
+    # Tall section near the top with or without large image -> hero
     if index == 1 and height >= 300:
         return EmailSectionType.HERO, 0.50
     if has_large_image and height >= 300:
         return EmailSectionType.HERO, 0.50
 
-    # Short section with button-sized height → CTA only if button-like content
+    # Short section with button-sized height -> CTA only if button-like content
     if 60 < height <= 150:
         # Check children for button-like frames (small frame with short text child)
         has_button_child = any(
@@ -1229,7 +1233,7 @@ def _column_content_order(
     lost. One more pre-order walk restores it: the returned tuple lets
     ``_build_column_fill_html`` emit rows in design vertical order (a tag
     pill above the heading, a product name above its spec-icon rows) instead
-    of images→texts→buttons buckets. Ids the walk doesn't reach (e.g. a
+    of images->texts->buttons buckets. Ids the walk doesn't reach (e.g. a
     wrapped image's frame exported under a different id) simply stay out of
     the tuple — the consumer keeps them in category order.
     """
@@ -1290,6 +1294,8 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
                     buttons=buttons,
                     width=child.width,
                     content_order=_column_content_order(child, texts, images, buttons),
+                    stroke_color=child.stroke_color,
+                    stroke_weight=child.stroke_weight,
                 )
             )
     return all_columns
@@ -1313,6 +1319,8 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
                 buttons=buttons,
                 width=child.width,
                 content_order=_column_content_order(child, texts, images, buttons),
+                stroke_color=child.stroke_color,
+                stroke_weight=child.stroke_weight,
             )
         )
     return groups
@@ -1515,7 +1523,7 @@ def _walk_for_images(
             )
         )
     elif node.type == DesignNodeType.FRAME and node.image_ref:
-        # Frame with IMAGE fill → treat as background image
+        # Frame with IMAGE fill -> treat as background image
         results.append(
             ImagePlaceholder(
                 node_id=node.id,
@@ -1585,7 +1593,7 @@ def _corner_spec_or_none(spec: CornerRadiusSpec) -> CornerRadiusSpec | None:
 
 # 53.3d — reproducibility classifier bounds. Boring and conservative (raster
 # only when certain): visible rotation beyond ±1° or sibling pairs whose
-# bboxes clearly overlap (≥25% of the smaller box; near-parent-sized backdrop
+# bboxes clearly overlap (>=25% of the smaller box; near-parent-sized backdrop
 # layers excluded).
 _ROTATION_TOLERANCE_DEG = 1.0
 _OVERLAP_MIN_RATIO = 0.25
@@ -1774,7 +1782,7 @@ def _walk_for_buttons(
                         height=node.height,
                         fill_color=node.fill_color,
                         url=btn_url,
-                        # Absent Figma cornerRadius = square; normalize None→0.0
+                        # Absent Figma cornerRadius = square; normalize None->0.0
                         # so square buttons render square (not the 4px fallback).
                         border_radius=(
                             node.corner_radius if node.corner_radius is not None else 0.0
