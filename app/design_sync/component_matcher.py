@@ -1164,13 +1164,16 @@ def render_card_table(
     The white surface is carried by the ``bgcolor`` ATTR only — never an inline
     ``background-color`` — because the section's container-bg override clobbers
     the first inline ``background-color`` in the component (``_replace_first_css_prop``
-    when the ``cell`` host has no ``_outer`` class). With no inline bg here, that
-    override correctly falls through to paint the ``cell`` outer (the band).
+    when the ``td`` host has no ``_outer`` class). With no inline bg here, that
+    override correctly falls through to paint the ``td`` outer (the band). ``bg`` is
+    routed through :func:`_safe_color` so this reusable primitive stays hex-safe for
+    future (G7/G8) callers, not just the validated ``inner_bg`` this ships with.
     """
+    safe_bg = _safe_color(bg, "#FFFFFF")
     body = "".join(rows)
     return (
         f'<table role="presentation" width="{width}" align="{align}" '
-        f'cellpadding="0" cellspacing="0" border="0" bgcolor="{bg}" class="wf" '
+        f'cellpadding="0" cellspacing="0" border="0" bgcolor="{safe_bg}" class="wf" '
         f'style="border-radius:{radius}px;'
         f'border-collapse:separate;overflow:hidden;">{body}</table>'
     )
@@ -1206,14 +1209,21 @@ def _card_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None, pa
 def _card_text_row(text: TextBlock, bg: str) -> str:
     r"""One text row inside a card (full inline font props; ``\n`` → ``<br>``)."""
     content = _safe_text(text.content).replace("\n", "<br />")
-    ff = text.font_family or "Arial, sans-serif"
+    # font-family: escaped (quote=True) so a design font name can't break out of the
+    # style attr; web-safe fallback appended when absent (mirrors _column_text_row).
+    if text.font_family:
+        ff = html.escape(text.font_family, quote=True)
+        if "," not in ff:
+            ff = f"{ff},sans-serif"
+    else:
+        ff = "Arial,sans-serif"
     fs = int(text.font_size) if text.font_size else 14
     lh = int(text.line_height) if text.line_height else 19
     fw = text.font_weight if text.font_weight is not None else 600
     tc = _safe_color(text.text_color, "#000000")
     # bgcolor ATTR (not inline background-color) — see render_card_table docstring.
     return (
-        f'<tr><td align="center" bgcolor="{bg}" style="'
+        f'<tr><td align="center" bgcolor="{_safe_color(bg, "#FFFFFF")}" style="'
         f"padding:10px 24px 0 24px;font-family:{ff};font-size:{fs}px;"
         f"line-height:{lh}px;font-weight:{fw};color:{tc};"
         f'mso-line-height-rule:exactly;">{content}</td></tr>'
@@ -1875,13 +1885,18 @@ def _fills_card(
     """
     images_by_id = {im.node_id: im for im in section.images}
     texts_by_id = {t.node_id: t for t in section.texts}
-    # Y-order: content_order (design pre-order) when present; else images then
-    # texts in stored order (defensive — loses the interleave but never crashes).
-    order: tuple[str, ...] = ()
-    if section.column_groups and section.column_groups[0].content_order:
-        order = section.column_groups[0].content_order
-    if not order:
-        order = tuple(images_by_id) + tuple(texts_by_id)
+    # Y-order from content_order (the F10 interleave restorer) filtered to the ids
+    # we actually carry, then any remaining images/texts appended in stored order —
+    # so every child renders even when content_order is absent or references stale
+    # ids (the category lists otherwise lose the image↔text interleave).
+    known = tuple(images_by_id) + tuple(texts_by_id)
+    content_order = (
+        section.column_groups[0].content_order
+        if section.column_groups and section.column_groups[0].content_order
+        else ()
+    )
+    order = [nid for nid in content_order if nid in images_by_id or nid in texts_by_id]
+    order += [nid for nid in known if nid not in order]
 
     rows: list[str] = []
     images_seen = 0
@@ -1896,8 +1911,8 @@ def _fills_card(
         elif node_id in texts_by_id:
             rows.append(_card_text_row(texts_by_id[node_id], bg))
 
-    if not rows:  # nothing mapped — degrade to the prior image-gallery behaviour
-        return _fills_image_gallery(section, _cw, image_urls=image_urls)
+    if not rows:  # unreachable (the predicate guarantees images AND texts) — defensive
+        return []
 
     # Rule 11: card width = dominant child-image native width (the nested images
     # aren't direct frame children, so rule_11's ``inner_card_fixed_width`` is

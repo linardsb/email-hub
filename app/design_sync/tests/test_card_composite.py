@@ -1,7 +1,7 @@
 """Tests for the card-with-N-children composite (51.2 / Rule 1 + Rule 11, Track G · G6).
 
 Covers the render helper (``render_card_table``), the fill builder (``_fills_card``),
-and the detection predicate that routes a physical card-shell to the ``cell`` seed
+and the detection predicate that routes a physical card-shell to the ``td`` seed
 instead of the ``image-gallery`` seed (which dropped the identity TEXT).
 """
 
@@ -184,3 +184,73 @@ def test_physical_card_without_text_does_not_route_to_td_seed() -> None:
     """The predicate requires surviving text — an image-only card is out of scope."""
     match = match_section(_card_section(with_text=False), 0)
     assert match.component_slug != "td"
+
+
+def test_card_detection_requires_single_column() -> None:
+    """A multi-column physical section is a column layout, not a card-shell (the
+    column override handles it) — the predicate must not fire."""
+    match = match_section(_card_section(column_layout=ColumnLayout.TWO_COLUMN), 0)
+    assert match.component_slug != "td"
+
+
+# ── HTML-email correctness / hardening ──────────────────────────────────────
+
+
+def test_card_text_row_carries_mso_and_font_props() -> None:
+    """CLAUDE.md HTML-email rule: every text <td> needs font-family/size/color/
+    line-height + mso-line-height-rule:exactly."""
+    value = _fills_card(_card_section(), 600)[0].value
+    for prop in (
+        "font-family:",
+        "font-size:",
+        "color:",
+        "line-height:",
+        "mso-line-height-rule:exactly",
+    ):
+        assert prop in value, f"missing {prop} on the card text cell"
+
+
+def test_card_font_family_escaped_with_fallback() -> None:
+    """H1 regression: a design font name can't break out of the style attr, and a
+    web-safe fallback is appended when the value has no comma."""
+    from app.design_sync.component_matcher import _card_text_row
+
+    evil = TextBlock(node_id="t", content="X", font_family='Arial;" onmouseover="x')
+    row = _card_text_row(evil, "#FFFFFF")
+    assert '" onmouseover="' not in row  # not a live attribute
+    assert "&quot;" in row  # the double-quote was escaped
+    # a plain multi-word family gets the web-safe fallback appended
+    plain = _card_text_row(TextBlock(node_id="t", content="X", font_family="Noto Sans"), "#FFFFFF")
+    assert "font-family:Noto Sans,sans-serif" in plain
+
+
+def test_fills_card_renders_all_children_with_stale_content_order() -> None:
+    """L1: a content_order referencing unknown ids must not drop children — every
+    image and text still renders (order falls back to stored order)."""
+    section = _card_section()
+    # Overwrite the column group's content_order with stale ids.
+    stale_cg = ColumnGroup(
+        column_idx=1,
+        node_id="col",
+        node_name="col",
+        texts=section.texts,
+        images=section.images,
+        content_order=("bogus-1", "bogus-2"),
+    )
+    section = EmailSection(
+        section_type=EmailSectionType.CONTENT,
+        node_id=section.node_id,
+        node_name=section.node_name,
+        texts=section.texts,
+        images=section.images,
+        column_layout=ColumnLayout.SINGLE,
+        width=440.0,
+        bg_color="#F4F4F4",
+        column_groups=[stale_cg],
+        is_physical_card_surface=True,
+        inner_bg="#FFFFFF",
+        inner_radius=18.0,
+    )
+    value = _fills_card(section, 600)[0].value
+    assert "Andy" in value
+    assert value.count("<tr>") == 4  # 3 images + 1 text, none dropped
