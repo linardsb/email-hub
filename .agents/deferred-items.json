@@ -1078,7 +1078,9 @@
       ],
       "symptom_if_broken": "A composite child needing template slot substitution (e.g. a card body holding a pill row with its own fills) has no renderer — it would emit its raw .value or nothing.",
       "closes_when": "51.2 (card/pills) lands the first genuine depth>=2 sub-template consumer, adding the sub-template child path + the data-slot-composite anchor mode.",
-      "blocked_by": ["phase-53g-g4-composite-slot-infra"]
+      "blocked_by": [
+        "phase-53g-g4-composite-slot-infra"
+      ]
     },
     {
       "id": "phase-53g-g4-tree-html-slot-row-shape",
@@ -1095,7 +1097,9 @@
       ],
       "symptom_if_broken": "A text-block-with-CTA email rendered through the tree path shows no CTA button; before G4 it showed the button label as body text.",
       "closes_when": "51.2 adds a data-slot-composite (or cta_row) slot to the relevant seeds + a TreeCompiler composite-fill path, so tree_bridge can emit the composite and it renders. Guarded by test_undefined_slot_breaks_compile + test_composite_skipped_at_bridge (test_tree_bridge.py).",
-      "blocked_by": ["phase-53g-g4-composite-slot-infra"]
+      "blocked_by": [
+        "phase-53g-g4-composite-slot-infra"
+      ]
     },
     {
       "id": "phase-53g-g5-tag-pill-slot",
@@ -1135,6 +1139,43 @@
       "symptom_if_broken": "A pill/CTA with absent text_color on a light (near-white) fill renders an invisible white label.",
       "closes_when": "A real fixture surfaces a light-fill absent-text_color pill, OR a luminance-based label-color fallback ships (cf the stroke-gated dark-text precedent phase-53-b8-text-block-solid-cta-text-color).",
       "notes": "Latent only — the stroke-gated branch in _fills_text_block already darkens to #1a1a1a for OUTLINED buttons; the uncovered case is a FILLED light pill with no stroke and no captured text color. Cross-ref phase-53-b8-text-block-solid-cta-text-color (the stroke-gated dark-text precedent)."
+    },
+    {
+      "id": "phase-53g-g7-spec-minitable",
+      "phase": "53g",
+      "title": "Spec mini-table + multi-line <br> + hug-row centering + column divider (51.4/51.5, M4/M6)",
+      "status": "closed",
+      "severity": "soft",
+      "introduced": "2026-07-19",
+      "introduced_commit": "pending",
+      "closed_commit": "pending",
+      "summary": "G7 promotes 51.4 (spec mini-table) + 51.5 (multi-line splitter) and fixes M6 hug-row centering + divider, all matcher/renderer-side. (1) _multiline_to_br normalizes \\n/\\r\\n/U+2028/U+2029 to <br> in _column_text_row + spec cells (51.5 reduces to cell-text normalization: one TEXT node per value, uniform font, no node split). (2) _group_spec_pairs/_spec_minitable_row fold an adjacent (icon<=30px, text<40char) run in content_order into one centered horizontal <td>xN mini-table in _build_column_fill_html (matcher-only, no G4 composite seam). (3) _apply_hug_column_widths renders a column-layout section at design px centered when sum(col widths)<=0.7*section width; _is_hug_row gates the F9 shrink sites off so a band inset cannot re-compress it. (4) ColumnGroup gains stroke_color/stroke_weight (threaded through DocumentColumn serialization per #327) and _apply_column_dividers emits border-left on a hug-row cell carrying a stroke.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_multiline_to_br, _group_spec_pairs, _spec_minitable_row, _build_column_fill_html)",
+        "app/design_sync/component_renderer.py (_is_hug_row, _apply_hug_column_widths, _apply_column_dividers)",
+        "app/design_sync/figma/layout_analyzer.py (ColumnGroup.stroke_color/weight; _detect_mj_columns/_build_column_groups populate)",
+        "app/design_sync/email_design_document.py (DocumentColumn stroke round-trip)",
+        "data/schemas/email-design-document-v1.json (/$defs/column stroke_color/weight + content_order)"
+      ],
+      "symptom_if_broken": "c7 product-spec rows stack each icon/label full-width instead of one-line pairs; user-info row spreads across 4x138px instead of a centered 240px strip with a border-left divider; U+2028 spec cells (+260 Insiders) render on one line.",
+      "closes_when": "Shipped G7. Corpus: c7 spec rows are mini-tables, user-info centered with divider; c8/c10 byte-identical; c9 gets design-correct 2-line labels only. RED-proven tests (test_multi_line_text/spec_mini_table/hug_column_centering/user_info_divider); make check-full green.",
+      "notes": "Prompt's 'peel_row y-band' re-aimed matcher-only (extracted elements carry no x/y; content_order already interleaves). Divider scoped to hug rows: c9's full-width Place|Temperature columns carry a #545454 stroke that must NOT paint a border. See phase-53g-g7-per-side-stroke-capture. A3 (cache-off, stash-verified — the Redis section cache poisons the fidelity harness): c7 full_image +0.001 / median +0.005 UP, section_min 0.778->0.708 (-0.070) — a per-band-REALIGNMENT trade (shorter side-by-side specs shift section heights), NOT a broken feature (mini-table renders correctly side-by-side, visually confirmed); ratifiable like G2/G3/G4. Also fixed: v1 schema /$defs/column gained the serialized fields (else app-path validation rejects a stroked column). user-info icons render 60px (deferred Prompt-11 inflation, out of scope)."
+    },
+    {
+      "id": "phase-53g-g7-per-side-stroke-capture",
+      "phase": "53g",
+      "title": "Per-side column strokes (individualStrokeWeights) not captured - divider inferred from uniform stroke + hug-row scope",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-19",
+      "introduced_commit": "pending",
+      "summary": "G7 renders a column's border-left divider from the UNIFORM stroke_color/stroke_weight captured on the source mj-column node, scoped to hug rows (c7 user-info). Figma's individualStrokeWeights (left/top/right/bottom) are NOT ingested, so a design that strokes only one side of a NON-hug column, or wants a border on a side other than left, is not reproduced. The hug-row scope is the disambiguator today: a full-width column with a uniform stroke (c9 Place|Temperature #545454) is treated as a box, not a divider, and gets no border.",
+      "code_refs": [
+        "app/design_sync/figma/service.py (_extract_stroke - reads strokeWeight/strokes, not individualStrokeWeights)",
+        "app/design_sync/component_renderer.py (_apply_column_dividers - hug-scoped border-left from uniform stroke)"
+      ],
+      "symptom_if_broken": "A real design with a per-side column stroke (e.g. border-right, or a divider on a full-width column) renders no border or the wrong side. No corpus fixture exercises this - c7 user-info is a left-divider on a hug row.",
+      "closes_when": "figma ingest captures individualStrokeWeights onto ColumnGroup (per-side) + the renderer emits the specific side(s), replacing the hug-row heuristic; guarded by a fixture that carries a per-side column stroke."
     }
   ],
   "tooling_followups": [
