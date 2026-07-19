@@ -22,6 +22,7 @@ from app.design_sync.figma.layout_analyzer import (
 
 if TYPE_CHECKING:
     from app.design_sync.protocol import ExtractedGradient
+    from app.projects.design_system import DesignSystem
 
 logger = get_logger(__name__)
 
@@ -102,6 +103,7 @@ def match_section(
     image_urls: dict[str, str] | None = None,
     global_design_image: bytes | None = None,  # noqa: ARG001  Phase 50.1 pass-through; consumed in 50.5
     gradients: list[ExtractedGradient] | None = None,
+    design_system: DesignSystem | None = None,
 ) -> ComponentMatch:
     """Match a single EmailSection to a component slug with slot fills."""
     # Column layouts override section type for CONTENT sections
@@ -119,7 +121,9 @@ def match_section(
         )
 
     slug, confidence = _match_by_type(section)
-    fills = _build_slot_fills(slug, section, container_width, image_urls=image_urls)
+    fills = _build_slot_fills(
+        slug, section, container_width, image_urls=image_urls, design_system=design_system
+    )
     overrides = _build_token_overrides(section, gradients=gradients)
 
     return ComponentMatch(
@@ -140,6 +144,7 @@ def match_all(
     image_urls: dict[str, str] | None = None,
     global_design_image: bytes | None = None,
     gradients: list[ExtractedGradient] | None = None,
+    design_system: DesignSystem | None = None,
 ) -> list[ComponentMatch]:
     """Match all sections in order."""
     return [
@@ -150,6 +155,7 @@ def match_all(
             image_urls=image_urls,
             global_design_image=global_design_image,
             gradients=gradients,
+            design_system=design_system,
         )
         for idx, section in enumerate(sections)
     ]
@@ -164,6 +170,7 @@ async def match_section_with_vlm_fallback(
     screenshot: bytes | None = None,
     candidate_types: list[str] | None = None,
     gradients: list[ExtractedGradient] | None = None,
+    design_system: DesignSystem | None = None,
 ) -> ComponentMatch:
     """Match section with optional VLM fallback for low-confidence matches.
 
@@ -179,6 +186,7 @@ async def match_section_with_vlm_fallback(
         screenshot: PNG bytes of the section screenshot (required for VLM).
         candidate_types: Component type slugs from the manifest (required for VLM).
         gradients: Extracted gradients for ``gradient_ref`` resolution (53.3b).
+        design_system: Project DesignSystem threaded to slot builders (G8 / 51.6).
 
     Returns:
         ComponentMatch — either the original heuristic match or a VLM-improved one.
@@ -187,7 +195,12 @@ async def match_section_with_vlm_fallback(
     from app.design_sync.tuning import LOW_MATCH_CONFIDENCE_THRESHOLD
 
     match = match_section(
-        section, idx, container_width=container_width, image_urls=image_urls, gradients=gradients
+        section,
+        idx,
+        container_width=container_width,
+        image_urls=image_urls,
+        gradients=gradients,
+        design_system=design_system,
     )
 
     threshold = LOW_MATCH_CONFIDENCE_THRESHOLD
@@ -209,7 +222,9 @@ async def match_section_with_vlm_fallback(
 
     # Rebuild match with VLM-classified component type
     new_slug = vlm_result.component_type
-    fills = _build_slot_fills(new_slug, section, container_width, image_urls=image_urls)
+    fills = _build_slot_fills(
+        new_slug, section, container_width, image_urls=image_urls, design_system=design_system
+    )
     overrides = _build_token_overrides(section, gradients=gradients)
 
     return ComponentMatch(
@@ -508,6 +523,7 @@ def _build_slot_fills(
     container_width: int,
     *,
     image_urls: dict[str, str] | None = None,
+    design_system: DesignSystem | None = None,
 ) -> list[SlotFill]:
     """Build slot fills for a given component slug from section content."""
     builders: dict[str, _SlotBuilder] = {
@@ -586,7 +602,13 @@ def _build_slot_fills(
     }
     builder = builders.get(slug)
     if builder:
-        fills = builder(section, container_width, image_urls=image_urls, slug=slug)
+        fills = builder(
+            section,
+            container_width,
+            image_urls=image_urls,
+            slug=slug,
+            design_system=design_system,
+        )
         _log_default_fills(slug, section, fills)
         return fills
     return []
@@ -2120,30 +2142,265 @@ def _fills_cta(
     return fills
 
 
+# ── Footer builders (Track G · G8 / 51.6) ──
+# Seed styling reused so converter output stays visually flush with
+# ``email-templates/components/email-footer.html``.
+_FOOTER_LEGAL_TEXT_STYLE = (
+    "padding: 0 0 12px 0; text-align: center; font-family: Arial, sans-serif; "
+    "font-size: 12px; color: #666666; line-height: 1.5; mso-line-height-rule: exactly;"
+)
+_FOOTER_UNSUB_CELL_STYLE = (
+    "padding: 0; text-align: center; font-family: Arial, sans-serif; "
+    "font-size: 12px; mso-line-height-rule: exactly;"
+)
+_FOOTER_LINK_STYLE = "color: #0066cc; text-decoration: underline;"
+# Collapse runs of adjacent hard breaks (Figma often encodes a single visual
+# line break as LF + U+2028) down to one ``<br />`` so footer lines don't
+# gain a blank line between them.
+_FOOTER_MULTI_BR_RE = re.compile(r"(?:<br />){2,}")
+_BR = "<br />"
+
+
+def _render_text_runs(text: TextBlock) -> str:
+    """Render a footer TEXT node, emitting ``<a>`` links from its style runs.
+
+    Walks :attr:`TextBlock.style_runs` in ``start`` order, slicing
+    ``content[start:end]`` and wrapping runs that carry a ``link_url`` in an
+    anchor styled with the run's colour + underline (falling back to the node
+    colour). Hard line breaks are converted to ``<br />`` via
+    :func:`_multiline_to_br`; a break landing at a link boundary is hoisted
+    outside the anchor and adjacent breaks are collapsed to one. Offsets index
+    the raw characters while ``content`` is stripped, so indices are clamped and
+    overlapping/backward runs are skipped defensively.
+    """
+    content = text.content
+    runs = text.style_runs
+    if not runs:
+        return _FOOTER_MULTI_BR_RE.sub(_BR, _multiline_to_br(content))
+
+    n = len(content)
+    default_color = _safe_color(text.text_color, "#0066cc")
+    parts: list[str] = []
+    cursor = 0
+    for run in sorted(runs, key=lambda r: r.start):
+        start = max(0, min(run.start, n))
+        end = max(0, min(run.end, n))
+        if end <= start or start < cursor:
+            continue
+        if cursor < start:
+            parts.append(_multiline_to_br(content[cursor:start]))
+        segment = _multiline_to_br(content[start:end])
+        if run.link_url:
+            # Hoist leading/trailing breaks out of the anchor so they collapse
+            # with adjacent breaks and the underline never spans a line break.
+            leading = ""
+            while segment.startswith(_BR):
+                leading += _BR
+                segment = segment[len(_BR) :]
+            trailing = ""
+            while segment.endswith(_BR):
+                trailing += _BR
+                segment = segment[: -len(_BR)]
+            color = _safe_color(run.color_hex, default_color)
+            decoration = "underline" if run.underline else "none"
+            href = html.escape(_safe_url(run.link_url), quote=True)
+            parts.append(
+                f'{leading}<a href="{href}" style="color: {color}; '
+                f'text-decoration: {decoration};">{segment}</a>{trailing}'
+            )
+        else:
+            parts.append(segment)
+        cursor = end
+    if cursor < n:
+        parts.append(_multiline_to_br(content[cursor:]))
+    return _FOOTER_MULTI_BR_RE.sub(_BR, "".join(parts))
+
+
+def _footer_editorial_row(text: TextBlock, pad_bottom: int) -> str:
+    """Build one footer editorial ``<tr><td>`` from a TEXT node's design props.
+
+    Mirrors :func:`_column_text_row` typography (font-family escaped + web-safe
+    fallback; size ``int`` default 12; weight raw; ``_safe_color``; line-height
+    ``round(px)``; align allowlist default centre; letter-spacing skipping
+    ``0.0``; transform/decoration allowlist; ``mso-line-height-rule:exactly``)
+    but sources content from :func:`_render_text_runs` (style-run links) and
+    takes an explicit ``padding-bottom`` for inter-node spacing.
+    """
+    decls = [f"padding:0 0 {pad_bottom}px 0"]
+    if text.font_family:
+        family = html.escape(text.font_family, quote=True)
+        if "," not in family:
+            family = f"{family},sans-serif"
+        decls.append(f"font-family:{family}")
+    else:
+        decls.append("font-family:Arial,sans-serif")
+
+    size = int(text.font_size) if text.font_size else 12
+    decls.append(f"font-size:{size}px")
+
+    if text.font_weight is not None:
+        decls.append(f"font-weight:{text.font_weight}")
+
+    decls.append(f"color:{_safe_color(text.text_color)}")
+
+    if text.line_height is not None:
+        decls.append(f"line-height:{round(text.line_height)}px")
+    else:
+        decls.append("line-height:1.5")
+
+    align = text.text_align.lower() if text.text_align else "center"
+    if align in _ALLOWED_TEXT_ALIGN:
+        decls.append(f"text-align:{align}")
+
+    if text.letter_spacing not in (None, 0.0):
+        decls.append(f"letter-spacing:{text.letter_spacing:.2f}px")
+
+    if text.text_transform is not None:
+        tt = text.text_transform.lower()
+        if tt in _ALLOWED_TEXT_TRANSFORM:
+            decls.append(f"text-transform:{tt}")
+
+    if text.text_decoration is not None:
+        td = text.text_decoration.lower()
+        if td in _ALLOWED_TEXT_DECORATION:
+            decls.append(f"text-decoration:{td}")
+
+    decls.append("mso-line-height-rule:exactly")
+    style = ";".join(decls) + ";"
+    return f'<tr><td style="{style}">{_render_text_runs(text)}</td></tr>'
+
+
+def _footer_editorial_rows(section: EmailSection) -> str:
+    """Assemble the ``footer_editorial`` cell as a nested per-node row table.
+
+    One ``<tr><td>`` per :attr:`EmailSection.texts` entry (tree order). Inter-row
+    spacing uses the design ``element_gaps`` when a positive value is present,
+    else a 12px default matching the seed rhythm; the last row has no
+    padding-bottom. Empty when the section carries no text.
+    """
+    texts = section.texts
+    if not texts:
+        return ""
+
+    gaps = section.element_gaps
+    last = len(texts) - 1
+    rows: list[str] = []
+    for i, text in enumerate(texts):
+        if i == last:
+            pad = 0
+        elif i < len(gaps) and gaps[i] > 0:
+            pad = round(gaps[i])
+        else:
+            pad = 12
+        rows.append(_footer_editorial_row(text, pad))
+    inner = "\n".join(rows)
+    return (
+        '<table role="presentation" width="100%" cellpadding="0" '
+        f'cellspacing="0" border="0">\n{inner}\n</table>'
+    )
+
+
+def _footer_legal_text_row(inner_html: str) -> str:
+    """Wrap a legal line (copyright / address) in the seed's centred cell."""
+    return f'<tr><td class="footer-text" style="{_FOOTER_LEGAL_TEXT_STYLE}">{inner_html}</td></tr>'
+
+
+def _footer_unsub_row(unsub_label: str) -> str:
+    """The compliance unsubscribe ``<tr>`` — ALWAYS emitted (G8 invariant).
+
+    Reconstructs the seed's row-3 link cell verbatim (the ``{{unsubscribeUrl}}``
+    / ``{{preferencesUrl}}`` Liquid merge tags and the static privacy link) so a
+    working unsubscribe is guaranteed regardless of design content. The merge
+    tags are emitted as plain-string literals (never through ``_safe_text``) so
+    they survive for downstream Liquid rendering. Only ``unsub_label`` (already
+    escaped) varies, from ``FooterConfig.unsubscribe_text``.
+    """
+    links = (
+        '<a href="{{unsubscribeUrl}}" class="footer-link" style="'
+        + _FOOTER_LINK_STYLE
+        + '">'
+        + unsub_label
+        + "</a>\n                  &nbsp;|&nbsp;\n"
+        '<a href="{{preferencesUrl}}" class="footer-link" style="'
+        + _FOOTER_LINK_STYLE
+        + '">Manage Preferences</a>\n                  &nbsp;|&nbsp;\n'
+        '<a href="https://example.com/privacy" class="footer-link" style="'
+        + _FOOTER_LINK_STYLE
+        + '">Privacy Policy</a>'
+    )
+    return f'<tr><td style="{_FOOTER_UNSUB_CELL_STYLE}">{links}</td></tr>'
+
+
+def _footer_legal_html(design_system: DesignSystem | None) -> str:
+    """Build the ``footer_legal`` compliance block (G8 legal policy).
+
+    The unsubscribe row is an invariant. When a project ``DesignSystem`` carries
+    a ``FooterConfig`` its ``legal_text``/``company_name`` and ``address``
+    populate the legal lines and ``unsubscribe_text`` relabels the unsub link;
+    when absent, the seed's placeholder ©/address rows are dropped entirely and
+    only the reconstructed unsubscribe row remains (no "Company Name / Business
+    Street" leakage, ``{{unsubscribeUrl}}`` still guaranteed).
+    """
+    footer = design_system.footer if design_system is not None else None
+    rows: list[str] = []
+    unsub_label = "Unsubscribe"
+
+    if footer is not None:
+        if footer.legal_text:
+            rows.append(_footer_legal_text_row(_safe_text(footer.legal_text)))
+        else:
+            rows.append(
+                _footer_legal_text_row(
+                    f"&copy; {_safe_text(footer.company_name)}. All rights reserved."
+                )
+            )
+        if footer.address:
+            rows.append(_footer_legal_text_row(_safe_text(footer.address)))
+        if footer.unsubscribe_text:
+            unsub_label = _safe_text(footer.unsubscribe_text)
+
+    rows.append(_footer_unsub_row(unsub_label))
+    inner = "\n".join(rows)
+    return (
+        '<table role="presentation" width="100%" cellpadding="0" '
+        f'cellspacing="0" border="0">\n{inner}\n</table>'
+    )
+
+
 def _fills_footer(
     section: EmailSection,
     _cw: int,
+    *,
+    design_system: DesignSystem | None = None,
     **_kw: object,
 ) -> list[SlotFill]:
-    """Build footer editorial content from section texts.
+    """Build the converted footer's editorial + legal content (Track G · G8 / 51.6).
 
-    Joins the Figma footer text lines with <br><br> separators into the
-    ``footer_editorial`` slot (social links, editorial copy, etc.). The seed's
-    ``footer_legal`` cell — the unsubscribe/preferences/address rows — is a
-    separate slot this builder never emits, so it is preserved verbatim
-    (:data:`component_renderer._PRESERVE_UNFILLED_SLOTS`) rather than wiped
-    (RC-F5, Track F/F5). Legal compliance no longer depends on the design
-    carrying its own unsub text.
+    ``_fills_footer`` is the converter footer's content AND compliance owner:
+
+    * ``footer_editorial`` — one ``<tr><td>`` row per design TEXT node (nested
+      ``<table>`` inside the editorial cell), rendered with the node's design
+      typography and its per-run ``<a>`` links (:attr:`StyleRun.link_url`), with
+      hard line breaks converted to ``<br />``.
+    * ``footer_legal`` — a deterministically rebuilt compliance block. The
+      ``{{unsubscribeUrl}}`` unsubscribe row is an invariant (always emitted).
+      A project :class:`DesignSystem` ``FooterConfig`` substitutes its
+      ``company_name``/``legal_text``/``address``; when absent, the seed's
+      placeholder ©/address rows are dropped.
+
+    Supersedes RC-F5 (Track F/F5): the builder now actively emits
+    ``footer_legal`` instead of relying on slot preservation, so no placeholder
+    "Company Name / Business Street" boilerplate leaks and a working unsubscribe
+    link is guaranteed even when the design carries none. The design's own
+    decorative unsub/preferences links coexist as editorial (ratified "Coexist"
+    dedupe policy) — exactly one compliance row, no token rewriting.
     """
-    if not section.texts:
-        return []
-
-    parts: list[str] = []
-    for text in section.texts:
-        escaped = _safe_text(text.content)
-        parts.append(escaped)
-
-    return [SlotFill("footer_editorial", "<br><br>".join(parts))]
+    fills: list[SlotFill] = []
+    editorial = _footer_editorial_rows(section)
+    if editorial:
+        fills.append(SlotFill("footer_editorial", editorial))
+    fills.append(SlotFill("footer_legal", _footer_legal_html(design_system)))
+    return fills
 
 
 def _fills_spacer(

@@ -132,6 +132,22 @@ class DesignImportService:
 
                 target_clients = await fetch_target_clients(db, conn.project_id)
 
+                # 1c. Load the project DesignSystem for footer legal substitution
+                #     (G8 / 51.6). Absent/failure → converter uses the compliance
+                #     fallback; loading an optional design system must never block
+                #     conversion.
+                design_system = None
+                if conn.project_id is not None:
+                    try:
+                        from app.projects.service import ProjectService
+
+                        design_system = await ProjectService(db).get_design_system(
+                            conn.project_id, self._user
+                        )
+                    except Exception:
+                        # Optional feature; loading it must never block conversion.
+                        logger.warning("design_sync.design_system_load_failed", import_id=import_id)
+
                 # 2. Analyze layout
                 layout_response = await tokens_service.analyze_layout(
                     design_import.connection_id,
@@ -239,6 +255,7 @@ class DesignImportService:
                                         target_clients=target_clients,
                                         image_urls=_image_url_map,
                                         connection_id=_conn_id,
+                                        design_system=design_system,
                                     )
                                 logger.info(
                                     "design_sync.converter_document_path",
@@ -303,6 +320,7 @@ class DesignImportService:
                                     image_urls=_image_url_map,
                                     connection_id=_conn_id,
                                     global_design_image=structure_norm.design_image,
+                                    design_system=design_system,
                                 )
 
                         initial_html = conversion.html

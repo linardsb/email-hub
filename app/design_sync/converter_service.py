@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from app.design_sync.component_matcher import ComponentMatch
     from app.design_sync.component_renderer import RenderedSection
     from app.design_sync.email_design_document import EmailDesignDocument
+    from app.projects.design_system import DesignSystem
 
 logger = get_logger(__name__)
 
@@ -314,6 +315,7 @@ class DesignConverterService:
         design_screenshots: dict[str, bytes] | None = None,
         global_design_image: bytes | None = None,
         output_format: Literal["html", "tree"] = "html",
+        design_system: DesignSystem | None = None,
     ) -> ConversionResult:
         """Convert an EmailDesignDocument into email HTML.
 
@@ -330,6 +332,8 @@ class DesignConverterService:
             design_screenshots: Figma PNG bytes per node-id (async verification only).
             global_design_image: Full-frame PNG for VLM low-confidence fallback context (Phase 50.1).
             output_format: Output format — "html" (legacy) or "tree" (EmailTree bridge).
+            design_system: Project DesignSystem for footer legal substitution (G8 / 51.6);
+                ``None`` uses the FooterConfig-absent compliance fallback.
         """
         # design_screenshots is accepted but not used in this sync method;
         # callers can pass it through to async verification separately.
@@ -389,6 +393,7 @@ class DesignConverterService:
                 section_hashes=section_hashes,
                 global_design_image=global_design_image,
                 output_format=output_format,
+                design_system=design_system,
             )
 
         # Recursive converter requires full DesignNode frames which the
@@ -619,6 +624,7 @@ class DesignConverterService:
         section_hashes: dict[str, str] | None = None,
         global_design_image: bytes | None = None,
         output_format: Literal["html", "tree"] = "html",
+        design_system: DesignSystem | None = None,
     ) -> ConversionResult:
         """Component-template-based conversion (table-on-table structure).
 
@@ -632,6 +638,7 @@ class DesignConverterService:
             image_urls=image_urls,
             global_design_image=global_design_image,
             gradients=tokens.gradients,
+            design_system=design_system,
         )
         if output_format == "tree" and get_settings().design_sync.tree_bridge_enabled:
             tree_result = self._try_tree_bridge(
@@ -668,6 +675,7 @@ class DesignConverterService:
         image_urls: dict[str, str] | None,
         global_design_image: bytes | None = None,
         gradients: list[ExtractedGradient] | None = None,
+        design_system: DesignSystem | None = None,
     ) -> MatchPhase:
         """Detect repeating sibling groups (Phase 49.1) and match sections to components."""
         from app.design_sync.component_matcher import match_all
@@ -710,6 +718,7 @@ class DesignConverterService:
             image_urls=image_urls,
             global_design_image=global_design_image,
             gradients=gradients,
+            design_system=design_system,
         )
         return MatchPhase(
             matches=matches,
