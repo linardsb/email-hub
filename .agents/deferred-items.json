@@ -721,8 +721,8 @@
         "app/design_sync/component_matcher.py (_image_fills_column / _column_image_row width rule; _stacked_image_row — size-based stopgaps)"
       ],
       "symptom_if_broken": "A large decorative IMAGE (arrow, texture, badge) renders at content size or stacks as if it were a content photo, because nothing flags it decorative and the size heuristic only catches small icons.",
-      "closes_when": "Ingest captures z-order / role so decorative IMAGE nodes are flagged distinctly from content photos (Phase 53.3d), AND the frame-wrap branch (layout_analyzer.py:1318) uses the inner image's own width when it is much smaller than its wrapper — replacing the size heuristic.",
-      "notes": "Surfaced by audit-4 §RC-F7 / de-ranked findings; the heuristic is deliberately a stopgap, not the fix. F3 execution (2026-07-05) CONFIRMED the specific mammut (c10) mechanism: the MEN/WOMEN/EQUIPMENT red nav arrows are 28x28 IMAGE nodes wrapped in 268px mj-image frames, so layout_analyzer.py:1318 reports img.width=268 (== column) — F3's img.width-based rule (matcher/renderer scope) cannot shrink them because the width it reads is already wrong. User ratified deferring c10 to this entry; F3 fixed only the correctly-sized c9 icons (34/48px). The real fix is ingest-side (frame-wrap width + role capture)."
+      "closes_when": "Ingest captures z-order / role so a genuinely LARGE decorative IMAGE node (arrow, texture, badge) is flagged distinctly from a content photo (Phase 53.3d) and no longer renders/stacks as content. (The frame-wrap-width half — small wrapped decorations inflating to frame width — was closed by G11 item 2.)",
+      "notes": "Surfaced by audit-4 §RC-F7 / de-ranked findings; the heuristic is deliberately a stopgap, not the fix. F3 execution (2026-07-05) CONFIRMED the specific mammut (c10) mechanism: the MEN/WOMEN/EQUIPMENT red nav arrows are 28x28 IMAGE nodes wrapped in 268px mj-image frames, so layout_analyzer.py:1318 reports img.width=268 (== column) — F3's img.width-based rule (matcher/renderer scope) cannot shrink them because the width it reads is already wrong. User ratified deferring c10 to this entry; F3 fixed only the correctly-sized c9 icons (34/48px). The real fix is ingest-side (frame-wrap width + role capture). G11 item 2 (ad88ecf0) CLOSED the FRAME-WRAP-WIDTH half: a frame-wrapped IMAGE that is <=64px, strictly smaller than its wrapper, and whose wrapper bakes no own bg-fill/image-ref/effects now exports at CHILD width + CHILD target (export_node_id falls back to node_id). Corpus: c10 nav arrows 100%->28px, c8 64px icon un-ballooned 600->64, c7 icons 60->30, c9 icons 34->24. RED test + 4 controls (test_image_width_fidelity.py::TestFrameWrapDecorationWidth). A3 targets c7/c10 show scorer re-alignment jitter (see reference_a3_scorer_section_instability), non-targets c5/c6/c9 hold. The REMAINING open half is large-decorative-photo role/z-order capture at ingest — a genuinely large decorative image is still indistinguishable from a content photo."
     },
     {
       "id": "phase-53f-eyebrow-partial-padding-cell-theft",
@@ -958,7 +958,7 @@
       "id": "phase-53.3-line-height-relative-loader-gap",
       "phase": "53.3",
       "title": "structure.json loader drops line_height_relative — AUTO/% line heights die on fixture reload",
-      "status": "deferred",
+      "status": "closed",
       "severity": "speculative",
       "introduced": "2026-07-06",
       "introduced_commit": "3fd6377d",
@@ -969,13 +969,14 @@
       ],
       "symptom_if_broken": "After a fixture regen against live Figma, a design using AUTO/% line heights renders with default line-height in the regression corpus while the live import path renders the designed value — baseline diffs blame the wrong layer.",
       "closes_when": "_node_from_dict round-trips line_height_relative (one kwarg) and a bridge-roundtrip-style loader test pins every DesignNode field, OR the diagnose loader is replaced by a schema-driven serializer.",
-      "notes": "Fix is one line + test, but it changes fixture-reload behaviour — do it in a phase that owns a baseline regen, not as a drive-by (53.3 shipped with byte-identical baselines)."
+      "notes": "Fix is one line + test, but it changes fixture-reload behaviour — do it in a phase that owns a baseline regen, not as a drive-by (53.3 shipped with byte-identical baselines). CLOSED by G11 item 3 (d3e7ae48): added the line_height_relative kwarg to _node_from_dict + a full-field-parity round-trip test (test_diagnose_roundtrip.py) over dataclasses.fields(DesignNode) through report.py. Confirmed it was the SOLE dropped field. Corpus baselines byte-identical (latent — 0 committed structure.json carry the key).",
+      "closed_commit": "d3e7ae48"
     },
     {
       "id": "phase-53.5-nested-divider-render-gap",
       "phase": "53.5",
       "title": "Nested mj-divider rules don't render — column-child and band-absorbed dividers lose their stroke",
-      "status": "deferred",
+      "status": "closed",
       "severity": "soft",
       "introduced": "2026-07-06",
       "introduced_commit": "adca13e0",
@@ -987,7 +988,8 @@
       ],
       "symptom_if_broken": "Designs whose horizontal rules live inside columns or inside band-grouped wrappers render without the rule; the design shows a visible separator, the email shows none (cases 8 and 10 today).",
       "closes_when": "Column fills gain a divider row category (in-column, 51.x seam) AND band absorption carries the absorbed divider's stroke into a band-internal rule row — or segmentation changes make such dividers first-class sections.",
-      "notes": "The stroke signal is already captured and bridged (section.stroke_color / _zero_area_vector_stroke); this is a renderer-reach gap, not an ingest gap."
+      "notes": "The stroke signal is already captured and bridged (section.stroke_color / _zero_area_vector_stroke); this is a renderer-reach gap, not an ingest gap. CLOSED by G11 item 1 (405f17d0): BOTH render categories from closes_when are wired. (a) BAND-INTERNAL rule row — RepeatingGroup.internal_rules/BandRule captured in group_by_wrapper, re-injected by render_repeating_group; RENDERS ON CORPUS (c10 recovers 2 #C7CCCF rules, member count/A2 ladder unchanged). (b) IN-COLUMN divider category — ColumnDivider captured by _column_divider_lines, threaded through content_order + DocumentColumn (4 methods) + _column_divider_row; WIRED + unit-proven end-to-end but fires 0x on the 6-case corpus. RESIDUAL (supersedes into phase-53g-g11-social-section-drops-column-content): c8 is the only corpus in-column divider and its section (2833:2348) is classified `social`, whose renderer discards ALL non-icon column content (the two flanking legal texts are also dropped) — so c8 never traverses the column-fill path. c8 baseline UNCHANGED. The category will fire on true column-layout sections (G12 live-Figma).",
+      "closed_commit": "405f17d0"
     },
     {
       "id": "phase-53g-g1-band-spacing-continuity",
@@ -1217,6 +1219,44 @@
       ],
       "symptom_if_broken": "A real design with a per-side column stroke (e.g. border-right, or a divider on a full-width column) renders no border or the wrong side. No corpus fixture exercises this - c7 user-info is a left-divider on a hug row.",
       "closes_when": "figma ingest captures individualStrokeWeights onto ColumnGroup (per-side) + the renderer emits the specific side(s), replacing the hug-row heuristic; guarded by a fixture that carries a per-side column stroke."
+    },
+    {
+      "id": "phase-53g-g11-social-section-drops-column-content",
+      "phase": "53.g11",
+      "title": "Social-classified section drops its non-icon column content (legal texts + in-column divider)",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-07-20",
+      "introduced_commit": "405f17d0",
+      "summary": "A section whose classification resolves to `social` (matched to social-icons / footer-social) renders ONLY its social links via _fills_social; it never traverses _build_column_fills, so the column's texts, buttons and (G11 item 1) in-column dividers are all discarded. Surfaced by G11 item 1: c8 section 2833:2348 is a footer [social icons, legal text, mj-divider, more legal text] classified social — its two legal texts (2833:2363 'This is an automatically generated email...', 2833:2367 'Ferrari N.V. ...') AND its #373737 in-column divider are all absent from c8 output. The G11 in-column divider category is correctly wired but cannot surface here because the section bypasses the column-fill render path entirely.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:2528 (_fills_social — renders only social_links)",
+        "app/design_sync/component_matcher.py (classification -> 'social-icons'/'footer-social' slug for a mixed footer section)",
+        "app/design_sync/component_matcher.py:_build_column_fills (never reached for a social-typed section)"
+      ],
+      "symptom_if_broken": "A footer/section that mixes social icons with legal text, buttons or an in-column divider renders ONLY the icons; the design shows the text/divider, the email drops them (c8 2833:2348 today).",
+      "closes_when": "A social-classified section that carries non-social column content either renders that content (social row + column fills) OR is re-segmented so the non-social content becomes its own section — likely a G12 segmentation change. Then c8's in-column divider (already wired by G11 item 1) and its legal texts render.",
+      "blocked_by": [
+        "phase-53.5-nested-divider-render-gap"
+      ],
+      "notes": "This is the upstream reason G11's in-column divider category fires 0x on the corpus. It is a segmentation/classification gap (G12 territory), NOT a divider-category defect — the category is proven by test_nested_divider_render.py::TestColumnChildDivider driving the real column pipeline. Broader than dividers: the two legal texts drop too."
+    },
+    {
+      "id": "phase-53g-g11-contentgroup-column-divider-gap",
+      "phase": "53.g11",
+      "title": "ContentGroup column path re-drops in-column dividers (no dividers field)",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-20",
+      "introduced_commit": "405f17d0",
+      "summary": "G11 item 1 added ColumnGroup.dividers + a render category, wired through _detect_mj_columns and _build_column_groups. The THIRD column-construction path, _build_column_fills_from_content_groups, builds a ColumnGroup from a ContentGroup (layout_analyzer.ContentGroup), which has no dividers field — so a divider-bearing column that takes the content-group fallback re-drops its in-column divider with no error. Latent: the corpus flows through column_groups (verified cols populated), not the content-group fallback.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_build_column_fills_from_content_groups (ColumnGroup(...) built without dividers)",
+        "app/design_sync/figma/layout_analyzer.py (class ContentGroup — no dividers field)"
+      ],
+      "symptom_if_broken": "A design whose divider-bearing column is rendered via child_content_groups (column_groups absent) shows no in-column rule, while the same column via column_groups renders it.",
+      "closes_when": "ContentGroup gains a dividers field carried into the ColumnGroup at _build_column_fills_from_content_groups, OR the content-group column path is retired.",
+      "notes": "Deliberately ledgered rather than fixed (Simplicity First): adding dividers to ContentGroup expands the capture surface across every ContentGroup construction site for a path the corpus never takes. Flag for G12 (must-hold-on-any-design)."
     }
   ],
   "tooling_followups": [
