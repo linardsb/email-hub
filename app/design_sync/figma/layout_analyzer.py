@@ -1454,6 +1454,13 @@ def _crop_export_id(node: DesignNode) -> str | None:
 _ZERO_AREA_EPS = 1.0
 _MIN_VECTOR_PX = 8.0
 
+# item 2 (phase-53f-decorative-image-flag) — a frame-wrapped IMAGE at or under
+# this width is a genuine small decoration/icon whose native size is
+# unambiguously right; wider images stay on the frame-export path (mid-size
+# content is ambiguous). User-ratified cap: absolute ≤64px, NOT ``img<frame``
+# alone (which fires on mid-size content and risks A3 regressions elsewhere).
+_SMALL_DECORATION_MAX_PX = 64.0
+
 
 def _zero_area_vector_stroke(node: DesignNode) -> tuple[str, float | None] | None:
     """Stroke of the first zero-area stroked VECTOR in a subtree (53.5).
@@ -1546,17 +1553,41 @@ def _walk_for_images(
         and len(node.children) == 1
         and node.children[0].type == DesignNodeType.IMAGE
     ):
-        # Frame wrapping a single image — export the FRAME (includes bg fills).
-        # Rule 10 reads radius from the frame (where Figma sets corner radii on
-        # the wrapper, not the inner image).
+        # Frame wrapping a single image. A small decoration (icon/arrow) in an
+        # UNSTYLED wrapper exports at its OWN dims: exporting the wide frame
+        # into a child-width <img> scales the whole PNG down (a 268px
+        # arrow-frame baked into <img width="28"> renders the arrow ~3px), so
+        # emitted width and export target must move together (item 2 /
+        # phase-53f-decorative-image-flag). A wrapper that BAKES its own
+        # bg-fill / image-ref / effects keeps the frame export+dims (the
+        # original Rule-10 reason this branch exists). Corner radius does NOT
+        # block child-export — it's sourced from the frame in both branches and
+        # rides the child <img> via CSS (Rule 10).
         img = node.children[0]
+        is_small_decoration = (
+            img.width is not None
+            and img.width <= _SMALL_DECORATION_MAX_PX
+            and node.width is not None
+            and img.width < node.width
+            and node.image_ref is None
+            and node.fill_color is None
+            and node.effects_summary is None
+        )
+        if is_small_decoration:
+            # Child export: export_node_id falls back to node_id (== img.id) for
+            # a non-cropped child, exactly like a plain IMAGE node.
+            emit_width, emit_height = img.width, img.height
+            emit_export_id = _crop_export_id(img)
+        else:
+            emit_width, emit_height = node.width, node.height
+            emit_export_id = node.id  # Export the frame, not just the image fill
         results.append(
             ImagePlaceholder(
                 node_id=img.id,
                 node_name=img.name,
-                width=node.width,  # Use frame dimensions (includes padding/bg)
-                height=node.height,
-                export_node_id=node.id,  # Export the frame, not just the image fill
+                width=emit_width,
+                height=emit_height,
+                export_node_id=emit_export_id,
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
                 # Border lives on the wrapper frame (like Rule 10's radii)
                 stroke_color=node.stroke_color,
