@@ -117,6 +117,66 @@ centered headings — harness parity through the API, screenshot-verified. **Ops
 runs synced before this fix still serve field-less snapshots — one re-sync + re-import
 per connection after deploy.
 
+**Track G close-out (2026-07-20, main `baf5beaf`; full log
+`.agents/plans/53-g-production-readiness-prompt-sequence.md`).** G1–G9 closed render-mistake
+classes M1–M10 — band-spacing continuity (M1/G1), empty-slot + single-text heading ghosts
+(M2·M9/G2), button box geometry + per-corner pill radius (M3/G3+G5), composite-slot infra +
+own-row CTA (M8/G4), spec mini-table + hug-row centering (M4·M6/G7), the membership
+card-with-N-children composite (M5/G6), the composite footer + legal policy (M7/G8), and the
+Outlook ghost-width arithmetic gate (M10/G9). Corpus re-scored on current main —
+`render_case_png` re-runs the converter live, so this is the HEAD `baf5beaf` measurement, not a
+replay. Metric identical to Track F: **A3 advisory pixel score, CIEDE2000 in LAB,
+MIN-aggregated, blur 0.0, gmail_web render only**, local 6-fixture corpus (assets gitignored —
+CI still scores case 5 only):
+
+| Fixture (client) | full_image | section_min | section_median | Δ full_image vs Track-F (2026-07-05) |
+|---|---|---|---|---|
+| 5 maap | 0.866 | 0.663 | 0.885 | +0.021 |
+| 6 starbucks | 0.820 | 0.477 | 0.698 | +0.018 |
+| 7 LEGO | 0.856 | 0.684 | 0.896 | **+0.137** |
+| 8 performance_reimagined (Ferrari) | 0.785 | 0.676 | 0.786 | −0.017 |
+| 9 slate | 0.684 | 0.418 | 0.762 | +0.005 |
+| 10 mammut | 0.754 | 0.067 | 0.857 | +0.076 |
+
+The **c7 +0.137** jump (largest, Track-F 0.719 → HEAD 0.856) is dominated by the G6
+membership-card composite (c7 full_image 0.771→0.893 post-G6, per its result block) **plus** the
+now-closed column-width-budget and column-category-order residuals (§4) that had rendered c7's
+six benefit cards stacked and image-above-text; G7–G9 then netted c7 back to the final 0.856.
+c8's −0.017 is a minor hero/spacing trade (the Ferrari mark renders large; no
+content loss). The section-count ladder is **unchanged at 13/9/8/10/8/12**
+(`data/debug/ladder_snapshot.json`) — G1–G9 is render-only work and does not move section
+counts; the mammut 12-vs-18 under-count (§4) stands, and c10's `section_min 0.067` is that
+region's oversized decorative nav arrows, not a blank.
+
+*Composite eyeball (asset-coverage sanity, all 6 fixtures):* every design image renders except
+maap's two MAAP×KASK product-gallery photos (nodes `2833:1645`/`2833:1652`), which the converter
+emits as a **`background-image`** on the hero-block table (both assets present on disk,
+330 KB / 251 KB). The fidelity *scorer* rewrites only `src="…"` attributes to local file URLs —
+not `background-image: url(…)` — so those two boxes render blank **in the harness only**. The
+converter emits the same `/api/v1/design-sync/assets/…` path for `src` and `background-image`
+alike, and the shipped app serves that path (the app-parity export below served all 23 of the
+LEGO fixture's asset refs) — so a real client (or the app preview) fetches the background-image
+and renders it. The blank is the harness rewrite-regex's limitation, not an app or converter
+defect. c5's true gmail-class fidelity is therefore modestly above the measured 0.866; every
+other fixture is blank-free, so the numbers are trustworthy.
+
+**App-parity re-verified — M11 closed (2026-07-20, through the API).** Full path on a
+freshly-synced connection-5 snapshot: `POST /connections/sync` → `POST /imports`
+(`selected_node_ids=["2833:1869"]`, legacy filtered path) → `POST /imports/{id}/convert`
+(`output_mode="html"`) → stored template HTML (`converter_output_v3.html`, 70865 B). A
+URL-normalized structural diff vs `data/debug/7/expected.html` (every asset-URL surface — `src`,
+`background-image: url()`, `background=`, MSO `v:fill src`, VML `v:image src` — collapsed to one
+token; `data-node-id` left intact) is **empty** across 23 asset refs and 4 matching node
+anchors ⇒ **#327 structural parity holds byte-for-byte**. Asset correctness (M11): the app
+serves by exported node key (`…/assets/5/2833_1878.png`) with a systematic off-by-one vs the
+harness key (`…/assets/2833:1879.png`). 3 sampled nodes serve the **same design image** — the
+named `2833_1878`↔`2833:1879` pair is **pixel-identical**; the other two are visually identical
+(verified by eye), differing only in intrinsic resolution / sub-0.1% edge antialiasing vs the
+**14-day-stale (2026-07-06) on-disk harness export** (the app's fresh sync re-rendered the same
+nodes). So the key offset is a benign naming convention, not a wrong export; byte-md5 differs
+only because the harness assets are the older export. **Ops caveat (extends the 2026-07-06 note):** connections synced before #327
+serve field-less snapshots — re-sync once before judging fidelity or parity.
+
 ## 4. Residual gaps (tracked, not hidden)
 
 | Residual | Tracker | State |
@@ -128,10 +188,14 @@ per connection after deploy.
 | VLM verify→correct loop: dead on the default path (`vlm_verify_enabled=False`; correction applicator is property-only — cannot add/remove/reorder/merge sections; internal metric returns 1.0 on empty input) | **53.4 — RETIRED 2026-06-12** (`.agents/plans/53-4-vlm-retirement.md`) | Flag deprecated, cull 2026-09-10; reopen conditions documented; `vlm_fallback_enabled` (matcher classification) unaffected |
 | Never-parsed ingest render: effects/blendMode (flat/VML fallback), per-node gradient reattach (52.5 `node_id` captured), `scaleMode`/`imageTransform` crop, rotation, z-order → `frame_export` | TODO.md **53.3** | **Shipped 2026-07-06** (`fix/phase-53.3-ingest-render`): linear-gradient reattach on the outer band (solid midpoint + MSO `bgcolor` fallback), non-FILL `scaleMode` crops export the node itself, rotation/overlap reproducibility classifier behind `DESIGN_SYNC__FRAME_EXPORT_FALLBACK_ENABLED` (default off), effects/blend loss → `design_sync.effects_dropped` warnings. Still open: VML gradient, radial+ gradients, `imageTransform` matrix (subsumed by scaleMode export). Corpus carries none of these — synthetic-test coverage only, baselines byte-identical |
 | Decorative standalone VECTOR/LINE nodes fall through extraction (`layout_analyzer.py`) | TODO.md **53.5** | **Shipped 2026-07-06** (`fix/phase-53.5-vector-recovery`): ≥8×8 px vectors rasterize via node export (guards: inside-imaged-frame skip, sub-8px skip, Figma auto-name alt rejection); zero-area LINE strokes thread into the divider seed (`border-top`), recovering case 9's two rules (+0.001 full-image). Residual: nested (column-child / band-absorbed) dividers — `phase-53.5-nested-divider-render-gap`; corpus has no icon vectors, so the rasterize half is synthetic-coverage only |
-| **Column width budget:** column seeds hardcode 600px-context pixel widths (MSO ghost `td width` + div `max-width`); any horizontal inset (band `_cell` padding, F7 card padding) shrinks the live content box below the seed total, so the inline-block columns wrap and **2-col layouts render stacked** (c7 all 6 benefit cards, c8 spec grid, c10 product grid). Detection is correct — A8 fractions redistribute but never rescale the total | `phase-53f-column-width-budget` (deferred-items) | Open — F9-class renderer-side rescale; Track-F close-out finding (plan §4 row 4's "detection widening" is the wrong lever) |
-| In-column content ordering: `_build_column_fill_html` emits images→texts→buttons buckets, discarding design y-order (tag pills render below body instead of eyebrow-above-heading; card icons above product names) | `phase-53f-column-category-order` (deferred-items) | Open — y-order merge in the column fill builder |
+| **Column width budget:** column seeds hardcode 600px-context pixel widths (MSO ghost `td width` + div `max-width`); any horizontal inset (band `_cell` padding, F7 card padding) shrinks the live content box below the seed total, so the inline-block columns wrap and **2-col layouts render stacked** (c7 all 6 benefit cards, c8 spec grid, c10 product grid). Detection is correct — A8 fractions redistribute but never rescale the total | `phase-53f-column-width-budget` (deferred-items) | **Closed (F9, `e6812b44` / #328)** — the renderer rescales the column ghost `td width` / `div max-width` / ghost-table total to the effective (padded) content box, so multi-column sections hold side-by-side inside padded bands/cards; contributed to c7's Track-G **+0.137** (with G6). Latent sibling `phase-53g-g9-img-not-rescaled-with-column` (below) tracks the un-rescaled `<img>` |
+| In-column content ordering: `_build_column_fill_html` emits images→texts→buttons buckets, discarding design y-order (tag pills render below body instead of eyebrow-above-heading; card icons above product names) | `phase-53f-column-category-order` (deferred-items) | **Closed (`12aebee1`)** — the column fill builder emits in design y-order; eyebrow pills render above the heading and card icons below the product name |
 | **App-side render-field drop:** snapshot `_file_structure` cache + `cached_dict_to_node` protocol schema lacked `corner_radius`/`stroke_weight`/`stroke_color`/`text_align`, and the `_fix_text_contrast` post-pass repainted CTA labels against the band instead of the pill's own background (the filing's "protocol bridge" hypothesis was wrong — the bridges are lossless) | `phase-53f-app-snapshot-serializer-drops-render-fields` (deferred-items) | **CLOSED 2026-07-06** (`fix/phase-53f-app-render-field-parity`) — serializer round-trips all render fields (dataclass-parity test) + contrast fixer honours own-background; LEGO CTA harness parity through the API |
 | **Document-path selection bug:** with `snapshot.document_json` present (fresh syncs write one), `run_conversion` converted the whole-file document and ignored `selected_node_ids` (observed: 2MB template with zero email content) | `phase-53f-document-path-ignores-node-selection` (deferred-items) | **CLOSED 2026-07-06** (same branch) — selected-node imports always take the legacy filtered path; document path reserved for whole-file imports (both directions tested) |
+| **Membership card [19] surface-less:** the LEGO Insiders card matched the image-gallery seed, which has no `_inner`/col-bg target, so RC-F7's card-surface wrap never fired and the barcode card rendered directly on the lime band | `phase-53f-f7-image-gallery-membership-card` (deferred-items) | **Closed (G6 / #357)** — card-with-N-children composite renders the white r18 shell + 440px hug; c7 full_image 0.771→0.893 post-G6 |
+| **BrandRepair footer backstop dead:** `RepairPipeline` is never invoked from any design-sync path and `_repair_footer` early-returns on the seed's footer class and never injects an unsubscribe link | `phase-53f-brandrepair-footer-gaps` (deferred-items) | **Closed (G8 / #360)** — converter is self-sufficient: the email-footer seed's `footer_legal` cell (unsub/preferences/address rows) is preserved verbatim, never overwritten by `_fills_footer` |
+| **RC-F7 card wrapper overflows the 600px MSO ghost:** the relocated `_cell` padding landed on the 100%-width wrapper `<td>` outside the ghost, so Word rendered the card ~40px too wide (Chromium-correct, so no gate caught it) | `phase-53f-f7-card-wrapper-outlook-ghost-overflow` (deferred-items) | **Closed (G9 / #362)** — MSO ghost Word-box arithmetic gate reconciles wrapper padding against the fixed 600px column |
+| **Column rescalers don't shrink the contained `<img>`:** F9/A8/G7 rewrite a shrunk column's ghost `td width`, `div max-width`, and ghost-table total together but never the `<img>` inside — a design-width image can overflow its shrunk cell in Outlook while the G9 attr==max-width gate stays green | `phase-53g-g9-img-not-rescaled-with-column` (deferred-items) | Open — G9's deliberately-deferred sibling; latent-not-manifest (no corpus img exceeds its shrunk column today), rewrite the `<img>` width on column shrink |
 
 ## 5. How to talk about converter fidelity (the contract)
 
