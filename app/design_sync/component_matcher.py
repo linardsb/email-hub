@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, TypeGuard
 from app.core.logging import get_logger
 from app.design_sync.figma.layout_analyzer import (
     ButtonElement,
+    ColumnDivider,
     ColumnGroup,
     ColumnLayout,
     ContentGroup,
@@ -989,6 +990,25 @@ def _column_image_row(
     return f"<tr><td>{tag}</td></tr>"
 
 
+def _column_divider_row(divider: ColumnDivider) -> str:
+    """Render an in-column divider LINE's stroke as a ``border-top`` rule row (item 1).
+
+    Mirrors ``_column_image_row``'s own-row ``<tr><td>`` shape; the visible rule
+    IS the zero-area LINE's stroke (copies the case-9 divider override's colour/
+    weight discipline: floor sub-pixel weights to 1px, gate on a hex colour so a
+    ``0px solid`` invisible rule can never be emitted). Returns ``""`` for a
+    non-hex stroke — the caller drops the empty row.
+    """
+    if not (divider.stroke_color and _HEX_COLOR_RE.match(divider.stroke_color)):
+        return ""
+    weight = divider.stroke_weight if divider.stroke_weight and divider.stroke_weight > 0 else 1.0
+    weight_px = max(1, round(weight))
+    return (
+        f'<tr><td style="font-size:0;line-height:0;'
+        f'border-top:{weight_px}px solid {divider.stroke_color};"></td></tr>'
+    )
+
+
 def _column_cta_row(btn: ButtonElement) -> str:
     """Wrap a column CTA ``<a>`` in its own ``<tr><td>`` row (Phase 53 B2).
 
@@ -1062,20 +1082,22 @@ def _wrap_column_table(rows: list[str]) -> str:
 
 def _ordered_column_elements(
     group: ColumnGroup,
-) -> list[ImagePlaceholder | TextBlock | ButtonElement]:
+) -> list[ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider]:
     """Column content in design tree order (F10).
 
     ``content_order`` (node ids captured pre-order at group construction)
-    interleaves the three category lists back into the design's vertical
-    order — a tag pill (``ButtonElement``) above the heading, a product name
-    above its spec-icon rows. Groups without it (older persisted documents,
-    the content-group conversion) keep the legacy images->texts->buttons
-    order, as do any ids the tuple doesn't cover (stable sort).
+    interleaves the category lists back into the design's vertical order — a
+    tag pill (``ButtonElement``) above the heading, a product name above its
+    spec-icon rows, an in-column divider LINE between two texts (item 1).
+    Groups without it (older persisted documents, the content-group
+    conversion) keep the legacy images->texts->buttons->dividers order, as do
+    any ids the tuple doesn't cover (stable sort).
     """
-    combined: list[ImagePlaceholder | TextBlock | ButtonElement] = [
+    combined: list[ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider] = [
         *group.images,
         *group.texts,
         *group.buttons,
+        *group.dividers,
     ]
     if not group.content_order:
         return combined
@@ -1095,7 +1117,9 @@ _SPEC_LABEL_MAX_CHARS = 40
 _SpecPair = tuple[ImagePlaceholder, TextBlock]
 
 
-def _is_spec_icon(el: ImagePlaceholder | TextBlock | ButtonElement) -> TypeGuard[ImagePlaceholder]:
+def _is_spec_icon(
+    el: ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider,
+) -> TypeGuard[ImagePlaceholder]:
     return (
         isinstance(el, ImagePlaceholder)
         and el.width is not None
@@ -1103,22 +1127,26 @@ def _is_spec_icon(el: ImagePlaceholder | TextBlock | ButtonElement) -> TypeGuard
     )
 
 
-def _is_spec_label(el: ImagePlaceholder | TextBlock | ButtonElement) -> TypeGuard[TextBlock]:
+def _is_spec_label(
+    el: ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider,
+) -> TypeGuard[TextBlock]:
     return isinstance(el, TextBlock) and len(el.content.strip()) < _SPEC_LABEL_MAX_CHARS
 
 
 def _group_spec_pairs(
-    elements: list[ImagePlaceholder | TextBlock | ButtonElement],
-) -> list[ImagePlaceholder | TextBlock | ButtonElement | list[_SpecPair]]:
+    elements: list[ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider],
+) -> list[ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider | list[_SpecPair]]:
     """Fold adjacent ``(icon, label)`` runs into spec-mini-table groups (51.4).
 
     Scans the F10-ordered column elements; a maximal run of >=2 consecutive
     ``(icon <= _SPEC_ICON_MAX_WIDTH, text < _SPEC_LABEL_MAX_CHARS)`` pairs becomes
     one ``list[_SpecPair]`` in place (a horizontal mini-table); everything else —
-    the product name, the CTA, a lone icon+text — passes through unchanged, so a
-    non-spec column is untouched.
+    the product name, the CTA, a lone icon+text, a divider LINE — passes through
+    unchanged, so a non-spec column is untouched.
     """
-    result: list[ImagePlaceholder | TextBlock | ButtonElement | list[_SpecPair]] = []
+    result: list[
+        ImagePlaceholder | TextBlock | ButtonElement | ColumnDivider | list[_SpecPair]
+    ] = []
     i = 0
     n = len(elements)
     while i < n:
@@ -1222,6 +1250,10 @@ def _build_column_fill_html(
             rows.append(_spec_minitable_row(element, image_urls))
         elif isinstance(element, ImagePlaceholder):
             rows.append(_column_image_row(element, image_urls, column_width=group.width))
+        elif isinstance(element, ColumnDivider):
+            row = _column_divider_row(element)
+            if row:
+                rows.append(row)
         elif isinstance(element, TextBlock):
             if _is_placeholder(element.content):
                 continue

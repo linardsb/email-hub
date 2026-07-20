@@ -15,7 +15,7 @@ from app.design_sync.component_matcher import (
     render_composite,
 )
 from app.design_sync.figma.layout_analyzer import EmailSection
-from app.design_sync.sibling_detector import RepeatingGroup
+from app.design_sync.sibling_detector import BandRule, RepeatingGroup
 
 logger = get_logger(__name__)
 
@@ -283,6 +283,26 @@ class _GroupSpacing:
     first_top: int
     subsequent_top: int
     horizontal: int
+
+
+def _band_internal_rule_row(rule: BandRule, horizontal: int) -> str:
+    """A ``border-top`` rule row for an absorbed band divider (item 1 · phase-53.5).
+
+    Re-injects the stroke of a DIVIDER pseudo-section that ``absorb_spacers``
+    dropped, as a full-width rule between two band members. Copies the case-9
+    divider discipline: floor sub-pixel weights to 1px, gate on a hex colour so
+    a ``0px solid`` invisible rule is never emitted (returns ``""``).
+    """
+    if not _HEX_COLOR_RE.match(rule.stroke_color):
+        return ""
+    weight = rule.stroke_weight if rule.stroke_weight and rule.stroke_weight > 0 else 1.0
+    weight_px = max(1, round(weight))
+    return (
+        f'<tr><td style="padding:0 {horizontal}px;">'
+        f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+        f'<tr><td style="border-top:{weight_px}px solid {rule.stroke_color};'
+        f'font-size:0;line-height:0;"></td></tr></table></td></tr>'
+    )
 
 
 def _resolve_item_spacing(group: RepeatingGroup) -> _GroupSpacing:
@@ -844,6 +864,22 @@ class ComponentRenderer:
         all_dark_classes: set[str] = set()
         all_images: list[dict[str, str]] = []
 
+        # item 1 (phase-53.5) — re-inject absorbed-divider rule rows keyed by
+        # member index. group_matches is 1:1 with group.sections whenever every
+        # member matched; if the counts diverge the keys are unreliable, so skip
+        # (a missing rule beats a misplaced one).
+        rules_by_member: dict[int, list[BandRule]] = {}
+        if group.internal_rules:
+            if len(matches) == len(group.sections):
+                for rule in group.internal_rules:
+                    rules_by_member.setdefault(rule.after_member_index, []).append(rule)
+            else:
+                logger.warning(
+                    "sibling.band_rule_skipped_unequal_matches",
+                    matches=len(matches),
+                    members=len(group.sections),
+                )
+
         for i, rendered in enumerate(rendered_items):
             top_px = item_spacing.first_top if i == 0 else item_spacing.subsequent_top
             padding = f"{top_px}px {item_spacing.horizontal}px 0"
@@ -869,6 +905,10 @@ class ComponentRenderer:
                         self._container_width - 2 * item_spacing.horizontal,
                     )
             rows.append(f'<tr>\n  <td style="padding:{padding}">\n    {item_html}\n  </td>\n</tr>')
+            for rule in rules_by_member.get(i, []):
+                rule_row = _band_internal_rule_row(rule, item_spacing.horizontal)
+                if rule_row:
+                    rows.append(rule_row)
             all_dark_classes.update(rendered.dark_mode_classes)
             all_images.extend(rendered.images)
 

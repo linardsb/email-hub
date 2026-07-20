@@ -34,6 +34,21 @@ class SiblingSignature:
 
 
 @dataclass(frozen=True)
+class BandRule:
+    """A rule row re-injected between band members (item 1 · phase-53.5).
+
+    ``group_by_wrapper``'s ``absorb_spacers`` drops DIVIDER pseudo-sections
+    before render (A2-ratified). A DIVIDER that carried a stroke leaves this
+    marker so the renderer re-injects a ``border-top`` rule row AFTER the member
+    at ``after_member_index`` — the surviving member it originally followed.
+    """
+
+    after_member_index: int
+    stroke_color: str
+    stroke_weight: float | None = None
+
+
+@dataclass(frozen=True)
 class RepeatingGroup:
     """A group of structurally similar consecutive sections."""
 
@@ -43,6 +58,9 @@ class RepeatingGroup:
     pattern_component: str | None = None
     repeat_count: int = 0
     group_confidence: float = 0.0
+    # item 1 (phase-53.5) — border-top rules for absorbed DIVIDER sections,
+    # re-injected between members by ``render_repeating_group``.
+    internal_rules: tuple[BandRule, ...] = ()
 
     def __post_init__(self) -> None:
         if self.repeat_count == 0:
@@ -179,7 +197,27 @@ def group_by_wrapper(
             run.append(sections[j])
             j += 1
 
-        members = [s for s in run if s.section_type not in _SKIP_TYPES] if absorb_spacers else run
+        if absorb_spacers:
+            members: list[EmailSection] = []
+            internal_rules: list[BandRule] = []
+            for s in run:
+                if s.section_type in _SKIP_TYPES:
+                    # A DIVIDER (not a SPACER) with a stroke leaves a rule after
+                    # the member it followed; a leading divider (no preceding
+                    # member) is dropped defensively. Hex-gating lives at render.
+                    if s.section_type == EmailSectionType.DIVIDER and s.stroke_color and members:
+                        internal_rules.append(
+                            BandRule(
+                                after_member_index=len(members) - 1,
+                                stroke_color=s.stroke_color,
+                                stroke_weight=s.stroke_weight,
+                            )
+                        )
+                else:
+                    members.append(s)
+        else:
+            members = list(run)
+            internal_rules = []
 
         if len(members) >= 2:
             result.append(
@@ -187,6 +225,7 @@ def group_by_wrapper(
                     sections=members,
                     container_bgcolor=members[0].container_bg,
                     group_confidence=1.0,
+                    internal_rules=tuple(internal_rules),
                 )
             )
             logger.info(

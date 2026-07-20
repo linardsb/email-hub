@@ -119,6 +119,7 @@ def _node_from_dict(data: dict[str, Any]) -> DesignNode:
         font_size=data.get("font_size"),
         font_weight=data.get("font_weight"),
         line_height_px=data.get("line_height_px"),
+        line_height_relative=data.get("line_height_relative"),
         letter_spacing_px=data.get("letter_spacing_px"),
         text_transform=data.get("text_transform"),
         text_decoration=data.get("text_decoration"),

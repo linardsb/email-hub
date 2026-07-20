@@ -139,6 +139,21 @@ class ButtonElement:
 
 
 @dataclass(frozen=True)
+class ColumnDivider:
+    """An in-column zero-area divider LINE (item 1 · phase-53.5).
+
+    The ``mj-divider`` VECTOR the image walk drops (a 0-px PNG isn't
+    rasterizable): its stroke is the visible rule, rendered as a ``border-top``
+    row at its design y-position within the column fill. ``node_id`` is the
+    VECTOR's id, threaded into ``content_order`` so the rule lands in place.
+    """
+
+    node_id: str
+    stroke_color: str
+    stroke_weight: float | None = None
+
+
+@dataclass(frozen=True)
 class ColumnGroup:
     """Content grouped by column, preserving design structure."""
 
@@ -149,6 +164,9 @@ class ColumnGroup:
     images: list[ImagePlaceholder] = field(default_factory=list[ImagePlaceholder])
     buttons: list[ButtonElement] = field(default_factory=list[ButtonElement])
     width: float | None = None
+    # item 1 (phase-53.5) — zero-area divider LINEs inside this column, placed
+    # by ``content_order`` node id; rendered as border-top rows.
+    dividers: list[ColumnDivider] = field(default_factory=list[ColumnDivider])
     # F10 — node ids of the extracted content in design tree (pre-order) order.
     # The three category lists above lose the interleave; this restores it at
     # render time. Empty on groups built before the field existed (older
@@ -1225,6 +1243,7 @@ def _column_content_order(
     texts: list[TextBlock],
     images: list[ImagePlaceholder],
     buttons: list[ButtonElement],
+    dividers: list[ColumnDivider] | None = None,
 ) -> tuple[str, ...]:
     """Node ids of a column's extracted content in design tree order (F10).
 
@@ -1241,6 +1260,7 @@ def _column_content_order(
         {text.node_id for text in texts}
         | {img.node_id for img in images}
         | {btn.node_id for btn in buttons}
+        | {dv.node_id for dv in (dividers or [])}
     )
     order: list[str] = []
 
@@ -1271,6 +1291,7 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
             btn_ids = _collect_button_node_ids(buttons)
             texts = _extract_texts(child, exclude_node_ids=btn_ids)
             images = _extract_images(child)
+            dividers = _column_divider_lines(child)
 
             # Skip spacer-only columns (e.g., mj-column containing only mj-spacer)
             has_content = bool(texts or images or buttons)
@@ -1293,7 +1314,8 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
                     images=images,
                     buttons=buttons,
                     width=child.width,
-                    content_order=_column_content_order(child, texts, images, buttons),
+                    dividers=dividers,
+                    content_order=_column_content_order(child, texts, images, buttons, dividers),
                     stroke_color=child.stroke_color,
                     stroke_weight=child.stroke_weight,
                 )
@@ -1309,6 +1331,7 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
         btn_ids = _collect_button_node_ids(buttons)
         texts = _extract_texts(child, exclude_node_ids=btn_ids)
         images = _extract_images(child)
+        dividers = _column_divider_lines(child)
         groups.append(
             ColumnGroup(
                 column_idx=idx,
@@ -1318,7 +1341,8 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
                 images=images,
                 buttons=buttons,
                 width=child.width,
-                content_order=_column_content_order(child, texts, images, buttons),
+                dividers=dividers,
+                content_order=_column_content_order(child, texts, images, buttons, dividers),
                 stroke_color=child.stroke_color,
                 stroke_weight=child.stroke_weight,
             )
@@ -1454,6 +1478,13 @@ def _crop_export_id(node: DesignNode) -> str | None:
 _ZERO_AREA_EPS = 1.0
 _MIN_VECTOR_PX = 8.0
 
+# item 2 (phase-53f-decorative-image-flag) — a frame-wrapped IMAGE at or under
+# this width is a genuine small decoration/icon whose native size is
+# unambiguously right; wider images stay on the frame-export path (mid-size
+# content is ambiguous). User-ratified cap: absolute ≤64px, NOT ``img<frame``
+# alone (which fires on mid-size content and risks A3 regressions elsewhere).
+_SMALL_DECORATION_MAX_PX = 64.0
+
 
 def _zero_area_vector_stroke(node: DesignNode) -> tuple[str, float | None] | None:
     """Stroke of the first zero-area stroked VECTOR in a subtree (53.5).
@@ -1478,6 +1509,41 @@ def _zero_area_vector_stroke(node: DesignNode) -> tuple[str, float | None] | Non
         if found is not None:
             return found
     return None
+
+
+def _column_divider_lines(node: DesignNode) -> list[ColumnDivider]:
+    """Every zero-area stroked divider VECTOR in a column subtree (item 1).
+
+    The image walk drops these (a 0-px PNG isn't rasterizable), so their stroke
+    is captured here — with the VECTOR's own node id — to render as an in-column
+    ``border-top`` rule row at its design y-position. The hex-colour gate lives
+    at the render site (mirrors the case-9 divider override), so a divider with
+    a non-hex stroke is captured but simply produces no row.
+    """
+    found: list[ColumnDivider] = []
+
+    def visit(current: DesignNode) -> None:
+        if (
+            current.type == DesignNodeType.VECTOR
+            and current.visible
+            and current.stroke_color is not None
+            and (
+                (current.height is not None and current.height <= _ZERO_AREA_EPS)
+                or (current.width is not None and current.width <= _ZERO_AREA_EPS)
+            )
+        ):
+            found.append(
+                ColumnDivider(
+                    node_id=current.id,
+                    stroke_color=current.stroke_color,
+                    stroke_weight=current.stroke_weight,
+                )
+            )
+        for child in current.children:
+            visit(child)
+
+    visit(node)
+    return found
 
 
 def _rasterizable_vector(node: DesignNode) -> bool:
@@ -1546,17 +1612,41 @@ def _walk_for_images(
         and len(node.children) == 1
         and node.children[0].type == DesignNodeType.IMAGE
     ):
-        # Frame wrapping a single image — export the FRAME (includes bg fills).
-        # Rule 10 reads radius from the frame (where Figma sets corner radii on
-        # the wrapper, not the inner image).
+        # Frame wrapping a single image. A small decoration (icon/arrow) in an
+        # UNSTYLED wrapper exports at its OWN dims: exporting the wide frame
+        # into a child-width <img> scales the whole PNG down (a 268px
+        # arrow-frame baked into <img width="28"> renders the arrow ~3px), so
+        # emitted width and export target must move together (item 2 /
+        # phase-53f-decorative-image-flag). A wrapper that BAKES its own
+        # bg-fill / image-ref / effects keeps the frame export+dims (the
+        # original Rule-10 reason this branch exists). Corner radius does NOT
+        # block child-export — it's sourced from the frame in both branches and
+        # rides the child <img> via CSS (Rule 10).
         img = node.children[0]
+        is_small_decoration = (
+            img.width is not None
+            and img.width <= _SMALL_DECORATION_MAX_PX
+            and node.width is not None
+            and img.width < node.width
+            and node.image_ref is None
+            and node.fill_color is None
+            and node.effects_summary is None
+        )
+        if is_small_decoration:
+            # Child export: export_node_id falls back to node_id (== img.id) for
+            # a non-cropped child, exactly like a plain IMAGE node.
+            emit_width, emit_height = img.width, img.height
+            emit_export_id = _crop_export_id(img)
+        else:
+            emit_width, emit_height = node.width, node.height
+            emit_export_id = node.id  # Export the frame, not just the image fill
         results.append(
             ImagePlaceholder(
                 node_id=img.id,
                 node_name=img.name,
-                width=node.width,  # Use frame dimensions (includes padding/bg)
-                height=node.height,
-                export_node_id=node.id,  # Export the frame, not just the image fill
+                width=emit_width,
+                height=emit_height,
+                export_node_id=emit_export_id,
                 corner_radius_spec=_corner_spec_or_none(rule_10_image_corner_radii(node)),
                 # Border lives on the wrapper frame (like Rule 10's radii)
                 stroke_color=node.stroke_color,
