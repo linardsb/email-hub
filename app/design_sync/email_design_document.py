@@ -17,6 +17,7 @@ from jsonschema import Draft202012Validator
 
 from app.design_sync.figma.layout_analyzer import (
     ButtonElement,
+    ColumnDivider,
     ColumnGroup,
     ColumnLayout,
     ContentGroup,
@@ -874,6 +875,8 @@ class DocumentColumn:
     # G7 (M6) — mirrors ColumnGroup stroke (border-left divider source).
     stroke_color: str | None = None
     stroke_weight: float | None = None
+    # item 1 (phase-53.5) — mirrors ColumnGroup.dividers (in-column rule lines).
+    dividers: list[ColumnDivider] = field(default_factory=list[ColumnDivider])
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -895,6 +898,15 @@ class DocumentColumn:
             d["stroke_color"] = self.stroke_color
         if self.stroke_weight is not None:
             d["stroke_weight"] = self.stroke_weight
+        if self.dividers:
+            d["dividers"] = [
+                {
+                    "node_id": dv.node_id,
+                    "stroke_color": dv.stroke_color,
+                    "stroke_weight": dv.stroke_weight,
+                }
+                for dv in self.dividers
+            ]
         return d
 
     @classmethod
@@ -910,6 +922,14 @@ class DocumentColumn:
             content_order=tuple(data.get("content_order", [])),
             stroke_color=data.get("stroke_color"),
             stroke_weight=data.get("stroke_weight"),
+            dividers=[
+                ColumnDivider(
+                    node_id=dv["node_id"],
+                    stroke_color=dv["stroke_color"],
+                    stroke_weight=dv.get("stroke_weight"),
+                )
+                for dv in data.get("dividers", [])
+            ],
         )
 
     @classmethod
@@ -925,6 +945,7 @@ class DocumentColumn:
             content_order=c.content_order,
             stroke_color=c.stroke_color,
             stroke_weight=c.stroke_weight,
+            dividers=list(c.dividers),
         )
 
     def to_column_group(self) -> ColumnGroup:
@@ -939,6 +960,7 @@ class DocumentColumn:
             content_order=self.content_order,
             stroke_color=self.stroke_color,
             stroke_weight=self.stroke_weight,
+            dividers=list(self.dividers),
         )
 
 
