@@ -823,10 +823,11 @@
       "id": "phase-53f-f7-card-wrapper-outlook-ghost-overflow",
       "phase": "53.f",
       "title": "RC-F7 card wrapper's relocated _cell padding overflows the 600px MSO ghost in Outlook",
-      "status": "deferred",
+      "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
+      "closed_commit": "pending commit",
       "summary": "_wrap_col_bg_inner_card inserts a width=100% card table whose <td> becomes the first cell, so the section's _cell padding override (component_matcher.py:2169, applied after inner_bg -> deterministic) lands 20px on the WRAPPER cell, which sits OUTSIDE the MSO ghost (<table width=600>). In the Word/Outlook engine the card is: 100% wrapper -> td with 40px horizontal padding -> a fixed 600px ghost inside a 560px content box; Word will not shrink the ghost, so the card overflows the 600px email column (~640px). Chromium honours the 100% wrapper and renders correctly; the fidelity scorer (Chromium) + DOM/string unit tests + make test never exercise the MSO path, so no gate caught it. Same class as the F3 Outlook attr/width latent.",
       "code_refs": [
         "app/design_sync/component_renderer.py:_wrap_col_bg_inner_card (wrapper td, width=100%)",
@@ -834,7 +835,45 @@
       ],
       "symptom_if_broken": "In Outlook (Word engine) a LEGO column-layout card renders ~40px too wide, overflowing the 600px email column / misaligning the columns. Chromium-correct.",
       "closes_when": "The 51.1 card-padding restructure (lime-float + uniform inner-card inset) threads card padding INSIDE the MSO ghost cells (per-column) instead of onto the width=100% wrapper cell, so the 600px ghost fits, and c7 is re-rendered + Outlook-verified.",
-      "notes": "Non-blocking: converter fidelity is Chromium-scored and c7 0.636->0.719 is the Chromium win. Logged per the no-silent-caps discipline (cf. F3's Outlook attr/width note). Belongs with the 51.1 lime-float/card-padding work, which restructures this region anyway. A quick Outlook-safe stopgap (drop the wrapper td's style=padding:0 so _cell stays on col_1 inside the ghost) was considered but reintroduces the pre-fix image/text top misalignment and lowers the Chromium score, so deferred to the holistic 51.1 fix."
+      "notes": "Non-blocking: converter fidelity is Chromium-scored and c7 0.636->0.719 is the Chromium win. Logged per the no-silent-caps discipline (cf. F3's Outlook attr/width note). Belongs with the 51.1 lime-float/card-padding work, which restructures this region anyway. A quick Outlook-safe stopgap (drop the wrapper td's style=padding:0 so _cell stays on col_1 inside the ghost) was considered but reintroduces the pre-fix image/text top misalignment and lowers the Chromium score, so deferred to the holistic 51.1 fix.",
+      "closure_note": "Closed 2026-07-20 (G9, plan .agents/plans/53-g9-outlook-ghost-gate.md). No padding-threading fix was needed: F9's _shrink_column_ghost_widths already shrank the benefit-card ghosts to fit (512+88=600) and G6 moved the image-gallery membership card off the wrapper path entirely, so the F7 overflow no longer manifests. The new static Word-box gate (app/design_sync/tests/test_outlook_ghost_arithmetic.py) IS the Outlook verification the closes_when asked for: it walks every MSO ghost in all 6 baselines and proves W+inset==container for the six c7 benefit-card ghosts (512+88=600 FIT), with a RED-proof that an inflated ghost fails. The closes_when's literal 'thread padding inside the per-column ghost cells' path was rendered moot by F9+G6; its intent ('600px ghost fits, Outlook-verified') is met by the gate. Re-confirmed on post-G8 main (ghost_probe GREEN x6, G8 regen'd c5/c7 footers which are single-column / no per-column ghost)."
+    },
+    {
+      "id": "phase-53g-g9-img-width-attr-outlook",
+      "phase": "53g",
+      "title": "Img presentational width= attr can desync from its inline max-width (F3 self-consistency seam)",
+      "status": "closed",
+      "severity": "speculative",
+      "introduced": "2026-07-05",
+      "introduced_commit": "97bfb77c",
+      "closed_commit": "pending commit",
+      "summary": "The converter's img builders (_column_image_row, _spec_icon_img, _stacked_image_row, _card_image_row in component_matcher.py) set width=\"{w}\" attr AND max-width:{w}px from one w=int(img.width), and _clamp_img_max_width is a max-width-only mutator that never touches the width= attr. Outlook honours the fixed width= attr and ignores max-width, so an edit that mutates only one surface would leave an image wider in the Word engine than its CSS box, while browsers (honouring width:100%+max-width) render correctly and the Chromium scorer never sees it. G9 locks this self-consistency: the static gate asserts width= attr == inline max-width for every img (that carries a max-width) in all 6 baselines.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:_column_image_row / _spec_icon_img / _stacked_image_row / _card_image_row (set both from one w)",
+        "app/design_sync/component_renderer.py:_clamp_img_max_width (max-width-only mutator — the desync seam)",
+        "app/design_sync/tests/test_outlook_ghost_arithmetic.py (img self-consistency assertion + RED-proof)"
+      ],
+      "symptom_if_broken": "An img whose width= attr and inline max-width disagree renders wider in Outlook than in browsers (un-scored by the Chromium metric).",
+      "closes_when": "img width= attr == inline max-width asserted GREEN across all 6 baselines and regression-locked by test_outlook_ghost_arithmetic.py (met at close).",
+      "notes": "This locks ONLY the _clamp_img_max_width self-consistency seam (attr == max-width). It does NOT cover the real F3 rescale-miss — the column rescalers shrink a column's ghost td + div max-width but never the contained img, so attr==max-width still holds while the img overflows its shrunk cell. That uncovered mechanism is the deferred sibling phase-53g-g9-img-not-rescaled-with-column."
+    },
+    {
+      "id": "phase-53g-g9-img-not-rescaled-with-column",
+      "phase": "53g",
+      "title": "Column rescalers shrink the ghost td + div max-width but never the contained <img> — a pinned img can overflow its shrunk cell in Outlook",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-07-06",
+      "introduced_commit": "e6812b44",
+      "summary": "_shrink_column_ghost_widths (F9), _apply_column_width_fractions (A8), and _apply_hug_column_widths (G7) rewrite a column's MSO ghost <td width>, the inline-block <div class=column> max-width, and the ghost <table> total together, but none of them rewrites the <img> inside the column. So when a column shrinks (e.g. 300->256 under a card/band inset), a design-width image stays width=\"300\"/max-width:300px: attr==max-width still holds (so the G9 self-consistency gate stays GREEN), yet in Outlook — which honours the fixed width= attr and ignores max-width — the img overflows the 256px cell. Latent-not-manifest in the current corpus: no pinned img exceeds its shrunk column today.",
+      "code_refs": [
+        "app/design_sync/component_renderer.py:_shrink_column_ghost_widths",
+        "app/design_sync/component_renderer.py:_apply_column_width_fractions",
+        "app/design_sync/component_renderer.py:_apply_hug_column_widths"
+      ],
+      "symptom_if_broken": "A design-width image inside a column that F9/G7 shrank renders wider than its cell in Outlook (columns misalign / image clips), while Chromium and the G9 attr==max-width gate stay green.",
+      "closes_when": "The column rescalers also rewrite the contained <img>'s width= attr + inline max-width when they shrink the column, OR the G9 gate gains an 'img <= enclosing ghost-td width' check.",
+      "notes": "The uncovered half of the F3 latent that G9's attr==max-width lock (phase-53g-g9-img-width-attr-outlook) explicitly does NOT reach — see the Non-Goals of plan .agents/plans/53-g9-outlook-ghost-gate.md. The stronger img<=cell check was deliberately scoped out of G9."
     },
     {
       "id": "phase-53f-column-width-budget",
