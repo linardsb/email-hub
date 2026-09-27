@@ -237,3 +237,54 @@ Use `skills-create`. ⏸ user picks final list.
 - **R4 by proxy:** Dependabot PR #375's Semgrep run (workflow-level `security-events: write`, run 30621083217, 2026-07-31T09:45:15Z) produced a Semgrep analysis on `refs/pull/375/merge` at 09:45:44Z (`observed`) → Dependabot runs honour an explicit `security-events: write`; the `codeql` job should upload on Dependabot PRs (`expected`). PR B is not a Dependabot PR, so its own run cannot observe R4; check the first Dependabot run after PR B merges.
 - **R1:** Semgrep's step is `continue-on-error: true` (`semgrep.yml:44`) → advisory; after Q4 the gating scanner for PR A's `.py` is CodeQL.
 - Next (user): create `PR_READY_TOKEN`, switch default setup off, then approve push + draft PR B.
+
+### 2026-09-27 — S8 push: settings, deps fix, PR B, merges (S8 closed)
+- Method: main-checkout session (the worktree hook fences `.github/`) + 1 A3 agent. The user ran the settings writes, and both PRs were pushed as drafts on the user's OK.
+- **User decisions (AskUserQuestion):**
+  - O1: Semgrep SAST is NOT required. `semgrep.yml` skips lockfile-only PRs via `paths-ignore`, so a required check would stall them; CodeQL is the gating scanner.
+  - O2: neither `Semgrep OSS` nor `Ready for review` is required.
+  - O3: the read-only allows `Bash(gh pr view:*)` and `Bash(gh issue view:*)` are KEPT. **This is a logged exception to §3 "never widened".**
+  - Protection required checks (derived from O1/O2): the 9 ci.yml job names plus `CodeQL (analyze + gate)`, pinned to `app_id: 15368`.
+  - D1: fix the deps first, in a separate PR, before PR B.
+  - D2: suppress the 7 gosu CVEs inside that deps PR.
+- **Settings (observed):**
+  - The user PATCHed CodeQL default setup to `not-configured` (Q3).
+  - `PR_READY_TOKEN` (a classic PAT, `repo` scope) was set at 2026-09-27T19:17:28Z from the user's own terminal. An earlier token pasted into chat was revoked and rotated.
+- **A1 before push (observed):** `record-gate.sh` → `make check-full` exit 0 at `f66f8056`, with:
+  - pytest 8492 passed / 0 failed / 115 skipped, vitest 780 passed;
+  - dirty false, short_gate false;
+  - window 18:58:18Z→19:02:46Z.
+- **PR B first run 36343909130 at `8f715fc3` (observed):**
+  - `CodeQL (analyze + gate)` was **green**, not the `expected` red of the S8-run entry. There was one combined upload (category `.github/workflows/ci.yml:codeql`), 176 rules, 0 results.
+  - Gate: "0 open on the PR, 0 at the gate's severity, 0 open on the base".
+  - `Ready for review` ran `gh pr ready --undo` and concluded `failure`: the token authenticates, and the PR stays draft while `needs` is red.
+- **Correction to R3/V1 (observed, A3 agent):** main was NOT actions-only. It had python 257 / JS 259 CodeQL analyses up to 2026-05-22, with alerts 0 open / 31 dismissed / 61 fixed. The gate header in `.github/scripts/codeql-gate.sh` still says actions-only (wording only).
+- **Main CI red since at least 2026-09-11 (observed):** 8 ci.yml runs in a row failed, including Dependabot's.
+  - Backend pip-audit: 20 vulns in 7 packages.
+  - Trivy app image: aiohttp CVE-2026-69244, anyio CVE-2026-63374 (CRITICAL) and cryptography CVE-2026-69247.
+- **#406 deps PR (observed):**
+  - `83e7e675`: a `uv.lock`-only bump pinned to the exact fix versions: aiohttp 3.14.3, anyio 4.14.2, cryptography 50.0.0, soupsieve 2.9.0, pip 26.2, httpcore2 2.12.0 (forced by httpx2 2.12.0). A plain `--upgrade-package` pulled in extra drift.
+  - Once the app image was clean, the Trivy db step ran for the first time since 2026-08-31. It flagged 7 HIGH go-stdlib CVEs in `/usr/local/bin/gosu` from the digest-pinned `pgvector/pgvector:pg16`.
+  - `9ce95000` (D2) adds those 7 to `.trivyignore` and `docs/dependency-debt.md`, with review date 2026-12-31.
+  - CI run 36346664610 at `9ce95000`: `success`. Merged 20:11:35Z as `505e16cc`.
+- **PR B #405 (observed):**
+  - Rebased onto #406 to `31335ba7`. It was a rebase, not `gh run rerun`, because rerun replays the stale merge SHA.
+  - Run 36347143671: `success`, all 11 jobs green. **CI flipped #405 to ready (`isDraft:false`)**, the first end-to-end ready flip.
+  - Merged 20:21:03Z as `ae489171`.
+- **PR A #404 (observed), R5:**
+  - Its only CI run, 36343619380 at `f66f8056`, was `failure` (the pre-existing pip-audit/Trivy red).
+  - The user marked it ready at 20:22:28Z and merged it at 20:22:46Z as `f26ee233`, before any rebase or A1 re-run. So PR A's own ready flip was never exercised; #405's was.
+  - The planned post-PR-B rebase + A1 did not happen (`rebase-pr-a.sh` was killed before it changed anything).
+- **R6 (observed):** ci.yml concurrency made #404's push run 36347811190 cancel #405's push run 36347701649. That cancelled run left a CodeQL analysis on `ae489171` with error "unsuccessful execution" (id 1848019348). This is the V3 window.
+- Carried: the `.trivyignore` `# expires:` comment is never parsed; Trivy reads only `exp:YYYY-MM-DD` (`pkg/result/ignore.go:308`, v0.70.0), so the go-stdlib entries never lapse. Candidate follow-up.
+
+### 2026-09-27 — S9 session: main baseline (step 1)
+- Method: session run from the main checkout against worktree `~/Desktop/email-hub-s9` (`chore/ai-layer-s9`, off `f26ee233`) by absolute path, so the repo's own skills and hooks were **not** loaded in this session. PIV skills were followed by reading their `SKILL.md`. That leaves V6's hook-firing proof (C7) to a worktree session. There were 3 read-only subagents (R4, S9 checks, T1 prep).
+- **Main baseline (observed):** run 36347811190 at `f26ee233` `success` (updated 20:29:15Z). All required-candidate jobs were green, except `Migration safety (squawk)` and `Commit message lint`, which are `skipped` on push (they are PR-only). `Ready for review` was skipped. CodeQL analysis 1848024960 exists on `refs/heads/main`, with `results_count` 46.
+- **Main's first full CodeQL baseline has 18 open alerts** (observed, all created 20:25:22Z by that analysis):
+  - 1 critical `py/partial-ssrf` at `app/connectors/http_resilience.py:46`;
+  - 1 high `py/redos` at `.claude/hooks/pre_tool_use.py:77` (entered with PR A, whose run predated the codeql job);
+  - 13 medium `actions/unpinned-tag` in `.github/workflows`;
+  - 3 medium JS file/http access in `cms/apps/web/e2e/global-{setup,teardown}.ts`.
+  - The gate fails only on NEW alerts vs base, so these do not block PRs (derived, gate design D11). They are open for triage by the user.
+- T1 prep (observed, subagent): `layout_analyzer.py:980` is the `social` early return in `_classify_mj_section` (def :946). It fires before the text-only→FOOTER rule (:1003-1005), and `_classify_by_content`'s legal→FOOTER rule (:1092-1098) is never reached on the MJML path (derived). Matching ledger entry: `phase-53g-g11-social-section-drops-column-content` (deferred, known-bug), whose `closes_when` names G12 re-segmentation.
