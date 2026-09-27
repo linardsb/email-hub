@@ -43,6 +43,13 @@ that have no upstream fix; each entry needs an expiration date and re-check trig
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-42504 | HIGH | Go stdlib `mime`/`net/textproto` — decoding a maliciously-crafted MIME header with many parts causes DoS. Same `gobinary`; gosu does not decode MIME headers. | 2026-08-31 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-27145 | HIGH | Go stdlib `crypto/x509` DoS via excessive processing of DNS names during certificate parsing. Same `gobinary` (`/usr/local/bin/gosu`); gosu does not parse certificates. | 2026-08-31 | Linards |
 | pgvector/pgvector:pg16 (gobinary) | CVE-2026-39822 | HIGH | Go stdlib `os.Root` symlink-following — a symlink under an `os.Root` can escape the intended root dir. Same `gobinary` (`/usr/local/bin/gosu`); gosu performs no `os.Root`-scoped traversal of untrusted paths. | 2026-08-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-33818 | HIGH | Go stdlib `encoding/asn1` DoS. Same `gobinary` (`/usr/local/bin/gosu`); gosu parses no ASN.1 input. | 2026-12-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-39821 | HIGH | Go stdlib vendored `x/net/idna` Punycode handling. Same `gobinary`; gosu does no hostname processing. | 2026-12-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-56853 | HIGH | Go stdlib `net/http` HTTP/2 DoS. Same `gobinary`; gosu runs no HTTP/2 client or server. | 2026-12-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-56858 | HIGH | Go stdlib `html/template` XSS. Same `gobinary`; gosu renders no HTML templates. | 2026-12-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-56859 | HIGH | Go stdlib `encoding/xml` DoS. Same `gobinary`; gosu parses no XML. | 2026-12-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-56860 | HIGH | Go stdlib `net/url` DoS. Same `gobinary`; not exposed to network input in our runtime. | 2026-12-31 | Linards |
+| pgvector/pgvector:pg16 (gobinary) | CVE-2026-56862 | HIGH | Go stdlib `crypto/tls` KeyUpdate DoS. Same `gobinary`; not on TLS code path. | 2026-12-31 | Linards |
 
 **Re-check trigger:** when pgvector publishes a new `pg16` image (different digest from
 `sha256:7d400e34…`), pull it and re-run Trivy. If the scanner no longer detects the embedded
