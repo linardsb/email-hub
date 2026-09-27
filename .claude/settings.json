@@ -13,7 +13,9 @@
       "Bash(grep:*)",
       "Bash(cat:*)",
       "Bash(head:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh issue view:*)"
     ]
   },
   "hooks": {
@@ -30,6 +32,17 @@
             "type": "command",
             "command": ".claude/hooks/pre-commit-security.sh",
             "statusMessage": "Scanning for secrets..."
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Edit|MultiEdit|Write|NotebookEdit|Bash|Monitor|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_tool_use.py\"; [ -f \"$f\" ] || f=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/hooks/pre_tool_use.py\"; [ -f \"$f\" ] || { echo \"pre_tool_use.py not found; guardrails OFF for this call\" >&2; exit 1; }; exec python3 \"$f\"",
+            "timeout": 30,
+            "statusMessage": "Checking guardrails..."
           }
         ]
       }
@@ -54,6 +67,28 @@
             "type": "command",
             "command": ".claude/hooks/restore-context.sh",
             "statusMessage": "Restoring agent context..."
+          }
+        ]
+      },
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_check.py\"; [ -f \"$f\" ] || f=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/hooks/stop_check.py\"; [ -f \"$f\" ] || { echo \"stop_check.py not found; stop check OFF\" >&2; exit 1; }; exec python3 \"$f\" --snapshot",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_check.py\"; [ -f \"$f\" ] || f=\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/hooks/stop_check.py\"; [ -f \"$f\" ] || { echo \"stop_check.py not found; stop check OFF\" >&2; exit 1; }; exec python3 \"$f\"",
+            "timeout": 300,
+            "statusMessage": "Fast check on changed files..."
           }
         ]
       }

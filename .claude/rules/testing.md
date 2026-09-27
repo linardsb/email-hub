@@ -1,6 +1,8 @@
 ---
 description: Rules for test files
-globs: "**/test_*.py, **/tests/**/*.py"
+paths:
+  - "**/test_*.py"
+  - "**/tests/**/*.py"
 ---
 
 # Testing Rules
