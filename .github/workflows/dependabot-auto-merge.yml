@@ -2,13 +2,17 @@ name: Dependabot auto-merge
 
 # Auto-merges Dependabot **minor/patch** PRs once the CI workflow succeeds.
 #
-# Why workflow_run (not native `gh pr merge --auto`): this repo has no required
-# status checks (branch protection is unavailable on the current plan), so
-# native auto-merge cannot "arm" and wait for green — it only merges if already
-# green at enable time. This job instead fires when the "CI" workflow completes
-# for a Dependabot branch, re-verifies the FULL check rollup is green (so it also
-# accounts for Semgrep/Trivy/etc., not just CI), confirms the bump is minor/patch
-# by parsing the PR title, then squash-merges. Major bumps are left for a human.
+# Why workflow_run (not native `gh pr merge --auto`): `main` has no required
+# status checks yet (observed 2026-09-27: the branch-protection API answers 404
+# "Branch not protected"; the repo is public, so protection is available and is
+# planned). Without required checks native auto-merge cannot "arm" and wait for
+# green — it only merges if already green at enable time. This job instead
+# fires when the "CI" workflow completes for a Dependabot branch, re-verifies
+# the FULL check rollup is green (so it also accounts for Semgrep/Trivy/etc.,
+# not just CI), confirms the bump is minor/patch by parsing the PR title, then
+# squash-merges. Major bumps are left for a human.
+# It keeps working once protection is on. CI's `ready` job skips Dependabot PRs;
+# its skipped check counts as green in the rollup below.
 #
 # Security: this never checks out PR code — it only runs the `gh` CLI against the
 # API — so it is not exposed to the workflow_run/pull_request_target code-exec
