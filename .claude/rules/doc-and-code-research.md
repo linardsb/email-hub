@@ -1,6 +1,6 @@
 ---
 description: Token-efficient research using jDocMunch and jCodeMunch indexes
-globs: "**/*"
+paths: "**/*"
 ---
 
 # Document & Code Research Rules
@@ -28,7 +28,7 @@ Repo: `local/email-hub`
 - Subtask: append `/{subtask-slug}#3` to the phase ID
 
 ## jCodeMunch — Code Search
-Repo: `local/email-hub-0ddab3c4`
+Repo: `linardsb/email-hub`
 
 **Use for cross-file research** (not for editing — use Read for that):
 - `search_symbols(repo, query, kind, file_pattern)` — find functions, classes, methods
