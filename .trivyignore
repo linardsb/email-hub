@@ -32,3 +32,10 @@ CVE-2026-39826  # expires:2026-08-31 — go stdlib html/template <script> type-a
 CVE-2026-42504  # expires:2026-08-31 — go stdlib mime/textproto MIME-header decode DoS in pg16 base gobinary
 CVE-2026-27145  # expires:2026-08-31 — go stdlib crypto/x509 DoS via excessive DNS-name processing in pg16 base gobinary
 CVE-2026-39822  # expires:2026-08-31 — go stdlib os.Root symlink-following in pg16 base gobinary
+CVE-2026-33818  # expires:2026-12-31 — go stdlib encoding/asn1 DoS in pg16 base gobinary
+CVE-2026-39821  # expires:2026-12-31 — go stdlib vendored x/net/idna Punycode handling in pg16 base gobinary
+CVE-2026-56853  # expires:2026-12-31 — go stdlib net/http HTTP/2 DoS in pg16 base gobinary
+CVE-2026-56858  # expires:2026-12-31 — go stdlib html/template XSS in pg16 base gobinary
+CVE-2026-56859  # expires:2026-12-31 — go stdlib encoding/xml DoS in pg16 base gobinary
+CVE-2026-56860  # expires:2026-12-31 — go stdlib net/url DoS in pg16 base gobinary
+CVE-2026-56862  # expires:2026-12-31 — go stdlib crypto/tls KeyUpdate DoS in pg16 base gobinary
