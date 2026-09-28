@@ -2540,11 +2540,17 @@ def _fills_social(
     ``<table>``. The text-slot filler replaces the inner rows verbatim, so
     emitting raw HTML here overrides the placeholder ``example.com/link``
     anchors with the real URLs + icons extracted from Figma.
+
+    T1: when the section also carries design texts or in-column dividers (a
+    footer of icons + legal copy), the slot receives the whole column in design
+    order — text/divider rows around a nested icon row — and the template's
+    ``social_label`` default is blanked because the design owns its labels.
     """
     if not section.buttons and not section.images:
         return []
 
     cells: list[str] = []
+    icon_ids: set[str] = set()
     for idx, btn in enumerate(section.buttons):
         icon_src: str = ""
         if btn.icon_node_id and image_urls:
@@ -2558,6 +2564,7 @@ def _fills_social(
         # " must be escaped. _safe_text uses quote=False (body-text context).
         alt = html.escape(btn.text or f"Social link {idx + 1}")
         icon_src = html.escape(icon_src)
+        icon_ids.update(i for i in (btn.node_id, btn.icon_node_id) if i)
         cells.append(
             '<td style="padding: 0 8px;">'
             f'<a href="{href}" style="text-decoration: none;">'
@@ -2571,6 +2578,7 @@ def _fills_social(
         # with a neutral "#" href. Still better than leaking example.com.
         for img in section.images:
             icon_src = html.escape(_resolve_image_url(img.node_id, image_urls))
+            icon_ids.add(img.node_id)
             alt = html.escape(
                 img.node_name if _is_descriptive_alt(img.node_name) else "Social icon"
             )
@@ -2586,7 +2594,79 @@ def _fills_social(
         return []
 
     row_html = "<tr>" + "".join(cells) + "</tr>"
-    return [SlotFill("social_links", row_html, slot_type="attr")]
+    column_html = _social_column_rows(section, row_html, icon_ids)
+    if column_html is None:
+        return [SlotFill("social_links", row_html, slot_type="attr")]
+    return [
+        SlotFill("social_label", ""),
+        SlotFill("social_links", column_html, slot_type="attr"),
+    ]
+
+
+def _social_column_rows(section: EmailSection, icon_row: str, icon_ids: set[str]) -> str | None:
+    """Lay a social section's texts and dividers around its icon row (T1).
+
+    Walks every column group in design order (``content_order``, F10). The icon
+    row is emitted once, at the first element that produced an icon cell (an
+    image, or a Figma button with an icon), nested in its own table so each row
+    of the ``social_links`` table stays a single cell; later icons are already
+    inside it. Other buttons are not rendered. Returns ``None`` when there is no
+    text or divider row, so icon-only sections keep the plain icon row.
+    """
+    groups: list[ColumnGroup]
+    if section.column_groups:
+        groups = section.column_groups
+    else:
+        groups = [
+            ColumnGroup(
+                column_idx=idx,
+                node_id=g.frame_node_id,
+                node_name=g.frame_name,
+                texts=g.texts,
+                images=g.images,
+                buttons=g.buttons,
+                content_order=g.content_order,
+            )
+            for idx, g in enumerate(section.child_content_groups, 1)
+        ]
+    if not groups:
+        return None
+
+    grouped = {t.node_id for g in groups for t in g.texts}
+    ungrouped = [t.node_id for t in section.texts if t.node_id not in grouped]
+    if ungrouped:
+        # No position data outside a group: log rather than guess a place.
+        logger.warning(
+            "design_sync.social.ungrouped_texts",
+            section_id=section.node_id,
+            text_node_ids=ungrouped,
+        )
+
+    nested_icons = (
+        '<tr><td align="center"><table role="presentation" cellpadding="0" '
+        f'cellspacing="0" border="0">{icon_row}</table></td></tr>'
+    )
+    rows: list[str] = []
+    has_content = False
+    icons_placed = False
+    for element in (e for g in groups for e in _ordered_column_elements(g)):
+        if isinstance(element, ImagePlaceholder | ButtonElement):
+            if element.node_id in icon_ids and not icons_placed:
+                rows.append(nested_icons)
+                icons_placed = True
+        elif isinstance(element, ColumnDivider):
+            row = _column_divider_row(element)
+            if row:
+                rows.append(row)
+                has_content = True
+        elif not _is_placeholder(element.content):
+            rows.append(_column_text_row(element, is_heading=element.is_heading))
+            has_content = True
+    if not has_content:
+        return None
+    if not icons_placed:
+        rows.append(nested_icons)
+    return "".join(rows)
 
 
 def _fills_divider(

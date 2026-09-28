@@ -1224,7 +1224,8 @@
       "id": "phase-53g-g11-social-section-drops-column-content",
       "phase": "53.g11",
       "title": "Social-classified section drops its non-icon column content (legal texts + in-column divider)",
-      "status": "deferred",
+      "status": "closed",
+      "closed_commit": "pending",
       "severity": "known-bug",
       "introduced": "2026-07-20",
       "introduced_commit": "405f17d0",
@@ -1239,7 +1240,7 @@
       "blocked_by": [
         "phase-53.5-nested-divider-render-gap"
       ],
-      "notes": "This is the upstream reason G11's in-column divider category fires 0x on the corpus. It is a segmentation/classification gap (G12 territory), NOT a divider-category defect — the category is proven by test_nested_divider_render.py::TestColumnChildDivider driving the real column pipeline. Broader than dividers: the two legal texts drop too."
+      "notes": "This is the upstream reason G11's in-column divider category fires 0x on the corpus. It is a segmentation/classification gap (G12 territory), NOT a divider-category defect — the category is proven by test_nested_divider_render.py::TestColumnChildDivider driving the real column pipeline. Broader than dividers: the two legal texts drop too. NARROWING (T1, 2026-09-28): closed for texts and in-column dividers; icon buttons now anchor the icon row (F3); non-icon buttons inside a social section are still not rendered (_fills_social, app/design_sync/component_matcher.py) and are unexercised by the corpus (all four corpus social sections have zero buttons, observed 2026-09-28)."
     },
     {
       "id": "phase-53g-g11-contentgroup-column-divider-gap",
@@ -1257,6 +1258,40 @@
       "symptom_if_broken": "A design whose divider-bearing column is rendered via child_content_groups (column_groups absent) shows no in-column rule, while the same column via column_groups renders it.",
       "closes_when": "ContentGroup gains a dividers field carried into the ColumnGroup at _build_column_fills_from_content_groups, OR the content-group column path is retired.",
       "notes": "Deliberately ledgered rather than fixed (Simplicity First): adding dividers to ContentGroup expands the capture surface across every ContentGroup construction site for a path the corpus never takes. Flag for G12 (must-hold-on-any-design)."
+    },
+    {
+      "id": "phase-53g-t1-social-non-icon-images-as-icons",
+      "phase": "53.g-t1",
+      "title": "Social section renders its non-icon images (logo, bottom image) as 32px social icons",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-09-28",
+      "introduced_commit": "pending",
+      "summary": "_fills_social builds the icon row from every section image when the section has no buttons (the images-as-icons fallback). A social section whose column also holds a non-icon image renders that image as a 32x32 'Social icon' link inside the icon row. Observed on the corpus: c6 section 8 bottom image 2833:1490 (146x136 in the design) and c10 section 14 logo 2833:1274 (70x70, above the icons). Found during T1, which renders the section's texts and dividers but deliberately leaves images to the icon row.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py:2576 (_fills_social images-as-icons fallback)"
+      ],
+      "symptom_if_broken": "A footer logo or promo image beside social icons shows as a small 32px icon in the icon row instead of its own full-size row (c6 s8, c10 s14 today).",
+      "closes_when": "_fills_social emits only the social-row images as icons and renders other column images as their own rows in design order (e.g. via _column_image_row), with c6 s8 and c10 s14 baselines showing the logo/bottom image at design size.",
+      "notes": "Distinguishing icon from non-icon images needs a signal the section does not carry today (all images arrive in one list; mj-social membership is lost). Size alone is a candidate (icons 24-42px vs 70-146px) but unproven."
+    },
+    {
+      "id": "phase-53g-t1-tree-path-social-label-default",
+      "phase": "53.g-t1",
+      "title": "Tree-bridge path keeps the seed 'Follow us' label when a social section carries design text",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-09-28",
+      "introduced_commit": "pending",
+      "summary": "On the tree-bridge path (DESIGN_SYNC__TREE_BRIDGE_ENABLED, default off) an empty text fill is skipped: _fill_to_slot_value returns None because TextSlot/HtmlSlot require min_length=1. TreeCompiler therefore keeps the seed text, so a social section with design text shows the template's 'Follow us' label next to the design's own text (c9 shows 'Follow us' plus 'FOLLOW US'). The default render path blanks the social_label slot and collapses its row. The same skip applies to empty CTA label fills (cta_text, primary_text, secondary_text, link_text in component_matcher.py when a section has no button): the tree path now shows the seed label (e.g. 'Shop Now') where it used to show the literal 'text'; the default path prunes those CTAs.",
+      "code_refs": [
+        "app/design_sync/tree_bridge.py (_fill_to_slot_value — empty text fill returns None)",
+        "app/components/tree_schema.py:19 (TextSlot.text min_length=1)",
+        "app/components/tree_schema.py:47 (HtmlSlot.html min_length=1)",
+        "email-templates/components/social-icons.html (social_label seed text 'Follow us')"
+      ],
+      "symptom_if_broken": "With the tree bridge enabled, a social section that carries design text renders a stray 'Follow us' label row above the icons in addition to the design text (c9 today).",
+      "closes_when": "The tree schema can express an empty/collapsed slot and the tree path collapses the social_label row, so c9 on the tree path shows no 'Follow us'."
     }
   ],
   "tooling_followups": [

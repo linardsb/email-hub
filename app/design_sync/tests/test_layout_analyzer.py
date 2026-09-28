@@ -2302,3 +2302,17 @@ class TestButtonBoxGeometryCapture:
         assert len(results) == 1
         assert results[0].border_radius == 25.0
         assert results[0].padding_right == 20.0
+
+
+_C6_STRUCTURE = Path(__file__).resolve().parents[3] / "data" / "debug" / "6" / "structure.json"
+
+
+@pytest.mark.skipif(not _C6_STRUCTURE.exists(), reason="data/debug/6 fixture not present")
+class TestContentGroupContentOrder:
+    """F5 — ContentGroup carries its design-order node ids (real c6 data)."""
+
+    def test_c6_section_1470_groups_carry_content_order(self) -> None:
+        layout = analyze_layout(load_structure_from_json(_C6_STRUCTURE))
+        section = next(s for s in layout.sections if s.node_id == "2833:1470")
+        orders = [g.content_order for g in section.child_content_groups]
+        assert orders == [("2833:1472",), ("2833:1474",)]
