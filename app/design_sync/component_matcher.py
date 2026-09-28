@@ -2629,18 +2629,17 @@ def _social_column_rows(section: EmailSection, icon_row: str, icon_ids: set[str]
             )
             for idx, g in enumerate(section.child_content_groups, 1)
         ]
-    if not groups:
-        return None
-
     grouped = {t.node_id for g in groups for t in g.texts}
     ungrouped = [t.node_id for t in section.texts if t.node_id not in grouped]
     if ungrouped:
         # No position data outside a group: log rather than guess a place.
         logger.warning(
-            "design_sync.social.ungrouped_texts",
+            "design_sync.social_texts_ungrouped",
             section_id=section.node_id,
             text_node_ids=ungrouped,
         )
+    if not groups:
+        return None
 
     nested_icons = (
         '<tr><td align="center"><table role="presentation" cellpadding="0" '

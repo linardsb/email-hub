@@ -186,7 +186,16 @@ class TestSocialColumnOrderEdges:
         with patch.object(component_matcher.logger, "warning") as warn:
             _fills_social(section, 600)
         events = [c.args[0] for c in warn.call_args_list]
-        assert "design_sync.social.ungrouped_texts" in events
+        assert "design_sync.social_texts_ungrouped" in events
+
+    def test_texts_without_any_group_are_logged(self) -> None:
+        """R2: a section with texts but no column or content group logs them instead of a silent drop."""
+        (match,) = _social_matches("8")
+        section = dataclasses.replace(match.section, column_groups=[], child_content_groups=[])
+        with patch.object(component_matcher.logger, "warning") as warn:
+            _fills_social(section, 600)
+        events = [c.args[0] for c in warn.call_args_list]
+        assert "design_sync.social_texts_ungrouped" in events
 
     def test_content_group_follows_design_order(self) -> None:
         """F5: inside a content group, a text that precedes its image renders above the icons."""

@@ -1267,7 +1267,7 @@
       "severity": "known-bug",
       "introduced": "2026-09-28",
       "introduced_commit": "pending",
-      "summary": "_fills_social builds the icon row from every section image when the section has no buttons (the images-as-icons fallback). A social section whose column also holds a non-icon image renders that image as a 32x32 'Social icon' link inside the icon row. Observed on the corpus: c6 section 8 bottom image 2833:1490 (146x136 in the design) and c10 section 14 logo 2833:1274 (70x70, above the icons). Found during T1, which renders the section's texts and dividers but deliberately leaves images to the icon row.",
+      "summary": "_fills_social builds the icon row from every section image when the section has no buttons (the images-as-icons fallback). A social section whose column also holds a non-icon image renders that image as a 32x32 'Social icon' link inside the icon row. Observed on the corpus: c6 section 8 bottom image 2833:1490 (146x136 in the design) and c10 section 14 logo 2833:1274 (70x70, above the icons). Found during T1, which renders the section's texts and dividers but deliberately leaves images to the icon row. Ordering side effect (PR #409 review R3): because every fallback image counts as an icon, `_social_column_rows` anchors the icon row at the first image, so a non-icon image placed above a label (logo, label, icons) pulls the icon row above that label. Not seen on the corpus (c10 s14 logo is first, before the icons, with no label between).",
       "code_refs": [
         "app/design_sync/component_matcher.py:2576 (_fills_social images-as-icons fallback)"
       ],
