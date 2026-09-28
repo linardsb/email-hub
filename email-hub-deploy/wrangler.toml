@@ -1,3 +1,7 @@
 name = "broad-unit-3129"
 compatibility_date = "2026-06-01"
 assets = { directory = "./public" }
+workers_dev = true
+routes = [
+  { pattern = "email-hub.saulera.com", custom_domain = true }
+]

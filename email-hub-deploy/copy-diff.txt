@@ -1,0 +1,347 @@
+--- /private/tmp/claude-501/-Users-Berzins-Desktop-Linards-current-Linards-jobs-folder-CITYWIRE/58be899d-24d8-4f5c-8c27-33ea4249c30a/scratchpad/text.old.txt	2026-09-08 16:57:13
++++ /private/tmp/claude-501/-Users-Berzins-Desktop-Linards-current-Linards-jobs-folder-CITYWIRE/58be899d-24d8-4f5c-8c27-33ea4249c30a/scratchpad/text.new.txt	2026-09-08 16:57:13
+@@ -1,180 +1,180 @@
+-Email Engineering Platform
++Email engineering platform
+ Email Innovation Hub
+-A single platform to build, test, QA, and ship email campaigns at scale — purpose-built for agencies working across many clients and martech platforms.
+-AI-Powered
+-Enterprise-Grade Security
+-Production-Ready
+-CMS-Agnostic
++One platform to build, test and ship email campaigns, made for agencies that work across many clients and many martech platforms.
++Nine AI agents
++Per-client access control
++Self-hosted
++Exports to any CMS
+ Built and running today.
+-The Problem
++The problem
+ Email development is fragmented.
+-Fragmented Tooling
+-Teams stitch together separate editors, preview services, QA checkers, ESP dashboards, and approval threads for every single campaign.
+-Slow, Repetitive Builds
+-Every campaign re-solves the same rendering and fallback problems by hand. Iteration drags out across days.
+-Knowledge That Evaporates
+-A fix discovered on one client is invisible on the next. Expertise lives in people’s heads, not in the system.
+-For an agency serving many brands across different platforms, this friction compounds with every engagement.
+-The Idea
++Scattered tools
++Every campaign runs through a separate editor, preview service, QA checker, ESP dashboard and approval thread.
++Slow, repeated builds
++Each campaign solves the same rendering and fallback problems again by hand. One round of changes can take days.
++Knowledge that gets lost
++A fix found on one client is invisible on the next. It lives in someone’s head rather than in the system.
++For an agency serving many brands on different platforms, the cost of this grows with every new client.
++The idea
+ One platform. Every stage.
+-From brief to inbox — write, preview, test, approve, and export without ever leaving the platform.
++From brief to inbox: write, preview, test, approve and export without leaving the platform.
+ Write
+ →
+ Preview
+ →
+-QA Gate
++QA gate
+ →
+ Approve
+ →
+ Export
+-Fully operational today — not a concept, not a prototype.
+-The Shift
+-From manual and fragmented — to automated and compounding.
++Every stage above works today.
++The shift
++From manual and fragmented to automated and compounding.
+ Without the Hub
+ With the Hub
+ Templates assembled by hand for every campaign
+ Assembled from tested, versioned, reusable components
+ Dark mode fixed per template, per client
+-Dark mode handled at the design-system level
++Dark mode handled once, in the design system
+ Manual cross-client QA, client by client
+ Automated rendering checks in a single pass
+ AI used ad hoc, with no quality control
+-AI with enforced review gates
++AI output that has to pass review gates
+ Knowledge trapped in developers’ heads
+-Searchable, indexed, reusable across every engagement
++Knowledge indexed, searchable and reused on every client
+ Approval via screenshot email chains
+ A client review portal with inline annotations
+-What It Delivers
+-Faster work, higher quality, less risk.
+-Faster Turnaround
+-AI scaffolds the first draft; pre-tested components and automated QA compress the build.
+-Near-Pixel-Perfect Rendering
+-An automated QA gate catches rendering and dark-mode issues before a client ever sees them.
+-Proven Innovation
+-Rendering-intelligence reports show exactly where an innovation works — backed by data, not guesswork.
+-More Within Budget
++What it delivers
++Faster builds, fewer surprises in the inbox.
++Faster turnaround
++AI writes the first draft. Tested components and automated QA shorten the rest of the build.
++Rendering problems caught early
++An automated QA gate catches rendering and dark mode issues before the client sees them.
++New techniques with evidence
++Rendering reports show exactly which email clients support a new technique, so the decision to use it rests on data.
++More within budget
+ Reused components and AI-assisted drafts mean more campaigns inside the same retainer.
+-Global Consistency
+-One source of truth produces consistent, on-brand variants across markets and locales.
+-Platform Independence
+-Templates live in the Hub and export to any ESP — no lock-in, no rebuilds when platforms change.
+-In Practice
+-What it looks like on real campaigns.
+-Retail — Peak Season
+-A flood of seasonal variants across markets — scaffolded fast from pre-tested blocks with dark-mode and Outlook fallbacks built in, and localised copy per market.
+-Financial Services — Compliance
+-Strict accessibility, brand governance per product line, and a time-stamped approval trail for regulatory review. Issues caught before send.
+-Tech — Standing Out
+-Interactive email prototyped safely: a rendering-intelligence report confirms where it works, and that every recipient sees a clean fallback.
+-Global FMCG — Scale
+-Campaigns across many markets with local teams, all held to one consistent quality bar everywhere.
+-The Product
+-Built, running, and in use today.
+-Agent workspace — a campaign build in progress
++Consistent across markets
++One set of tested components produces on-brand variants for every market and language.
++No platform lock-in
++Templates live in the Hub and export to any ESP, so a change of platform does not mean a rebuild.
++In practice
++How it plays out on four kinds of campaign.
++Retail, peak season
++Many seasonal variants across markets, built quickly from tested blocks with dark mode and Outlook fallbacks already in place, and copy localised for each market.
++Financial services, compliance
++Strict accessibility checks, brand rules per product line and a time-stamped approval trail for the regulator. Issues are caught before send.
++Tech, standing out
++Interactive email prototyped safely. A rendering report confirms where it works, and that everyone else sees a clean fallback.
++Global FMCG, scale
++Local teams in many markets, all building to the same quality bar.
++The product
++Built, running and in use today.
++Agent workspace, a campaign build in progress
+ ↖ Click the image to view it full screen
+ Workspace
+ Agents
+ Intelligence
+ Renderings
+-QA Gate
++QA gate
+ Approvals
+-The Landscape
+-AI in email is now table stakes. This is a different category.
++The landscape
++Every email tool now has AI. This one is built for a different customer.
+ Most tools
+-Built for in-house brand teams running a single email programme on a single platform. AI bolted on for content generation.
++Built for an in-house brand team running one email programme on one platform, with AI added for writing copy.
+ The Hub
+-Built for the multi-client agency model — compounding knowledge across clients, and the freedom to deploy to any platform.
+-The difference isn’t a feature. It’s who the platform is built for.
+-Versus the Field
++Built for an agency with many clients. What is learnt on one client carries to the next, and every template can go to any platform.
++The difference is who it is built for.
++Versus the field
+ Where the others stop.
+ Platform
+ Built for
+ Where it stops
+ Stensul
+ Enterprise marketers, brand governance
+-Marketer-first — not a developer build pipeline.
++Built for marketers. It gives developers no build pipeline.
+ Dyspatch
+ Modular building, design-to-component
+-Design-to-component focus — not the full development workflow.
++Turns designs into components. It does not cover the rest of the development workflow.
+ Knak
+ No-code enterprise marketers
+-No-code by design — built for marketers, not developers.
++No-code by design, so it is built for marketers rather than developers.
+ Stripo
+ Drag-and-drop & HTML editing
+-General-purpose content AI — not email-specific build tooling.
++Its AI writes general content. It has no email-specific build tooling.
+ Parcel
+ Browser-based code editor
+-A code editor — not an end-to-end build pipeline with cross-client reuse.
+-Where It’s Genuinely Different
++A code editor. It has no build pipeline and nothing carries over between clients.
++Where it is different
+ Advantages that grow over time.
+-Compound Knowledge
+-Every fix, quirk, and pattern captured on one engagement makes every future campaign faster and better. The advantage compounds.
+-An Owned, Appreciating Asset
+-A self-hosted platform on open-source foundations — owned outright, with no per-seat fees and no vendor lock-in. It appreciates instead of renting.
+-Built for the Agency Model
+-Purpose-built for serving many clients across many platforms — the exact context off-the-shelf tools were never designed for.
+-Rendering Intelligence as a Deliverable
+-Not just “we tested it” — structured reports clients can act on. QA becomes a strategic asset, not a checkbox.
+-How It Works
+-Agent Hierarchy
+-Interactive Diagram
+-How It Works
+-Memory Architecture
+-Interactive Diagram
+-How It Works
+-Developer Workflow
+-Interactive Diagram — Click to Explore
+-How It Works
+-Master Innovation Flow
+-Interactive Diagram — Click to Explore
+-How It Works
+-Compound Innovation Effect
+-Interactive Diagram — Click to Explore
+-The Opportunity
+-Email, repositioned — from cost centre to revenue lever.
+-The Hub changes the conversation with clients: from “can you build this?” to “what should we build next?” The deliverable becomes capability and insight — and the relationship deepens, because the switching cost becomes the accumulated intelligence, not the tooling.
+-The Email Innovation Hub is built, running, and ready to demo. If solving email at agency scale is interesting, I’d welcome the chance to show it in action and explore how it could fit. The deeper architecture is its own conversation — one I’m glad to schedule when the time is right.
++Knowledge that compounds
++Every fix, quirk and pattern found on one client is stored and reused on the next, so each campaign starts further ahead.
++An asset the agency owns
++Self-hosted, built on open-source foundations, with no per-seat fees and no vendor lock-in. It gains value with use instead of costing rent.
++Built for agencies
++Designed for many clients on many platforms, which is the one situation off-the-shelf tools were not made for.
++Rendering reports as a deliverable
++Clients get a structured report showing which email clients support each technique, rather than a line saying it was tested.
++How it works
++Agent hierarchy
++Interactive diagram
++How it works
++Memory architecture
++Interactive diagram
++How it works
++Developer workflow
++Interactive diagram
++How it works
++Master innovation flow
++Interactive diagram
++How it works
++Compound innovation effect
++Interactive diagram
++The opportunity
++From cost centre to revenue lever.
++Clients stop asking “can you build this?” and start asking “what should we build next?” Alongside the emails, the agency delivers what it has learnt about each client’s audiences and platforms. That knowledge, rather than the tooling, is what makes the relationship hard to replace.
++The Email Innovation Hub is built, running and ready to demo. If email at agency scale is a problem you are working on, I’d like to show it to you and talk through whether it fits, or whether it’s not a fit. The architecture is a longer conversation, and I am glad to book that separately.
+ hello@saulera.com
+ ← Prev
+ Next →
+ ✕
+ ←
+ →
+-Agent Hierarchy
++Agent hierarchy
+ −
+ Reset
+ +
+ ✕
+ ×
+-Click any node or group to explore details — drag to pan, use zoom controls or scroll wheel
+-Memory Architecture
++Click any node or group for details. Drag to pan, and zoom with the controls or the scroll wheel.
++Memory architecture
+ −
+ Reset
+ +
+ ✕
+ ×
+-Click any node or group to explore details — drag to pan, use zoom controls or scroll wheel
+-Developer Workflow
++Click any node or group for details. Drag to pan, and zoom with the controls or the scroll wheel.
++Developer workflow
+ −
+ Reset
+ +
+ ✕
+ ×
+-Click any node or group to explore details — drag to pan, use zoom controls or scroll wheel
+-Master Innovation Flow
++Click any node or group for details. Drag to pan, and zoom with the controls or the scroll wheel.
++Master innovation flow
+ −
+ Reset
+ +
+ ✕
+ ×
+-Click any node or group to explore details — drag to pan, use zoom controls or scroll wheel
+-Compound Innovation Effect
++Click any node or group for details. Drag to pan, and zoom with the controls or the scroll wheel.
++Compound innovation effect
+ −
+ Reset
+ +
+ ✕
+ ×
+-Click any node or group to explore details — drag to pan, use zoom controls or scroll wheel
++Click any node or group for details. Drag to pan, and zoom with the controls or the scroll wheel.
+ Optional coordination layer that routes tasks to specialist agents, chains multi-agent workflows, and manages model selection. 70% local LLMs (zero API cost) / 30% cloud APIs (Claude, GPT-4o). Developers can bypass the Orchestrator and invoke any agent directly.
+ Generates complete Maizzle email templates from campaign briefs or design specs. Outputs responsive HTML with Tailwind classes, MSO conditionals, and responsive stacking. Uses Claude Opus 4 for complex scaffolding, Sonnet 4 for iterative refinement.
+ Analyses HTML and inserts Outlook-specific conditional comments, VML backgrounds, and table-based fallbacks for the Word rendering engine. Triggered by build pipeline, manual trigger, or QA failure.
+@@ -183,13 +183,13 @@
+ Static analysis of email HTML: redundant code, invalid nesting, unsupported CSS properties per client, file size optimisation. Runs pre-build and pre-export.
+ Generates and refines email marketing copy: subject lines, preheaders, CTA text, body copy. Supports rewrite, shorten, expand, and tone adjustment. Brand voice constraints applied per client. Local LLMs for 70% of requests.
+ Generates Liquid (Braze), AMPscript (SFMC), or platform-specific dynamic content logic from natural language requirements. Handles conditional blocks and personalisation tokens.
+-RAG-powered answers from the indexed knowledge base: email client quirks, CSS support tables from Can I Email, community best practices, rendering engine updates, and team documentation.
++RAG-powered answers from the indexed knowledge base: email client quirks, CSS support tables from Can I Email, community guides, rendering engine updates, and team documentation.
+ Explores and prototypes new email techniques: AMP carousels, interactive CSS, kinetic elements, CSS animations. Cross-references rendering data to assess feasibility. Generates automatic fallback strategies and capability reports.
+ Three agents focused on email structure and rendering compatibility: Scaffolder generates templates, Outlook Fixer handles MSO conditionals and VML, Dark Mode Agent manages colour-scheme support.
+ Two agents ensuring code quality and accessibility compliance. Code Reviewer catches issues early, Accessibility Auditor enforces WCAG AA standards.
+ Two agents for email copy and dynamic content. Content Agent handles brand-voice copy, Personalisation Agent generates platform-specific templating logic (Liquid, AMPscript).
+ Two agents managing accumulated knowledge and exploring new techniques. Knowledge Agent provides RAG-powered answers, Innovation Agent prototypes experimental features.
+-Developer sends a message to an AI agent — a question, generation request, code review, or diagnostic query. This is the entry point for every agent interaction.
++Developer sends a message to an AI agent: a question, generation request, code review or diagnostic query. This is the entry point for every agent interaction.
+ Main service orchestrating the conversation flow (app/ai/service.py). Routes messages, manages context, handles streaming responses, and coordinates with memory and knowledge systems.
+ Analyses the message to determine what knowledge and memories are relevant. Extracts search queries for both the knowledge base (documents) and memory store (learned patterns).
+ Indexed documents, guides, Can I Email data, team documentation (app/knowledge/). Hybrid search: vector similarity + full-text search + Reciprocal Rank Fusion + reranker. User-initiated queries.
+@@ -198,13 +198,13 @@
+ Protocol-based provider registry routes to the appropriate model. Local LLMs (Ollama/vLLM) handle ~70% of routine tasks at zero API cost. Cloud APIs (Claude Opus/Sonnet, GPT-4o) for the ~30% requiring frontier reasoning.
+ Agent response includes source citations linking back to knowledge base documents and memory entries. Developers can verify the sources that informed any AI recommendation.
+ Persists both user message and agent response to the conversation thread. Full history maintained, searchable by content, agent type, project, and date range. Project-scoped: Client A threads invisible to Client B.
+-Identifies significant discoveries from the interaction — rendering fixes, client preferences, build patterns — and stores them as new memory entries with pgvector embeddings. The compound effect starts here.
+-Background job that down-ranks stale memories. Configurable half-life: 30 days for episodic, never for procedural/semantic. Down-ranking not deletion — stale memories rank lower in retrieval but remain searchable.
+-Merges redundant memories: 10 similar Outlook fixes consolidated into 1 comprehensive entry. Target: 30%+ memory count reduction without losing unique information. Runs on DataPoller background task system.
+-High-confidence memories shared across all agents in the project. Organisation-level patterns (e.g., "Outlook clips at 102KB") available across all projects. Client isolation preserved — brand guidelines never leak.
++Identifies useful discoveries from the interaction (rendering fixes, client preferences, build patterns) and stores them as new memory entries with pgvector embeddings. This is where the compounding starts.
++Background job that down-ranks stale memories. Configurable half-life: 30 days for episodic, never for procedural/semantic. Down-ranking, not deletion: stale memories rank lower in retrieval but remain searchable.
++Merges redundant memories: 10 similar Outlook fixes consolidated into one complete entry. Target: 30%+ memory count reduction without losing unique information. Runs on DataPoller background task system.
++High-confidence memories shared across all agents in the project. Organisation-level patterns (e.g., "Outlook clips at 102KB") available across all projects. Client isolation is preserved, so brand guidelines never leak.
+ Three maintenance processes running on the DataPoller background task system with Redis leader election: temporal decay, memory compaction, and cross-agent propagation.
+ Central command showing project overview, recent activity across all clients, team workload, and QA status at a glance. Entry point for all email development work.
+-Choose a client organisation and project workspace. RBAC enforces visibility — developers see only assigned clients. Project scoping configured during briefing and discovery.
++Choose a client organisation and project workspace. RBAC enforces visibility: developers see only their assigned clients. Project scoping configured during briefing and discovery.
+ Four paths into development: import a design from Figma, pick from the versioned component library, have AI scaffold from a brief, or start with a blank Maizzle template.
+ Design-to-code bridge: Figma REST API extracts design tokens + structure, or plugins (Emailify, Email Love) export HTML/MJML. AI reviews the mapping and suggests email-constraint optimisations.
+ Browse, search, and insert from the versioned component library. Components cascade: Global (company-wide) > Client (org-scoped) > Project (workspace-specific). Each shows compatibility matrix and dark mode preview.
+@@ -231,7 +231,7 @@
+ Choose which of the 10 innovation initiatives this belongs to: Dark Mode, Component Library, AMP, AI Coding, BIMI, Accessibility, Interactive CSS, Liquid Patterns, Performance, or Testing Automation.
+ Route based on what is being built: Component (new reusable module), Template (full email), Technique (new CSS/AMP feature), or Pattern (code pattern for knowledge base).
+ Import designs from Figma via REST API or plugin (Emailify, Email Love). Extract design tokens, map components, sync colour palettes and typography. One-click import to Hub workspace.
+-The AI layer scaffolds, reviews, enhances, and optimises. Scaffolder generates from briefs, Code Reviewer checks quality, Dark Mode Agent injects support, Content Agent refines copy, Knowledge Agent provides context.
++The AI layer scaffolds, reviews and improves email code. Scaffolder generates from briefs, Code Reviewer checks quality, Dark Mode Agent injects support, Content Agent refines copy, Knowledge Agent provides context.
+ Maizzle build pipeline: Tailwind to inline CSS, unused class purging, responsive transforms, dark mode injection, AMP compilation. Sidecar service handles builds via HTTP.
+ Version, test, and document reusable email modules. Each component tracked with compatibility matrix, dark mode variant, Outlook fallback, and usage documentation. Cascades: Global > Client > Project.
+ Cross-client rendering (20+ clients via Litmus/EoA), accessibility audit, fallback verification, 14-check gate system with meta-evaluator (Phase 48.9). Nothing ships without passing all mandatory checks.
+@@ -240,16 +240,16 @@
+ Export as email deliveries and content fragments. Push via Adobe Campaign Standard API with Adobe IMS OAuth authentication.
+ Export as Taxi Syntax-wrapped HTML and Email Design Systems. Components become editable modules in the Taxi CMS for non-developers to assemble.
+ Production-ready HTML with inlined CSS, optimised images on CDN. Available as file download, GitHub push, or API endpoint. No platform dependency.
+-Rendering intelligence data: which email clients support which innovations. Not just "does it render?" but "what percentage of the audience sees the enhanced version?"
++Rendering intelligence data: which email clients support which innovations. Beyond "does it render?", it reports what percentage of the audience sees the enhanced version.
+ Per-template, per-client visual quality tracking. Regression detection flags when a client update breaks previously working renders.
+ File size, code quality, accessibility scores tracked per template. Historical data shows team improvement over time.
+-All quality intelligence feeds back: knowledge base updated, QA prioritisation adjusted, component compatibility matrices refreshed. The compound learning loop.
++All quality intelligence feeds back: the knowledge base is updated, QA prioritisation adjusted and component compatibility matrices refreshed. This is the loop that makes knowledge compound.
+ Where innovations begin: identifying opportunities, creating briefs, and selecting the right track through the Hub.
+ The five core systems that power every innovation: Design Sync, AI Agents, Email Engine, Component Library, and QA Engine.
+ Five export targets: Braze, Salesforce MC, Adobe Campaign, Taxi for Email, and raw HTML. CMS-agnostic connector architecture.
+ Continuous measurement: client support matrices, quality scores, performance metrics. All data feeds back into the Hub for compound learning.
+-Colour-scheme meta tags, CSS custom properties for light/dark tokens, prefers-color-scheme queries, [data-ogsc]/[data-ogsb] Outlook overrides. Creates a comprehensive, reusable design system — not just individual fixes.
+-Central hub: every innovation flows through here. Versioned, cascading (Global > Client > Project), with dark mode preview and per-component compatibility matrix. The compound effect\'s nucleus.
++Colour-scheme meta tags, CSS custom properties for light/dark tokens, prefers-color-scheme queries, [data-ogsc]/[data-ogsb] Outlook overrides. The result is a reusable design system rather than a pile of one-off fixes.
++Central hub: every innovation flows through here. Versioned, cascading (Global > Client > Project), with dark mode preview and per-component compatibility matrix. Everything else feeds into it.
+ Interactive email elements: carousels, surveys, accordions built with AMP for Email. Each prototype includes a verified HTML fallback and a feasibility report showing client support.
+ Automated rendering across 20+ email clients via Litmus/EoA. Support matrices show which clients support which innovations. Data feeds into the knowledge base and component compatibility info.
+ File size (<102KB Gmail clipping), load time, rendering speed, image weight, code quality scores. Historical tracking shows team improvement. Optimisation playbook in knowledge base.
