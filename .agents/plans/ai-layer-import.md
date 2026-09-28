@@ -237,3 +237,154 @@ Use `skills-create`. ⏸ user picks final list.
 - **R4 by proxy:** Dependabot PR #375's Semgrep run (workflow-level `security-events: write`, run 30621083217, 2026-07-31T09:45:15Z) produced a Semgrep analysis on `refs/pull/375/merge` at 09:45:44Z (`observed`) → Dependabot runs honour an explicit `security-events: write`; the `codeql` job should upload on Dependabot PRs (`expected`). PR B is not a Dependabot PR, so its own run cannot observe R4; check the first Dependabot run after PR B merges.
 - **R1:** Semgrep's step is `continue-on-error: true` (`semgrep.yml:44`) → advisory; after Q4 the gating scanner for PR A's `.py` is CodeQL.
 - Next (user): create `PR_READY_TOKEN`, switch default setup off, then approve push + draft PR B.
+
+### 2026-09-27 — S8 push: settings, deps fix, PR B, merges (S8 closed)
+- Method: main-checkout session (the worktree hook fences `.github/`) + 1 A3 agent. The user ran the settings writes, and both PRs were pushed as drafts on the user's OK.
+- **User decisions (AskUserQuestion):**
+  - O1: Semgrep SAST is NOT required. `semgrep.yml` skips lockfile-only PRs via `paths-ignore`, so a required check would stall them; CodeQL is the gating scanner.
+  - O2: neither `Semgrep OSS` nor `Ready for review` is required.
+  - O3: the read-only allows `Bash(gh pr view:*)` and `Bash(gh issue view:*)` are KEPT. **This is a logged exception to §3 "never widened".**
+  - Protection required checks (derived from O1/O2): the 9 ci.yml job names plus `CodeQL (analyze + gate)`, pinned to `app_id: 15368`.
+  - D1: fix the deps first, in a separate PR, before PR B.
+  - D2: suppress the 7 gosu CVEs inside that deps PR.
+- **Settings (observed):**
+  - The user PATCHed CodeQL default setup to `not-configured` (Q3).
+  - `PR_READY_TOKEN` (a classic PAT, `repo` scope) was set at 2026-09-27T19:17:28Z from the user's own terminal. An earlier token pasted into chat was revoked and rotated.
+- **A1 before push (observed):** `record-gate.sh` → `make check-full` exit 0 at `f66f8056`, with:
+  - pytest 8492 passed / 0 failed / 115 skipped, vitest 780 passed;
+  - dirty false, short_gate false;
+  - window 18:58:18Z→19:02:46Z.
+- **PR B first run 36343909130 at `8f715fc3` (observed):**
+  - `CodeQL (analyze + gate)` was **green**, not the `expected` red of the S8-run entry. There was one combined upload (category `.github/workflows/ci.yml:codeql`), 176 rules, 0 results.
+  - Gate: "0 open on the PR, 0 at the gate's severity, 0 open on the base".
+  - `Ready for review` ran `gh pr ready --undo` and concluded `failure`: the token authenticates, and the PR stays draft while `needs` is red.
+- **Correction to R3/V1 (observed, A3 agent):** main was NOT actions-only. It had python 257 / JS 259 CodeQL analyses up to 2026-05-22, with alerts 0 open / 31 dismissed / 61 fixed. The gate header in `.github/scripts/codeql-gate.sh` still says actions-only (wording only).
+- **Main CI red since at least 2026-09-11 (observed):** 8 ci.yml runs in a row failed, including Dependabot's.
+  - Backend pip-audit: 20 vulns in 7 packages.
+  - Trivy app image: aiohttp CVE-2026-69244, anyio CVE-2026-63374 (CRITICAL) and cryptography CVE-2026-69247.
+- **#406 deps PR (observed):**
+  - `83e7e675`: a `uv.lock`-only bump pinned to the exact fix versions: aiohttp 3.14.3, anyio 4.14.2, cryptography 50.0.0, soupsieve 2.9.0, pip 26.2, httpcore2 2.12.0 (forced by httpx2 2.12.0). A plain `--upgrade-package` pulled in extra drift.
+  - Once the app image was clean, the Trivy db step ran for the first time since 2026-08-31. It flagged 7 HIGH go-stdlib CVEs in `/usr/local/bin/gosu` from the digest-pinned `pgvector/pgvector:pg16`.
+  - `9ce95000` (D2) adds those 7 to `.trivyignore` and `docs/dependency-debt.md`, with review date 2026-12-31.
+  - CI run 36346664610 at `9ce95000`: `success`. Merged 20:11:35Z as `505e16cc`.
+- **PR B #405 (observed):**
+  - Rebased onto #406 to `31335ba7`. It was a rebase, not `gh run rerun`, because rerun replays the stale merge SHA.
+  - Run 36347143671: `success`, all 11 jobs green. **CI flipped #405 to ready (`isDraft:false`)**, the first end-to-end ready flip.
+  - Merged 20:21:03Z as `ae489171`.
+- **PR A #404 (observed), R5:**
+  - Its only CI run, 36343619380 at `f66f8056`, was `failure` (the pre-existing pip-audit/Trivy red).
+  - The user marked it ready at 20:22:28Z and merged it at 20:22:46Z as `f26ee233`, before any rebase or A1 re-run. So PR A's own ready flip was never exercised; #405's was.
+  - The planned post-PR-B rebase + A1 did not happen (`rebase-pr-a.sh` was killed before it changed anything).
+- **R6 (observed):** ci.yml concurrency made #404's push run 36347811190 cancel #405's push run 36347701649. That cancelled run left a CodeQL analysis on `ae489171` with error "unsuccessful execution" (id 1848019348). This is the V3 window.
+- Carried: the `.trivyignore` `# expires:` comment is never parsed; Trivy reads only `exp:YYYY-MM-DD` (`pkg/result/ignore.go:308`, v0.70.0), so the go-stdlib entries never lapse. Candidate follow-up.
+
+### 2026-09-27 — S9 session: main baseline (step 1)
+- Method: session run from the main checkout against worktree `~/Desktop/email-hub-s9` (`chore/ai-layer-s9`, off `f26ee233`) by absolute path, so the repo's own skills and hooks were **not** loaded in this session. PIV skills were followed by reading their `SKILL.md`. That leaves V6's hook-firing proof (C7) to a worktree session. There were 3 read-only subagents (R4, S9 checks, T1 prep).
+- **Main baseline (observed):** run 36347811190 at `f26ee233` `success` (updated 20:29:15Z). All required-candidate jobs were green, except `Migration safety (squawk)` and `Commit message lint`, which are `skipped` on push (they are PR-only). `Ready for review` was skipped. CodeQL analysis 1848024960 exists on `refs/heads/main`, with `results_count` 46.
+- **Main's first full CodeQL baseline has 18 open alerts** (observed, all created 20:25:22Z by that analysis):
+  - 1 critical `py/partial-ssrf` at `app/connectors/http_resilience.py:46`;
+  - 1 high `py/redos` at `.claude/hooks/pre_tool_use.py:77` (entered with PR A, whose run predated the codeql job);
+  - 13 medium `actions/unpinned-tag` in `.github/workflows`;
+  - 3 medium JS file/http access in `cms/apps/web/e2e/global-{setup,teardown}.ts`.
+  - The gate fails only on NEW alerts vs base, so these do not block PRs (derived, gate design D11). They are open for triage by the user.
+- T1 prep (observed, subagent): `layout_analyzer.py:980` is the `social` early return in `_classify_mj_section` (def :946). It fires before the text-only→FOOTER rule (:1003-1005), and `_classify_by_content`'s legal→FOOTER rule (:1092-1098) is never reached on the MJML path (derived). Matching ledger entry: `phase-53g-g11-social-section-drops-column-content` (deferred, known-bug), whose `closes_when` names G12 re-segmentation.
+
+### 2026-09-27/28 — S9 session: docs PR, protection, R4, proof table (steps 2–5)
+- **Step 2 (observed):** docs PR **#408** (`docs/ai-layer-s8-close-log`) was opened as a draft at 20:41:49Z.
+  - `record-gate.sh` → `make check-full` exit 0 at `5aa0d05b`: pytest 8492 passed / 0 failed / 115 skipped, vitest 780, dirty false, short_gate false.
+  - All 14 checks green. **CI flipped it to ready at 20:50:46Z** (timeline `ready_for_review`, actor = the `PR_READY_TOKEN` owner). The gap is 8m57s (derived). This is the first ready flip on a non-Dependabot PR under the full CI, and closes C8's flip row.
+  - The pre-push hook ran the local `make check` (it judged Actions unavailable) and rewrote the `skill-versions.yaml` dates. They were restored.
+- **Step 3, D10 (observed):**
+  - Names re-verified on #408's head: all 10 required contexts are check runs from `app_id 15368`, while GitHub's `CodeQL` / `Semgrep OSS` checks come from app 57789.
+  - The user ran `protection.sh` via `!`.
+  - A GET returned: 10 checks, all app 15368, strict true, `enforce_admins` true, 0 approvals, force-push and deletion off.
+  - The §3 risk "main not protected" is closed.
+- **Step 4, R4 PASS (observed):** Dependabot #407, run 36348172451.
+  - The `analyze` and gate steps were `success`; `Ready for review` was `skipped`.
+  - Analysis 1848040123 is on `refs/pull/407/merge`, category `.github/workflows/ci.yml:codeql`, with `error` empty.
+  - Gate line: "0 open on the PR, 0 at the gate's severity, 18 open on the base".
+  - The job-level `security-events: write` lifts Dependabot's read-only token. #407's Backend job failed; it was not investigated.
+- **Step 5, S9 proof (observed, subagent; the lead reran nothing except the gate):**
+
+  | Check | Result |
+  |---|---|
+  | taxi-term grep (§S9 command) | 61 hits, 0 unjustified (29 `cms/apps/web`, 14 `expo` in export/exposed, 12 codeql, 2 `wip:`, 2 taxi provenance, 1 `turbo` = `cms/turbo.json`, 1 `packages/` = `cms/packages/ui`); `-i` pass: 18, all CodeQL, 0 drizzle |
+  | dangling `references/` | 0 (27 mentions; the 1 unresolved one is the directory hint in `skills-create/templates/SKILL.template.md:33`) |
+  | `pre_tool_use.py` probes (settings command, python3 3.12) | Write `app/x.py` 0 · `cat .env` 2 · Write settings 2 · `gh pr merge 1` 2 · `alembic downgrade -1` 2 |
+  | `stop_check.py` probes (scratch clone, `--snapshot` baseline) | clean 0 · red ruff file 2 · uv off PATH 1 with note · clean again 0 |
+  | `record-gate.sh -- make check-full` | exit 0, short_gate false, pytest 8492 (step 2) |
+  | `rules-check-drift` | 1 drift item: `CLAUDE.md:84` "not live yet". Same stale wording in `conventions.md:39`, `piv-fix-review-findings:75`, `piv-review-pr:67`, `piv-create-pr:167`. All 5 fixed in this commit |
+
+- Not proven here: C7 hooks firing inside a live session (V6). This session did not load the worktree's settings, so the probes show the scripts' behaviour, not the harness wiring. That needs a worktree session.
+- **T1 overlap (user decision pending):** the `:980` social early return matches ledger entry `phase-53g-g11-social-section-drops-column-content`, which the uncommitted G12 plan (main checkout, `53-g12-generalization-insurance.md:87`) calls "G12 territory". The G12 report's +168-line `layout_analyzer.py` change is in no branch, stash or diff (observed).
+
+### 2026-09-28 — S9 session 2: #408 commit 2, C7 live proof, T1 (in progress)
+- Method: the first session run **inside** worktree `~/Desktop/email-hub-s9`, so the repo's skills and hooks were loaded by the harness. This is what makes the C7 proof below a live proof rather than a script probe.
+- **#408 commit 2 (observed):** `65bc6937` pushed to `docs/ai-layer-s8-close-log`.
+  - `record-gate.sh` → `make check-full` exit 0 at `65bc6937`: pytest 8492 passed / 0 failed / 115 skipped, vitest 780, dirty false, short_gate false, finished 2026-09-28T08:50:46Z (`.claude/last-gate.json`).
+  - The PR body was refreshed (Validation block for the new head; commit 2 mentioned).
+  - The pre-push hook again rewrote the `skill-versions.yaml` dates. They were restored.
+- **CI run 36401138382 on `65bc6937` (observed):**
+  - 8 of the 10 required checks green. `Backend (lint + types + security + test)` failed only at pip-audit, on a PyPI 503 ("Backend is unhealthy" for `pypi.org/pypi/playwright/1.61.0/json`) at 09:10:27Z. `E2E Smoke Tests` was skipped because it needs Backend.
+  - `Ready for review` concluded `failure` and moved #408 back to draft ("PR #408 stays a draft").
+  - `gh run rerun --failed` (attempt 2) hit the same 503 at 09:18:47Z.
+  - #408 went back to draft, `mergeStateStatus` BLOCKED. PyPI flapped (503 at 09:36/09:39Z, 200 from 09:42Z). Attempt 3 (rerun 09:45:54Z) went all green and CI flipped #408 back to ready at 09:52:49Z (observed).
+  - Lesson (observed): the `ready` job un-readies an already-ready PR when a re-run goes red. Under strict protection a transient upstream outage therefore costs the PR its ready state, not just a check; the next green run should flip it back (`expected`).
+- **C7 live hook proof, V6 (observed):**
+
+  | Probe | Result |
+  |---|---|
+  | Read tool on the env file | BLOCKED by `pre_tool_use.py` |
+  | `cat` of the env file via Bash | BLOCKED |
+  | Write to `.claude/settings.json` | BLOCKED (gate fence message) |
+  | SessionStart snapshot | fired: `.claude/state/stop-baseline-72d107b7-3490-498d-8843-1094df55778b.json` written 08:58Z (09:58 BST) |
+  | Stop hook after an edit | probe `scripts/c7_stop_probe.py` with an unused import → Stop hook BLOCKED (exit 2) with ruff F401; probe deleted |
+
+  C7 is closed.
+- **T1 (in progress):**
+  - User decisions (AskUserQuestion): fix now rather than wait for G12, on the render path. Plan `.agents/plans/t1-social-section-column-content.md` approved, with Q1 ratified as **L1**: the template's "Follow us" label cell gets `data-slot="social_label"` and is blanked when the design carries its own text.
+  - Branch `fix/t1-social-section-column-content` off `f26ee233`; WIP commits `18598920` and `027bcfdf` (local, not pushed).
+  - **Key finding (observed):** removing the `layout_analyzer.py:980` social early return alone changes nothing, because the text-only footer rule needs `content_roles ⊆ {text}`. The content loss is in `component_matcher._fills_social`. The G12 plan has no work item for it, and G12's `layout_analyzer.py` change no longer exists. This corrects the S9 step-1 prep note, which located the loss at `:980`.
+  - Corpus (observed): targets c6/c8/c9/c10 change; non-targets c5/c7 byte-identical. Snapshot 34/10/1; section-count ladder unchanged.
+  - A3 (observed, full corpus): c5 and c7 flat; c8 0.822→0.866 (+0.044, derived); c9 0.681→0.715 (+0.034, derived); c10 0.720→0.744 (+0.024, derived); c6 0.820→0.806 (−0.014, derived). c6 is a target case, so under the jitter rule the drop may be a scorer artefact; it still **needs the user's ratification** before commit.
+  - Gate at `027bcfdf` (observed, `.claude/last-gate.json`): `make check-full` exit 0, pytest 8499 passed / 0 failed / 115 skipped, vitest 780, dirty false, short_gate false (09:34:10Z).
+  - Pre-PR review (code-reviewer subagent): needs revision, Medium 3 / Low 4 (F1–F7); triage left to session 3.
+- **Next (handed to session 3):** triage F1–F7, ratify the A3 trades, then `piv-commit` → `piv-create-pr` (draft) → CI ready flip → `piv-review-pr` → execution report → evolution review.
+
+### 2026-09-28 — S9 session 3: T1 review fixes, #409 through the loop
+- Method: run inside worktree `~/Desktop/email-hub-s9` with hooks and skills live. Independent work was fanned out to subagents with exclusive file ownership: renderer/tree research, A3 worktree prep, F2 `tree_bridge`, F5 plumbing, F7 manifest+ledger, report draft, fresh-context `piv-review-pr`, execution report + evolution review. The lead kept the matcher, renderer and social test file.
+- **#408:** open, ready, `mergeStateStatus` CLEAN at `65bc6937` at session start (observed); left for the user.
+- **T1 pre-PR findings F1–F7:** the user chose to fix all seven (AskUserQuestion). Plan amended (`.agents/plans/t1-social-section-column-content.md` § AMENDMENTS).
+  - F1: an explicit empty `social_label` fill now collapses the label row, so the design padding lands on the icon cell (`_COLLAPSE_ON_EMPTY_FILL`).
+  - F2: on the tree path an empty text fill returns `None` instead of the literal "text". The seed "Follow us" (and seed CTA labels) show there instead; ledgered as `phase-53g-t1-tree-path-social-label-default`.
+  - F3: icon buttons anchor the icon row.
+  - F4: every column group is walked; ungrouped texts are logged.
+  - F5: `ContentGroup.content_order` added and serialised, with a schema entry.
+  - F6: the icon-only output is pinned byte for byte against `f26ee233`; the "Follow us" test is RED-first post-hoc.
+  - F7: the manifest lists `social_label`; the closed ledger entry gains a narrowing note.
+  - F3/F4/F5 are not exercised by the corpus (observed probe: one column group per social section, no ungrouped texts, no buttons) and claim no corpus change.
+- **Evidence (observed):**
+  - New tests were RED on the old code. Social test file: 15 passed at `4ec80659`.
+  - Session-3 regen, ignore-all-space: c6 +1/−9, c8/c9/c10 +1/−5, c5/c7 empty.
+  - Snapshot 34/10/1; ladder unchanged from base; golden-conformance 26/9; lint-numeric 0.
+- **A3 (observed, full corpus, throwaway worktree, `f26ee233` vs `71b9db89`):**
+  - c5 and c7 are flat on every band.
+  - c8 0.8217→0.8632; c9 0.6814→0.7095; c10 0.7195→0.7361.
+  - c6 0.8203→0.8132 (−0.0071, derived); F1 halved session 2's −0.0145.
+  - **Ratified by the user:** c6 full_image and section_min 0.4772→0.4661; c9 section_min 0.4479→0.3033 (upper bands, unchanged HTML, taller render).
+- **Commit and PR (observed):**
+  - `piv-commit` folded the three `chore(wip):` commits into `c29122d8` via `git reset --soft f26ee233`. The skill's `HEAD~1` handles only one WIP commit.
+  - Gate at `c29122d8`: exit 0, pytest 8512/0/115, vitest 780, not short.
+  - An earlier gate at `71b9db89` was marked short: a subagent created an untracked file mid-run.
+  - **#409** opened as a draft. CI flipped it to ready at 10:54:54Z with all 14 checks green.
+- **`piv-review-pr` round 1 (observed, review 5337541547):** request changes, Medium 1 / Low 5.
+  - The user chose to fix R1 (the new log event must be two-part: `design_sync.social_texts_ungrouped`) and R2 (log texts in a groupless section), and to ledger R3 (a logo above a label pulls the icon row up on the image fallback).
+  - Fixes in `4ec80659`. Gate: exit 0, pytest 8513/0/115, vitest 780, not short.
+  - CI on `4ec80659`: the Backend pip-audit step hit a PyPI 503 (`python-liquid/2.3.0/json`, 11:31:52Z). The `ready` job moved #409 back to draft (11:31:59Z). After PyPI recovered (three 200s by 11:39:11Z), `gh run rerun --failed` went all green, and CI flipped #409 back to ready at 11:48:59Z (14 of 14 pass, CLEAN).
+- **Friction (observed):**
+  - The `rm -rf` guard blocked an A3 scratch cleanup.
+  - Untracked PIV artefacts (report, review) make `record-gate.sh` dirty; they were parked in scratch during each gate.
+  - A background wrapper around `record-gate.sh` was killed (exit 144) while the gate completed as an orphan.
+  - The pre-push hook's local `make check` rewrote the `skill-versions.yaml` dates again; restored.
+  - Execution report and evolution review: `.claude/execution-reports/t1-social-section-column-content.md` and `.claude/system-reviews/t1-social-section-column-content-review.md` (adherence 7/10, plan correctness 5/10). The 13 remedy rows are appended to `.claude/system-reviews/REMEDY-LEDGER.md`; E1 (fold every WIP commit, then gate, then PR) and E2 (`record-gate.sh` ignores untracked PIV artefacts) are the next apply-slot candidates.
+- **Next:** the user merges #408 and #409. After #409 merges, stamp the three `pending` ledger SHAs (`deferred-items` skill) and ship the report, review and ledger stamp as a follow-up PR (the #355 precedent).

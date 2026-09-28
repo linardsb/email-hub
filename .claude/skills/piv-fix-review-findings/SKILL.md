@@ -73,7 +73,7 @@ sprawling one.
 ## 1.5 A code-scanning round
 
 email-hub's scanners report to GitHub code scanning: Semgrep now (`.github/workflows/semgrep.yml`), plus a
-`codeql` job in `ci.yml` once it lands (expected, not yet written). Semgrep runs with `continue-on-error: true`, so
+`codeql` job in `ci.yml` (`CodeQL (analyze + gate)`, since #405). Semgrep runs with `continue-on-error: true`, so
 **its check is green whatever it finds — do not wait for a red check.** When there are open alerts on the PR's
 merge ref, they are the findings, not a reviewer's list. Feed them in with this command (`{N}` = the PR number;
 the executable step, so a broken endpoint shows in a diff):
