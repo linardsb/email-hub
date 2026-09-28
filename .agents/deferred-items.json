@@ -1225,7 +1225,7 @@
       "phase": "53.g11",
       "title": "Social-classified section drops its non-icon column content (legal texts + in-column divider)",
       "status": "closed",
-      "closed_commit": "pending",
+      "closed_commit": "789b712f",
       "severity": "known-bug",
       "introduced": "2026-07-20",
       "introduced_commit": "405f17d0",
@@ -1266,7 +1266,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-09-28",
-      "introduced_commit": "pending",
+      "introduced_commit": "789b712f",
       "summary": "_fills_social builds the icon row from every section image when the section has no buttons (the images-as-icons fallback). A social section whose column also holds a non-icon image renders that image as a 32x32 'Social icon' link inside the icon row. Observed on the corpus: c6 section 8 bottom image 2833:1490 (146x136 in the design) and c10 section 14 logo 2833:1274 (70x70, above the icons). Found during T1, which renders the section's texts and dividers but deliberately leaves images to the icon row. Ordering side effect (PR #409 review R3): because every fallback image counts as an icon, `_social_column_rows` anchors the icon row at the first image, so a non-icon image placed above a label (logo, label, icons) pulls the icon row above that label. Not seen on the corpus (c10 s14 logo is first, before the icons, with no label between).",
       "code_refs": [
         "app/design_sync/component_matcher.py:2576 (_fills_social images-as-icons fallback)"
@@ -1282,7 +1282,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-09-28",
-      "introduced_commit": "pending",
+      "introduced_commit": "789b712f",
       "summary": "On the tree-bridge path (DESIGN_SYNC__TREE_BRIDGE_ENABLED, default off) an empty text fill is skipped: _fill_to_slot_value returns None because TextSlot/HtmlSlot require min_length=1. TreeCompiler therefore keeps the seed text, so a social section with design text shows the template's 'Follow us' label next to the design's own text (c9 shows 'Follow us' plus 'FOLLOW US'). The default render path blanks the social_label slot and collapses its row. The same skip applies to empty CTA label fills (cta_text, primary_text, secondary_text, link_text in component_matcher.py when a section has no button): the tree path now shows the seed label (e.g. 'Shop Now') where it used to show the literal 'text'; the default path prunes those CTAs.",
       "code_refs": [
         "app/design_sync/tree_bridge.py (_fill_to_slot_value — empty text fill returns None)",
