@@ -1,6 +1,6 @@
 """Design tool sync settings."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 
 class DesignSyncConfig(BaseModel):
@@ -50,6 +50,9 @@ class DesignSyncConfig(BaseModel):
         ""  # DESIGN_SYNC__VLM_CLASSIFICATION_MODEL (empty = default routing)
     )
     vlm_classification_timeout: float = 15.0  # DESIGN_SYNC__VLM_CLASSIFICATION_TIMEOUT (seconds)
+    # Jev shadow classifier (TypeSafe) — logs disagreements, never changes output
+    jev_shadow_enabled: bool = False  # DESIGN_SYNC__JEV_SHADOW_ENABLED
+    jev_api_key: SecretStr = SecretStr("")  # DESIGN_SYNC__JEV_API_KEY
     # VLM visual verification loop (Phase 47.2) — RETIRED at 53.4 (2026-06-12):
     # stays default-off until the 2026-09-10 cull; reopen conditions in
     # .agents/plans/53-4-vlm-retirement.md. Do not credit it in fidelity claims.
