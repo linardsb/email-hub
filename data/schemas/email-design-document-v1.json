@@ -320,7 +320,8 @@
           "items": { "$ref": "#/$defs/button" },
           "maxItems": 30,
           "default": []
-        }
+        },
+        "content_order": { "type": "array", "items": { "type": "string" }, "default": [] }
       }
     },
     "padding": {

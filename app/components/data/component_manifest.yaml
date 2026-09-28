@@ -1148,6 +1148,10 @@ components:
     category: structure
     compatibility: full
     slot_definitions:
+      - slot_id: social_label
+        slot_type: text
+        selector: "[data-slot='social_label']"
+        required: false
       - slot_id: social_links
         slot_type: body
         selector: "[data-slot='social_links']"

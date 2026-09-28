@@ -23,13 +23,16 @@ fixes, so it is asserted explicitly.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from pathlib import Path
+from unittest.mock import patch
 
 import hypothesis.strategies as st
 import pytest
 from hypothesis import given, settings
 
+from app.design_sync.component_matcher import ComponentMatch, SlotFill
 from app.design_sync.email_design_document import (
     DocumentLayout,
     DocumentSection,
@@ -555,3 +558,71 @@ def test_real_fixture_widened_fields_survive_bridge(case: str) -> None:
     # export_node_id, corner_radius_spec, container_bg, child_content_groups, ...).
     # A zero-hit pass would mean the test is vacuous — fail loudly instead.
     assert total_hits > 0, f"case {case}: no widened field exercised — test is vacuous"
+
+
+# ── 6. Empty text fill on the tree path (review F2) ──
+#
+# T1 blanks the social-icons ``social_label`` default with ``SlotFill("social_label", "")``.
+# ``TextSlot.text`` has ``min_length=1``, so the bridge must skip the slot (None)
+# rather than invent a placeholder — a literal "text" used to render on the tree path.
+
+_SOCIAL_LABEL_CELL_RE = re.compile(r'data-slot="social_label"[^>]*>([^<]*)<')
+
+
+def _c9_social_match() -> ComponentMatch:
+    """The real c9 social-icons match, captured from a full conversion."""
+    from app.design_sync import component_matcher
+    from app.design_sync.tests.test_snapshot_regression import _run_conversion
+
+    captured: list[list[ComponentMatch]] = []
+    original = component_matcher.match_all
+
+    def spy(*args: object, **kwargs: object) -> list[ComponentMatch]:
+        result = original(*args, **kwargs)  # type: ignore[arg-type]
+        captured.append(result)
+        return result
+
+    with patch.object(component_matcher, "match_all", spy):
+        _run_conversion(_DEBUG_DIR / "9")
+    social = [m for m in captured[-1] if m.component_slug == "social-icons"]
+    assert social, "c9 has no social-icons match"
+    return social[0]
+
+
+@pytest.mark.skipif(not (_DEBUG_DIR / "9").is_dir(), reason="data/debug fixtures not present")
+def test_empty_text_fill_is_skipped_not_placeholder() -> None:
+    from app.design_sync.tree_bridge import _fill_to_slot_value
+
+    match = _c9_social_match()
+    label = next(f for f in match.slot_fills if f.slot_id == "social_label")
+    assert label == SlotFill("social_label", "")
+    assert _fill_to_slot_value(label, match.section) is None
+    # Tag-only content strips to empty too.
+    assert _fill_to_slot_value(SlotFill("social_label", "<br> "), match.section) is None
+
+
+@pytest.mark.skipif(not (_DEBUG_DIR / "9").is_dir(), reason="data/debug fixtures not present")
+def test_c9_tree_path_social_label_has_no_placeholder(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import get_settings
+    from app.design_sync.converter_service import DesignConverterService
+    from app.design_sync.diagnose.report import (
+        load_structure_from_json,
+        load_tokens_from_json,
+    )
+
+    ds = get_settings().design_sync
+    monkeypatch.setattr(ds, "tree_bridge_enabled", True)
+    monkeypatch.setattr(ds, "section_cache_enabled", False)
+
+    case_dir = _DEBUG_DIR / "9"
+    document = EmailDesignDocument.from_legacy(
+        load_structure_from_json(case_dir / "structure.json"),
+        load_tokens_from_json(case_dir / "tokens.json"),
+    )
+    result = DesignConverterService().convert_document(document, output_format="tree")
+
+    assert result.tree is not None, "tree bridge did not run"
+    cells = _SOCIAL_LABEL_CELL_RE.findall(result.html)
+    assert len(cells) == 1
+    assert cells[0].strip() != "text"
+    assert ">text<" not in result.html

@@ -973,6 +973,9 @@ class DocumentContentGroup:
     texts: list[DocumentText] = field(default_factory=list[DocumentText])
     images: list[DocumentImage] = field(default_factory=list[DocumentImage])
     buttons: list[DocumentButton] = field(default_factory=list[DocumentButton])
+    # F5 — mirrors ContentGroup.content_order (design tree order of the
+    # content node ids). Older persisted documents lack it -> ().
+    content_order: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -985,6 +988,8 @@ class DocumentContentGroup:
             d["images"] = [i.to_json() for i in self.images]
         if self.buttons:
             d["buttons"] = [b.to_json() for b in self.buttons]
+        if self.content_order:
+            d["content_order"] = list(self.content_order)
         return d
 
     @classmethod
@@ -995,6 +1000,7 @@ class DocumentContentGroup:
             texts=[DocumentText.from_json(t) for t in data.get("texts", [])],
             images=[DocumentImage.from_json(i) for i in data.get("images", [])],
             buttons=[DocumentButton.from_json(b) for b in data.get("buttons", [])],
+            content_order=tuple(data.get("content_order", [])),
         )
 
     @classmethod
@@ -1005,6 +1011,7 @@ class DocumentContentGroup:
             texts=[DocumentText.from_text_block(t) for t in g.texts],
             images=[DocumentImage.from_image_placeholder(i) for i in g.images],
             buttons=[DocumentButton.from_button_element(b) for b in g.buttons],
+            content_order=g.content_order,
         )
 
     def to_content_group(self) -> ContentGroup:
@@ -1014,6 +1021,7 @@ class DocumentContentGroup:
             texts=[t.to_text_block() for t in self.texts],
             images=[i.to_image_placeholder() for i in self.images],
             buttons=[b.to_button_element() for b in self.buttons],
+            content_order=self.content_order,
         )
 
 
