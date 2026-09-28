@@ -64,8 +64,8 @@ lint, build. Capture pass/fail + counts. A red suite is a finding in itself.
 
 Then read the PR's open code-scanning alerts **every time, not only on a red check**: Semgrep
 (`.github/workflows/semgrep.yml`) runs with `continue-on-error: true` and its SARIF upload is
-`continue-on-error` too, so its check is green whatever it finds; the `codeql` job in `ci.yml` (expected, not yet
-written) reports to the same API. Use the `gh api … code-scanning/alerts?ref=refs/pull/{N}/merge` command in
+`continue-on-error` too, so its check is green whatever it finds; the `codeql` job in `ci.yml` (since #405)
+reports to the same API. Use the `gh api … code-scanning/alerts?ref=refs/pull/{N}/merge` command in
 `piv-fix-review-findings` §1.5 and fold each line in as a finding at GitHub's severity, tagged with the tool that
 raised it (`Semgrep`, `CodeQL`). A 403/404 from that endpoint means code scanning is unavailable on the repo — say
 so in the report; it is not "zero alerts".
