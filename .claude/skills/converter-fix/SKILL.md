@@ -127,9 +127,11 @@ append to that doc (append-only, dated). Follow its § 5 contract for how to sta
 
 ### 8. Hand off
 
-`piv-validate` → `piv-commit` → `piv-create-pr`. `piv-commit` already restores the gate's
-`skill-versions.yaml` auto-stamps (`.claude/skills/piv-commit/SKILL.md:19`); do not restore them by hand
-here. Base the PR on `origin/main`, never on another unmerged converter branch: a PR stacked on a base
+`piv-commit` (fold every `chore(wip):` commit, amend the plan) → `piv-validate` on the committed head →
+`piv-create-pr`. `piv-commit` changes the tree, and `piv-create-pr` refuses a gate record whose `head` is
+not `HEAD`, so a gate taken before the commit cannot reach the PR. `record-gate.sh` restores the gate's
+`skill-versions.yaml` auto-stamps, and `piv-commit` restores any left by earlier runs
+(`.claude/skills/piv-commit/SKILL.md` step 1); do not restore them by hand here. Base the PR on `origin/main`, never on another unmerged converter branch: a PR stacked on a base
 that merges first lands in the dead branch, not main (#358 → #359, #361 → #362).
 
 ## PR body: what reviewers expect
