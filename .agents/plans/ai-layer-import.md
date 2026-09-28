@@ -317,3 +317,74 @@ Use `skills-create`. ⏸ user picks final list.
 
 - Not proven here: C7 hooks firing inside a live session (V6). This session did not load the worktree's settings, so the probes show the scripts' behaviour, not the harness wiring. That needs a worktree session.
 - **T1 overlap (user decision pending):** the `:980` social early return matches ledger entry `phase-53g-g11-social-section-drops-column-content`, which the uncommitted G12 plan (main checkout, `53-g12-generalization-insurance.md:87`) calls "G12 territory". The G12 report's +168-line `layout_analyzer.py` change is in no branch, stash or diff (observed).
+
+### 2026-09-28 — S9 session 2: #408 commit 2, C7 live proof, T1 (in progress)
+- Method: the first session run **inside** worktree `~/Desktop/email-hub-s9`, so the repo's skills and hooks were loaded by the harness. This is what makes the C7 proof below a live proof rather than a script probe.
+- **#408 commit 2 (observed):** `65bc6937` pushed to `docs/ai-layer-s8-close-log`.
+  - `record-gate.sh` → `make check-full` exit 0 at `65bc6937`: pytest 8492 passed / 0 failed / 115 skipped, vitest 780, dirty false, short_gate false, finished 2026-09-28T08:50:46Z (`.claude/last-gate.json`).
+  - The PR body was refreshed (Validation block for the new head; commit 2 mentioned).
+  - The pre-push hook again rewrote the `skill-versions.yaml` dates. They were restored.
+- **CI run 36401138382 on `65bc6937` (observed):**
+  - 8 of the 10 required checks green. `Backend (lint + types + security + test)` failed only at pip-audit, on a PyPI 503 ("Backend is unhealthy" for `pypi.org/pypi/playwright/1.61.0/json`) at 09:10:27Z. `E2E Smoke Tests` was skipped because it needs Backend.
+  - `Ready for review` concluded `failure` and moved #408 back to draft ("PR #408 stays a draft").
+  - `gh run rerun --failed` (attempt 2) hit the same 503 at 09:18:47Z.
+  - #408 went back to draft, `mergeStateStatus` BLOCKED. PyPI flapped (503 at 09:36/09:39Z, 200 from 09:42Z). Attempt 3 (rerun 09:45:54Z) went all green and CI flipped #408 back to ready at 09:52:49Z (observed).
+  - Lesson (observed): the `ready` job un-readies an already-ready PR when a re-run goes red. Under strict protection a transient upstream outage therefore costs the PR its ready state, not just a check; the next green run should flip it back (`expected`).
+- **C7 live hook proof, V6 (observed):**
+
+  | Probe | Result |
+  |---|---|
+  | Read tool on the env file | BLOCKED by `pre_tool_use.py` |
+  | `cat` of the env file via Bash | BLOCKED |
+  | Write to `.claude/settings.json` | BLOCKED (gate fence message) |
+  | SessionStart snapshot | fired: `.claude/state/stop-baseline-72d107b7-3490-498d-8843-1094df55778b.json` written 08:58Z (09:58 BST) |
+  | Stop hook after an edit | probe `scripts/c7_stop_probe.py` with an unused import → Stop hook BLOCKED (exit 2) with ruff F401; probe deleted |
+
+  C7 is closed.
+- **T1 (in progress):**
+  - User decisions (AskUserQuestion): fix now rather than wait for G12, on the render path. Plan `.agents/plans/t1-social-section-column-content.md` approved, with Q1 ratified as **L1**: the template's "Follow us" label cell gets `data-slot="social_label"` and is blanked when the design carries its own text.
+  - Branch `fix/t1-social-section-column-content` off `f26ee233`; WIP commits `18598920` and `027bcfdf` (local, not pushed).
+  - **Key finding (observed):** removing the `layout_analyzer.py:980` social early return alone changes nothing, because the text-only footer rule needs `content_roles ⊆ {text}`. The content loss is in `component_matcher._fills_social`. The G12 plan has no work item for it, and G12's `layout_analyzer.py` change no longer exists. This corrects the S9 step-1 prep note, which located the loss at `:980`.
+  - Corpus (observed): targets c6/c8/c9/c10 change; non-targets c5/c7 byte-identical. Snapshot 34/10/1; section-count ladder unchanged.
+  - A3 (observed, full corpus): c5 and c7 flat; c8 0.822→0.866 (+0.044, derived); c9 0.681→0.715 (+0.034, derived); c10 0.720→0.744 (+0.024, derived); c6 0.820→0.806 (−0.014, derived). c6 is a target case, so under the jitter rule the drop may be a scorer artefact; it still **needs the user's ratification** before commit.
+  - Gate at `027bcfdf` (observed, `.claude/last-gate.json`): `make check-full` exit 0, pytest 8499 passed / 0 failed / 115 skipped, vitest 780, dirty false, short_gate false (09:34:10Z).
+  - Pre-PR review (code-reviewer subagent): needs revision, Medium 3 / Low 4 (F1–F7); triage left to session 3.
+- **Next (handed to session 3):** triage F1–F7, ratify the A3 trades, then `piv-commit` → `piv-create-pr` (draft) → CI ready flip → `piv-review-pr` → execution report → evolution review.
+
+### 2026-09-28 — S9 session 3: T1 review fixes, #409 through the loop
+- Method: run inside worktree `~/Desktop/email-hub-s9` with hooks and skills live. Independent work was fanned out to subagents with exclusive file ownership: renderer/tree research, A3 worktree prep, F2 `tree_bridge`, F5 plumbing, F7 manifest+ledger, report draft, fresh-context `piv-review-pr`, execution report + evolution review. The lead kept the matcher, renderer and social test file.
+- **#408:** open, ready, `mergeStateStatus` CLEAN at `65bc6937` at session start (observed); left for the user.
+- **T1 pre-PR findings F1–F7:** the user chose to fix all seven (AskUserQuestion). Plan amended (`.agents/plans/t1-social-section-column-content.md` § AMENDMENTS).
+  - F1: an explicit empty `social_label` fill now collapses the label row, so the design padding lands on the icon cell (`_COLLAPSE_ON_EMPTY_FILL`).
+  - F2: on the tree path an empty text fill returns `None` instead of the literal "text". The seed "Follow us" (and seed CTA labels) show there instead; ledgered as `phase-53g-t1-tree-path-social-label-default`.
+  - F3: icon buttons anchor the icon row.
+  - F4: every column group is walked; ungrouped texts are logged.
+  - F5: `ContentGroup.content_order` added and serialised, with a schema entry.
+  - F6: the icon-only output is pinned byte for byte against `f26ee233`; the "Follow us" test is RED-first post-hoc.
+  - F7: the manifest lists `social_label`; the closed ledger entry gains a narrowing note.
+  - F3/F4/F5 are not exercised by the corpus (observed probe: one column group per social section, no ungrouped texts, no buttons) and claim no corpus change.
+- **Evidence (observed):**
+  - New tests were RED on the old code. Social test file: 15 passed at `4ec80659`.
+  - Session-3 regen, ignore-all-space: c6 +1/−9, c8/c9/c10 +1/−5, c5/c7 empty.
+  - Snapshot 34/10/1; ladder unchanged from base; golden-conformance 26/9; lint-numeric 0.
+- **A3 (observed, full corpus, throwaway worktree, `f26ee233` vs `71b9db89`):**
+  - c5 and c7 are flat on every band.
+  - c8 0.8217→0.8632; c9 0.6814→0.7095; c10 0.7195→0.7361.
+  - c6 0.8203→0.8132 (−0.0071, derived); F1 halved session 2's −0.0145.
+  - **Ratified by the user:** c6 full_image and section_min 0.4772→0.4661; c9 section_min 0.4479→0.3033 (upper bands, unchanged HTML, taller render).
+- **Commit and PR (observed):**
+  - `piv-commit` folded the three `chore(wip):` commits into `c29122d8` via `git reset --soft f26ee233`. The skill's `HEAD~1` handles only one WIP commit.
+  - Gate at `c29122d8`: exit 0, pytest 8512/0/115, vitest 780, not short.
+  - An earlier gate at `71b9db89` was marked short: a subagent created an untracked file mid-run.
+  - **#409** opened as a draft. CI flipped it to ready at 10:54:54Z with all 14 checks green.
+- **`piv-review-pr` round 1 (observed, review 5337541547):** request changes, Medium 1 / Low 5.
+  - The user chose to fix R1 (the new log event must be two-part: `design_sync.social_texts_ungrouped`) and R2 (log texts in a groupless section), and to ledger R3 (a logo above a label pulls the icon row up on the image fallback).
+  - Fixes in `4ec80659`. Gate: exit 0, pytest 8513/0/115, vitest 780, not short.
+  - CI on `4ec80659`: the Backend pip-audit step hit a PyPI 503 (`python-liquid/2.3.0/json`, 11:31:52Z). The `ready` job moved #409 back to draft (11:31:59Z). After PyPI recovered (three 200s by 11:39:11Z), `gh run rerun --failed` went all green, and CI flipped #409 back to ready at 11:48:59Z (14 of 14 pass, CLEAN).
+- **Friction (observed):**
+  - The `rm -rf` guard blocked an A3 scratch cleanup.
+  - Untracked PIV artefacts (report, review) make `record-gate.sh` dirty; they were parked in scratch during each gate.
+  - A background wrapper around `record-gate.sh` was killed (exit 144) while the gate completed as an orphan.
+  - The pre-push hook's local `make check` rewrote the `skill-versions.yaml` dates again; restored.
+  - Execution report and evolution review: `.claude/execution-reports/t1-social-section-column-content.md` and `.claude/system-reviews/t1-social-section-column-content-review.md` (adherence 7/10, plan correctness 5/10). The 13 remedy rows are appended to `.claude/system-reviews/REMEDY-LEDGER.md`; E1 (fold every WIP commit, then gate, then PR) and E2 (`record-gate.sh` ignores untracked PIV artefacts) are the next apply-slot candidates.
+- **Next:** the user merges #408 and #409. After #409 merges, stamp the three `pending` ledger SHAs (`deferred-items` skill) and ship the report, review and ledger stamp as a follow-up PR (the #355 precedent).
