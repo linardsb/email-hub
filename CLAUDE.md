@@ -81,7 +81,7 @@ Research → Plan → Implement → Validate, one ticket per loop. Skills in `.c
 
 ## PR flow
 
-`expected` — lands with the AI-layer import (plan `.agents/plans/ai-layer-import.md` D3/D4, S8 PR B); not live yet.
+Live since #405 (`ready` + `codeql` jobs) and branch protection on `main` (10 required checks, admins included, 0 approvals), applied 2026-09-27 (plan `.agents/plans/ai-layer-import.md` D3/D4/D10). First non-Dependabot flip: #408.
 1. The agent opens every PR as a **draft**.
 2. CI's `ready` job flips the draft to ready only when all checks pass on that head commit.
 3. **Only the user merges.** The agent never runs `gh pr merge` or `gh pr ready`.

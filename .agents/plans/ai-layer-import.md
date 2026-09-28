@@ -288,3 +288,32 @@ Use `skills-create`. ⏸ user picks final list.
   - 3 medium JS file/http access in `cms/apps/web/e2e/global-{setup,teardown}.ts`.
   - The gate fails only on NEW alerts vs base, so these do not block PRs (derived, gate design D11). They are open for triage by the user.
 - T1 prep (observed, subagent): `layout_analyzer.py:980` is the `social` early return in `_classify_mj_section` (def :946). It fires before the text-only→FOOTER rule (:1003-1005), and `_classify_by_content`'s legal→FOOTER rule (:1092-1098) is never reached on the MJML path (derived). Matching ledger entry: `phase-53g-g11-social-section-drops-column-content` (deferred, known-bug), whose `closes_when` names G12 re-segmentation.
+
+### 2026-09-27/28 — S9 session: docs PR, protection, R4, proof table (steps 2–5)
+- **Step 2 (observed):** docs PR **#408** (`docs/ai-layer-s8-close-log`) was opened as a draft at 20:41:49Z.
+  - `record-gate.sh` → `make check-full` exit 0 at `5aa0d05b`: pytest 8492 passed / 0 failed / 115 skipped, vitest 780, dirty false, short_gate false.
+  - All 14 checks green. **CI flipped it to ready at 20:50:46Z** (timeline `ready_for_review`, actor = the `PR_READY_TOKEN` owner). The gap is 8m57s (derived). This is the first ready flip on a non-Dependabot PR under the full CI, and closes C8's flip row.
+  - The pre-push hook ran the local `make check` (it judged Actions unavailable) and rewrote the `skill-versions.yaml` dates. They were restored.
+- **Step 3, D10 (observed):**
+  - Names re-verified on #408's head: all 10 required contexts are check runs from `app_id 15368`, while GitHub's `CodeQL` / `Semgrep OSS` checks come from app 57789.
+  - The user ran `protection.sh` via `!`.
+  - A GET returned: 10 checks, all app 15368, strict true, `enforce_admins` true, 0 approvals, force-push and deletion off.
+  - The §3 risk "main not protected" is closed.
+- **Step 4, R4 PASS (observed):** Dependabot #407, run 36348172451.
+  - The `analyze` and gate steps were `success`; `Ready for review` was `skipped`.
+  - Analysis 1848040123 is on `refs/pull/407/merge`, category `.github/workflows/ci.yml:codeql`, with `error` empty.
+  - Gate line: "0 open on the PR, 0 at the gate's severity, 18 open on the base".
+  - The job-level `security-events: write` lifts Dependabot's read-only token. #407's Backend job failed; it was not investigated.
+- **Step 5, S9 proof (observed, subagent; the lead reran nothing except the gate):**
+
+  | Check | Result |
+  |---|---|
+  | taxi-term grep (§S9 command) | 61 hits, 0 unjustified (29 `cms/apps/web`, 14 `expo` in export/exposed, 12 codeql, 2 `wip:`, 2 taxi provenance, 1 `turbo` = `cms/turbo.json`, 1 `packages/` = `cms/packages/ui`); `-i` pass: 18, all CodeQL, 0 drizzle |
+  | dangling `references/` | 0 (27 mentions; the 1 unresolved one is the directory hint in `skills-create/templates/SKILL.template.md:33`) |
+  | `pre_tool_use.py` probes (settings command, python3 3.12) | Write `app/x.py` 0 · `cat .env` 2 · Write settings 2 · `gh pr merge 1` 2 · `alembic downgrade -1` 2 |
+  | `stop_check.py` probes (scratch clone, `--snapshot` baseline) | clean 0 · red ruff file 2 · uv off PATH 1 with note · clean again 0 |
+  | `record-gate.sh -- make check-full` | exit 0, short_gate false, pytest 8492 (step 2) |
+  | `rules-check-drift` | 1 drift item: `CLAUDE.md:84` "not live yet". Same stale wording in `conventions.md:39`, `piv-fix-review-findings:75`, `piv-review-pr:67`, `piv-create-pr:167`. All 5 fixed in this commit |
+
+- Not proven here: C7 hooks firing inside a live session (V6). This session did not load the worktree's settings, so the probes show the scripts' behaviour, not the harness wiring. That needs a worktree session.
+- **T1 overlap (user decision pending):** the `:980` social early return matches ledger entry `phase-53g-g11-social-section-drops-column-content`, which the uncommitted G12 plan (main checkout, `53-g12-generalization-insurance.md:87`) calls "G12 territory". The G12 report's +168-line `layout_analyzer.py` change is in no branch, stash or diff (observed).

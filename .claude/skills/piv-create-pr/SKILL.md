@@ -164,7 +164,7 @@ no `ready` flip until it is retargeted to `main`.
   or "mark ready for review" wherever your team works. There is no commit-on-`{base}` shortcut here: the
   `no-commit-to-branch` pre-commit hook (`.pre-commit-config.yaml`) refuses commits on `main`, so every change
   goes through a branch and a PR.
-- The `ready` and `codeql` jobs are `expected`: they arrive with the CI PR that adds them (PR B of the AI-layer
-  import). Until that merges, no job flips the draft; the user marks it ready after reading the checks.
+- The `ready` and `codeql` jobs arrived with #405 (PR B of the AI-layer import); `CodeQL (analyze + gate)` is a
+  required check on `main`, `Ready for review` is not. Dependabot PRs skip the `ready` job.
 - Sets up parallel work: one branch per ticket → one PR per ticket is exactly what makes worktree parallelism
   (running independent tickets at once) clean.

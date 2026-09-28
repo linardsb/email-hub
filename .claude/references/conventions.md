@@ -36,7 +36,7 @@ by `chore(deps)` 98, `chore(deps-dev)` 42, `fix(design-sync)` 25, `feat(design-s
 
 **Mechanical:**
 - Base `main`. The agent opens a **draft** PR only; CI's `ready` job flips it to ready when every check is
-  green on that head (`expected`: the `ready` job does not exist yet). **Only the user merges** (squash), so
+  green on that head (live since #405; first flip on a non-Dependabot PR: #408). **Only the user merges** (squash), so
   the PR title becomes the subject on `main` and gets ` (#N)` appended. The agent never runs `gh pr merge`
   or `gh pr ready`.
 - Title uses the commit shape. Track work appends the track tag: `feat(design-sync): <what> (Track G · G11)`,
