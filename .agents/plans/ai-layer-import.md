@@ -388,3 +388,35 @@ Use `skills-create`. ⏸ user picks final list.
   - The pre-push hook's local `make check` rewrote the `skill-versions.yaml` dates again; restored.
   - Execution report and evolution review: `.claude/execution-reports/t1-social-section-column-content.md` and `.claude/system-reviews/t1-social-section-column-content-review.md` (adherence 7/10, plan correctness 5/10). The 13 remedy rows are appended to `.claude/system-reviews/REMEDY-LEDGER.md`; E1 (fold every WIP commit, then gate, then PR) and E2 (`record-gate.sh` ignores untracked PIV artefacts) are the next apply-slot candidates.
 - **Next:** the user merges #408 and #409. After #409 merges, stamp the three `pending` ledger SHAs (`deferred-items` skill) and ship the report, review and ledger stamp as a follow-up PR (the #355 precedent).
+
+### 2026-09-28 — S9 session 4: #408/#409 merged, #410 close-out, plan §0 met
+- Method: run from a Fredis session by absolute path, so the repo's Claude hooks were not loaded; the git hooks (pre-commit, commit-msg, pre-push `make check`) ran. PIV skills were followed by reading their `SKILL.md`.
+- Provenance: "observed" below means observed in session 4. Re-checked in S9 session 5 (the session that wrote this entry): the three merge SHAs (`git log origin/main`), both CI runs' conclusion `success` (`gh run view`), and the three ledger stamps (`git grep -c 789b712f origin/main -- .agents/deferred-items.json` = 3). The gate counts were not re-run.
+- **#408 merged** as `83e3be5f` (observed).
+- **#409 merged** as `789b712f` (observed). Run 36420253251 first failed on a PyPI 503 in pip-audit (`zope-interface/8.4/json`, 12:18Z). Once PyPI returned 200 three times, `gh run rerun --failed` went green on all 11 jobs and CI flipped #409 ready again.
+- **#410 merged** as `4f704bcd` (observed):
+  - `stamp_ledger.py --sha 789b712f` stamped 3 fields: `closed_commit` on `phase-53g-g11-social-section-drops-column-content`, and `introduced_commit` on `phase-53g-t1-social-non-icon-images-as-icons` and `phase-53g-t1-tree-path-social-label-default`.
+  - It also carries the T1 report and `pr-409-review.md`. The execution report and evolution review were already on main via #408.
+  - Gate at `46bdd691`: `make check-full` exit 0, pytest 8513/0/115, vitest 780, not short, not dirty. CI run 36431783444: all 11 jobs green, and the ready flip worked.
+- **Housekeeping (observed):** scratch worktrees `wt-408` and `a3-wt` removed (both clean; `docs/ai-layer-s8-close-log` is on the remote). The main checkout fast-forwarded to `4f704bcd` with `.claude/skills/` present (24). The G12 WIP commit `75f8fb76` was pushed to `origin/feature/g12-generalization-insurance`, with its upstream moved from `origin/main` to its own branch; `piv-commit` must `git reset --soft HEAD~1` it before real G12 commits.
+- **Plan §0 definition of done is met (observed in session 4):** every §1 row verified, the import PR merged, and the first real ticket (T1) run through the loop.
+- **Open (none blocking):**
+  - Remedy apply-slot: E1 (`piv-commit` folds every `chore(wip):` commit; order becomes commit → gate → PR) and E2 (`record-gate.sh` ignores untracked PIV artefacts). See `.claude/system-reviews/REMEDY-LEDGER.md`. In session 5 the user scheduled both for their own branch off `origin/main`, after this docs PR.
+  - Untracked `email-hub-deploy/public/` in the main checkout (`index.html`, `screenshots/renderings.jpg`). The session-4 handoff called it a copy of the screenshots in `75f8fb76`; a session-5 check found neither file in that commit or anywhere in git history (observed: `git ls-tree`, `git log --all`). Not deleted.
+  - Optional cleanup: worktrees `email-hub-ai-layer`, `email-hub-ci` and `email-hub-deps` (PRs #404, #405, #406 merged); removed in session 5, branches kept (observed: `git worktree list`).
+  - Next candidate work: the Jev shadow-classifier prompt at `~/Desktop/claude-code-second-brain/Fredis/Memory/builds/email-hub/2026-09-28_jev-classifier-prompt.md` (branch off `origin/main`; its Q1 is answered).
+
+### 2026-09-28 — S9 session 5: email-hub worktree and branch cleanup
+- Scope: email-hub only, by the user's choice. Other repos on the Mac (taxi, study-tutor, saulera, domino) were surveyed and left untouched. Rule: nothing unique to email-hub is deleted; unique files are copied to `.claude/state/cleanup-2026-09-28/` (gitignored, main checkout) before their container goes. The survey table is `survey.md` there.
+- **19 Archon worktrees removed** (`git worktree remove --force`, then `prune`; observed: `git worktree list` shows only the main checkout and `email-hub-s9`). `--force` discarded only three kinds of dirt, each checked first:
+  - Archon's injected `.archon/workflows/fix-github-issue-emailhub.yaml`: 6 variants, 5 in no git history; all 6 copied to `preserved/archon-yaml/`;
+  - `skill-versions.yaml` date bumps in 6 trees (date lines only; observed `git diff -U0`);
+  - two untracked `app/shared/tests/test_utils.py`: an `escape_like` variant (superseded by #303) and `format_iso` tests that main lacks; both copied to `preserved/test_utils/`.
+- **31 local branches deleted** (SHAs logged first in `branch-shas-before.txt`):
+  - 17 with `-d`, ancestors of `origin/main` (14 `archon/thread-*`, `chore/ai-layer-s9`, `investigate/converter-v2-deep-audit`, `spike/phase-53-track-c-band-grouping`);
+  - 14 with `-D`, squash-merged, local head equal to or contained in the merged PR head: #303, #306, #310, #312, #353, #356, #357, #365, #404, #405, #406, #408, #409, #410. This supersedes "branches kept" above for #404–#406.
+- **Kept, with reason:** `feature/g12-generalization-insurance` (user's hold); `feat/inline-injection-guard` and `docs/track-g-artifacts-backfill` (commits on no remote, not on main); `backup/preG4-local-g3-340eeaae` (2 pre-rebase commits on no remote); `fix/briefs-bola-user-isolation` (2 commits past #274's head); `archon/thread-e25b9679` and `archon/thread-f6e604bc` (PRs #309 and #305 closed unmerged); all 3 stashes (patches also saved as `stash0-2.patch`).
+- **Deploy folder:** diffed against a `git archive 75f8fb76` extract; the two sets share no file (observed: `git diff --no-index`). Kept, as decided earlier in session 5.
+- **Pending when this entry was written:**
+  - the stray `.claude/worktrees/phase-51.3-tool-call-cap` (2.6G). Its tracked tree equals merged #329's head. Its 28 differing ignored files and its root env file are preserved; the secrets guard blocked copying `cms/apps/web`'s local env file, so removal waits on the user;
+  - removing `email-hub-s9` after the E1/E2 PR, once its `.claude/state/{s8-handoff,s9-t1}` are copied to the main checkout.
