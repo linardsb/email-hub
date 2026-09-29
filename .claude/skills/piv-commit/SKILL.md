@@ -13,9 +13,12 @@ Create a new commit for this task's uncommitted changes. Never `git add -A` / `g
    section and follow it — those rules win over the defaults below. That file is where a project's specifics
    live; this skill stays general.
 1. Run `git status && git diff HEAD && git status --porcelain` to see what files are uncommitted.
-   Then run `git log -1 --format=%s`; if the subject starts with `chore(wip):`, run `git reset --soft HEAD~1`
-   before staging — that is a `piv-implement` end-of-day snapshot, not a real commit, and after one the
-   other three commands print nothing at all.
+   Then run `git log --format='%h %s' origin/main..HEAD`; if one or more consecutive top commits start with
+   `chore(wip):`, run `git reset --soft <first non-wip ancestor>` before staging (for a branch whose every
+   commit is WIP, `git reset --soft $(git merge-base HEAD origin/main)`). Fold every one, not just the top:
+   they are `piv-implement` end-of-day snapshots, not real commits, and after one the other three commands
+   print nothing at all. This commit changes the tree, so the gate runs after it (`piv-validate` on the
+   committed head), never before.
    **Gate side effects:** `make test` / `make check-full` rewrite the `date:` line of
    `app/ai/agents/*/skill-versions.yaml`. If that is the only change in such a file and the task did
    not touch agent skills, `git checkout -- <file>` it. Any other file outside the plan's

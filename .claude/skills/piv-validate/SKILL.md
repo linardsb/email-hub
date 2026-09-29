@@ -66,6 +66,10 @@ the parser attributes each pytest summary to the command above it. A count under
 not a pass (S0 `observed` 8492 passed, 115 skipped, in the AI-layer worktree). Exit 3 from
 the script means make exited 0 but the record is short: read `short_reasons`.
 
+Untracked files under the four PIV artefact directories (`.claude/reports/`, `.claude/code-reviews/`,
+`.claude/execution-reports/`, `.claude/system-reviews/`) do not mark the record dirty; every other new
+file does, and so does a tracked edit inside those directories.
+
 Do not start a second gate while one runs: two `make check-full` runs in one tree collide (both run
 `ruff format .`, both rewrite `skill-versions.yaml`), and a parallel agent editing the tree mid-run makes
 the tree-changed check fire for a reason that is not the gate.

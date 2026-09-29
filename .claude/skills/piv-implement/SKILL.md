@@ -147,7 +147,7 @@ fine call; not writing it down was not.
   commit into the real one, so the prefix is what makes the handoff work — it is not decoration (the
   commit-msg hook rejects a bare `wip:`):
   `git commit -m "chore(wip): <plan-slug>"`
-- Next: `piv-commit` the work, then `piv-create-pr` to open the PR (the report fills the PR body), then `piv-review-pr`.
+- Next: `piv-commit` the work (it folds every `chore(wip):` commit and amends the plan), then `piv-validate` on the committed head, then `piv-create-pr` to open the PR (the report fills the PR body), then `piv-review-pr`. The gate comes after the commit because `piv-create-pr` refuses a record whose `head` is not `HEAD`.
 
 ## Notes
 

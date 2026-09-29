@@ -56,7 +56,9 @@
 #     Each skill-versions.yaml that was clean before the run is restored with
 #     `git checkout --` after it, and only then is the tree compared. Any
 #     remaining change is a short reason: what was validated is not what HEAD
-#     (plus the uncommitted work) contains.
+#     (plus the uncommitted work) contains. Untracked files under
+#     .claude/{reports,code-reviews,execution-reports,system-reviews}/ are left
+#     out of both samples: the loop writes them and ships them later.
 #
 # Never runs DB-destructive commands; it runs exactly the gate command given.
 
@@ -86,12 +88,20 @@ head_sha=$(git rev-parse HEAD)
 head_short=$(git rev-parse --short HEAD)
 branch=$(git branch --show-current)
 
+# Porcelain status minus untracked PIV artefacts. Reports and reviews under these
+# four directories are written by the loop itself and are often left untracked
+# until a follow-up PR, so they must not make a gate dirty. Tracked edits there
+# still count.
+porcelain() {
+  git status --porcelain | grep -Ev '^\?\? \.claude/(reports|code-reviews|execution-reports|system-reviews)/'
+}
+
 # Tree signature: porcelain status plus a hash of the tracked diff, so a change
 # to an already-modified file is seen too.
-tree_sig() { { git status --porcelain; git diff HEAD | git hash-object --stdin; } 2>/dev/null; }
+tree_sig() { { porcelain; git diff HEAD | git hash-object --stdin; } 2>/dev/null; }
 
 dirty=false
-[ -n "$(git status --porcelain)" ] && dirty=true
+[ -n "$(porcelain)" ] && dirty=true
 
 if [ -n "$parse_only" ]; then
   [ -f "$parse_only" ] || { echo "cannot read $parse_only" >&2; exit 2; }
@@ -112,7 +122,7 @@ else
     git diff --quiet HEAD -- "$f" 2>/dev/null && clean_sv+=("$f")
   done
   sig_before=$(tree_sig)
-  status_before=$(git status --porcelain)
+  status_before=$(porcelain)
 
   mkdir -p "$root/.claude/state/gate"
   log="$root/.claude/state/gate/$(date -u +%Y%m%dT%H%M%SZ)-$head_short.log"
@@ -130,12 +140,12 @@ else
   done
 
   dirty_after=false
-  [ -n "$(git status --porcelain)" ] && dirty_after=true
+  [ -n "$(porcelain)" ] && dirty_after=true
   tree_changed=false
   changed_paths=""
   if [ "$(tree_sig)" != "$sig_before" ]; then
     tree_changed=true
-    changed_paths=$(diff <(printf '%s\n' "$status_before") <(git status --porcelain) | sed -n 's/^> //p')
+    changed_paths=$(diff <(printf '%s\n' "$status_before") <(porcelain) | sed -n 's/^> //p')
     [ -n "$changed_paths" ] || changed_paths="(content of an already-modified file changed; see git diff)"
   fi
 fi
