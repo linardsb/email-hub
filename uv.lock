@@ -30,11 +30,12 @@ resolution-markers = [
 
 [manifest]
 constraints = [
+    { name = "datamodel-code-generator", specifier = ">=0.64.0" },
     { name = "libcst", specifier = "<1.9" },
     { name = "litellm", specifier = ">=1.83.0" },
     { name = "onnx", specifier = ">=1.21.0" },
     { name = "pip", specifier = ">=26.1" },
-    { name = "pypdf", specifier = ">=6.13.3" },
+    { name = "pypdf", specifier = ">=6.16.1" },
 ]
 
 [[package]]
@@ -1099,22 +1100,21 @@ wheels = [
 
 [[package]]
 name = "datamodel-code-generator"
-version = "0.54.1"
+version = "0.79.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "argcomplete" },
-    { name = "black" },
+    { name = "black", marker = "sys_platform != 'emscripten'" },
     { name = "genson" },
     { name = "inflect" },
-    { name = "isort" },
+    { name = "isort", marker = "sys_platform != 'emscripten'" },
     { name = "jinja2" },
-    { name = "packaging" },
     { name = "pydantic" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/4b/6a63ea00c65402576e05e8cc963349ffe58db07d8c8183ab51488dbfb67a/datamodel_code_generator-0.54.1.tar.gz", hash = "sha256:dd9eb7594f94a8b85d7e410f4d997a443cf7a52a1dcc049fae6cf35660f18803", size = 829716, upload-time = "2026-03-04T04:15:02.582Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/98/4b35f12e551d078e4297422e98cbc679f4792475bcf7da2e008308695d97/datamodel_code_generator-0.79.0.tar.gz", hash = "sha256:d1e4297c946cccb9c2f7f662167b5876d5554ce3884ac145042256af08f23924", size = 2661584, upload-time = "2026-09-10T17:56:30.318Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6d/ce/8a8aadbb2fb428109949d0f7a42232d1d452dab0b8550f6e8c5843afa93d/datamodel_code_generator-0.54.1-py3-none-any.whl", hash = "sha256:67c59ff2368eb2ec96ba11441bc8957bb68a71459dd37275a78ea90238ad5f01", size = 264344, upload-time = "2026-03-04T04:15:00.721Z" },
+    { url = "https://files.pythonhosted.org/packages/80/62/c4ab81535f7fd6d46040908c535248ef96fa53d90c7379913256ddcd3f6c/datamodel_code_generator-0.79.0-py3-none-any.whl", hash = "sha256:0aa827080096844a56135eb990e69d622e79f74bad2e5f006ce797bd74477d1f", size = 695513, upload-time = "2026-09-10T17:56:27.845Z" },
 ]
 
 [[package]]
@@ -4860,11 +4860,11 @@ wheels = [
 
 [[package]]
 name = "pypdf"
-version = "6.13.3"
+version = "6.19.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/17/18/9947cc201af9ccf76720fd3347bf4f70eb882ce3fcf4cb05f7443e4cf871/pypdf-6.13.3.tar.gz", hash = "sha256:f3cb822769725f1bac658c406cfc9460399043f3750c2d3e4650e0a85eacabd7", size = 6484063, upload-time = "2026-06-17T15:22:00.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/ac/63d71aaedb59acbcdef491e6ca6469165e3771c9c74358204818fd9bc5a6/pypdf-6.19.0.tar.gz", hash = "sha256:bbc43aca292369ccc6cbc8a921991ecf2538a3587ab5a116eff06c321d647155", size = 7033266, upload-time = "2026-09-16T09:32:05.946Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/56/2967e621598987905fb8cdfadd8f8de6b5c68c9351f0523c4df8409f28f1/pypdf-6.13.3-py3-none-any.whl", hash = "sha256:c6e3f86afb625791510b02ad5480e94b63970bb957df75d44657c282ecc52224", size = 347288, upload-time = "2026-06-17T15:21:59.512Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/2c/c43c03eaf630435f023f1dc61ec4a4a78951ad5530a62c71cc89bde307b7/pypdf-6.19.0-py3-none-any.whl", hash = "sha256:7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14", size = 395480, upload-time = "2026-09-16T09:32:04.087Z" },
 ]
 
 [[package]]
