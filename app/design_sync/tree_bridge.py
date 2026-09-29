@@ -172,7 +172,12 @@ def _fill_to_slot_value(fill: SlotFill, section: EmailSection) -> SlotValue | No
     if fill.slot_type == "text":
         text = _HTML_TAG_RE.sub("", fill.value).strip()
         if not text:
-            text = fill.value.strip() or "text"
+            # F2: an empty fill (e.g. the blanked social-icons ``social_label``)
+            # can't be a TextSlot (``min_length=1``). Skip it (return None) rather
+            # than invent a placeholder — the old ``"text"`` fallback rendered that
+            # literal word. ``validate_tree_against_manifest`` never requires a
+            # slot, and the TreeCompiler keeps the seed's default content.
+            return None
         return TextSlot(text=text)
 
     if fill.slot_type == "image":

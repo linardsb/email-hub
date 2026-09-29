@@ -1,6 +1,6 @@
 ---
 description: Email Hub architecture — modules, QA checks, agents, eval framework
-globs: "**/*.{py,ts,tsx}"
+paths: "**/*.{py,ts,tsx}"
 ---
 
 # Architecture Reference

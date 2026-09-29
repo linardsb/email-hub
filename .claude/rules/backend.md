@@ -1,6 +1,6 @@
 ---
 description: Rules for backend Python files
-globs: app/**/*.py
+paths: app/**/*.py
 ---
 
 # Backend Rules

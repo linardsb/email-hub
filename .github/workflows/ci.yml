@@ -437,3 +437,121 @@ jobs:
             cms/apps/web/test-results/
             cms/apps/web/playwright-report/
           retention-days: 7
+
+  # CodeQL, ported from the taxi repo (f2cc6c4, ci.yml `codeql` job). The repo
+  # is public, so code scanning is free. The upload gives the alerts tab and
+  # the PR annotations; the GATE is .github/scripts/codeql-gate.sh, which reads
+  # the CodeQL alerts GitHub produced from this upload and fails when the PR
+  # adds a high/critical (or error-level) alert the base does not carry. The
+  # "Code scanning results" check GitHub adds on its own is a check run outside
+  # this workflow, which `ready.needs` cannot see. Default setup must stay off:
+  # GitHub rejects an advanced-setup SARIF while default setup is on. On push
+  # to main this job is the baseline the PR gate diffs against; the gate step
+  # itself is PR-only. One job for all three languages, not a matrix: the gate
+  # must run after every language's upload has been processed. `actions` keeps
+  # the coverage default setup had.
+  codeql:
+    name: CodeQL (analyze + gate)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload the SARIF; also reads the alerts
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: github/codeql-action/init@v4.37.3
+        with:
+          languages: python, javascript-typescript, actions
+          build-mode: none
+          # `security-extended` adds lower-precision security queries; NOT
+          # `security-and-quality`, whose maintainability rules are not
+          # security findings and would still block a PR through the gate's
+          # `rule.severity == "error"` branch.
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - '**/node_modules'
+              - '**/.next'
+              - '**/dist'
+              - '**/coverage'
+      - uses: github/codeql-action/analyze@v4.37.3
+        with:
+          upload: always
+      - if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: .github/scripts/codeql-gate.sh --pr "$PR" --base "$GITHUB_BASE_REF"
+
+  # The only path from draft to ready, ported from the taxi repo (f2cc6c4,
+  # ci.yml `ready` job). Agents open PRs as drafts; the Claude Code PreToolUse
+  # hook (.claude/hooks/pre_tool_use.py, added with the AI layer) refuses
+  # `gh pr ready` by matching command text, so it makes the flip deliberate,
+  # not impossible. The control that holds is branch protection on `main`.
+  # Marking a PR ready in the GitHub UI is the human bypass. Red anywhere in
+  # `needs` converts the PR back to a draft. `!cancelled()` rather than
+  # `always()`: a cancelled run must not touch the PR; the run that cancelled
+  # it will. Semgrep lives in semgrep.yml, which `needs` cannot reach; it is
+  # advisory (`continue-on-error`) and deliberately not a required check.
+  #
+  # What ready means, exactly: THE HEAD CI LAST FINISHED TESTING PASSED, not
+  # "the PR's current head passed". Between a push and that head's run reaching
+  # this job, the PR keeps the state the previous head earned. Nothing
+  # re-drafts on `synchronize`, by choice: a job that re-drafted every push
+  # would undo a human's manual ready before any gate result existed. Required
+  # status checks on main (`strict: true`) will close that window, not this job.
+  #
+  # Dependabot PRs are skipped: they merge through dependabot-auto-merge.yml,
+  # which needs the whole CI workflow to succeed. Dependabot-triggered runs
+  # get Dependabot secrets, not Actions secrets (GitHub docs; `expected`, not
+  # observed here), so PR_READY_TOKEN would be empty there. A skipped job does
+  # not fail the workflow.
+  #
+  # The token is a CLASSIC `repo`-scope PAT in the PR_READY_TOKEN secret, not
+  # github.token and not a fine-grained PAT. On taxi the draft/ready mutations
+  # refused both (observed there 2026-09-10: "Resource not accessible by
+  # integration" with github.token under `pull-requests: write`; "Resource not
+  # accessible by personal access token" with a fine-grained token); the
+  # classic token flipped it. A missing secret fails this job, so the PR stays
+  # a draft: fail closed. A PAT's events CAN start workflows, unlike
+  # github.token's, but `ready_for_review` and `converted_to_draft` are not in
+  # `pull_request`'s default activity types, so no run follows.
+  ready:
+    name: Ready for review
+    needs: [backend, frontend, sdk-check, trivy, migrations, integration, migration-lint, commit-lint, e2e-smoke, codeql]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PR_READY_TOKEN }}
+      PR: ${{ github.event.pull_request.number }}
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      # A stale re-run must not decide a newer head's draft state. `gh run
+      # rerun` on an older run replays the ORIGINAL event payload, so it
+      # re-tests the old head's merge commit, joins this PR's concurrency group,
+      # cancels the live run for the new head, and would then flip the PR at a
+      # head it never tested. Compare and refuse; the newer head's own run
+      # decides.
+      - name: Refuse to act on a head that is no longer the PR's
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::PR_READY_TOKEN is not set; PR #$PR stays a draft (fail closed)."
+            exit 1
+          fi
+          live=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
+          if [ "$live" != "$HEAD_SHA" ]; then
+            echo "::error::this run tested $HEAD_SHA but PR #$PR is now at $live; leaving its draft state alone."
+            exit 1
+          fi
+          echo "head confirmed: $HEAD_SHA"
+      - name: Flip draft state from the gate results
+        run: |
+          case "$RESULTS" in
+            *failure*|*cancelled*|*skipped*)
+              gh pr ready --undo --repo "$GITHUB_REPOSITORY" "$PR"
+              echo "::error::gate results: $RESULTS. PR #$PR stays a draft."
+              exit 1 ;;
+            *)
+              gh pr ready --repo "$GITHUB_REPOSITORY" "$PR" ;;
+          esac
