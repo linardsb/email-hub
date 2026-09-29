@@ -71,6 +71,9 @@ constraint-dependencies = [
     "onnx>=1.21.0",
     "pip>=26.1",
     "pypdf>=6.13.3",
+    # libcst 1.9.0 (via mutmut 3.8) ships no macOS x86_64 wheel; source build
+    # needs a Rust toolchain. Lift once an x86_64 macOS wheel is published.
+    "libcst<1.9",
 ]
 
 [project.optional-dependencies]
@@ -201,6 +204,8 @@ ignore = [
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+# ruff 0.16 formats Markdown code blocks by default; plans/docs are not formatter-owned.
+exclude = ["*.md"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

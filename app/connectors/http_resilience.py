@@ -16,7 +16,7 @@ logger = get_logger(__name__)
 # Types matching httpx parameter signatures
 type HeadersType = Mapping[str, str] | None
 type ParamsType = (
-    Mapping[str, str | int | float | bool | None | Sequence[str | int | float | bool | None]] | None
+    Mapping[str, str | int | float | bool | Sequence[str | int | float | bool | None] | None] | None
 )
 type JsonType = object | None
 type DataType = Mapping[str, str] | None
