@@ -201,6 +201,8 @@ ignore = [
 quote-style = "double"
 indent-style = "space"
 line-ending = "auto"
+# ruff 0.16 formats Markdown code blocks by default; plans/docs are not formatter-owned.
+exclude = ["*.md"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

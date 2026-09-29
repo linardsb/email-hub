@@ -58,7 +58,7 @@ def fetch_caniemail_data(*, verbose: bool = False) -> dict[str, object]:
     if verbose:
         print(f"Fetching {CANIEMAIL_API_URL} ...")
 
-    req = urllib.request.Request(  # noqa: S310
+    req = urllib.request.Request(
         CANIEMAIL_API_URL,
         headers={"User-Agent": "email-hub/sync-caniemail"},
     )
