@@ -13,6 +13,10 @@ class TolgeeAuthenticationError(DomainValidationError):
     """Invalid Tolgee PAT or insufficient permissions."""
 
 
+class TolgeeBaseUrlNotAllowedError(DomainValidationError):
+    """Requested Tolgee base URL is not in the configured allowlist."""
+
+
 class TolgeeSyncError(AppError):
     """Failed to sync keys or pull translations."""
 
