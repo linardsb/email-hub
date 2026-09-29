@@ -82,7 +82,7 @@ class LocaleBuildRequest(BaseModel):
     connection_id: int
     template_id: int  # Hub template ID
     tolgee_project_id: int
-    locales: list[str] = Field(min_length=1, max_length=20)
+    locales: list[BCP47Locale] = Field(min_length=1, max_length=20)
     namespace: str | None = None
     is_production: bool = False
 
