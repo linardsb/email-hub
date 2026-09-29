@@ -2,14 +2,22 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
-    "python_full_version >= '3.15' and platform_machine != 's390x'",
-    "python_full_version >= '3.15' and platform_machine == 's390x'",
-    "python_full_version == '3.14.*' and platform_machine != 's390x'",
-    "python_full_version == '3.14.*' and platform_machine == 's390x'",
-    "python_full_version == '3.13.*' and platform_machine != 's390x'",
-    "python_full_version == '3.13.*' and platform_machine == 's390x'",
-    "python_full_version < '3.13' and platform_machine != 's390x'",
-    "python_full_version < '3.13' and platform_machine == 's390x'",
+    "(python_full_version >= '3.15' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version >= '3.15' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version >= '3.15' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version >= '3.15' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version >= '3.15' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version >= '3.15' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.14.*' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.14.*' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.13.*' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.13.*' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version < '3.13' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version < '3.13' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version < '3.13' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version < '3.13' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version < '3.13' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version < '3.13' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version < '3.13' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version < '3.13' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
 ]
 
 [manifest]
@@ -803,7 +811,7 @@ wheels = [
 
 [[package]]
 name = "cognee"
-version = "1.3.0"
+version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -812,6 +820,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "cbor2" },
+    { name = "cryptography" },
     { name = "datamodel-code-generator" },
     { name = "diskcache" },
     { name = "fakeredis", extra = ["lua"] },
@@ -822,7 +831,8 @@ dependencies = [
     { name = "gunicorn" },
     { name = "instructor" },
     { name = "jinja2" },
-    { name = "ladybug" },
+    { name = "ladybug", version = "0.17.1", source = { registry = "https://pypi.org/simple" }, marker = "('Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or ('Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')" },
+    { name = "ladybug", version = "0.19.0", source = { registry = "https://pypi.org/simple" }, marker = "('Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or sys_platform != 'darwin'" },
     { name = "lancedb" },
     { name = "langdetect" },
     { name = "limits" },
@@ -850,9 +860,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/69/39eec62777752cd8007d3d29d5b04076a23533ccc270a9dea660dfa6d506/cognee-1.3.0.tar.gz", hash = "sha256:309b67e0de126c606dc808a2e4399dbd1d112ad3ef87acf0b9ef39ebaa1ee9d8", size = 23114966, upload-time = "2026-07-12T10:34:53.686Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/47/3228a5f6051494356bf3f4aeece4a5385a714996cb0c0ace063bd2ca5c94/cognee-1.5.4.tar.gz", hash = "sha256:f1be8b050599721eb64e3b97c6f5270f7d24ca576a54837b6887262aa361b272", size = 27736566, upload-time = "2026-09-04T16:26:02.885Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/34/5b/690192728471958d81b92f943c703d147d40b246f0654fcaed183da7a9d5/cognee-1.3.0-py3-none-any.whl", hash = "sha256:05bf5e9a86463047fa17b0fa2e85d76a456b1b5fab750d7ee9a3515927e9f390", size = 3483832, upload-time = "2026-07-12T10:34:50.488Z" },
+    { url = "https://files.pythonhosted.org/packages/38/0b/ce0bf8e9823be079c92aea7f8fca7a3d90468037985d84859f6b817e3c88/cognee-1.5.4-py3-none-any.whl", hash = "sha256:b12522572b5f8e9cd40a31501b94610ffeeb8fb66c8d08a82a34301357c06ac2", size = 8840526, upload-time = "2026-09-04T16:25:58.942Z" },
 ]
 
 [[package]]
@@ -1245,7 +1255,7 @@ requires-dist = [
     { name = "bcrypt", specifier = ">=5.0.0" },
     { name = "beautifulsoup4", specifier = ">=4.15.0" },
     { name = "cachetools", specifier = ">=7.1.4" },
-    { name = "cognee", marker = "extra == 'graph'", specifier = ">=1.3.0" },
+    { name = "cognee", marker = "extra == 'graph'", specifier = ">=1.5.0" },
     { name = "croniter", specifier = ">=6.2.4" },
     { name = "cryptography", specifier = ">=49.0.0" },
     { name = "cssutils", specifier = ">=2.15.0" },
@@ -2258,30 +2268,68 @@ wheels = [
 
 [[package]]
 name = "ladybug"
-version = "0.16.0"
+version = "0.17.1"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "(python_full_version >= '3.15' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version >= '3.15' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version >= '3.15' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version >= '3.15' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.14.*' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.14.*' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.13.*' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version == '3.13.*' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version < '3.13' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version < '3.13' and platform_machine != 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+    "(python_full_version < '3.13' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' in platform_version and sys_platform == 'darwin') or (python_full_version < '3.13' and platform_machine == 's390x' and 'Darwin Kernel Version 23.' in platform_version and sys_platform == 'darwin')",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7e/f6/1511d2ab4391af8a4133c556ccaf79b613d79c6120e3fcced02c8d438982/ladybug-0.17.1.tar.gz", hash = "sha256:82efea498713c7da7f6f94f80252574599252d26ee10fb11e62ae932b5d8f2ba", size = 10160802, upload-time = "2026-06-02T20:08:43.241Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/a6/fc88073f3d53571e9982ef64532a96252e91bf7a3ae9427543ea71c18840/ladybug-0.16.0-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:d49ba0f5a9b1774dfa225294cad16882467b4e6c694c3cde4c28714c77ea2fe5", size = 4041025, upload-time = "2026-04-29T01:24:08.288Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/25/b028b8ee30ccbc4ab5e20fe9b3f1005b0ad68aef7e52df72e1c2d6c5ea8a/ladybug-0.16.0-cp312-cp312-macosx_13_0_x86_64.whl", hash = "sha256:c01671e7990a7b685c211e8cfd12098c4fb35d1f3ca398ff1d17e719bf733d88", size = 4504984, upload-time = "2026-04-29T01:24:10.49Z" },
-    { url = "https://files.pythonhosted.org/packages/23/9c/d414c6652e048e21b365b323dfaf9025524cc5513d6a9405162ba51cc686/ladybug-0.16.0-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0741586f9a33cb97e29b469f85f40a812d7ac36c03d9e8bf42edff0e5ce7e923", size = 6865662, upload-time = "2026-04-29T01:24:12.387Z" },
-    { url = "https://files.pythonhosted.org/packages/17/e8/0028e9f7451d759b2867e067a36547cf88ef472052ca940cca852a245180/ladybug-0.16.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e33f0fcadcc5a9ce23d4b08a9dbef7204b8194efb3cda49ec292d8c278f1ee97", size = 7708365, upload-time = "2026-04-29T01:24:14.807Z" },
-    { url = "https://files.pythonhosted.org/packages/14/14/e06c3b4fb0aa30d57ad2369432f9e3fc17ec3c7baea0b39b5d9b3cc012d6/ladybug-0.16.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:056cdc2c6d77bab72fb876538bc629511738966b067c08b2d75cc40f72adae8f", size = 7742427, upload-time = "2026-04-29T01:24:17.343Z" },
-    { url = "https://files.pythonhosted.org/packages/3c/f7/8c032a9b2a5f696a505dfec3902e6937f067a69c6e44377e07e019521f4b/ladybug-0.16.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:4f20103e00d44351d036de98ecd4532f9c0e0c33a0885649b2762869449de277", size = 8597136, upload-time = "2026-04-29T01:24:19.847Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/9e/7856b2c24b713423403dbf774b280c9ba5e8e54e365ffff68a8d2648c4a9/ladybug-0.16.0-cp312-cp312-win_amd64.whl", hash = "sha256:ab657600fdec982c24dcd6828cc24900aded83256ba6bbc2df198b11fccc55fe", size = 5105833, upload-time = "2026-04-29T01:24:22.612Z" },
-    { url = "https://files.pythonhosted.org/packages/db/bf/888ca72f7497566edcea375d05d2a3cd39f34cc2b6c69aa13ed288f2c63d/ladybug-0.16.0-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:397eb053e8d380bcf3f0d15b036dd39e531bbd1f34c9b0d210a61ede7311b12e", size = 4041225, upload-time = "2026-04-29T01:24:24.434Z" },
-    { url = "https://files.pythonhosted.org/packages/96/d0/093aec486e0470b90923adcdcbdde8610b6f46f69a457246e725446f6934/ladybug-0.16.0-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:85b16d32ff061d829fda1bfd9923bc0cbf74cb304f0102b33da3f74867a0ce45", size = 4504950, upload-time = "2026-04-29T01:24:26.402Z" },
-    { url = "https://files.pythonhosted.org/packages/e2/a5/b5bbf998882f56ad2a88cfff906988be504726f8c213d9ee0203c79e7fae/ladybug-0.16.0-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5f29fd2c8f1de623586afe0d42d56840dcd4318b9c9da1c69c81e25155ae74c5", size = 6865849, upload-time = "2026-04-29T01:24:28.534Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/2f/229650dab5b6d131d6433f86485986ce508e66a5f44fd5e98e58c34589ba/ladybug-0.16.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ba2398cb365626f1010f97eefdd7b3fd548069cc919196ea873fa53df134c4af", size = 7708739, upload-time = "2026-04-29T01:24:30.741Z" },
-    { url = "https://files.pythonhosted.org/packages/1b/6b/7fac77516d48ab694f6151af402c1974f7289ef67c2eabbb2282b7ba8067/ladybug-0.16.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:6e56ff315cc09075a207884e326ab475c16097e70f8da62c2ea9d5c4b66fad4b", size = 7742344, upload-time = "2026-04-29T01:24:33.328Z" },
-    { url = "https://files.pythonhosted.org/packages/8c/d2/ebe4f2b453ff06fd6a48b2b721c7791af65053258913762da1c7936837f9/ladybug-0.16.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:691f90fad0769f8ea2b6e59296506f6446eccb18122d926f47077e05ede1eaca", size = 8597158, upload-time = "2026-04-29T01:24:35.525Z" },
-    { url = "https://files.pythonhosted.org/packages/f7/3b/d0b122f6552f0d398e1faa3d1956e4361b24df08d2468155d0f5fa5906af/ladybug-0.16.0-cp313-cp313-win_amd64.whl", hash = "sha256:812be3edbce7f9201fff8fdf8761c88200170c31a9cc0daffd76729f7723f265", size = 5105875, upload-time = "2026-04-29T01:24:38.163Z" },
-    { url = "https://files.pythonhosted.org/packages/66/bb/1492bb848b5cb90a498bc29c473a3ef6a2877fcfe351e4b78b26511edad1/ladybug-0.16.0-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:be5027893f326c76a3419aeeead220de5363d331001c5a9d3c928f8e4b6b87c4", size = 4041943, upload-time = "2026-04-29T01:24:39.937Z" },
-    { url = "https://files.pythonhosted.org/packages/bb/5f/4c0a32ea346de3739d08a036c3f87eb883e2e380849a69b9e63c4267bd14/ladybug-0.16.0-cp314-cp314-macosx_13_0_x86_64.whl", hash = "sha256:9c6f09c39990d7b9f3d0f3f815ca88ddbbe49b76bfb639681737e3c599a32d56", size = 4505339, upload-time = "2026-04-29T01:24:42.097Z" },
-    { url = "https://files.pythonhosted.org/packages/48/fa/72c89033fe4c1e46594dc1500d9d96b469e6301986de9d16bdb1064fb69d/ladybug-0.16.0-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:b8bf6d74bfd9158ee86a3f3c6121110138a3317ba8dacac67f39f5d8346ed33d", size = 6867837, upload-time = "2026-04-29T01:24:44.451Z" },
-    { url = "https://files.pythonhosted.org/packages/a5/86/daf5a54511186c65bb61ece8d450f560b518bdcafe7430819767cd8dd6f0/ladybug-0.16.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8b29ab0d3dbbc1e5ca31c95b0af5dbfd1878c2c301e3667f50d200a59106e04a", size = 7708804, upload-time = "2026-04-29T01:24:46.826Z" },
-    { url = "https://files.pythonhosted.org/packages/57/9d/cabc6d23a504f43a477f32a55d94224075e8da6e0b1a32f83e612f50240e/ladybug-0.16.0-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:f3d5c16ccd28bd09e37f77aa7691182caebd739242f664a915034f5c9d7d70b1", size = 7742561, upload-time = "2026-04-29T01:24:49.373Z" },
-    { url = "https://files.pythonhosted.org/packages/c7/fb/a794da9460b889c14ff835f5cd7dc2fa2acfdc224148f5241a19d574a353/ladybug-0.16.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:2944bc1c259628b24b865310bd5d233e63ed827b035cf2c11893dea8a71ddb6f", size = 8597017, upload-time = "2026-04-29T01:24:51.85Z" },
-    { url = "https://files.pythonhosted.org/packages/88/83/34645575aa7531ab42a875365c925a4ef2715d760c86819eea4ee63489dc/ladybug-0.16.0-cp314-cp314-win_amd64.whl", hash = "sha256:ed7e33bfd52361e1c63074fa6e2b16bdac1dcb7d04aac66fdbc928f74469b20f", size = 5262769, upload-time = "2026-04-29T01:24:54.557Z" },
+    { url = "https://files.pythonhosted.org/packages/75/0b/76ba668df9fe004c80bc2ee0cd46e76924467fa4d96853125962947d9c33/ladybug-0.17.1-cp312-cp312-macosx_13_0_arm64.whl", hash = "sha256:1a5fd5f324df8c5659a8cd6a0c08c58b2f6efbf0319cde6ec7cdcc3480343129", size = 4185245, upload-time = "2026-06-02T20:07:52.826Z" },
+    { url = "https://files.pythonhosted.org/packages/25/54/11855f62e55a9b47e64c3c45c9d312e9830e5fc253c1f1b6d860f12faf74/ladybug-0.17.1-cp312-cp312-macosx_13_0_x86_64.whl", hash = "sha256:17e540cedd30816fad248e4d3cc6444bbc139a4b79e43af5f471acbe790a707a", size = 4668570, upload-time = "2026-06-02T20:07:55.132Z" },
+    { url = "https://files.pythonhosted.org/packages/13/4a/8a5a208b5a53384c576870c49a940a178083b1740f1b20332f2433f9a846/ladybug-0.17.1-cp313-cp313-macosx_13_0_arm64.whl", hash = "sha256:785c95d595754be8d16b2e35defc44a906ccbef329c180e97e47ac7df17776bf", size = 4185250, upload-time = "2026-06-02T20:08:09.137Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/1d/c4c2815475571c9eb32f44ae435957049e20ce7474fa5fc04aa74ac2b12e/ladybug-0.17.1-cp313-cp313-macosx_13_0_x86_64.whl", hash = "sha256:a168cdeea1f239b698ca222d680faa9b9b01b5ff96a1087b6235be23533d05e0", size = 4668500, upload-time = "2026-06-02T20:08:11.013Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/e6/94dff21a9ef485fba3a933d76735197e8ced13184edd862361319ee2e253/ladybug-0.17.1-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:c8a71f90f2fe16396c98380aadd5519ed72346aed4d7872b06e2450e9470ac77", size = 4186197, upload-time = "2026-06-02T20:08:25.443Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/7c/a9fd639408629e8a33d014d482355eab272edfe525aea1c7a5305d32662e/ladybug-0.17.1-cp314-cp314-macosx_13_0_x86_64.whl", hash = "sha256:08934e417214ca03836934ed7bd1f6ebedf6959db3b4405541aa4389f60800a6", size = 4668982, upload-time = "2026-06-02T20:08:27.451Z" },
+]
+
+[[package]]
+name = "ladybug"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "(python_full_version >= '3.15' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version >= '3.15' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version >= '3.15' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version >= '3.15' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.14.*' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.14.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.14.*' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.13.*' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version == '3.13.*' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version == '3.13.*' and platform_machine == 's390x' and sys_platform != 'darwin')",
+    "(python_full_version < '3.13' and platform_machine != 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version < '3.13' and platform_machine != 's390x' and sys_platform != 'darwin')",
+    "(python_full_version < '3.13' and platform_machine == 's390x' and 'Darwin Kernel Version 22.' not in platform_version and 'Darwin Kernel Version 23.' not in platform_version) or (python_full_version < '3.13' and platform_machine == 's390x' and sys_platform != 'darwin')",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/65/f7/0ef0a9616d622c790c7fd559d10eb0fdd320c5880e79da035d0b23d2ab8d/ladybug-0.19.0.tar.gz", hash = "sha256:02a0725d29b36fd0de469dab14928c3bc8c5dfee4019acfd60ca504caffc4cd7", size = 10301849, upload-time = "2026-07-30T00:36:34.015Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/69/9c/62ebf8ff99509bcb6a274b18688f4690e300afe400156f04258a464e2f27/ladybug-0.19.0-cp312-cp312-macosx_15_0_arm64.whl", hash = "sha256:2189d4baccd8518bd37cb86212105f06b1033b8b711f0328fecb306159c0acca", size = 4561997, upload-time = "2026-07-30T00:35:51.77Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/ab/013769e2a63c61e92d6c6aab5ef149e5959dad552f0402b188f7eefb15da/ladybug-0.19.0-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:a232e0eb484647f6573be2eec71a862d9a1c953353a954e0774b6d83e075b488", size = 4907061, upload-time = "2026-07-30T00:35:53.317Z" },
+    { url = "https://files.pythonhosted.org/packages/17/35/0a4ea3eef8d951820a8ea3bc5bc693afef2354be38b613cc83b415401835/ladybug-0.19.0-cp312-cp312-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9f5333857dbfd871b6fc611ff9e08b98c9b2f09d6ddcf1ae53061de85837bd65", size = 7360691, upload-time = "2026-07-30T00:35:54.864Z" },
+    { url = "https://files.pythonhosted.org/packages/63/40/b5c9c84fd6adb544d559510cc7c0d69a1ba4e7fff4b04d9cd31ef59cc1d1/ladybug-0.19.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8c4d00d5cc55e13524eff56e3295732a3c1b8d272d001b30748c2cc348581827", size = 8255273, upload-time = "2026-07-30T00:35:56.687Z" },
+    { url = "https://files.pythonhosted.org/packages/57/5e/d4da91d8a5718ef1ec145cf7f178383a698f61b375820ec59e34b5d2bc3e/ladybug-0.19.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:1dfb149912cc960e24a19f83688df5857d0679cc688f8553a896d10f4e8dd8f3", size = 8189623, upload-time = "2026-07-30T00:35:58.42Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/94/e787d51eae4e9d5d0f3188b35f5d1de191cc17a3d04ac1e12c3ac501e4be/ladybug-0.19.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:aacd9f3c8f50b0ee1cbcb6a8ef8cb522b288784482ef13eda2ef1ead6e645cea", size = 9113674, upload-time = "2026-07-30T00:36:00.039Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/dd/863742a52f79570b561564efb3fc4957fdb921af20f352fef74df56b89db/ladybug-0.19.0-cp312-cp312-win_amd64.whl", hash = "sha256:42d15b5e090f3600a47efd4697b1809547fbb0a637f593024e906aa960e7c92b", size = 5720735, upload-time = "2026-07-30T00:36:02.014Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/4c/bee1ac2816aecc5fa5671599a36cefac9de37c24ce43bd32418079599494/ladybug-0.19.0-cp312-cp312-win_arm64.whl", hash = "sha256:e07c17db7834f95bb7f0003a8b0476390908549c91d93865465da60700565425", size = 8205067, upload-time = "2026-07-30T00:36:03.595Z" },
+    { url = "https://files.pythonhosted.org/packages/11/a1/4a79481cdaacbbff5225414aa6f9e565640687918fa875d0b3ccb18442ed/ladybug-0.19.0-cp313-cp313-macosx_15_0_arm64.whl", hash = "sha256:5470bbc0e3b3b544e16d91d33784aeba64e39a7e0f0ae3a04cc2d28e53b8f965", size = 4562061, upload-time = "2026-07-30T00:36:05.273Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/27/df981d8c273f98ef6b3b29130a23a952b204cd57783b648752658b3b257e/ladybug-0.19.0-cp313-cp313-macosx_15_0_x86_64.whl", hash = "sha256:e98bfbf891fb8cbcc345760124dae86d236621ef945d0993fed1fce6ef50ff7e", size = 4907180, upload-time = "2026-07-30T00:36:06.739Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/10/0ec2a931d858d0d510b15be5af9cdb226d3ca8735e5d92101abb48187f23/ladybug-0.19.0-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:6116f000eaf7346ca242cf5ae9ee51b2536165a88d43d760e2e746cc8b67be58", size = 7360435, upload-time = "2026-07-30T00:36:08.504Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/f8/9d13303b41f21c22c03918d3b87c785b5688a8a0edc2617f139eb50215ed/ladybug-0.19.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:86c352593983e399ad4b43b1e7d7fe04591f763167ec7acf40e6c57f39005c7f", size = 8254852, upload-time = "2026-07-30T00:36:10.194Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/50/9a8e4733e7bcd6da90bfe8e9107fe7c36a7138cede8420d15dc6c812a851/ladybug-0.19.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:a329b267bcad79cc9ea56bcd982d5d0c5ed91934219116ecb85910475f82d3f9", size = 8189088, upload-time = "2026-07-30T00:36:12.122Z" },
+    { url = "https://files.pythonhosted.org/packages/b8/fc/1d6d714e000c010a8dc762149e58003e3ef316cd57883a725ae92f6abde0/ladybug-0.19.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:c035c4f00d97c6e1c89f166c43547a753e6a6e22ec3188a762770cecfb21c7e7", size = 9114190, upload-time = "2026-07-30T00:36:13.841Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/35/a9850cd10087fbece8ed5ecbecbeafdd9384b4c78deef466fd89564d2d4c/ladybug-0.19.0-cp313-cp313-win_amd64.whl", hash = "sha256:c32273d33360dcc89798ee6a4ae711614c95f18d65b0fc1082653ec55f2530f5", size = 5720836, upload-time = "2026-07-30T00:36:15.759Z" },
+    { url = "https://files.pythonhosted.org/packages/63/a2/2872a3caf7d9a8cc45cc5736a265ab956c1286cb63d0826854cc8e6c1f3f/ladybug-0.19.0-cp313-cp313-win_arm64.whl", hash = "sha256:0b0e88b49ed63f6a19a143d688b9e4c052ac09e1d11b92583d862d0512ee6bb2", size = 8205353, upload-time = "2026-07-30T00:36:17.477Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/96/b47d5c67f67002df8c4cdb9bfffadc3968f8ef4f7c4baece73e7ad2212cf/ladybug-0.19.0-cp314-cp314-macosx_15_0_arm64.whl", hash = "sha256:4c2cdf36b2f904709b22518938e7828eec9718795b8b562512e3592af4b8466d", size = 4562927, upload-time = "2026-07-30T00:36:19.278Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/25/10a3f7fb496b2f9e5a26b55433970b2fa493f2f1765ac04651d4c8bfbcca/ladybug-0.19.0-cp314-cp314-macosx_15_0_x86_64.whl", hash = "sha256:088c5f79bd843ac15aee0bb44c417d70dce833a5295252569dcd139d348700dc", size = 4907779, upload-time = "2026-07-30T00:36:20.976Z" },
+    { url = "https://files.pythonhosted.org/packages/59/c5/f632c6f0a1a4a7c53c15c642d4e28c51809b920e831fdac53e6450c4f5de/ladybug-0.19.0-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ea03d4388dd024c5fa4629d607765c9c2c6f4fa4350aceabecee8d37b54289bb", size = 7361226, upload-time = "2026-07-30T00:36:22.46Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/30/2e42725df3c002b16204f44c055afc50cedd80ca93c0180656741493c575/ladybug-0.19.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:f880a6d5329461088d25854a8cd77aec17ffbf00b2f3642ed32f94b5d001f452", size = 8255330, upload-time = "2026-07-30T00:36:24.192Z" },
+    { url = "https://files.pythonhosted.org/packages/ec/e7/a08b5179cbc07fc35f01dd3cfdbf523410cd6ca0a9a6fb5828b1e27da1ea/ladybug-0.19.0-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:be3035c3e9232d5c50f399a85fd39713f6b31574d2b198d696117e2f21f96d1b", size = 8190323, upload-time = "2026-07-30T00:36:25.825Z" },
+    { url = "https://files.pythonhosted.org/packages/87/f0/060e015ce0384acfbfe19fb4bd1c54bd7da52de6a61f34da066a17f4e572/ladybug-0.19.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:b3b2227e10d2004691b3fca755ec050da317eb9a7e1411f5358a395c2eaf19bb", size = 9113582, upload-time = "2026-07-30T00:36:27.522Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/58/0b8c6b7c73d3c3b86f1b646b7ea7fbd0055476e582ad12911f491733da28/ladybug-0.19.0-cp314-cp314-win_amd64.whl", hash = "sha256:1051bf29963eb73d35910f60256fb0649057cd1d0993237bdaf193654071507c", size = 5895460, upload-time = "2026-07-30T00:36:29.643Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/b4/f74b3049cc049a04700dbdafb91b299fec6f804759c56e173dd907cbd768/ladybug-0.19.0-cp314-cp314-win_arm64.whl", hash = "sha256:69b8a3d05f04dbadde0f111e03a82e387675032232d3f8ccc91921b749fa8306", size = 8462283, upload-time = "2026-07-30T00:36:31.646Z" },
 ]
 
 [[package]]
