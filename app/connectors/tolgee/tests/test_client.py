@@ -115,6 +115,19 @@ class TestTolgeeClient:
         mock_request.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("project_id", ["1/../2", "-1", "1?x=1"])
+    async def test_get_translations_rejects_non_numeric_project_id(
+        self, client: TolgeeClient, project_id: str
+    ) -> None:
+        """`project_id` is a URL path segment; only digits reach the wire."""
+        with patch(
+            "app.connectors.tolgee.client.resilient_request", new_callable=AsyncMock
+        ) as mock_request:
+            with pytest.raises(ValueError, match="Invalid Tolgee project id"):
+                await client.get_translations(project_id=project_id, language="de")  # type: ignore[arg-type]
+        mock_request.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_get_translations_nested_format(self, client: TolgeeClient) -> None:
         """Parses nested {key: {text: "..."}} response format."""
         mock_response = httpx.Response(
