@@ -304,9 +304,10 @@ def _append(records: list[ShadowRecord]) -> None:
     if not records:
         return
     SHADOW_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # One write per run: a failure cannot stop between records and leave half a run.
+    payload = "".join(json.dumps(asdict(record), sort_keys=True) + "\n" for record in records)
     with SHADOW_PATH.open("a", encoding="utf-8") as fh:
-        for record in records:
-            fh.write(json.dumps(asdict(record), sort_keys=True) + "\n")
+        fh.write(payload)
 
 
 async def run_jev_shadow(
@@ -372,6 +373,7 @@ async def run_jev_shadow(
                 run_label=run_label,
                 section_index=match.section_idx,
                 error_type=type(exc).__name__,
+                exc_info=True,
             )
             return []
 

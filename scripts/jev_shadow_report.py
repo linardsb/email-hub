@@ -80,9 +80,16 @@ def _run(cases: list[str]) -> int:
                     file=sys.stderr,
                 )
                 return 1
+        lines_before = _trace_lines()
         records = asyncio.run(
             run_jev_shadow(captured.structure, captured.matches, run_label=case_id)
         )
+        if _trace_lines() - lines_before != len(records):
+            print(
+                f"case {case_id}: {len(records)} records not appended to {shadow.SHADOW_PATH}",
+                file=sys.stderr,
+            )
+            return 1
         tokens = sum(r.input_tokens or 0 for r in records)
         errors = sum(1 for r in records if r.error)
         o1 = sum(1 for r in records if r.decision_point == "o1_type")
@@ -96,6 +103,11 @@ def _run(cases: list[str]) -> int:
     print(f"total: records={total_records} errors={total_errors} input_tokens={total_tokens}")
     print(f"records appended to {shadow.SHADOW_PATH}")
     return 0
+
+
+def _trace_lines() -> int:
+    path = shadow.SHADOW_PATH
+    return path.read_bytes().count(b"\n") if path.exists() else 0
 
 
 def _dry_run(cases: list[str]) -> int:
@@ -255,6 +267,19 @@ def _summary(labels_path: Path) -> int:
     if not labels or missing:
         print(
             f"{len(missing)} O1/O2 labels still null in {labels_path}; label them first.",
+            file=sys.stderr,
+        )
+        return 1
+    # A labelled O1/O2 row whose latest record has no Jev answer would leave n silently.
+    unanswered = [
+        k
+        for k in labels
+        if k[2] in REQUIRED_LABELS and (records.get(k) or {}).get("jev_answer") is None
+    ]
+    if unanswered:
+        print(
+            f"{len(unanswered)} labelled O1/O2 rows have no Jev answer in {shadow.SHADOW_PATH} "
+            f"(first: {unanswered[0]}); re-run those cases first.",
             file=sys.stderr,
         )
         return 1

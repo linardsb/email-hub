@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import ast
 import copy
+import dataclasses
+import functools
 import importlib.util
 import inspect
 import json
@@ -475,3 +477,120 @@ def test_rule_result_reports_insufficient_evidence_below_min_n() -> None:
     assert script.rule_result(None, False, 92).startswith("don't wire it in (no threshold")
     assert script.rule_result("0.8", True, 92) == "don't wire it in (leave-one-design-out break)"
     assert script.rule_result("0.8", False, 92) == "wire in at t=0.8"
+
+
+def test_run_fails_when_trace_write_is_lost(
+    cases: dict[str, CapturedCase], shadow_on: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    script = _report_script()
+    readonly = shadow_on.parent / "readonly"
+    readonly.mkdir()
+    readonly.chmod(0o500)
+    monkeypatch.setattr(shadow_mod, "SHADOW_PATH", readonly / "jev_shadow.jsonl")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json=_body(_default_answers(json.loads(request.content)["questions"]))
+        )
+
+    def capture(case_id: str) -> CapturedCase:
+        return cases[case_id]
+
+    monkeypatch.setattr(script, "capture_case", capture)
+    monkeypatch.setattr(
+        script, "run_jev_shadow", functools.partial(run_jev_shadow, client=_client(handler))
+    )
+    try:
+        assert script._run(["9"]) == 1
+    finally:
+        readonly.chmod(0o700)
+
+
+def test_append_writes_the_payload_in_one_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    writes: list[str] = []
+
+    class Handle:
+        def __enter__(self) -> Handle:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            return None
+
+        def write(self, data: str) -> int:
+            writes.append(data)
+            return len(data)
+
+    class Target:
+        parent = Path()
+
+        def open(self, *args: Any, **kwargs: Any) -> Handle:
+            return Handle()
+
+    rec: dict[str, Any] = {f.name: None for f in dataclasses.fields(ShadowRecord)}
+    records = [dataclasses.replace(ShadowRecord(**rec), subject=str(i)) for i in range(3)]
+    monkeypatch.setattr(shadow_mod, "SHADOW_PATH", Target())
+    shadow_mod._append(records)
+    assert len(writes) == 1
+    assert writes[0].endswith("\n")
+    assert [json.loads(line)["subject"] for line in writes[0].splitlines()] == ["0", "1", "2"]
+
+
+def _shadow_line(jev_answer: str | None) -> str:
+    return json.dumps(
+        {
+            "run_label": "5",
+            "section_node_id": "1:2",
+            "decision_point": "o1_type",
+            "subject": "section",
+            "heuristic_answer": "hero",
+            "jev_answer": jev_answer,
+            "jev_confidence": 0.9 if jev_answer else None,
+            "skipped": False,
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "lines",
+    [
+        [_shadow_line("hero"), _shadow_line(None)],  # later failed run supersedes a good one
+        [],  # section produced no record at all
+    ],
+)
+def test_summary_fails_when_a_labelled_row_has_no_usable_record(
+    lines: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    script = _report_script()
+    trace = tmp_path / "jev_shadow.jsonl"
+    trace.write_text("".join(line + "\n" for line in lines))
+    monkeypatch.setattr(shadow_mod, "SHADOW_PATH", trace)
+    labels = tmp_path / "labels.yaml"
+    labels.write_text('"5":\n  "1:2":\n    o1_type:\n      section:\n        label: hero\n')
+    assert script._summary(labels) == 1
+
+
+async def test_section_failure_log_carries_traceback(
+    cases: dict[str, CapturedCase], shadow_on: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    class Recorder:
+        def __getattr__(self, _level: str) -> Callable[..., None]:
+            def log(event: str, **kw: Any) -> None:
+                calls.append((event, kw))
+
+            return log
+
+    monkeypatch.setattr(shadow_mod, "logger", Recorder())
+
+    def plan_or_raise(*_args: Any) -> SectionPlan:
+        raise ValueError("boom")
+
+    monkeypatch.setattr(shadow_mod, "plan_section", plan_or_raise)
+    case = cases["6"]
+    await run_jev_shadow(
+        case.structure, case.matches, run_label="tb", client=_client(lambda _r: httpx.Response(500))
+    )
+    failed = [kw for event, kw in calls if event == "design_sync.jev_shadow_section_failed"]
+    assert failed
+    assert all(kw.get("exc_info") is True for kw in failed)

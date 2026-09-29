@@ -1,7 +1,7 @@
 # Jev shadow classifier report (O1, O2, O3)
 
 **Status:** T12 of `.agents/plans/jev-shadow-classifier.md` (AC7). **Date:** 2026-09-29.
-**Branch head:** `ddfe6762` (feat/jev-shadow-classifier; tables from a run at `4b3c27e7`, no code change since; §5 O2 rule line re-run after PR #413 F6). **Model:** `jev-1.13.0` on all 293 records (observed).
+**Provenance:** PR #413 branch; §5 re-verified identical (blank lines ignored) to a fresh `--summary` after the round-2 review fixes. **Model:** `jev-1.13.0` on all 293 records (observed).
 **Scope:** the 7 audit designs (cases 5, 6, 7, 8, 9, 10, reframe). The verdicts hold for these 7 designs only;
 a follow-up override ticket must re-measure on new designs.
 
