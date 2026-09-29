@@ -339,16 +339,20 @@ def _summary(labels_path: Path) -> int:
             lodo_break = lodo_break or breaks > 0
             print(f"| {held} | {t_pick} | {fixes} | {breaks} |")
 
-        if verdict is not None and not lodo_break:
-            print(f"\nRule result: wire in at t={verdict}.")
-        else:
-            reason = (
-                "leave-one-design-out break"
-                if verdict
-                else "no threshold meets breaks=0, fixes>=1, n>=16, Wilson>=0.80"
-            )
-            print(f"\nRule result: don't wire it in ({reason}).")
+        max_n = max(sum(1 for r in rows if r["conf"] >= t) for t in THRESHOLDS)
+        print(f"\nRule result: {rule_result(verdict, lodo_break, max_n)}.")
     return 0
+
+
+def rule_result(verdict: str | None, lodo_break: bool, max_n: int) -> str:
+    """The plan T12 rule, as printed on the ``Rule result`` line."""
+    if verdict is not None and not lodo_break:
+        return f"wire in at t={verdict}"
+    if verdict is not None:
+        return "don't wire it in (leave-one-design-out break)"
+    if max_n < MIN_N:
+        return f"insufficient evidence (n < {MIN_N})"
+    return "don't wire it in (no threshold meets breaks=0, fixes>=1, n>=16, Wilson>=0.80)"
 
 
 def main() -> int:

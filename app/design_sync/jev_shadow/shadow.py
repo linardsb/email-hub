@@ -47,7 +47,7 @@ from app.design_sync.protocol import DesignFileStructure, DesignNode, DesignNode
 
 logger = get_logger(__name__)
 
-SHADOW_PATH = Path("traces/jev_shadow.jsonl")
+SHADOW_PATH = Path(__file__).resolve().parents[3] / "traces" / "jev_shadow.jsonl"
 _CONCURRENCY = 4
 
 _O2_TYPES = frozenset({DesignNodeType.IMAGE, DesignNodeType.VECTOR, DesignNodeType.INSTANCE})
@@ -322,7 +322,7 @@ async def run_jev_shadow(
         return []
     api_key = settings.jev_api_key.get_secret_value()
     if not api_key:
-        logger.warning("design_sync.jev_shadow.no_api_key", run_label=run_label)
+        logger.warning("design_sync.jev_shadow_api_key_missing", run_label=run_label)
         return []
 
     nodes = index_nodes(structure)
@@ -334,7 +334,7 @@ async def run_jev_shadow(
         node = nodes.get(match.section.node_id)
         if node is None:
             logger.warning(
-                "design_sync.jev_shadow.node_not_found",
+                "design_sync.jev_shadow_node_skipped",
                 run_label=run_label,
                 section_index=match.section_idx,
             )
@@ -346,7 +346,7 @@ async def run_jev_shadow(
             except (JevError, httpx.HTTPError, TimeoutError) as exc:
                 status = exc.status if isinstance(exc, JevError) else None
                 logger.warning(
-                    "design_sync.jev_shadow.request_failed",
+                    "design_sync.jev_shadow_request_failed",
                     run_label=run_label,
                     section_index=match.section_idx,
                     status=status,
@@ -355,7 +355,7 @@ async def run_jev_shadow(
                 return _records_for(plan, run_label, None, f"{type(exc).__name__}: {exc}")
         records = _records_for(plan, run_label, response, None)
         logger.info(
-            "design_sync.jev_shadow.section_done",
+            "design_sync.jev_shadow_section_completed",
             run_label=run_label,
             section_index=match.section_idx,
             questions=len(plan.questions),
@@ -363,16 +363,36 @@ async def run_jev_shadow(
         )
         return records
 
+    async def guarded(i: int, match: ComponentMatch) -> list[ShadowRecord]:
+        try:
+            return await one(i, match)
+        except Exception as exc:  # shadow pass must not stop other sections
+            logger.warning(
+                "design_sync.jev_shadow_section_failed",
+                run_label=run_label,
+                section_index=match.section_idx,
+                error_type=type(exc).__name__,
+            )
+            return []
+
     try:
-        per_section = await asyncio.gather(*(one(i, m) for i, m in enumerate(matches)))
+        per_section = await asyncio.gather(*(guarded(i, m) for i, m in enumerate(matches)))
     finally:
         if client is None:
             await jev.aclose()
 
     records = [r for section_records in per_section for r in section_records]
-    _append(records)
+    try:
+        _append(records)
+    except OSError as exc:
+        logger.warning(
+            "design_sync.jev_shadow_write_failed",
+            run_label=run_label,
+            records=len(records),
+            error_type=type(exc).__name__,
+        )
     logger.info(
-        "design_sync.jev_shadow.run_done",
+        "design_sync.jev_shadow_run_completed",
         run_label=run_label,
         sections=total,
         records=len(records),

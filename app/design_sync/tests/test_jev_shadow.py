@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import ast
 import copy
+import importlib.util
 import inspect
 import json
+import re
 import textwrap
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -396,3 +398,80 @@ async def test_all_agree_when_jev_echoes_heuristics(
     compared = [r for r in records if not r.skipped]
     assert compared and all(r.agree is True for r in compared)
     assert all(r.error is None for r in records)
+
+
+async def test_section_exception_outside_request_does_not_stop_run(
+    cases: dict[str, CapturedCase], shadow_on: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = cases["6"]
+    failing = case.matches[0].section_idx
+    real_plan = shadow_mod.plan_section
+
+    def plan_or_raise(match: component_matcher.ComponentMatch, *args: Any) -> SectionPlan:
+        if match.section_idx == failing:
+            raise ValueError("boom")
+        return real_plan(match, *args)
+
+    monkeypatch.setattr(shadow_mod, "plan_section", plan_or_raise)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json=_body(_default_answers(json.loads(request.content)["questions"]))
+        )
+
+    records = await run_jev_shadow(
+        case.structure, case.matches, run_label="raise", client=_client(handler)
+    )
+    assert {r.section_index for r in records} == {m.section_idx for m in case.matches} - {failing}
+    assert len(shadow_on.read_text().splitlines()) == len(records)
+
+
+async def test_trace_write_failure_returns_records(
+    cases: dict[str, CapturedCase], shadow_on: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    case = cases["9"]
+    blocker = shadow_on.parent / "not_a_dir"
+    blocker.write_text("")
+    monkeypatch.setattr(shadow_mod, "SHADOW_PATH", blocker / "jev_shadow.jsonl")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json=_body(_default_answers(json.loads(request.content)["questions"]))
+        )
+
+    records = await run_jev_shadow(
+        case.structure, case.matches, run_label="disk", client=_client(handler)
+    )
+    assert records
+
+
+def test_shadow_path_is_anchored_to_repo_root() -> None:
+    repo = Path(__file__).resolve().parents[3]
+    assert shadow_mod.SHADOW_PATH == repo / "traces" / "jev_shadow.jsonl"
+
+
+def test_log_events_are_two_part() -> None:
+    source = inspect.getsource(shadow_mod)
+    events = re.findall(r'logger\.\w+\(\s*"([^"]+)"', source)
+    assert events
+    assert all(re.fullmatch(r"design_sync\.[a-z_]+", e) for e in events), events
+
+
+# ── Report rule (scripts/jev_shadow_report.py) ───────────────────
+
+
+def _report_script() -> Any:
+    path = Path(__file__).resolve().parents[3] / "scripts" / "jev_shadow_report.py"
+    spec = importlib.util.spec_from_file_location("jev_shadow_report", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_rule_result_reports_insufficient_evidence_below_min_n() -> None:
+    script = _report_script()
+    assert script.rule_result(None, False, 5) == "insufficient evidence (n < 16)"
+    assert script.rule_result(None, False, 92).startswith("don't wire it in (no threshold")
+    assert script.rule_result("0.8", True, 92) == "don't wire it in (leave-one-design-out break)"
+    assert script.rule_result("0.8", False, 92) == "wire in at t=0.8"

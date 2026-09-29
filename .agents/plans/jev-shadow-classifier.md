@@ -205,8 +205,8 @@ Grep run 2026-09-28 over `status: deferred` entries whose `code_refs` hit `layou
 
 ### Patterns to Follow
 
-- **Logging:** `get_logger(__name__)` from `app.core.logging`. Event names `design_sync.jev_shadow.<event>`
-  (`request_failed`, `section_done`, `run_done`), per `.claude/references/logging-standard.md`. Never log the API
+- **Logging:** `get_logger(__name__)` from `app.core.logging`. Event names `design_sync.jev_shadow_<action_state>`
+  (`jev_shadow_request_failed`, `jev_shadow_section_completed`, `jev_shadow_run_completed`; PR #413 F1), per `.claude/references/logging-standard.md`. Never log the API
   key or full state.
 - **Config:** nested field with a trailing `# DESIGN_SYNC__…` comment (`design_sync.py:36-46`); read via `get_settings().design_sync`.
 - **Checked enum mapping:** `dict[EmailSectionType, str]` plus a test `set(mapping) == set(EmailSectionType)`.
@@ -354,7 +354,7 @@ Offline runner over the 7 designs, labels file, report.
     Each `ComponentMatch` carries the section it was matched from (`match.section`, `component_matcher.py:86-96`),
     so no separate section list is passed.
   - If `not settings.jev_shadow_enabled` → return `[]` before building anything. If the key is empty → log
-    `design_sync.jev_shadow.no_api_key` and return `[]`.
+    `design_sync.jev_shadow_api_key_missing` and return `[]`.
   - For each match (section = `match.section`), under `Semaphore(4)`:
     - build the state;
     - O2 candidates = image, vector and instance nodes with `inside_button`;
@@ -385,7 +385,7 @@ Offline runner over the 7 designs, labels file, report.
   - `JevError`, `httpx.HTTPError` or `TimeoutError` on a section → log `request_failed` with the section index
     and status, and emit records with `error` set and `jev_answer=None`. Other sections continue. Nothing is
     re-raised.
-  - Append records to `SHADOW_PATH = Path("traces/jev_shadow.jsonl")`; it is already gitignored by
+  - Append records to `SHADOW_PATH` (repo root `/ "traces" / "jev_shadow.jsonl"`, anchored via `Path(__file__).resolve().parents[3]` per PR #413 F3); it is already gitignored by
     `.gitignore:67 traces/*.jsonl`.
 - **GOTCHA**:
   - Never mutate `matches` or their sections. The byte-identity AC checks this.

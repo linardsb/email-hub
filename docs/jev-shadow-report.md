@@ -1,7 +1,7 @@
 # Jev shadow classifier report (O1, O2, O3)
 
 **Status:** T12 of `.agents/plans/jev-shadow-classifier.md` (AC7). **Date:** 2026-09-29.
-**Branch head:** `4b3c27e7` (feat/jev-shadow-classifier). **Model:** `jev-1.13.0` on all 293 records (observed).
+**Branch head:** `ddfe6762` (feat/jev-shadow-classifier; tables from a run at `4b3c27e7`, no code change since; §5 O2 rule line re-run after PR #413 F6). **Model:** `jev-1.13.0` on all 293 records (observed).
 **Scope:** the 7 audit designs (cases 5, 6, 7, 8, 9, 10, reframe). The verdicts hold for these 7 designs only;
 a follow-up override ticket must re-measure on new designs.
 
@@ -230,7 +230,7 @@ Leave-one-design-out (threshold picked on the other designs):
 | 9 | 0.5 | 2 | 0 |
 | reframe | 0.5 | 3 | 0 |
 
-Rule result: don't wire it in (no threshold meets breaks=0, fixes>=1, n>=16, Wilson>=0.80).
+Rule result: insufficient evidence (n < 16).
 
 ## o3_slot (n=20)
 

@@ -46,7 +46,7 @@ T10–T12 were first blocked on the API key (see Issues) and completed on 2026-0
 - O3 container fills skipped.
 - All-agree run with a no-mutation `deepcopy` check.
 
-Result: `uv run pytest app/design_sync/tests/test_jev_shadow_state.py app/design_sync/tests/test_jev_shadow.py -q` gives **25 passed** (observed).
+Result: `uv run pytest app/design_sync/tests/test_jev_shadow_state.py app/design_sync/tests/test_jev_shadow.py -q` gives **25 passed** (observed). After the PR #413 review fixes the same command gives 30 passed (observed; see `.claude/reports/pr-413-review-fixes.md`).
 
 ## Validation results
 All observed on this branch, 2026-09-28.
@@ -57,13 +57,13 @@ All observed on this branch, 2026-09-28.
 - Level 2:
   - The 25 tests pass.
   - `make snapshot-test`: 34 passed, 10 skipped, 1 xfailed. That equals the pre-change baseline.
-- Level 3: `make check-full` exits 0, on the final tree (after Deviations 12 and 13).
+- Level 3: `make check-full` exits 0 on `ddfe6762`, the PR #413 head, re-run in the PR #413 review. The earlier run predated the Addendum files. The run after the review fixes is in `.claude/reports/pr-413-review-fixes.md`.
   - Backend: 8538 passed, 115 skipped, 2 xfailed.
   - mypy: 1384 files clean. pyright: 0 errors.
   - Frontend: 780 vitest tests passed.
   - Flag audit: 0 errors. Env drift: none.
   - `make lint` rewrote nothing. `skill-versions.yaml` dates were restored.
-- Scope: `git diff --stat origin/main...HEAD` lists only `app/design_sync/jev_shadow/` and the new tests under `app/design_sync/`. Under `data/debug/` it lists only `reframe/structure.json`. No converter logic file appears.
+- Scope: `git diff --stat origin/main...ddfe6762` lists 19 files (observed, PR #413 fixes round). Code: `app/design_sync/jev_shadow/`, its tests and capture helper under `app/design_sync/tests/`, `scripts/jev_shadow_report.py`, plus the flag in `app/core/config/design_sync.py`, its test, `.env.example` and `feature-flags.yaml`. Data: `data/debug/reframe/structure.json`, `data/debug/jev_shadow_labels.yaml` and `data/debug/jev_shadow_labeling_rules.md`. Docs: `docs/jev-shadow-report.md`, this report and the plan. No converter logic file appears.
 - F2 checks across all 7 cases: section node ids are unique per case, so the record and label keys can't collapse. No section has two asked O3 slots with the same heuristic source, so no disagreement is forced by the resolver.
 - T1: the settings one-liner prints `False False`.
 - T9a: `make snapshot-test` and the `test_converter_data_regression.py` + `test_bridge_roundtrip.py` run give the same counts before and after the file was added. Snapshot is 34p/10s/1xf; data-regression plus roundtrip is 92p/48s/1xf.
