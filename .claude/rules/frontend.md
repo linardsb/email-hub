@@ -1,6 +1,6 @@
 ---
 description: Rules for frontend TypeScript/React files
-globs: cms/**/*.{ts,tsx}
+paths: cms/**/*.{ts,tsx}
 ---
 
 # Frontend Rules

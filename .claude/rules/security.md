@@ -1,6 +1,6 @@
 ---
 description: Security rules for all code
-globs: "**/*.{py,ts,tsx}"
+paths: "**/*.{py,ts,tsx}"
 ---
 
 # Security Rules

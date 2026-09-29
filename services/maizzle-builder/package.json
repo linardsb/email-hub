@@ -12,14 +12,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@maizzle/framework": "^6.0.6",
+    "@maizzle/framework": "^6.0.7",
     "dom-serializer": "^3.1.1",
     "express": "^5.2.1",
     "htmlparser2": "^12.0.0",
     "js-yaml": "^4.2.0",
-    "lightningcss": "^1.28.0",
+    "lightningcss": "^1.33.0",
     "mjml": "^4.15.0",
-    "postcss": "^8.5.19"
+    "postcss": "^8.5.24"
   },
   "devDependencies": {
     "vitest": "^4.1.10"

@@ -1,0 +1,2073 @@
+'10':
+  2833:1136:
+    o1_template:
+      2833:1136:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.88
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1136:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.9
+        hint: 'mj-wrapper | '
+        label: hero
+        source: hand_build
+  2833:1141:
+    o1_template:
+      2833:1141:
+        heuristic: text-block
+        jev: hero-2cta
+        jev_confidence: 0.53
+        hint: mj-wrapper | GRAB A DUVET DAY
+        label: hero-2cta
+        source: hand_build
+    o1_type:
+      2833:1141:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.62
+        hint: mj-wrapper | GRAB A DUVET DAY
+        label: hero
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1147
+        jev: 2833:1147
+        jev_confidence: 1.0
+        hint: mj-wrapper | GRAB A DUVET DAY
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:1145
+        jev: 2833:1145
+        jev_confidence: 0.98
+        hint: mj-wrapper | GRAB A DUVET DAY
+        label: null
+        source: null
+  2833:1154:
+    o1_template:
+      2833:1154:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.88
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1154:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.6
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:1159:
+    o1_template:
+      2833:1159:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.97
+        hint: mj-wrapper | A LAYERING SYSTEM FOR LIFE IN THE EXTREMES
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1159:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.88
+        hint: mj-wrapper | A LAYERING SYSTEM FOR LIFE IN THE EXTREMES
+        label: content
+        source: hand_build
+    o3_slot:
+      heading:
+        heuristic: 2833:1163
+        jev: 2833:1163
+        jev_confidence: 0.97
+        hint: mj-wrapper | A LAYERING SYSTEM FOR LIFE IN THE EXTREMES
+        label: null
+        source: null
+  2833:1168:
+    o1_template:
+      2833:1168:
+        heuristic: article-card
+        jev: image-block
+        jev_confidence: 0.55
+        hint: mj-wrapper | LAYER SMARTER
+        label: image-block
+        source: hand_build
+    o1_type:
+      2833:1168:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.97
+        hint: mj-wrapper | LAYER SMARTER
+        label: content
+        source: hand_build
+    o3_slot:
+      heading:
+        heuristic: 2833:1174
+        jev: 2833:1174
+        jev_confidence: 0.93
+        hint: mj-wrapper | LAYER SMARTER
+        label: null
+        source: null
+  2833:1176:
+    o1_template:
+      2833:1176:
+        heuristic: column-layout-2
+        jev: product-grid
+        jev_confidence: 0.77
+        hint: mj-section | Eiger Nordwand Advanced Down IN Hooded Jacket Men
+        label: product-grid
+        source: hand_build
+    o1_type:
+      2833:1176:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.95
+        hint: mj-section | Eiger Nordwand Advanced Down IN Hooded Jacket Men
+        label: content
+        source: hand_build
+  2833:1197:
+    o1_template:
+      2833:1197:
+        heuristic: column-layout-2
+        jev: product-grid
+        jev_confidence: 0.8
+        hint: mj-section | Eiger Nordwand IN Flex Air Hooded Jacket Men
+        label: product-grid
+        source: hand_build
+    o1_type:
+      2833:1197:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.99
+        hint: mj-section | Eiger Nordwand IN Flex Air Hooded Jacket Men
+        label: content
+        source: hand_build
+  2833:1218:
+    o1_template:
+      2833:1218:
+        heuristic: spacer
+        jev: spacer
+        jev_confidence: 0.98
+        hint: 'mj-wrapper | '
+        label: spacer
+        source: hand_build
+    o1_type:
+      2833:1218:
+        heuristic: spacer
+        jev: spacer
+        jev_confidence: 0.99
+        hint: 'mj-wrapper | '
+        label: spacer
+        source: hand_build
+  2833:1222:
+    o1_template:
+      2833:1222:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.85
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1222:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.63
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:1227:
+    o1_template:
+      2833:1227:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.97
+        hint: mj-wrapper | GIVE THE GIFT OF ADVENTURE
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1227:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.81
+        hint: mj-wrapper | GIVE THE GIFT OF ADVENTURE
+        label: content
+        source: hand_build
+    o3_slot:
+      heading:
+        heuristic: 2833:1231
+        jev: 2833:1231
+        jev_confidence: 0.98
+        hint: mj-wrapper | GIVE THE GIFT OF ADVENTURE
+        label: null
+        source: null
+  2833:1236:
+    o1_template:
+      2833:1236:
+        heuristic: spacer
+        jev: spacer
+        jev_confidence: 0.98
+        hint: 'mj-wrapper | '
+        label: spacer
+        source: hand_build
+    o1_type:
+      2833:1236:
+        heuristic: spacer
+        jev: spacer
+        jev_confidence: 0.99
+        hint: 'mj-wrapper | '
+        label: spacer
+        source: hand_build
+  2833:1241:
+    o1_template:
+      2833:1241:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.62
+        hint: mj-section | MEN
+        label: text-link
+        source: hand_build
+    o1_type:
+      2833:1241:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.49
+        hint: mj-section | MEN
+        label: nav
+        source: hand_build
+    o3_slot:
+      col_1:
+        heuristic: 2833:1244
+        jev: 2833:1244
+        jev_confidence: 0.77
+        hint: mj-section | MEN
+        label: null
+        source: null
+  2833:1252:
+    o1_template:
+      2833:1252:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.71
+        hint: mj-section | WOMEN
+        label: text-link
+        source: hand_build
+    o1_type:
+      2833:1252:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.53
+        hint: mj-section | WOMEN
+        label: nav
+        source: hand_build
+    o3_slot:
+      col_1:
+        heuristic: 2833:1255
+        jev: 2833:1255
+        jev_confidence: 0.73
+        hint: mj-section | WOMEN
+        label: null
+        source: null
+  2833:1263:
+    o1_template:
+      2833:1263:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.62
+        hint: mj-section | EQUIPMENT
+        label: text-link
+        source: hand_build
+    o1_type:
+      2833:1263:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.81
+        hint: mj-section | EQUIPMENT
+        label: nav
+        source: hand_build
+    o3_slot:
+      col_1:
+        heuristic: 2833:1266
+        jev: 2833:1266
+        jev_confidence: 0.71
+        hint: mj-section | EQUIPMENT
+        label: null
+        source: null
+  2833:1270:
+    o1_template:
+      2833:1270:
+        heuristic: social-icons
+        jev: footer
+        jev_confidence: 0.45
+        hint: mj-wrapper | Privacy Policy    |    Unsubscribe
+        label: email-footer
+        source: hand_build
+    o1_type:
+      2833:1270:
+        heuristic: social
+        jev: footer
+        jev_confidence: 1.0
+        hint: mj-wrapper | Privacy Policy    |    Unsubscribe
+        label: footer
+        source: hand_build
+'5':
+  2833:1624:
+    o1_template:
+      2833:1624:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.86
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1624:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.92
+        hint: 'mj-wrapper | '
+        label: hero
+        source: hand_build
+  2833:1629:
+    o1_template:
+      2833:1629:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.57
+        hint: mj-wrapper | New Season Collaboration
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1629:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.47
+        hint: mj-wrapper | New Season Collaboration
+        label: hero
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1637
+        jev: 2833:1637
+        jev_confidence: 0.9
+        hint: mj-wrapper | New Season Collaboration
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:1635
+        jev: 2833:1635
+        jev_confidence: 0.95
+        hint: mj-wrapper | New Season Collaboration
+        label: null
+        source: null
+  2833:1643:
+    o1_template:
+      2833:1643:
+        heuristic: hero-block
+        jev: image-block
+        jev_confidence: 0.75
+        hint: mj-column | MAAP x KASK Protone Icon Loam
+        label: image-block
+        source: hand_build
+    o1_type:
+      2833:1643:
+        heuristic: hero
+        jev: content
+        jev_confidence: 0.94
+        hint: mj-column | MAAP x KASK Protone Icon Loam
+        label: content
+        source: hand_build
+    o3_slot:
+      hero_image:
+        heuristic: 2833:1645
+        jev: 2833:1645
+        jev_confidence: 0.92
+        hint: mj-column | MAAP x KASK Protone Icon Loam
+        label: null
+        source: null
+      subtext:
+        heuristic: 2833:1647
+        jev: 2833:1647
+        jev_confidence: 0.8
+        hint: mj-column | MAAP x KASK Protone Icon Loam
+        label: null
+        source: null
+  2833:1648:
+    o1_template:
+      2833:1648:
+        heuristic: spacer
+        jev: spacer
+        jev_confidence: 0.98
+        hint: 'mj-column | '
+        label: spacer
+        source: hand_build
+    o1_type:
+      2833:1648:
+        heuristic: spacer
+        jev: spacer
+        jev_confidence: 0.99
+        hint: 'mj-column | '
+        label: spacer
+        source: hand_build
+  2833:1650:
+    o1_template:
+      2833:1650:
+        heuristic: hero-block
+        jev: image-block
+        jev_confidence: 0.87
+        hint: mj-column | MAAP x KASK Protone Icon Opal
+        label: image-block
+        source: hand_build
+    o1_type:
+      2833:1650:
+        heuristic: hero
+        jev: content
+        jev_confidence: 0.92
+        hint: mj-column | MAAP x KASK Protone Icon Opal
+        label: content
+        source: hand_build
+    o3_slot:
+      hero_image:
+        heuristic: 2833:1652
+        jev: 2833:1652
+        jev_confidence: 0.93
+        hint: mj-column | MAAP x KASK Protone Icon Opal
+        label: null
+        source: null
+      subtext:
+        heuristic: 2833:1654
+        jev: 2833:1654
+        jev_confidence: 0.8
+        hint: mj-column | MAAP x KASK Protone Icon Opal
+        label: null
+        source: null
+  2833:1655:
+    o1_template:
+      2833:1655:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+    o1_type:
+      2833:1655:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+  2833:1660:
+    o1_template:
+      2833:1660:
+        heuristic: navigation-bar
+        jev: none_of_the_above
+        jev_confidence: 0.25
+        hint: mj-wrapper | Man
+        label: navigation-bar
+        source: hand_build
+    o1_type:
+      2833:1660:
+        heuristic: content
+        jev: nav
+        jev_confidence: 0.84
+        hint: mj-wrapper | Man
+        label: nav
+        source: hand_build
+  2833:1687:
+    o1_template:
+      2833:1687:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+    o1_type:
+      2833:1687:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+  2833:1693:
+    o1_template:
+      2833:1693:
+        heuristic: text-block
+        jev: paragraph
+        jev_confidence: 0.65
+        hint: mj-section | Stores ( LaB )
+        label: heading
+        source: hand_build
+    o1_type:
+      2833:1693:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.89
+        hint: mj-section | Stores ( LaB )
+        label: content
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1696
+        jev: 2833:1696
+        jev_confidence: 0.93
+        hint: mj-section | Stores ( LaB )
+        label: null
+        source: null
+  2833:1697:
+    o1_template:
+      2833:1697:
+        heuristic: column-layout-3
+        jev: column-layout-3
+        jev_confidence: 0.95
+        hint: 'mj-section | '
+        label: column-layout-3
+        source: hand_build
+    o1_type:
+      2833:1697:
+        heuristic: content
+        jev: nav
+        jev_confidence: 0.59
+        hint: 'mj-section | '
+        label: nav
+        source: hand_build
+    o3_slot:
+      col_1:
+        heuristic: 2833:1700
+        jev: none_of_the_above
+        jev_confidence: 0.82
+        hint: 'mj-section | '
+        label: 2833:1700
+        source: hand_build
+      col_2:
+        heuristic: 2833:1704
+        jev: none_of_the_above
+        jev_confidence: 0.65
+        hint: 'mj-section | '
+        label: 2833:1704
+        source: hand_build
+      col_3:
+        heuristic: 2833:1708
+        jev: none_of_the_above
+        jev_confidence: 0.74
+        hint: 'mj-section | '
+        label: 2833:1708
+        source: hand_build
+  2833:1710:
+    o1_template:
+      2833:1710:
+        heuristic: column-layout-4
+        jev: column-layout-4
+        jev_confidence: 0.97
+        hint: 'mj-section | '
+        label: column-layout-4
+        source: hand_build
+    o1_type:
+      2833:1710:
+        heuristic: nav
+        jev: nav
+        jev_confidence: 0.79
+        hint: 'mj-section | '
+        label: nav
+        source: hand_build
+    o3_slot:
+      col_1:
+        heuristic: 2833:1713
+        jev: none_of_the_above
+        jev_confidence: 0.88
+        hint: 'mj-section | '
+        label: 2833:1713
+        source: hand_build
+      col_2:
+        heuristic: 2833:1717
+        jev: 2833:1717
+        jev_confidence: 0.5
+        hint: 'mj-section | '
+        label: null
+        source: null
+      col_3:
+        heuristic: 2833:1721
+        jev: none_of_the_above
+        jev_confidence: 0.49
+        hint: 'mj-section | '
+        label: 2833:1721
+        source: hand_build
+      col_4:
+        heuristic: 2833:1725
+        jev: none_of_the_above
+        jev_confidence: 0.68
+        hint: 'mj-section | '
+        label: 2833:1725
+        source: hand_build
+  2833:1729:
+    o1_template:
+      2833:1729:
+        heuristic: full-width-image
+        jev: image
+        jev_confidence: 0.49
+        hint: 'mj-column | '
+        label: image
+        source: hand_build
+    o1_type:
+      2833:1729:
+        heuristic: hero
+        jev: content
+        jev_confidence: 0.85
+        hint: 'mj-column | '
+        label: content
+        source: hand_build
+  2833:1732:
+    o1_template:
+      2833:1732:
+        heuristic: full-width-image
+        jev: image
+        jev_confidence: 0.54
+        hint: 'mj-column | '
+        label: image
+        source: hand_build
+    o1_type:
+      2833:1732:
+        heuristic: hero
+        jev: content
+        jev_confidence: 0.85
+        hint: 'mj-column | '
+        label: content
+        source: hand_build
+  2833:1735:
+    o1_template:
+      2833:1735:
+        heuristic: full-width-image
+        jev: image
+        jev_confidence: 0.57
+        hint: 'mj-column | '
+        label: image
+        source: hand_build
+    o1_type:
+      2833:1735:
+        heuristic: hero
+        jev: content
+        jev_confidence: 0.85
+        hint: 'mj-column | '
+        label: content
+        source: hand_build
+  2833:1738:
+    o1_template:
+      2833:1738:
+        heuristic: email-footer
+        jev: email-footer
+        jev_confidence: 0.51
+        hint: mj-wrapper | Contact Us        Instagram        Facebook        Strava
+        label: email-footer
+        source: hand_build
+    o1_type:
+      2833:1738:
+        heuristic: footer
+        jev: footer
+        jev_confidence: 0.99
+        hint: mj-wrapper | Contact Us        Instagram        Facebook        Strava
+        label: footer
+        source: hand_build
+'6':
+  2833:1425:
+    o1_template:
+      2833:1425:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.88
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1425:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.93
+        hint: 'mj-wrapper | '
+        label: hero
+        source: hand_build
+  2833:1430:
+    o1_template:
+      2833:1430:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.61
+        hint: mj-wrapper | PUMPKIN NOW, PEPPERMINT ON THE WAY
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1430:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.54
+        hint: mj-wrapper | PUMPKIN NOW, PEPPERMINT ON THE WAY
+        label: hero
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1436
+        jev: 2833:1436
+        jev_confidence: 0.98
+        hint: mj-wrapper | PUMPKIN NOW, PEPPERMINT ON THE WAY
+        label: 2833:1436
+        source: hand_build
+      heading:
+        heuristic: 2833:1434
+        jev: 2833:1434
+        jev_confidence: 0.99
+        hint: mj-wrapper | PUMPKIN NOW, PEPPERMINT ON THE WAY
+        label: 2833:1434
+        source: hand_build
+  2833:1442:
+    o1_template:
+      2833:1442:
+        heuristic: full-width-image
+        jev: image
+        jev_confidence: 0.52
+        hint: 'mj-column | '
+        label: image
+        source: hand_build
+    o1_type:
+      2833:1442:
+        heuristic: hero
+        jev: content
+        jev_confidence: 0.81
+        hint: 'mj-column | '
+        label: content
+        source: hand_build
+  2833:1445:
+    o1_template:
+      2833:1445:
+        heuristic: event-card
+        jev: text-block
+        jev_confidence: 0.67
+        hint: 'mj-column | The Holiday           Countdown'
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1445:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.89
+        hint: 'mj-column | The Holiday           Countdown'
+        label: content
+        source: hand_build
+    o3_slot:
+      cta_text:
+        heuristic: 2833:1451
+        jev: none_of_the_above
+        jev_confidence: 0.87
+        hint: 'mj-column | The Holiday           Countdown'
+        label: 2833:1451
+        source: hand_build
+      date:
+        heuristic: 2833:1449
+        jev: 2833:1449
+        jev_confidence: 0.82
+        hint: 'mj-column | The Holiday           Countdown'
+        label: none_of_the_above
+        source: hand_build
+      event_name:
+        heuristic: 2833:1447
+        jev: 2833:1447
+        jev_confidence: 0.9
+        hint: 'mj-column | The Holiday           Countdown'
+        label: 2833:1447
+        source: hand_build
+  2833:1455:
+    o1_template:
+      2833:1455:
+        heuristic: cta-button
+        jev: icon
+        jev_confidence: 0.65
+        hint: mj-column | APP
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1455:
+        heuristic: cta
+        jev: content
+        jev_confidence: 0.45
+        hint: mj-column | APP
+        label: nav
+        source: hand_build
+  2833:1460:
+    o1_template:
+      2833:1460:
+        heuristic: cta-button
+        jev: icon
+        jev_confidence: 0.56
+        hint: mj-column | ORDER
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1460:
+        heuristic: cta
+        jev: content
+        jev_confidence: 0.65
+        hint: mj-column | ORDER
+        label: nav
+        source: hand_build
+  2833:1465:
+    o1_template:
+      2833:1465:
+        heuristic: cta-button
+        jev: icon
+        jev_confidence: 0.59
+        hint: mj-column | OFFERS
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1465:
+        heuristic: cta
+        jev: content
+        jev_confidence: 0.58
+        hint: mj-column | OFFERS
+        label: nav
+        source: hand_build
+  2833:1470:
+    o1_template:
+      2833:1470:
+        heuristic: social-icons
+        jev: icon
+        jev_confidence: 0.66
+        hint: mj-column | REWARDS
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1470:
+        heuristic: social
+        jev: content
+        jev_confidence: 0.56
+        hint: mj-column | REWARDS
+        label: nav
+        source: hand_build
+  2833:1475:
+    o1_template:
+      2833:1475:
+        heuristic: social-icons
+        jev: email-footer
+        jev_confidence: 0.68
+        hint: 'mj-wrapper | Ref: 26-6-NWSL-3-0-0-EM-SR-NA-US
+
+
+          This email was sent to
+
+           em'
+        label: email-footer
+        source: hand_build
+    o1_type:
+      2833:1475:
+        heuristic: social
+        jev: footer
+        jev_confidence: 0.99
+        hint: 'mj-wrapper | Ref: 26-6-NWSL-3-0-0-EM-SR-NA-US
+
+
+          This email was sent to
+
+           em'
+        label: footer
+        source: hand_build
+'7':
+  2833:1870:
+    o1_template:
+      2833:1870:
+        heuristic: text-block
+        jev: navigation-bar
+        jev_confidence: 0.27
+        hint: mj-wrapper | View online | My Account
+        label: preheader
+        source: hand_build
+    o1_type:
+      2833:1870:
+        heuristic: content
+        jev: preheader
+        jev_confidence: 0.76
+        hint: mj-wrapper | View online | My Account
+        label: preheader
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1874
+        jev: 2833:1874
+        jev_confidence: 0.93
+        hint: mj-wrapper | View online | My Account
+        label: null
+        source: null
+  2833:1875:
+    o1_template:
+      2833:1875:
+        heuristic: full-width-image
+        jev: image-grid
+        jev_confidence: 0.53
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1875:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.7
+        hint: 'mj-wrapper | '
+        label: hero
+        source: hand_build
+  2833:1882:
+    o1_template:
+      2833:1882:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.8
+        hint: mj-wrapper | Frights and brick-built delights
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1882:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.69
+        hint: mj-wrapper | Frights and brick-built delights
+        label: hero
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1888
+        jev: 2833:1888
+        jev_confidence: 1.0
+        hint: mj-wrapper | Frights and brick-built delights
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:1886
+        jev: 2833:1886
+        jev_confidence: 1.0
+        hint: mj-wrapper | Frights and brick-built delights
+        label: null
+        source: null
+  2833:1892:
+    o1_template:
+      2833:1892:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.88
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1892:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.67
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:1898:
+    o1_template:
+      2833:1898:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.92
+        hint: mj-section | Membership Tip
+        label: text-block
+        source: hand_build
+    o1_type:
+      2833:1898:
+        heuristic: content
+        jev: content
+        jev_confidence: 1.0
+        hint: mj-section | Membership Tip
+        label: content
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1903
+        jev: 2833:1903
+        jev_confidence: 1.0
+        hint: mj-section | Membership Tip
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:1901
+        jev: 2833:1901
+        jev_confidence: 1.0
+        hint: mj-section | Membership Tip
+        label: null
+        source: null
+  2833:1904:
+    o1_template:
+      2833:1904:
+        heuristic: column-layout-2
+        jev: article-2
+        jev_confidence: 0.37
+        hint: mj-section | Bundle of 6 Halloween posters
+        label: article-card
+        source: hand_build
+    o1_type:
+      2833:1904:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.87
+        hint: mj-section | Bundle of 6 Halloween posters
+        label: content
+        source: hand_build
+  2833:1924:
+    o1_template:
+      2833:1924:
+        heuristic: column-layout-2
+        jev: article-2
+        jev_confidence: 0.27
+        hint: mj-section | Stranger Things Sketchbook
+        label: article-card
+        source: hand_build
+    o1_type:
+      2833:1924:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.77
+        hint: mj-section | Stranger Things Sketchbook
+        label: content
+        source: hand_build
+  2833:1942:
+    o1_template:
+      2833:1942:
+        heuristic: text-block
+        jev: heading
+        jev_confidence: 0.88
+        hint: mj-section | Expect lots of treats this Halloween!
+        label: heading
+        source: hand_build
+    o1_type:
+      2833:1942:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.96
+        hint: mj-section | Expect lots of treats this Halloween!
+        label: content
+        source: hand_build
+    o3_slot:
+      heading:
+        heuristic: 2833:1945
+        jev: 2833:1945
+        jev_confidence: 0.95
+        hint: mj-section | Expect lots of treats this Halloween!
+        label: null
+        source: null
+  2833:1946:
+    o1_template:
+      2833:1946:
+        heuristic: column-layout-2
+        jev: article-reverse
+        jev_confidence: 0.35
+        hint: mj-section | Halloween Wreath
+        label: article-reverse
+        source: hand_build
+    o1_type:
+      2833:1946:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.83
+        hint: mj-section | Halloween Wreath
+        label: content
+        source: hand_build
+  2833:1969:
+    o1_template:
+      2833:1969:
+        heuristic: column-layout-2
+        jev: product-card
+        jev_confidence: 0.45
+        hint: 'mj-section | Disney Hocus Pocus: The Sanderson Sisters'' Cottage'
+        label: article-card
+        source: hand_build
+    o1_type:
+      2833:1969:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.85
+        hint: 'mj-section | Disney Hocus Pocus: The Sanderson Sisters'' Cottage'
+        label: content
+        source: hand_build
+  2833:1992:
+    o1_template:
+      2833:1992:
+        heuristic: column-layout-2
+        jev: article-reverse
+        jev_confidence: 0.26
+        hint: mj-section | Haunted mansion
+        label: article-reverse
+        source: hand_build
+    o1_type:
+      2833:1992:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.84
+        hint: mj-section | Haunted mansion
+        label: content
+        source: hand_build
+  2833:2015:
+    o1_template:
+      2833:2015:
+        heuristic: column-layout-2
+        jev: article-card
+        jev_confidence: 0.31
+        hint: mj-section | Jack-O'-Lantern Pickup Truck
+        label: article-card
+        source: hand_build
+    o1_type:
+      2833:2015:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.76
+        hint: mj-section | Jack-O'-Lantern Pickup Truck
+        label: content
+        source: hand_build
+  2833:2035:
+    o1_template:
+      2833:2035:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.9
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:2035:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.47
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:2041:
+    o1_template:
+      2833:2041:
+        heuristic: column-layout-4
+        jev: column-layout-4
+        jev_confidence: 0.83
+        hint: mj-section | Andy
+        label: col-icon
+        source: hand_build
+    o1_type:
+      2833:2041:
+        heuristic: content
+        jev: social
+        jev_confidence: 0.71
+        hint: mj-section | Andy
+        label: content
+        source: hand_build
+    o3_slot:
+      col_2:
+        heuristic: 2833:2047
+        jev: 2833:2047
+        jev_confidence: 0.73
+        hint: mj-section | Andy
+        label: null
+        source: null
+      col_4:
+        heuristic: 2833:2053
+        jev: 2833:2053
+        jev_confidence: 0.97
+        hint: mj-section | Andy
+        label: null
+        source: null
+  2833:2057:
+    o1_template:
+      2833:2057:
+        heuristic: td
+        jev: image-gallery
+        jev_confidence: 0.36
+        hint: 'mj-section | Andy
+
+          email@brand.emaillove.com'
+        label: td
+        source: hand_build
+    o1_type:
+      2833:2057:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.58
+        hint: 'mj-section | Andy
+
+          email@brand.emaillove.com'
+        label: content
+        source: hand_build
+    o3_slot:
+      content:
+        heuristic: 2833:2062
+        jev: 2833:2062
+        jev_confidence: 0.85
+        hint: 'mj-section | Andy
+
+          email@brand.emaillove.com'
+        label: null
+        source: null
+  2833:2067:
+    o1_template:
+      2833:2067:
+        heuristic: email-footer
+        jev: footer
+        jev_confidence: 0.8
+        hint: mj-section | Unsubscribe   |   Privacy Policy   |   Cookies Policy   |   
+        label: footer
+        source: hand_build
+    o1_type:
+      2833:2067:
+        heuristic: footer
+        jev: footer
+        jev_confidence: 1.0
+        hint: mj-section | Unsubscribe   |   Privacy Policy   |   Cookies Policy   |   
+        label: footer
+        source: hand_build
+'8':
+  2833:2258:
+    o1_template:
+      2833:2258:
+        heuristic: full-width-image
+        jev: image-grid
+        jev_confidence: 0.49
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: visual
+    o1_type:
+      2833:2258:
+        heuristic: hero
+        jev: header
+        jev_confidence: 0.41
+        hint: 'mj-wrapper | '
+        label: hero
+        source: visual
+  2833:2265:
+    o1_template:
+      2833:2265:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 1.0
+        hint: mj-wrapper | PERFORMANCE REIMAGINED
+        label: text-block
+        source: visual
+    o1_type:
+      2833:2265:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.72
+        hint: mj-wrapper | PERFORMANCE REIMAGINED
+        label: hero
+        source: visual
+    o3_slot:
+      body:
+        heuristic: 2833:2271
+        jev: 2833:2271
+        jev_confidence: 1.0
+        hint: mj-wrapper | PERFORMANCE REIMAGINED
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:2269
+        jev: 2833:2269
+        jev_confidence: 1.0
+        hint: mj-wrapper | PERFORMANCE REIMAGINED
+        label: null
+        source: null
+  2833:2272:
+    o1_template:
+      2833:2272:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.91
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: visual
+    o1_type:
+      2833:2272:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.62
+        hint: 'mj-wrapper | '
+        label: content
+        source: visual
+  2833:2278:
+    o1_template:
+      2833:2278:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.99
+        hint: mj-section | V8
+        label: column-layout-2
+        source: visual
+    o1_type:
+      2833:2278:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.99
+        hint: mj-section | V8
+        label: content
+        source: visual
+  2833:2289:
+    o1_template:
+      2833:2289:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.99
+        hint: mj-section | 208 cv/l
+        label: column-layout-2
+        source: visual
+    o1_type:
+      2833:2289:
+        heuristic: content
+        jev: content
+        jev_confidence: 1.0
+        hint: mj-section | 208 cv/l
+        label: content
+        source: visual
+  2833:2300:
+    o1_template:
+      2833:2300:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.88
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: visual
+    o1_type:
+      2833:2300:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.51
+        hint: 'mj-wrapper | '
+        label: content
+        source: visual
+  2833:2305:
+    o1_template:
+      2833:2305:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.51
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA
+        label: hero-block
+        source: visual
+    o1_type:
+      2833:2305:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.57
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA
+        label: content
+        source: visual
+    o3_slot:
+      body:
+        heuristic: 2833:2313
+        jev: 2833:2313
+        jev_confidence: 0.97
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:2311
+        jev: 2833:2311
+        jev_confidence: 0.9
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA
+        label: null
+        source: null
+  2833:2317:
+    o1_template:
+      2833:2317:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.89
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: visual
+    o1_type:
+      2833:2317:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.59
+        hint: 'mj-wrapper | '
+        label: content
+        source: visual
+  2833:2322:
+    o1_template:
+      2833:2322:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 0.5
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA SPIDER
+        label: hero-block
+        source: visual
+    o1_type:
+      2833:2322:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.65
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA SPIDER
+        label: content
+        source: visual
+    o3_slot:
+      body:
+        heuristic: 2833:2330
+        jev: 2833:2330
+        jev_confidence: 0.97
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA SPIDER
+        label: null
+        source: null
+      heading:
+        heuristic: 2833:2328
+        jev: 2833:2328
+        jev_confidence: 0.6900000000000001
+        hint: mj-wrapper | FERRARI 849 TESTAROSSA SPIDER
+        label: null
+        source: null
+  2833:2334:
+    o1_template:
+      2833:2334:
+        heuristic: column-layout-4
+        jev: column-layout-4
+        jev_confidence: 0.87
+        hint: mj-wrapper | NEWS
+        label: navigation-bar
+        source: visual
+    o1_type:
+      2833:2334:
+        heuristic: content
+        jev: nav
+        jev_confidence: 0.98
+        hint: mj-wrapper | NEWS
+        label: nav
+        source: audit
+    o3_slot:
+      col_1:
+        heuristic: 2833:2338
+        jev: 2833:2338
+        jev_confidence: 0.96
+        hint: mj-wrapper | NEWS
+        label: null
+        source: null
+      col_2:
+        heuristic: 2833:2341
+        jev: 2833:2341
+        jev_confidence: 0.99
+        hint: mj-wrapper | NEWS
+        label: null
+        source: null
+      col_3:
+        heuristic: 2833:2344
+        jev: 2833:2344
+        jev_confidence: 0.94
+        hint: mj-wrapper | NEWS
+        label: null
+        source: null
+      col_4:
+        heuristic: 2833:2347
+        jev: 2833:2347
+        jev_confidence: 0.98
+        hint: mj-wrapper | NEWS
+        label: null
+        source: null
+  2833:2348:
+    o1_template:
+      2833:2348:
+        heuristic: social-icons
+        jev: email-footer
+        jev_confidence: 0.79
+        hint: mj-wrapper | This is an automatically generated email, please don't reply
+        label: email-footer
+        source: visual
+    o1_type:
+      2833:2348:
+        heuristic: social
+        jev: footer
+        jev_confidence: 1.0
+        hint: mj-wrapper | This is an automatically generated email, please don't reply
+        label: footer
+        source: audit
+'9':
+  2833:2074:
+    o1_template:
+      2833:2074:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.51
+        hint: 'mj-wrapper | '
+        label: logo-header
+        source: hand_build
+    o1_type:
+      2833:2074:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.73
+        hint: 'mj-wrapper | '
+        label: header
+        source: hand_build
+  2833:2079:
+    o1_template:
+      2833:2079:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.86
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:2079:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.88
+        hint: 'mj-wrapper | '
+        label: hero
+        source: hand_build
+  2833:2085:
+    o1_template:
+      2833:2085:
+        heuristic: text-block
+        jev: heading
+        jev_confidence: 0.89
+        hint: mj-section | NO SWEAT.
+        label: heading
+        source: hand_build
+    o1_type:
+      2833:2085:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.93
+        hint: mj-section | NO SWEAT.
+        label: hero
+        source: hand_build
+    o3_slot:
+      heading:
+        heuristic: 2833:2088
+        jev: 2833:2088
+        jev_confidence: 0.95
+        hint: mj-section | NO SWEAT.
+        label: 2833:2088
+        source: hand_build
+  2833:2089:
+    o1_template:
+      2833:2089:
+        heuristic: column-layout-2
+        jev: icon
+        jev_confidence: 0.47
+        hint: "mj-section | The Place: \LThe Nevada desert."
+        label: col-icon
+        source: hand_build
+    o1_type:
+      2833:2089:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.96
+        hint: "mj-section | The Place: \LThe Nevada desert."
+        label: content
+        source: hand_build
+    o3_slot:
+      col_1:
+        heuristic: 2833:2096
+        jev: 2833:2096
+        jev_confidence: 0.78
+        hint: "mj-section | The Place: \LThe Nevada desert."
+        label: 2833:2096
+        source: hand_build
+      col_2:
+        heuristic: 2833:2105
+        jev: 2833:2105
+        jev_confidence: 0.94
+        hint: "mj-section | The Place: \LThe Nevada desert."
+        label: 2833:2105
+        source: hand_build
+  2833:2109:
+    o1_template:
+      2833:2109:
+        heuristic: col-icon
+        jev: icon
+        jev_confidence: 0.59
+        hint: 'mj-section | The task: Test the Slate’s limit in the harshest environment'
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:2109:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.88
+        hint: 'mj-section | The task: Test the Slate’s limit in the harshest environment'
+        label: content
+        source: hand_build
+    o3_slot:
+      heading_1:
+        heuristic: 2833:2116
+        jev: 2833:2116
+        jev_confidence: 0.61
+        hint: 'mj-section | The task: Test the Slate’s limit in the harshest environment'
+        label: 2833:2116
+        source: hand_build
+  2833:2117:
+    o1_template:
+      2833:2117:
+        heuristic: col-icon
+        jev: article-reverse
+        jev_confidence: 0.23
+        hint: 'mj-wrapper | From the Davis Dam to the Vegas Strip, our team calibrated, '
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:2117:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.84
+        hint: 'mj-wrapper | From the Davis Dam to the Vegas Strip, our team calibrated, '
+        label: content
+        source: hand_build
+    o2_button_icon:
+      2833:2126:
+        heuristic: content_image
+        jev: button_icon
+        jev_confidence: 0.85
+        hint: 'mj-wrapper | From the Davis Dam to the Vegas Strip, our team calibrated, '
+        label: button_icon
+        source: hand_build
+    o3_slot:
+      heading_1:
+        heuristic: 2833:2121
+        jev: none_of_the_above
+        jev_confidence: 0.76
+        hint: 'mj-wrapper | From the Davis Dam to the Vegas Strip, our team calibrated, '
+        label: 2833:2121
+        source: hand_build
+  2833:2127:
+    o1_template:
+      2833:2127:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+    o1_type:
+      2833:2127:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+  2833:2132:
+    o1_template:
+      2833:2132:
+        heuristic: image-grid
+        jev: hero-block
+        jev_confidence: 0.28
+        hint: mj-wrapper | HOT TRIP, COOL GEAR.
+        label: editorial-5
+        source: hand_build
+    o1_type:
+      2833:2132:
+        heuristic: content
+        jev: hero
+        jev_confidence: 1.0
+        hint: mj-wrapper | HOT TRIP, COOL GEAR.
+        label: content
+        source: hand_build
+    o2_button_icon:
+      2833:2143:
+        heuristic: content_image
+        jev: button_icon
+        jev_confidence: 0.8
+        hint: mj-wrapper | HOT TRIP, COOL GEAR.
+        label: button_icon
+        source: hand_build
+    o3_slot:
+      image_1:
+        heuristic: 2833:2136
+        jev: 2833:2136
+        jev_confidence: 0.94
+        hint: mj-wrapper | HOT TRIP, COOL GEAR.
+        label: 2833:2136
+        source: hand_build
+      image_2:
+        heuristic: 2833:2143
+        jev: none_of_the_above
+        jev_confidence: 0.66
+        hint: mj-wrapper | HOT TRIP, COOL GEAR.
+        label: none_of_the_above
+        source: hand_build
+  2833:2144:
+    o1_template:
+      2833:2144:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+    o1_type:
+      2833:2144:
+        heuristic: divider
+        jev: divider
+        jev_confidence: 1.0
+        hint: 'mj-wrapper | '
+        label: divider
+        source: hand_build
+  2833:2149:
+    o1_template:
+      2833:2149:
+        heuristic: social-icons
+        jev: footer
+        jev_confidence: 0.5
+        hint: mj-wrapper | FOLLOW US
+        label: email-footer
+        source: hand_build
+    o1_type:
+      2833:2149:
+        heuristic: social
+        jev: footer
+        jev_confidence: 1.0
+        hint: mj-wrapper | FOLLOW US
+        label: footer
+        source: hand_build
+reframe:
+  2833:1492:
+    o1_template:
+      2833:1492:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.89
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1492:
+        heuristic: hero
+        jev: hero
+        jev_confidence: 0.9
+        hint: 'mj-wrapper | '
+        label: hero
+        source: hand_build
+  2833:1497:
+    o1_template:
+      2833:1497:
+        heuristic: col-icon
+        jev: article-reverse
+        jev_confidence: 0.22
+        hint: mj-wrapper | From bold ideas to big connections, REFRAME 2025 is where th
+        label: hero-block
+        source: hand_build
+    o1_type:
+      2833:1497:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.88
+        hint: mj-wrapper | From bold ideas to big connections, REFRAME 2025 is where th
+        label: hero
+        source: hand_build
+    o2_button_icon:
+      2833:1506:
+        heuristic: content_image
+        jev: button_icon
+        jev_confidence: 0.76
+        hint: mj-wrapper | From bold ideas to big connections, REFRAME 2025 is where th
+        label: button_icon
+        source: hand_build
+    o3_slot:
+      heading_1:
+        heuristic: 2833:1501
+        jev: none_of_the_above
+        jev_confidence: 0.77
+        hint: mj-wrapper | From bold ideas to big connections, REFRAME 2025 is where th
+        label: 2833:1501
+        source: hand_build
+  2833:1508:
+    o1_template:
+      2833:1508:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.54
+        hint: mj-section | Reason 1
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1508:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.98
+        hint: mj-section | Reason 1
+        label: content
+        source: hand_build
+  2833:1517:
+    o1_template:
+      2833:1517:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.48
+        hint: mj-section | Reason 2
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1517:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.99
+        hint: mj-section | Reason 2
+        label: content
+        source: hand_build
+  2833:1526:
+    o1_template:
+      2833:1526:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.63
+        hint: mj-section | Reason 3
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1526:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.99
+        hint: mj-section | Reason 3
+        label: content
+        source: hand_build
+  2833:1535:
+    o1_template:
+      2833:1535:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.44
+        hint: mj-section | Reason 4
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1535:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.97
+        hint: mj-section | Reason 4
+        label: content
+        source: hand_build
+  2833:1544:
+    o1_template:
+      2833:1544:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.44
+        hint: mj-section | Reason 5
+        label: icon
+        source: hand_build
+    o1_type:
+      2833:1544:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.97
+        hint: mj-section | Reason 5
+        label: content
+        source: hand_build
+  2833:1553:
+    o1_template:
+      2833:1553:
+        heuristic: image-block
+        jev: cta-button
+        jev_confidence: 0.25
+        hint: 'mj-wrapper | '
+        label: cta-button
+        source: hand_build
+    o1_type:
+      2833:1553:
+        heuristic: content
+        jev: cta
+        jev_confidence: 0.98
+        hint: 'mj-wrapper | '
+        label: cta
+        source: hand_build
+    o2_button_icon:
+      2833:1560:
+        heuristic: content_image
+        jev: button_icon
+        jev_confidence: 0.78
+        hint: 'mj-wrapper | '
+        label: button_icon
+        source: hand_build
+  2833:1561:
+    o1_template:
+      2833:1561:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.91
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1561:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.49
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:1566:
+    o1_template:
+      2833:1566:
+        heuristic: event-card
+        jev: text-block
+        jev_confidence: 0.61
+        hint: mj-wrapper | Join us at Vimeo REFRAME 2025
+        label: event-card
+        source: hand_build
+    o1_type:
+      2833:1566:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.93
+        hint: mj-wrapper | Join us at Vimeo REFRAME 2025
+        label: content
+        source: hand_build
+    o3_slot:
+      date:
+        heuristic: 2833:1572
+        jev: 2833:1572
+        jev_confidence: 0.98
+        hint: mj-wrapper | Join us at Vimeo REFRAME 2025
+        label: null
+        source: null
+      description:
+        heuristic: 2833:1574
+        jev: none_of_the_above
+        jev_confidence: 0.98
+        hint: mj-wrapper | Join us at Vimeo REFRAME 2025
+        label: 2833:1574
+        source: hand_build
+      event_name:
+        heuristic: 2833:1570
+        jev: 2833:1570
+        jev_confidence: 0.95
+        hint: mj-wrapper | Join us at Vimeo REFRAME 2025
+        label: null
+        source: null
+      location:
+        heuristic: 2833:1576
+        jev: 2833:1576
+        jev_confidence: 0.99
+        hint: mj-wrapper | Join us at Vimeo REFRAME 2025
+        label: null
+        source: null
+  2833:1577:
+    o1_template:
+      2833:1577:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.89
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1577:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.45
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:1582:
+    o1_template:
+      2833:1582:
+        heuristic: text-block
+        jev: text-block
+        jev_confidence: 1.0
+        hint: mj-wrapper | Can’t make it live?
+        label: text-block
+        source: hand_build
+    o1_type:
+      2833:1582:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.95
+        hint: mj-wrapper | Can’t make it live?
+        label: content
+        source: hand_build
+  2833:1589:
+    o1_template:
+      2833:1589:
+        heuristic: image-block
+        jev: button
+        jev_confidence: 0.25
+        hint: 'mj-wrapper | '
+        label: cta-button
+        source: hand_build
+    o1_type:
+      2833:1589:
+        heuristic: content
+        jev: cta
+        jev_confidence: 0.99
+        hint: 'mj-wrapper | '
+        label: cta
+        source: hand_build
+    o2_button_icon:
+      2833:1596:
+        heuristic: content_image
+        jev: button_icon
+        jev_confidence: 0.77
+        hint: 'mj-wrapper | '
+        label: button_icon
+        source: hand_build
+  2833:1597:
+    o1_template:
+      2833:1597:
+        heuristic: full-width-image
+        jev: full-width-image
+        jev_confidence: 0.89
+        hint: 'mj-wrapper | '
+        label: full-width-image
+        source: hand_build
+    o1_type:
+      2833:1597:
+        heuristic: content
+        jev: hero
+        jev_confidence: 0.49
+        hint: 'mj-wrapper | '
+        label: content
+        source: hand_build
+  2833:1603:
+    o1_template:
+      2833:1603:
+        heuristic: text-block
+        jev: paragraph
+        jev_confidence: 0.99
+        hint: mj-section | *Vimeo may offer discount codes or coupons at its discretion
+        label: footer
+        source: hand_build
+    o1_type:
+      2833:1603:
+        heuristic: content
+        jev: content
+        jev_confidence: 0.74
+        hint: mj-section | *Vimeo may offer discount codes or coupons at its discretion
+        label: footer
+        source: hand_build
+    o3_slot:
+      body:
+        heuristic: 2833:1606
+        jev: 2833:1606
+        jev_confidence: 0.99
+        hint: mj-section | *Vimeo may offer discount codes or coupons at its discretion
+        label: null
+        source: null
+  2833:1607:
+    o1_template:
+      2833:1607:
+        heuristic: column-layout-2
+        jev: column-layout-2
+        jev_confidence: 0.33
+        hint: mj-section | Terms    |    Privacy    |    Unsubscribe
+        label: email-footer
+        source: hand_build
+    o1_type:
+      2833:1607:
+        heuristic: social
+        jev: footer
+        jev_confidence: 1.0
+        hint: mj-section | Terms    |    Privacy    |    Unsubscribe
+        label: footer
+        source: hand_build

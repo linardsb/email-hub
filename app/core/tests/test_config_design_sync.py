@@ -33,7 +33,10 @@ def test_design_sync_field_count_bounded() -> None:
     # +1 (58): 53.3d ``frame_export_fallback_enabled`` — plan-mandated kill
     # switch, cull-tracked in feature-flags.yaml (removal 2026-10-06); counts
     # against the PR-2 retirement pool, not new sprawl headroom.
-    assert len(DesignSyncConfig.model_fields) <= 58
+    # +2 (60): ``jev_shadow_enabled`` + ``jev_api_key`` — Jev shadow spike
+    # (.agents/plans/jev-shadow-classifier.md), flag cull-tracked in
+    # feature-flags.yaml (removal 2026-12-31); model/timeout/path are constants.
+    assert len(DesignSyncConfig.model_fields) <= 60
 
 
 def test_constantized_fields_removed() -> None:

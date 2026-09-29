@@ -71,7 +71,7 @@ jobs:
       # Tolerates the repo having GHAS code-scanning disabled.
       # Upload still succeeds once code-scanning is enabled in repo settings.
       - name: Upload SARIF to GitHub
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.3
         continue-on-error: true
         if: always()
         with:

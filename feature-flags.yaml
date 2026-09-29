@@ -346,6 +346,13 @@ flags:
     removal_date: "2026-10-24"
     status: alpha
 
+  - name: DESIGN_SYNC__JEV_SHADOW_ENABLED
+    description: "Jev shadow classifier: logs disagreements, never changes output"
+    owner: design-team
+    created: "2026-09-28"
+    removal_date: "2026-12-31"
+    status: alpha
+
   - name: DESIGN_SYNC__VLM_VERIFY_ENABLED
     description: Visual verification loop — VLM-driven render→compare→correct iteration (Phase 47.2)
     owner: design-team

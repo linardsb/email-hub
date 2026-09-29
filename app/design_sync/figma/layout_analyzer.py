@@ -191,6 +191,11 @@ class ContentGroup:
     texts: list[TextBlock] = field(default_factory=list[TextBlock])
     images: list[ImagePlaceholder] = field(default_factory=list[ImagePlaceholder])
     buttons: list[ButtonElement] = field(default_factory=list[ButtonElement])
+    # F5 — node ids of the extracted content in design tree (pre-order) order,
+    # mirroring ColumnGroup.content_order. Empty on groups built before the
+    # field existed (older persisted documents) -> callers fall back to
+    # category order.
+    content_order: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -2020,6 +2025,7 @@ def _extract_content_groups(
                 texts=texts,
                 images=images,
                 buttons=buttons,
+                content_order=_column_content_order(child, texts, images, buttons),
             )
         )
 

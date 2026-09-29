@@ -102,6 +102,19 @@ class TestTolgeeClient:
         assert len(translations) == 2
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("language", ["../keys", "de/../../x", "de?x=1", ""])
+    async def test_get_translations_rejects_non_bcp47_language(
+        self, client: TolgeeClient, language: str
+    ) -> None:
+        """`language` is a URL path segment; anything but a BCP-47 tag never reaches the wire."""
+        with patch(
+            "app.connectors.tolgee.client.resilient_request", new_callable=AsyncMock
+        ) as mock_request:
+            with pytest.raises(ValueError, match="Invalid BCP-47 locale"):
+                await client.get_translations(project_id=1, language=language)
+        mock_request.assert_not_called()
+
+    @pytest.mark.asyncio
     async def test_get_translations_nested_format(self, client: TolgeeClient) -> None:
         """Parses nested {key: {text: "..."}} response format."""
         mock_response = httpx.Response(

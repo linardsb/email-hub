@@ -14,6 +14,7 @@ from app.design_sync.email_design_document import (
     DocumentButton,
     DocumentColor,
     DocumentColumn,
+    DocumentContentGroup,
     DocumentGradient,
     DocumentGradientStop,
     DocumentImage,
@@ -31,7 +32,10 @@ from app.design_sync.email_design_document import (
 )
 from app.design_sync.figma.layout_analyzer import (
     ColumnLayout,
+    ContentGroup,
     EmailSectionType,
+    ImagePlaceholder,
+    TextBlock,
 )
 from app.design_sync.protocol import ExtractedGradient, ExtractedTokens
 
@@ -809,3 +813,47 @@ class TestLosslessCapture:
         doc_tokens = DocumentTokens.from_extracted_tokens(extracted)
         assert doc_tokens.gradients[0].node_id == "5:99"
         assert doc_tokens.to_extracted_tokens().gradients[0].node_id == "5:99"
+
+
+class TestContentGroupContentOrder:
+    """F5 — ContentGroup.content_order survives both bridges, JSON and the schema."""
+
+    @staticmethod
+    def _group() -> ContentGroup:
+        return ContentGroup(
+            frame_node_id="1:10",
+            frame_name="Card",
+            texts=[TextBlock(node_id="1:12", content="Heading")],
+            images=[ImagePlaceholder(node_id="1:11", node_name="icon")],
+            content_order=("1:12", "1:11"),
+        )
+
+    def test_roundtrip_keeps_order(self) -> None:
+        doc_group = DocumentContentGroup.from_content_group(self._group())
+        data = doc_group.to_json()
+        assert data["content_order"] == ["1:12", "1:11"]
+        restored = DocumentContentGroup.from_json(data).to_content_group()
+        assert restored.content_order == ("1:12", "1:11")
+
+    def test_empty_order_not_serialised(self) -> None:
+        group = DocumentContentGroup(frame_node_id="1:10", frame_name="Card")
+        assert "content_order" not in group.to_json()
+        assert DocumentContentGroup.from_json(group.to_json()).content_order == ()
+
+    def test_content_order_passes_schema(self) -> None:
+        doc = _make_document(
+            sections=[
+                DocumentSection(
+                    id="s1",
+                    type="content",
+                    child_content_groups=[
+                        DocumentContentGroup.from_content_group(self._group()),
+                        DocumentContentGroup(frame_node_id="1:20", frame_name="Other"),
+                    ],
+                )
+            ],
+        )
+        data = doc.to_json()
+        groups = data["sections"][0]["child_content_groups"]
+        assert groups[0]["content_order"] == ["1:12", "1:11"]
+        assert EmailDesignDocument.validate(data) == []

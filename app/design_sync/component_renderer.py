@@ -49,8 +49,16 @@ _PRESERVE_UNFILLED_SLOTS = frozenset(
         "company_address",
         "footer_legal",
         "unsub_text",
+        # T1: the social-icons "Follow us" default stays on icon-only sections;
+        # _fills_social blanks it explicitly when the design has its own text.
+        "social_label",
     }
 )
+
+# T1/F1: preserved labels that a builder empties on purpose. An explicit empty
+# fill collapses the row like a blanked slot, so no padded ghost row remains and
+# the section's ``_cell`` padding override lands on the next content cell.
+_COLLAPSE_ON_EMPTY_FILL = frozenset({"social_label"})
 
 # Inline text-formatting tags that may legitimately appear inside a leaked text
 # seed (a bold word, a line break). Any *other* child element marks a structural
@@ -1014,6 +1022,9 @@ class ComponentRenderer:
         # leaking them into output.
         filled_ids = {fill.slot_id for fill in fills}
         result = self._blank_unfilled_text_slots(result, filled_ids)
+        for fill in fills:
+            if fill.slot_id in _COLLAPSE_ON_EMPTY_FILL and not fill.value.strip():
+                result = self._collapse_blanked_slot(result, fill.slot_id)
 
         # F4a (RC-F4): prune CTA anchors whose label slot got no real content.
         # The td-only blank pass above cannot reach <span>/<a> slots, so seed
