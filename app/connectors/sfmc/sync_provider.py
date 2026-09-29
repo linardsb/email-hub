@@ -80,7 +80,7 @@ class SFMCSyncProvider:
         method: str,
         url: str,
         params: Mapping[
-            str, str | int | float | bool | None | Sequence[str | int | float | bool | None]
+            str, str | int | float | bool | Sequence[str | int | float | bool | None] | None
         ]
         | None = None,
         json: object | None = None,

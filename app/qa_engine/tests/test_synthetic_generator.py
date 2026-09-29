@@ -25,7 +25,7 @@ def generator() -> SyntheticEmailGenerator:
 def small_generator() -> SyntheticEmailGenerator:
     """Generator with a single small template for fast tests."""
     templates = load_base_templates()
-    first_name = sorted(templates.keys())[0]
+    first_name = min(templates.keys())
     return SyntheticEmailGenerator(base_templates={first_name: templates[first_name]})
 
 
