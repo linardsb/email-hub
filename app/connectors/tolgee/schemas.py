@@ -8,7 +8,8 @@ from typing import Annotated
 from pydantic import BaseModel, Field, StringConstraints
 
 # BCP-47 locale tag pattern (e.g., "en", "de-AT", "zh-Hans-CN")
-BCP47Locale = Annotated[str, StringConstraints(pattern=r"^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*$")]
+BCP47_PATTERN = r"^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{1,8})*$"
+BCP47Locale = Annotated[str, StringConstraints(pattern=BCP47_PATTERN)]
 
 # --- Tolgee API response models ---
 
@@ -82,7 +83,7 @@ class LocaleBuildRequest(BaseModel):
     connection_id: int
     template_id: int  # Hub template ID
     tolgee_project_id: int
-    locales: list[str] = Field(min_length=1, max_length=20)
+    locales: list[BCP47Locale] = Field(min_length=1, max_length=20)
     namespace: str | None = None
     is_production: bool = False
 

@@ -49,6 +49,9 @@ class TolgeeConfig(BaseModel):
 
     enabled: bool = False  # TOLGEE__ENABLED
     base_url: str = "http://localhost:25432"  # TOLGEE__BASE_URL
+    # Extra base URLs a connection's `base_url` override may target; the default
+    # `base_url` is always allowed. Anything else is rejected (SSRF guard).
+    allowed_base_urls: list[str] = []  # TOLGEE__ALLOWED_BASE_URLS (JSON via env)
     default_locale: str = "en"  # TOLGEE__DEFAULT_LOCALE
     max_locales_per_build: int = 20  # TOLGEE__MAX_LOCALES_PER_BUILD
     request_timeout: float = 30.0  # TOLGEE__REQUEST_TIMEOUT

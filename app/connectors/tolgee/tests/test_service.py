@@ -10,6 +10,7 @@ import pytest
 
 from app.connectors.tolgee.exceptions import (
     TolgeeAuthenticationError,
+    TolgeeBaseUrlNotAllowedError,
     TolgeeConnectionError,
 )
 from app.connectors.tolgee.schemas import (
@@ -141,6 +142,84 @@ class TestCreateConnection:
                 await service.create_connection(request, user)
 
 
+class TestBaseUrlAllowlist:
+    """`base_url` overrides must match a configured Tolgee base URL (CodeQL py/partial-ssrf)."""
+
+    @staticmethod
+    def _settings(allowed: list[str]) -> MagicMock:
+        settings = MagicMock()
+        settings.tolgee.base_url = "http://localhost:25432"
+        settings.tolgee.allowed_base_urls = allowed
+        return settings
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "base_url",
+        [
+            "http://169.254.169.254/latest/meta-data",
+            "http://localhost:25432.evil.test",
+            "https://tolgee.example.com/../admin",
+        ],
+    )
+    async def test_unlisted_base_url_rejected_before_any_request(self, base_url: str) -> None:
+        service = TolgeeService(AsyncMock())
+        request = TolgeeConnectionRequest(
+            name="Evil", project_id=1, tolgee_project_id=42, base_url=base_url, pat="tgpat_x"
+        )
+        with (
+            patch.object(service, "_project_svc") as mock_proj,
+            patch("app.connectors.tolgee.service.TolgeeClient") as mock_client_cls,
+            patch(
+                "app.connectors.tolgee.service.get_settings",
+                return_value=self._settings(["https://tolgee.example.com"]),
+            ),
+        ):
+            mock_proj.verify_project_access = AsyncMock()
+            with pytest.raises(TolgeeBaseUrlNotAllowedError):
+                await service.create_connection(request, _make_user())
+        mock_client_cls.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("base_url", "expected"),
+        [
+            (None, "http://localhost:25432"),
+            ("http://localhost:25432/", "http://localhost:25432"),
+            ("https://tolgee.example.com", "https://tolgee.example.com"),
+        ],
+    )
+    async def test_default_and_listed_base_urls_accepted(
+        self, base_url: str | None, expected: str
+    ) -> None:
+        service = TolgeeService(AsyncMock())
+        request = TolgeeConnectionRequest(
+            name="Ok", project_id=1, tolgee_project_id=42, base_url=base_url, pat="tgpat_x"
+        )
+        with (
+            patch.object(service, "_project_svc") as mock_proj,
+            patch("app.connectors.tolgee.service.TolgeeClient") as mock_client_cls,
+            patch(
+                "app.connectors.tolgee.service.get_settings",
+                return_value=self._settings(["https://tolgee.example.com/"]),
+            ),
+            patch("app.connectors.tolgee.service.encrypt_token", return_value="encrypted"),
+            patch(
+                "app.connectors.tolgee.service.decrypt_token",
+                return_value=json.dumps({"pat": "tgpat_x", "tolgee_project_id": "42"}),
+            ),
+        ):
+            mock_proj.verify_project_access = AsyncMock()
+            mock_client_inst = AsyncMock()
+            mock_client_inst.validate_connection.return_value = True
+            mock_client_cls.return_value = mock_client_inst
+            service._repo = AsyncMock()
+            service._repo.create_connection = AsyncMock(return_value=_make_connection())
+
+            await service.create_connection(request, _make_user())
+
+        assert mock_client_cls.call_args.args[0] == expected
+
+
 class TestSyncKeys:
     """Tests for key extraction and sync."""
 
@@ -251,6 +330,16 @@ class TestBuildLocales:
                 template_id=1,
                 tolgee_project_id=42,
                 locales=["en"] * 21,
+            )
+
+    @pytest.mark.parametrize("locale", ["../../v2/projects", "de/../../admin", "de?x=1", ""])
+    def test_non_bcp47_locale_rejected(self, locale: str) -> None:
+        """Locales land in the Tolgee URL path, so they must be BCP-47 tags."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="string_pattern_mismatch"):
+            LocaleBuildRequest(
+                connection_id=1, template_id=1, tolgee_project_id=42, locales=[locale]
             )
 
     @pytest.mark.asyncio

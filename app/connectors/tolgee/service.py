@@ -15,6 +15,7 @@ from app.connectors.tolgee.builder import build_all_locales
 from app.connectors.tolgee.client import TolgeeClient
 from app.connectors.tolgee.exceptions import (
     TolgeeAuthenticationError,
+    TolgeeBaseUrlNotAllowedError,
     TolgeeConnectionError,
     TolgeeSyncError,
 )
@@ -39,6 +40,23 @@ from app.templates.repository import TemplateRepository
 logger = get_logger(__name__)
 
 
+def _resolve_base_url(requested: str | None) -> str:
+    """Return the configured Tolgee base URL matching ``requested``.
+
+    The PAT is sent to this URL, so a caller may only pick from the configured
+    default and ``TOLGEE__ALLOWED_BASE_URLS``. The configured string is returned,
+    never the caller's.
+    """
+    settings = get_settings()
+    if requested is None:
+        return settings.tolgee.base_url
+    wanted = requested.rstrip("/")
+    for allowed in (settings.tolgee.base_url, *settings.tolgee.allowed_base_urls):
+        if allowed.rstrip("/") == wanted:
+            return allowed.rstrip("/")
+    raise TolgeeBaseUrlNotAllowedError("Tolgee base URL is not in TOLGEE__ALLOWED_BASE_URLS")
+
+
 class TolgeeService:
     """Orchestrates Tolgee TMS operations: connect, sync keys, pull translations, build locales."""
 
@@ -56,8 +74,7 @@ class TolgeeService:
         """Create and validate a Tolgee connection."""
         await self._project_svc.verify_project_access(request.project_id, user)
 
-        settings = get_settings()
-        base_url = request.base_url or settings.tolgee.base_url
+        base_url = _resolve_base_url(request.base_url)
 
         # Validate PAT
         client = TolgeeClient(base_url, request.pat)
