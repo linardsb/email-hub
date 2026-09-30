@@ -52,7 +52,8 @@ Low values are real converter defects, not crop errors: mammut's dark footer and
 | 1 | local Docker (linux/amd64), `make fidelity-gate` | `d3040239` | 76 | 0.0000 (observed) |
 | 2 | same, second run | `d3040239` | 76 | 0.0000 (observed) |
 | CI 1 | GitHub `ubuntu-24.04` runner, PR #446 run 36763777392 (`fidelity-gate-scores` artifact) | `6ed747e6` (merge ref `a3d2f9c`) | 76 | 0.0000, no lost or new section (observed) |
-| CI 2 | same, second run on one head | pending | 76 | pending (done check (a)) |
+| CI 2 | same runner, PR #446 run 36768480060 attempt 1 (after rebase onto #447) | `17665639` | 76 | 0.0000 (observed) |
+| CI 3 | same run, attempt 2 (backend job re-run, same head) | `17665639` | 76 | 0.0000 vs baseline and vs attempt 1 (observed; done check (a)) |
 
 **Cross-host rule.** If the CI-vs-local max per-section delta is ≤ 0.0025 (half the margin), the local stamp stays. If larger, the baseline is re-stamped from the CI artifact (`make fidelity-restamp REASON="CE-1 stamp from CI run <id>" FROM=<artifact>/scores.json`), and CI-vs-CI spread (two runs on one head) is the figure that matters; local `make fidelity-gate` is then a preview. **In force: the local stamp** (CI-vs-local max delta 0.0000 ≤ 0.0025, observed on run 36763777392).
 
