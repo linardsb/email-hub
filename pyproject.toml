@@ -68,9 +68,11 @@ constraint-dependencies = [
     # are LiteLLM Proxy-only endpoints; we use litellm as an SDK via cognee
     # only. See docs/dependabot-status.md.
     "litellm>=1.83.0",
+    # datamodel-code-generator: GHSA code-injection/SSRF series fixed in 0.64.0.
+    "datamodel-code-generator>=0.64.0",
     "onnx>=1.21.0",
     "pip>=26.1",
-    "pypdf>=6.13.3",
+    "pypdf>=6.16.1",
     # libcst 1.9.0 (via mutmut 3.8) ships no macOS x86_64 wheel; source build
     # needs a Rust toolchain. Lift once an x86_64 macOS wheel is published.
     "libcst<1.9",
