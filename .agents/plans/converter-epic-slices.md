@@ -1,6 +1,6 @@
 # Converter fidelity epic: ticket slices
 
-Status: **sliced, answers recorded, not created on GitHub** (2026-09-30). Issues get created only after the user says "create".
+Status: **created on GitHub** (2026-09-30): epic #439, tickets #419–#438 (mapping table below). Issues get created only after the user says "create".
 Source: converter epic brief 2026-09-29 (vault, not in repo). §6a and its "Revised sequence for the epic" win over §8/§9 wherever they differ.
 Base: origin/main `da8dbd86` (observed: `git fetch` 2026-09-29, origin/main == `da8dbd86`). Branch `plan/converter-epic-slices`.
 Line refs below were re-verified at `da8dbd86` (observed, read-only scout pass 2026-09-29). They replace the brief's refs where the two differ.
@@ -358,3 +358,29 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 - [ ] CE-18 — VLM fallback on Jev-heuristic disagreement, shadow (depends on CE-1)
 - [ ] CE-19 — O1 spike on the MJML path (depends on CE-1, CE-6, CE-13, CE-4, CE-5)
 - [ ] CE-20 — T8 residual, scoped after the spike (depends on CE-19, CE-15)
+
+## GitHub issues (created 2026-09-30)
+
+| Ticket | Issue |
+|---|---|
+| CE-0 epic | #439 |
+| CE-1 | #419 |
+| CE-2 | #420 |
+| CE-3 | #421 |
+| CE-4 | #422 |
+| CE-5 | #423 |
+| CE-6 | #424 |
+| CE-7 | #425 |
+| CE-8 | #426 |
+| CE-9 | #427 |
+| CE-10 | #428 |
+| CE-11 | #429 |
+| CE-12 | #430 |
+| CE-13 | #431 |
+| CE-14 | #432 |
+| CE-15 | #433 |
+| CE-16 | #434 |
+| CE-17 | #435 |
+| CE-18 | #436 |
+| CE-19 | #437 |
+| CE-20 | #438 |
