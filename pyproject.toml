@@ -301,6 +301,7 @@ markers = [
     "visual_regression: Visual regression tests requiring Playwright + ODiff (run with: make rendering-regression)",
     "collab: CRDT collaboration tests (run with: make test-collab)",
     "snapshot: Snapshot regression tests — runs in make test/check CI gate (standalone: make snapshot-test)",
+    "fidelity_gate: per-section fidelity gate; runs only in the pinned Playwright image (make fidelity-gate)",
 ]
 
 # Mutation testing — Phase 2 §2.3 (option B: qa_engine + connectors).

@@ -24,7 +24,9 @@ repos:
         # node-keyed case assets + rendered render fixtures + design reference
         # exports must stay byte-identical to the Figma/import pipeline, so
         # they cannot be recompressed under the cap.
-        exclude: ^(data/debug/\d+/(assets/[^/]+\.png|rendered_w600\.png)|email-templates/training_HTML/for_converter_engine/[^/]+/[^/]+\.png)$
+        # CE-1 fidelity-gate references (reference_1x.png) are lossless 1x copies
+        # of the design exports, scored pixel for pixel.
+        exclude: ^(data/debug/\d+/(assets/[^/]+\.png|rendered_w600\.png|reference_1x\.png)|email-templates/training_HTML/for_converter_engine/[^/]+/[^/]+\.png)$
       - id: detect-private-key
       - id: no-commit-to-branch
         args: [--branch, main]

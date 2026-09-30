@@ -153,6 +153,10 @@ class ConversionResult:
     verification_iterations: int = 0
     verification_initial_fidelity: float | None = None
     verification_final_fidelity: float | None = None
+    # Figma node id per flat section index: marker ``section_<i>`` in ``html``
+    # wraps the section ``section_node_ids[i]`` (CE-1 fidelity gate). Set by the
+    # component render path only; other paths leave it empty.
+    section_node_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -499,6 +503,7 @@ class DesignConverterService:
             verification_iterations=len(vr.iterations),
             verification_initial_fidelity=vr.initial_fidelity,
             verification_final_fidelity=vr.final_fidelity,
+            section_node_ids=result.section_node_ids,
         )
 
     async def _convert_mjml_from_layout(
@@ -1083,6 +1088,7 @@ class DesignConverterService:
             cache_hit_rate=cache_hit_rate,
             quality_warnings=quality_warnings,
             match_confidences=match_confidences,
+            section_node_ids=tuple(m.section.node_id for m in match.matches),
         )
 
     @staticmethod
