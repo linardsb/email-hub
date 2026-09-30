@@ -7,6 +7,7 @@ import re
 import httpx
 
 from app.connectors.http_resilience import resilient_request
+from app.connectors.tolgee.exceptions import TolgeeInvalidProjectIdError
 from app.connectors.tolgee.schemas import (
     BCP47_PATTERN,
     PushResult,
@@ -68,11 +69,14 @@ class TolgeeClient:
         self, project_id: int, language: str, namespace: str | None = None
     ) -> dict[str, str]:
         """Fetch all translations for a language. Returns {key: translated_text}."""
-        # `language` is a URL path segment; re-check here so every caller is covered.
+        # Both are URL path segments; re-check here so every caller is covered.
         if not re.fullmatch(BCP47_PATTERN, language):
             msg = f"Invalid BCP-47 locale: {language!r}"
             raise ValueError(msg)
-        url = f"{self._base_url}/v2/projects/{project_id}/translations/{language}"
+        pid = str(project_id)
+        if not pid.isdigit():
+            raise TolgeeInvalidProjectIdError(f"Invalid Tolgee project id: {project_id!r}")
+        url = f"{self._base_url}/v2/projects/{pid}/translations/{language}"
         params: dict[str, str] = {}
         if namespace:
             params["ns"] = namespace
