@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
@@ -20,6 +21,7 @@ from app.connectors.exceptions import (
     ESPConnectionNotFoundError,
     ESPSyncFailedError,
     InvalidESPCredentialsError,
+    InvalidRemoteTemplateIdError,
 )
 from app.connectors.hubspot.sync_provider import HubSpotSyncProvider
 from app.connectors.iterable.sync_provider import IterableSyncProvider
@@ -48,6 +50,10 @@ from app.templates.schemas import TemplateCreate
 from app.templates.service import TemplateService
 
 logger = get_logger(__name__)
+
+# A remote template ID becomes a provider URL path segment. Letters, digits and `@ _ . : -`
+# cover every ESP's ID shape; a leading `.` would allow `..` traversal.
+_REMOTE_TEMPLATE_ID_RE = re.compile(r"[A-Za-z0-9@][A-Za-z0-9@_.:-]{0,255}")
 
 PROVIDER_REGISTRY: dict[str, type[ESPSyncProvider]] = {
     "braze": BrazeSyncProvider,
@@ -254,6 +260,8 @@ class ConnectorSyncService:
         self, connection_id: int, template_id: str, user: User
     ) -> ESPTemplate:
         """Get a single template from the remote ESP."""
+        if not _REMOTE_TEMPLATE_ID_RE.fullmatch(template_id):
+            raise InvalidRemoteTemplateIdError(f"Invalid remote template id: {template_id!r}")
         conn, credentials = await self._get_connection_with_bola(connection_id, user)
         provider = self._get_provider(conn.esp_type)
 
@@ -269,6 +277,10 @@ class ConnectorSyncService:
 
         Returns the local template ID.
         """
+        if not _REMOTE_TEMPLATE_ID_RE.fullmatch(remote_template_id):
+            raise InvalidRemoteTemplateIdError(
+                f"Invalid remote template id: {remote_template_id!r}"
+            )
         logger.info(
             "esp_sync.import_started",
             connection_id=connection_id,
