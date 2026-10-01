@@ -127,11 +127,23 @@ def format_email_html(html: str, indent_size: int = 2) -> str:
     inline_parts: list[str] | None = None
     inline_depth = 0
     inline_level = 0  # indent level when inline accumulation started
+    inline_glued = False  # inline leaf abuts the previous text with no whitespace
+
+    # Text and inline leaves that touch with no whitespace between them in the
+    # source stay on one line: a line break there renders as a space ("here ."
+    # instead of "here.").
+    prev_flow = False  # last emitted line ends with text or an inline leaf
+    prev_raw = ""
 
     for token in tokens:
         stripped = token.strip()
         if not stripped:
+            if token:
+                prev_raw = token
             continue
+        touches = prev_flow and not prev_raw[-1:].isspace() and not token[:1].isspace()
+        prev_raw = token
+        prev_flow = False
 
         # ── Style block handling ──────────────────────────────────────
         if in_style:
@@ -156,9 +168,13 @@ def format_email_html(html: str, indent_size: int = 2) -> str:
                     if inline_depth <= 0:
                         inline_parts.append(stripped)
                         combined = "".join(inline_parts)
-                        lines.append(f"{_pad(inline_level, indent_size)}{combined}")
+                        if inline_glued:
+                            lines[-1] += combined
+                        else:
+                            lines.append(f"{_pad(inline_level, indent_size)}{combined}")
                         inline_parts = None
                         inline_depth = 0
+                        prev_flow = True
                         continue
                 inline_parts.append(stripped)
             elif _is_open_tag(stripped):
@@ -229,6 +245,7 @@ def format_email_html(html: str, indent_size: int = 2) -> str:
                     inline_parts = [stripped]
                     inline_depth = 1
                     inline_level = level
+                    inline_glued = touches
                     continue
 
                 # Block element: emit + indent children.
@@ -242,7 +259,11 @@ def format_email_html(html: str, indent_size: int = 2) -> str:
             continue
 
         # ── Plain text ────────────────────────────────────────────────
-        lines.append(f"{_pad(level, indent_size)}{stripped}")
+        if touches:
+            lines[-1] += stripped
+        else:
+            lines.append(f"{_pad(level, indent_size)}{stripped}")
+        prev_flow = True
 
     # Flush any remaining inline parts (unclosed inline leaf — defensive).
     if inline_parts:

@@ -808,7 +808,13 @@ def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
 
     decls.append("mso-line-height-rule:exactly")
     style = ";".join(decls) + ";"
-    return f'<tr><td style="{style}">{_multiline_to_br(text.content)}</td></tr>'
+    if any(r.link_url for r in text.style_runs):
+        inner = _render_text_runs(
+            text, link_fallback=_safe_color(text.text_color), collapse_breaks=False
+        )
+    else:
+        inner = _multiline_to_br(text.content)
+    return f'<tr><td style="{style}">{inner}</td></tr>'
 
 
 def _cta_label_typography(btn: ButtonElement) -> str:
@@ -2193,7 +2199,9 @@ _FOOTER_MULTI_BR_RE = re.compile(r"(?:<br />){2,}")
 _BR = "<br />"
 
 
-def _render_text_runs(text: TextBlock) -> str:
+def _render_text_runs(
+    text: TextBlock, *, link_fallback: str = "#0066cc", collapse_breaks: bool = True
+) -> str:
     """Render a footer TEXT node, emitting ``<a>`` links from its style runs.
 
     Walks :attr:`TextBlock.style_runs` in ``start`` order, slicing
@@ -2211,7 +2219,7 @@ def _render_text_runs(text: TextBlock) -> str:
         return _FOOTER_MULTI_BR_RE.sub(_BR, _multiline_to_br(content))
 
     n = len(content)
-    default_color = _safe_color(text.text_color, "#0066cc")
+    default_color = _safe_color(text.text_color, link_fallback)
     parts: list[str] = []
     cursor = 0
     for run in sorted(runs, key=lambda r: r.start):
@@ -2245,7 +2253,8 @@ def _render_text_runs(text: TextBlock) -> str:
         cursor = end
     if cursor < n:
         parts.append(_multiline_to_br(content[cursor:]))
-    return _FOOTER_MULTI_BR_RE.sub(_BR, "".join(parts))
+    joined = "".join(parts)
+    return _FOOTER_MULTI_BR_RE.sub(_BR, joined) if collapse_breaks else joined
 
 
 def _footer_editorial_row(text: TextBlock, pad_bottom: int) -> str:

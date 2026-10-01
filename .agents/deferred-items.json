@@ -1292,6 +1292,23 @@
       ],
       "symptom_if_broken": "With the tree bridge enabled, a social section that carries design text renders a stray 'Follow us' label row above the icons in addition to the design text (c9 today).",
       "closes_when": "The tree schema can express an empty/collapsed slot and the tree path collapses the social_label row, so c9 on the tree path shows no 'Follow us'."
+    },
+    {
+      "id": "ce-2-tree-path-drops-footer-text",
+      "phase": "ce-2",
+      "title": "Tree-bridge output for Lego (case 7) carries no footer text, so no unsubscribe phrase to link",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-10-01",
+      "introduced_commit": "pending",
+      "summary": "With DESIGN_SYNC__TREE_BRIDGE_ENABLED=true and output_format='tree', case 7 (Lego) produces tree HTML with no footer text at all (observed on the CE-2 spike, E7). CE-2's link_unsubscribe_text pass runs on tree output but has no phrase to link there. Pre-existing tree-path loss; the tree path is off by default.",
+      "code_refs": [
+        "app/design_sync/tree_bridge.py:170 (_fill_to_slot_value)",
+        "app/design_sync/converter_service.py (tree branch, link_unsubscribe_text after `if not tree_html: return None`)"
+      ],
+      "symptom_if_broken": "Tree-path conversion of a design with an unsubscribe footer ships without footer text or an unsubscribe link.",
+      "closes_when": "Case 7 tree-path output (tree bridge on, output_format='tree') contains the design footer text, and therefore a {{unsubscribeUrl}} link.",
+      "available_data": "data/debug/7/structure.json"
     }
   ],
   "tooling_followups": [

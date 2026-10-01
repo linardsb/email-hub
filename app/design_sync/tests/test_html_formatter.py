@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import re
 from html.parser import HTMLParser
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from app.design_sync.html_formatter import format_email_html
+from app.design_sync.tests.regression_runner import run_case_conversion
+from app.design_sync.unsubscribe_links import link_unsubscribe_text
+
+_DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -533,3 +541,64 @@ class TestFullEmailRoundTrip:
         document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
         result = DesignConverterService().convert_document(document)
         assert format_email_html(result.html) == result.html
+
+
+# ---------------------------------------------------------------------------
+# Touching inline content stays on one line (CE-2 #420, Task 8)
+# ---------------------------------------------------------------------------
+
+
+def _expected_cell(case: str, marker: str) -> str:
+    """Re-join the formatted ``<td>…</td>`` around *marker* from a case snapshot.
+
+    Each line of ``expected.html`` is one formatter token with its surrounding
+    whitespace stripped, so joining the stripped lines with ``""`` rebuilds the
+    cell as unformatted source in which every token touches its neighbour.
+    """
+    lines = (_DEBUG_DIR / case / "expected.html").read_text().splitlines()
+    idx = next(i for i, line in enumerate(lines) if marker in line)
+    start = next(i for i in range(idx, -1, -1) if lines[i].lstrip().startswith("<td"))
+    end = next(i for i in range(idx, len(lines)) if lines[i].strip() == "</td>")
+    return "".join(line.strip() for line in lines[start : end + 1])
+
+
+def _no_format(html: str, indent_size: int = 2) -> str:
+    return html
+
+
+class TestInlineGlue:
+    def test_link_followed_by_punctuation_stays_on_one_line(self) -> None:
+        """Lego footer: ``…</a>.`` must not render as "link ." (case 7)."""
+        cell = _expected_cell("7", ">email@brand.emaillove.com</a>")
+        assert "</a>.<br />" in cell
+        out = format_email_html(cell)
+        assert _find_line(out, ">email@brand.emaillove.com</a>").endswith("</a>.")
+        assert "." not in [line.strip() for line in out.splitlines()]
+
+    def test_whitespace_before_anchor_keeps_the_split(self) -> None:
+        """Mammut footer (case 10): the text before the linked "Unsubscribe" ends
+        in whitespace, so the anchor keeps its own line, as today.
+
+        The snapshot's formatted lines drop that whitespace, so this cell comes
+        from the converter's real output with the formatter switched off. The
+        anchor is the real unsubscribe pass's (idempotent if already there).
+        """
+        with patch("app.design_sync.converter_service.format_email_html", _no_format):
+            result = run_case_conversion(_DEBUG_DIR / "10")
+        if result is None:
+            pytest.skip("case 10: structure.json/tokens.json not present")
+        found = re.search(r"<td\b[^>]*>Privacy Policy.*?</td>", result.html, re.DOTALL)
+        assert found is not None
+        cell = link_unsubscribe_text(found.group(0))
+        assert "\xa0<a " in cell
+        out = format_email_html(cell)
+        assert "<a " not in _find_line(out, "Privacy Policy")
+        assert _find_line(out, "Unsubscribe").strip().startswith('<a href="{{unsubscribeUrl}}"')
+
+    def test_br_resets_the_glue(self) -> None:
+        """Text right after ``<br />`` starts its own line even when touching."""
+        cell = _expected_cell("7", ">email@brand.emaillove.com</a>")
+        assert ".<br />LEGO" in cell
+        lines = [line.strip() for line in format_email_html(cell).splitlines()]
+        idx = lines.index("LEGO Aastvej 1, Billund, 7190, Denmark")
+        assert lines[idx - 1] == "<br />"

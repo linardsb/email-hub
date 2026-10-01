@@ -43,6 +43,7 @@ from app.design_sync.section_cache import (
 )
 from app.design_sync.token_transforms import convert_colors_to_palette, convert_typography
 from app.design_sync.tuning import BAND_GROUPING_ABSORB_SPACERS
+from app.design_sync.unsubscribe_links import link_unsubscribe_text
 
 if TYPE_CHECKING:
     from app.design_sync.component_matcher import ComponentMatch
@@ -546,7 +547,7 @@ class DesignConverterService:
                     sections=section_count,
                 )
                 return ConversionResult(
-                    html=cached.html,
+                    html=link_unsubscribe_text(cached.html),
                     sections_count=section_count,
                     warnings=warnings,
                     layout=layout,
@@ -576,7 +577,7 @@ class DesignConverterService:
                 + "; ".join(error_msgs[:3])
             )
 
-        compiled_html = inject_section_markers(compile_result.html, layout)
+        compiled_html = link_unsubscribe_text(inject_section_markers(compile_result.html, layout))
 
         # Count non-preheader sections for sections_count
         section_count = sum(
@@ -774,6 +775,7 @@ class DesignConverterService:
 
         if not tree_html:
             return None
+        tree_html = link_unsubscribe_text(tree_html)
 
         match_confidences = {m.section_idx: m.confidence for m in match.matches}
         input_button_count = sum(len(s.buttons) for s in layout.sections)
@@ -1039,7 +1041,7 @@ class DesignConverterService:
             container_width=container_width,
             sections=sections_html,
         )
-        result_html = format_email_html(result_html)
+        result_html = link_unsubscribe_text(format_email_html(result_html))
 
         total = render.hit_count + render.miss_count
         cache_hit_rate: float | None = None

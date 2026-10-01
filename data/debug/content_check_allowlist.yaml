@@ -1,0 +1,54 @@
+# CE-2 content checks: known failures, each owned by the ticket that fixes it.
+# Re-derived from `python -m app.design_sync.tests.content_checks --empty-allowlist`.
+# An entry whose check now passes fails the test: delete it in the fixing PR.
+entries:
+  - case: "5"
+    check: font_generic
+    owner: "#425"
+    detail: "Courier New|Helvetica"
+    note: "CE-7: non-generic font fallback"
+  - case: "5"
+    check: default_blue
+    owner: "#438"
+    detail: "count=4"
+    note: "CE-20: default #0066cc link colour"
+  - case: "6"
+    check: font_generic
+    owner: "#425"
+    detail: "Roboto"
+    note: "CE-7: non-generic font fallback"
+  - case: "6"
+    check: default_blue
+    owner: "#438"
+    detail: "count=1"
+    note: "CE-20: default #0066cc link colour"
+  - case: "7"
+    check: font_generic
+    owner: "#425"
+    detail: "Noto Sans"
+    note: "CE-7: non-generic font fallback"
+  - case: "7"
+    check: default_blue
+    owner: "#438"
+    detail: "count=3"
+    note: "CE-20: default #0066cc link colour"
+  - case: "8"
+    check: font_generic
+    owner: "#425"
+    detail: "Arial"
+    note: "CE-7: non-generic font fallback"
+  - case: "9"
+    check: font_generic
+    owner: "#425"
+    detail: "Arial"
+    note: "CE-7: non-generic font fallback"
+  - case: "9"
+    check: cta_count
+    owner: "#428"
+    detail: "output=0 design=2"
+    note: "CE-10: slate CTAs WATCH THE VIDEO / SHOP NOW lost"
+  - case: "10"
+    check: font_generic
+    owner: "#425"
+    detail: "Geist Mono|Helvetica"
+    note: "CE-7: non-generic font fallback"
