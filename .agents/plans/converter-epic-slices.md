@@ -6,9 +6,9 @@ Base: origin/main `da8dbd86` (observed: `git fetch` 2026-09-29, origin/main == `
 Line refs below were re-verified at `da8dbd86` (observed, read-only scout pass 2026-09-29). They replace the brief's refs where the two differ.
 Re-check 2026-09-30 (observed: `git fetch`, origin/main == `31598a90`): the eight new commits touch none of the cited converter, scorer, CI or template paths (`git diff --stat da8dbd86 origin/main`), so the refs stand.
 
-**Answers recorded 2026-09-30:** Q1 larger O3 sample (CE-15), Q2 keep CE-16, Q3 pull CE-17 forward, Q6 three or more held-out files (CE-5), Q7 CE-19 spike on maap plus one held-out design. Q4 (Figma token), Q5 (Outlook source) and D1 stay open.
+**Answers recorded 2026-09-30:** Q1 larger O3 sample (CE-15), Q2 keep CE-16, Q3 pull CE-17 forward, Q6 three or more held-out files (CE-5), Q7 CE-19 spike on maap plus one held-out design. Q4 (Figma token) and Q5 (Outlook source) stay open. D1 = yes (2026-09-30).
 
-**D1 (authorisation to build) is open.** Slicing and issue creation are planning work; starting CE-1 needs D1 = yes.
+**D1 (authorisation to build) = yes** (user, 2026-09-30, when CE-1 started). CE-1 (#419) merged 2026-10-01 as #446.
 
 ## Epic summary
 
