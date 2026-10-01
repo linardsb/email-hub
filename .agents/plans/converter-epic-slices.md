@@ -104,7 +104,7 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 #### CE-4: Outlook render source decision and one render per design (T7 task 4, part of A6) — needs input
 
 - **Closes:** blind spot: no real Outlook or inbox render exists in the repo; all Outlook findings (R10) are inferred from markup.
-- **Scope:** record the decision (Litmus Instant API vs manual) in `docs/outlook-render-source.md`; produce one classic-Outlook render per design from current main. Where they are stored (repo, downscaled, or an external path) is decided in the ticket against repo size.
+- **Scope:** first inventory the existing render code in `app/rendering/` (`litmus/`, `eoa/`, `local/` emulators, `gate.py`, `visual_diff.py`; observed 2026-10-01, wiring to the converter not checked) and reuse it if it works; then record the decision (Litmus Instant API vs manual) in `docs/outlook-render-source.md`; produce one classic-Outlook render per design from current main. Where they are stored (repo, downscaled, or an external path) is decided in the ticket against repo size.
 - **Done check:** decision doc merged; one render per design stored or linked; report lists what each render shows about buttons (baseline for CE-10).
 - **Wrong if (derived):** the chosen source cannot render the classic Outlook engine (Word renderer), only new Outlook.
 - **Files:** docs + a small script if API. ~100–300 lines.
@@ -193,7 +193,7 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 - **Done check:** RED tests per role target; CE-12's census re-run shows the plumbing no-ops gone for the 15 templates; A3 full corpus; side-by-sides for the cases with the most no-ops.
 - **Wrong if (brief, P1a):** as CE-12. Carried: a classifier can address at most 3–4 of the 11 style failures (brief, derived 27–36%), so this ticket carries the other 7.
 - **Files:** 15 templates, `component_renderer.py`, `component_matcher.py` (`_build_token_overrides` `:2935`), codemod script, tests. ~1000–1500 lines. Split by template group if review gets too large.
-- **Depends on:** CE-12, CE-7, CE-11 (button templates).
+- **Depends on:** CE-12, CE-7, CE-11 (button templates), CE-19 (A2: runs only if the spike recommends staying on templates; otherwise re-scoped or dropped).
 
 #### CE-14: Per-character style runs in body text (R8, P1a remainder)
 
@@ -236,6 +236,18 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 - **Files:** templates (overlap with CE-13's 15), `component_renderer.py`, tests. ~300–600 lines.
 - **Depends on:** CE-6, CE-13 (same template files; land after the codemod).
 
+#### CE-21: Jev section-boundary shadow question (o5) — added 2026-10-01 (A1)
+
+- **Closes:** no R-cause directly. Tests whether a model should make the boundary call where geometry is ambiguous. Today boundaries are pure heuristics (`_get_section_candidates` `layout_analyzer.py:661`, `_expand_container_wrappers` `:681`, semantic peel `:717`); no model touches boundaries, and none of the O1–O3 questions ask about them (observed, scout pass 2026-10-01).
+- **Scope:**
+  1. Pre-registration commit before any label is read: the #413 rule, question design, label source, label-file hash.
+  2. Add `o5_boundary` to `app/design_sync/jev_shadow/questions.py`, `shadow.py`, `scripts/jev_shadow_report.py`: for each section candidate with two or more child groups, "one section or more than one?"; for each adjacent candidate pair, "same section?". Candidates described as text (child types, text excerpts, geometry), not bare node ids.
+  3. Labels from the hand builds' section boundaries; compare Jev with the heuristic's split.
+- **Done check:** report `docs/jev-shadow-report-o5.md` with pass/fail against the pre-registered rule; output byte-identical (shadow only).
+- **Wrong if (derived):** Jev does not split the known under-count cases (mammut renders 12 sections against a target of 18, ledger `phase-53-d3-mammut-below-candidate-undercount`), or it breaks on held-out designs (CE-5).
+- **Files:** `jev_shadow/*`, `scripts/jev_shadow_report.py`, labels, report. ~500–900 lines. Same files as CE-15: run in parallel, rebase in merge order.
+- **Depends on:** none.
+
 ### Wave 4: vision fallback (sequence step 5)
 
 #### CE-18: VLM fallback triggered by Jev-heuristic disagreement, shadow first (P5, A5)
@@ -253,11 +265,11 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 
 - **Closes:** no R-cause. Decides T8 fix-sprint vs primitives rewrite.
 - **Scope:** a node-tree emitter producing `mj-wrapper/section/column/text/button/image/spacer` for maap plus one held-out CE-5 design (Q7; the brief's version is maap only), mapping fill, padding, radius, font fields and style runs to MJML attributes, behind `output_format="mjml"` (`convert_document_mjml`, `converter_service.py:408`). Throwaway branch unless it passes.
-- **Kill tests:** nested surfaces needed (card on band, illegal in MJML); output over Gmail's 102KB clip (maap measured, mammut extrapolated); Outlook buttons lose radius or stroke (CE-4 source).
+- **Kill tests:** nested surfaces needed (card on band, illegal in MJML); output over Gmail's 102KB clip (maap measured, mammut extrapolated); Outlook buttons lose radius or stroke (CE-4 source). MJML 4.18's `mj-button` emits no VML (observed 2026-10-01: no `roundrect` in any `mjml-*` package in the sidecar), so the spike wraps buttons with CE-11's VML builder; without it kill test 3 fails by construction.
 - **Done check:** report `docs/o1-spike.md`: CE-1 per-section scores vs current converter on each spike design, how much of the emitter needed design-specific code, the three kill tests with results, and a recommendation for CE-20.
 - **Wrong if (brief, P1b):** the maap spike needs nested surfaces, mammut exceeds 102KB, or Outlook buttons lose radius and stroke.
 - **Overlap:** `.agents/plans/universal-figma-converter.md` (status planned) and `.agents/plans/tree-compiler.md` cover similar ground; read both before planning this ticket.
-- **Depends on:** CE-1, CE-6, CE-13, CE-4, CE-5 (held-out spike design, Q7).
+- **Depends on:** CE-1, CE-4, CE-5 (held-out spike design, Q7), CE-6, CE-11 (VML builder). Moved ahead of CE-13 on 2026-10-01 (A2): the role-hook work waits for the spike's verdict, so it is not built on templates the spike may replace.
 
 #### CE-20: T8 residual (placeholder, scoped after CE-19)
 
@@ -282,27 +294,29 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 | CE-10 button icon (T5) | CE-1 (reframe half: CE-3) | W2 | no |
 | CE-11 VML (T6) | CE-1 (Outlook check: CE-4) | W2 | no |
 | CE-12 no-op census | CE-1 | W2 | no |
-| CE-13 role hooks | CE-12, CE-7, CE-11 | W3 | no |
-| CE-14 style runs | CE-13 | W3 | no |
+| CE-13 role hooks | CE-12, CE-7, CE-11, CE-19 | W4 | no |
+| CE-14 style runs | CE-13 | W5 | no |
 | CE-15 Jev o4 + O3 | none | W3 (parallel with CE-13) | no (Q1: n ≥ 30) |
 | CE-16 widths + gutters | CE-6 | W3 | no |
-| CE-17 template width | CE-6, CE-13 | W3 | no |
+| CE-17 template width | CE-6, CE-13 | W5 | no |
 | CE-18 VLM shadow | CE-1 (transfer: CE-5) | W4 | no |
-| CE-19 O1 spike | CE-1, CE-6, CE-13, CE-4, CE-5 | W5 | no (Q7: maap + one held-out) |
-| CE-20 T8 residual | CE-19 (CE-15) | W5 | no |
+| CE-19 O1 spike | CE-1, CE-4, CE-5, CE-6, CE-11 | W3 | no (Q7: maap + one held-out) |
+| CE-20 T8 residual | CE-19 (CE-15) | W4 | no |
+| CE-21 Jev boundary o5 | none | W1 | no |
 
 **File-overlap notes for parallel worktrees:** CE-8, CE-9 and CE-11 all touch `component_renderer.py`/`component_matcher.py` in different functions; run in parallel worktrees but rebase in merge order. CE-6, CE-10 and CE-16 all touch `layout_analyzer.py`. CE-11 → CE-13 → CE-17 share templates, so they run in sequence.
 
 ## Suggested execution order
 
+Revised 2026-10-01 (A2: spike before role hooks; A1: CE-21 added).
+
 | Wave | Tickets | Notes |
 |---|---|---|
-| 1 | CE-1, CE-2, CE-4 in parallel; CE-3 as soon as CE-1 merges and the token arrives | Plan each just in time |
-| 2 | CE-6, CE-7, CE-8, CE-9, CE-10, CE-11, CE-12 | Start after CE-3 if the token arrives quickly, so baselines are stable |
-| 3 | CE-13, CE-15 in parallel; then CE-14, CE-16, CE-17 | CE-15 pre-registers O3 at n ≥ 30 (Q1) |
-| 4 | CE-18 | |
-| 5 | CE-19, then CE-20 scoped | |
-| 1–2 | CE-5 as soon as the files arrive | Every later fix gets a held-out check |
+| 1 | CE-1, CE-2, CE-4, CE-15, CE-21 in parallel | CE-15 and CE-21 share `jev_shadow/*`: rebase in merge order |
+| 2 | CE-3, CE-5, CE-6, CE-7, CE-8, CE-9, CE-10, CE-11, CE-12, CE-18 | CE-3 and CE-5 land early (stable baseline, held-out check). Same-file: CE-6/CE-10 (`layout_analyzer.py`); CE-8/CE-9/CE-11 (renderer/matcher) |
+| 3 | CE-19 spike, CE-16 | CE-19 needs CE-4, CE-5, CE-6, CE-11 |
+| 4 | CE-13 (only if CE-19 says stay on templates), CE-20 scoped | CE-20 also needs CE-15 |
+| 5 | CE-14, CE-17 | follow CE-13 |
 
 ## Deferred-items ledger touching these tickets
 
@@ -318,6 +332,7 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 | `phase-53g-t1-social-non-icon-images-as-icons` | CE-9 | avoid unless the icon-column route fixes it too |
 | `phase-53g-t1-tree-path-social-label-default` | CE-9 | avoid; tree path is non-production (flag off) |
 | `phase-53g-g4-tree-html-slot-row-shape` | CE-19 | carry forward; relevant only if the spike reuses the tree path |
+| `phase-53-d3-mammut-below-candidate-undercount` | CE-21 | evidence for the o5 question; close only if a later ticket wires a boundary fix |
 
 ## T-draft absorption
 
@@ -350,14 +365,15 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 - [ ] CE-10 — Button icon counted as a content image (depends on CE-1)
 - [ ] CE-11 — VML on every button path (depends on CE-1)
 - [ ] CE-12 — Style override no-op census and runtime top-15 (depends on CE-1)
-- [ ] CE-13 — data-role style hooks on the top-15 templates (depends on CE-12, CE-7, CE-11)
+- [ ] CE-13 — data-role style hooks on the top-15 templates (depends on CE-12, CE-7, CE-11, CE-19)
 - [ ] CE-14 — Per-character style runs in body text (depends on CE-13)
 - [ ] CE-15 — Jev o4 style-role shadow test and pre-registered O3 re-run (depends on none · O3 n ≥ 30)
 - [ ] CE-16 — FIXED/FILL column widths and gutter columns (depends on CE-6)
 - [ ] CE-17 — Parameterise the 600px width in templates (depends on CE-6, CE-13)
 - [ ] CE-18 — VLM fallback on Jev-heuristic disagreement, shadow (depends on CE-1)
-- [ ] CE-19 — O1 spike on the MJML path (depends on CE-1, CE-6, CE-13, CE-4, CE-5)
+- [ ] CE-19 — O1 spike on the MJML path (depends on CE-1, CE-4, CE-5, CE-6, CE-11)
 - [ ] CE-20 — T8 residual, scoped after the spike (depends on CE-19, CE-15)
+- [ ] CE-21 — Jev section-boundary shadow question o5 (depends on none)
 
 ## GitHub issues (created 2026-09-30)
 
