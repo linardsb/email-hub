@@ -373,7 +373,7 @@ None open. Former risks and how each was closed:
 
 | Finding | Change | Supersedes |
 |---|---|---|
-| M1 | `UNSUBSCRIBE_RE`'s English opt-out excludes privacy opt-outs ("opt-out of sale/sharing/cookies/targeted ads…", "cookie opt-out"); they are not repointed, not wrapped, not counted | Task 6 regex `opt[\s-]?out` |
+| M1 | English opt-outs next to a privacy marker in the same footer segment (sell/sale/share, personal information, privacy choices, cookies, ad choices, advertising, tracking, profiling, analytics, third-party, GPC / preference signal…) are privacy controls: not repointed, not wrapped, not counted. "Opt out of … emails/newsletters" always counts. One helper, `find_unsubscribe` / `has_unsubscribe_phrase`, feeds repoint, has-link, wrap and the content checks | Task 6 regex use (`UNSUBSCRIBE_RE` stays the raw phrase set) |
 | L1 | `output_unsubscribe_links` counts only `{{…}}` hrefs | AC #1 "real href" |
 | L2 | `format_email_html` strips and glues ASCII whitespace only, so U+00A0 at token edges survives; snapshots 6, 7, 8 regenerated | Task 8 glue `isspace()`; Task 10.1 list for 6/7/8 |
 | L3 | VML twin never filled (label + href) → ledger `ce-2-cta-button-vml-twin-unfilled` | none |

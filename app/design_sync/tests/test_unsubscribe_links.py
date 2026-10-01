@@ -8,7 +8,7 @@ tree). These tests cover it three ways:
 - the real debug cases, converted with the pass switched off and then run
   through the real function (exact per-case behaviour, comment safety,
   nesting, idempotence);
-- a literal-string table for ``UNSUBSCRIBE_RE``.
+- a literal-string table for ``has_unsubscribe_phrase``.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from app.design_sync.protocol import (
     ExtractedTypography,
 )
 from app.design_sync.tests.regression_runner import run_case_conversion
-from app.design_sync.unsubscribe_links import UNSUBSCRIBE_RE, link_unsubscribe_text
+from app.design_sync.unsubscribe_links import has_unsubscribe_phrase, link_unsubscribe_text
 
 _REPO = Path(__file__).resolve().parents[3]
 _DEBUG_DIR = _REPO / "data" / "debug"
@@ -359,7 +359,7 @@ class TestRealCases:
         assert f'<a href="{_UNSUB_HREF}" style="color:inherit;text-decoration:underline;">' in out
 
 
-# ── UNSUBSCRIBE_RE literal table (plan E8) ──────────────────────────
+# ── Phrase literal table (plan E8; privacy rows: PR #450 review M1) ──
 
 _MATCHES = [
     "Unsubscribe",
@@ -369,6 +369,22 @@ _MATCHES = [
     "optout",
     "Opt out of these emails",
     "opt-out of marketing emails",
+    # "Opt out of … emails" is an unsubscribe even with a privacy word in it.
+    "Opt out of all emails",
+    "Opt out of future mailings",
+    "opt out of the newsletter",
+    "Opt-out of data emails",
+    "Opt out of sharing emails",
+    "Opt out of ads emails",
+    "opt out of tracking emails",
+    "Opt out of all promotional email",
+    "Opt out of personalised emails",
+    "Opt out of data and promotional emails",
+    "Opt out of the sale emails",
+    # A privacy link in a sibling footer segment does not disqualify the opt-out.
+    "Privacy Policy | Opt out",
+    "Cookies Policy | Opt out",
+    "Do Not Sell My Personal Information\nOpt out",
     "Hier abmelden",
     "Newsletter abbestellen",
     "Se désabonner",
@@ -401,17 +417,35 @@ _NON_MATCHES = [
     "Opt out of targeted advertising",
     "Cookie opt-out",
     "https://brand.com/opt-out-of-sale",
+    "Do Not Sell My Personal Information - Opt Out",
+    "Do not sell my info - opt out",
+    "Your Privacy Choices (opt out)",
+    "Opt-Out Preference Signal",
+    "Ad Choices opt out",
+    "GPC opt out",
+    "Manage cookie preferences opt out",
+    "Opt-out of cookies",
+    "Cookies opt out",
+    "Opt out of sale/share",
+    "Opt out of interest based ads",
+    "Opt out of analytics",
+    "Opt out of tracking",
+    "Opt out of third-party sharing",
+    "Opt out of profiling",
+    "Opt out of data collection",
+    "Opt out of cross-context behavioral advertising",
+    "Opt out of sharing my email address",
 ]
 
 
 @pytest.mark.parametrize("text", _MATCHES)
-def test_unsubscribe_re_matches(text: str) -> None:
-    assert UNSUBSCRIBE_RE.search(text) is not None
+def test_phrase_matches(text: str) -> None:
+    assert has_unsubscribe_phrase(text)
 
 
 @pytest.mark.parametrize("text", _NON_MATCHES)
-def test_unsubscribe_re_rejects(text: str) -> None:
-    assert UNSUBSCRIBE_RE.search(text) is None
+def test_phrase_rejects(text: str) -> None:
+    assert not has_unsubscribe_phrase(text)
 
 
 def test_privacy_opt_out_link_keeps_its_href() -> None:
@@ -427,6 +461,16 @@ def test_privacy_opt_out_does_not_block_wrapping() -> None:
     html = f"<td>{ccpa} | Cookie opt-out | Unsubscribe</td>"
     out = link_unsubscribe_text(html)
     assert ccpa in out
+    assert _unsub_anchors(out) == [
+        f'<a href="{_UNSUB_HREF}" style="color:inherit;text-decoration:underline;">Unsubscribe</a>'
+    ]
+
+
+def test_canonical_ccpa_text_is_not_wrapped() -> None:
+    """Review round 2: the standard CCPA wording as bare footer text gets no
+    unsubscribe anchor, while the real phrase in the next segment does."""
+    html = "<td>Do Not Sell My Personal Information - Opt Out | Unsubscribe</td>"
+    out = link_unsubscribe_text(html)
     assert _unsub_anchors(out) == [
         f'<a href="{_UNSUB_HREF}" style="color:inherit;text-decoration:underline;">Unsubscribe</a>'
     ]

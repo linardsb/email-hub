@@ -34,7 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.core.logging import setup_logging
 from app.design_sync.converter_service import ConversionResult
 from app.design_sync.tests.regression_runner import run_case_conversion
-from app.design_sync.unsubscribe_links import UNSUBSCRIBE_RE
+from app.design_sync.unsubscribe_links import has_unsubscribe_phrase
 
 DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
 ALLOWLIST_PATH = DEBUG_DIR / "content_check_allowlist.yaml"
@@ -96,7 +96,7 @@ def design_text(structure: dict[str, Any]) -> str:
 
 
 def design_has_unsubscribe(structure: dict[str, Any]) -> bool:
-    return UNSUBSCRIBE_RE.search(design_text(structure)) is not None
+    return has_unsubscribe_phrase(design_text(structure))
 
 
 def design_has_default_blue(structure: dict[str, Any]) -> bool:
@@ -170,7 +170,7 @@ def output_unsubscribe_links(html: str) -> int:
         href = a.get("href") or ""
         if not href.startswith("{{"):
             continue
-        if UNSUBSCRIBE_RE.search(href) or UNSUBSCRIBE_RE.search(a.text_content()):
+        if has_unsubscribe_phrase(href) or has_unsubscribe_phrase(a.text_content()):
             count += 1
     return count
 
