@@ -1300,7 +1300,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-10-01",
-      "introduced_commit": "pending",
+      "introduced_commit": "28c944ea",
       "summary": "With DESIGN_SYNC__TREE_BRIDGE_ENABLED=true and output_format='tree', case 7 (Lego) produces tree HTML with no footer text at all (observed on the CE-2 spike, E7). CE-2's link_unsubscribe_text pass runs on tree output but has no phrase to link there. Pre-existing tree-path loss; the tree path is off by default.",
       "code_refs": [
         "app/design_sync/tree_bridge.py:170 (_fill_to_slot_value)",
@@ -1317,7 +1317,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-10-01",
-      "introduced_commit": "pending",
+      "introduced_commit": "28c944ea",
       "summary": "PR #450 review L3: an 'Unsubscribe' cta-button repoints its non-MSO <a> to {{unsubscribeUrl}} but the VML button keeps https://example.com/cta. Root cause is wider and pre-existing: _fill_cta_slot rewrites only the <a data-slot> href and _fill_text_slot fills only the data-slot span, so the v:roundrect href and its <center> label keep the seed's 'https://example.com/cta' / 'Shop Now' for every filled cta-button (read-confirmed). Repointing the roundrect inside link_unsubscribe_text was declined: it would give Outlook a 'Shop Now' button that unsubscribes. No corpus case 5-10 emits a v:roundrect today.",
       "code_refs": [
         "app/design_sync/component_renderer.py:1359 (_fill_cta_slot)",
