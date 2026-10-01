@@ -9,18 +9,35 @@ and must drop malformed values exactly like ``_typography_overrides``.
 
 from __future__ import annotations
 
+import pytest
+
+from app.design_sync import component_matcher
 from app.design_sync.component_matcher import (
     _build_column_fill_html,
     _build_column_fills,
     _column_text_row,
     _cta_label_typography,
+    _multiline_to_br,
+    _render_text_runs,
+    _safe_color,
 )
+from app.design_sync.converter_service import DesignConverterService
+from app.design_sync.email_design_document import EmailDesignDocument
 from app.design_sync.figma.layout_analyzer import (
     ButtonElement,
     ColumnGroup,
     EmailSection,
     EmailSectionType,
     TextBlock,
+)
+from app.design_sync.protocol import (
+    DesignFileStructure,
+    DesignNode,
+    DesignNodeType,
+    ExtractedColor,
+    ExtractedTokens,
+    ExtractedTypography,
+    StyleRun,
 )
 
 
@@ -230,3 +247,161 @@ def test_build_column_fill_html_styles_cta_label() -> None:
     assert "font-size:18px" in html
     assert "font-weight:400" in html
     assert "font-size:14px;font-weight:bold" not in html  # the old hardcode is gone
+
+
+# ── Style-run links in column text (CE-2 #420, Task 7) ──────────
+
+# Two adjacent hard breaks (LF + U+2028, as Figma stores them): column text keeps
+# both, unlike the footer renderer, which collapses runs of breaks to one.
+_LINKED_BODY = "Read the full story\n\u2028on our blog"
+_LINK_URL = "https://example.com/blog"
+
+
+def _linked_text(**overrides: object) -> TextBlock:
+    start = _LINKED_BODY.index("blog")
+    run = StyleRun(start=start, end=len(_LINKED_BODY), underline=True, link_url=_LINK_URL)
+    return _styled_text(content=_LINKED_BODY, style_runs=(run,), **overrides)
+
+
+def test_column_row_renders_link_run_in_node_colour() -> None:
+    row = _column_text_row(_linked_text(), is_heading=False)
+    assert (
+        f'<a href="{_LINK_URL}" style="color: #112233; text-decoration: underline;">blog</a>' in row
+    )
+    assert row.count("<br />") == _multiline_to_br(_LINKED_BODY).count("<br />") == 2
+
+
+def test_column_row_link_without_text_colour_uses_column_fallback() -> None:
+    row = _column_text_row(_linked_text(text_color=None), is_heading=False)
+    assert f'style="color: {_safe_color(None)}; text-decoration: underline;">blog</a>' in row
+    assert "#0066cc" not in row
+
+
+def test_footer_text_runs_keep_their_defaults() -> None:
+    """Footer callers are untouched: #0066cc link fallback, adjacent breaks collapsed."""
+    out = _render_text_runs(_linked_text(text_color=None))
+    assert 'style="color: #0066cc; text-decoration: underline;">blog</a>' in out
+    assert out.count("<br />") == 1
+
+
+def _two_column_document() -> EmailDesignDocument:
+    """Hero + a two-column row whose first column text carries a link run.
+
+    Mirrors the node trees in test_convert_document.py / test_e2e_pipeline.py;
+    the hero keeps the row from being treated as a lone wrapper and exploded.
+    """
+    run = StyleRun(
+        start=_LINKED_BODY.index("blog"),
+        end=len(_LINKED_BODY),
+        underline=True,
+        link_url=_LINK_URL,
+    )
+
+    def column(idx: int, x: int, text: DesignNode) -> DesignNode:
+        return DesignNode(
+            id=f"col{idx}",
+            name=f"Column {idx}",
+            type=DesignNodeType.FRAME,
+            width=260,
+            height=200,
+            x=x,
+            y=0,
+            layout_mode="VERTICAL",
+            children=[
+                DesignNode(
+                    id=f"col{idx}_img",
+                    name="Image",
+                    type=DesignNodeType.IMAGE,
+                    width=260,
+                    height=120,
+                    x=x,
+                    y=0,
+                ),
+                text,
+            ],
+        )
+
+    linked = DesignNode(
+        id="col1_text",
+        name="Body",
+        type=DesignNodeType.TEXT,
+        text_content=_LINKED_BODY,
+        font_size=14.0,
+        text_color="#224466",
+        x=0,
+        y=130,
+        style_runs=(run,),
+    )
+    plain = DesignNode(
+        id="col2_text",
+        name="Body",
+        type=DesignNodeType.TEXT,
+        text_content="Second column copy",
+        font_size=14.0,
+        x=300,
+        y=130,
+    )
+    hero = DesignNode(
+        id="hero",
+        name="Hero Section",
+        type=DesignNodeType.FRAME,
+        width=600,
+        height=200,
+        children=[
+            DesignNode(
+                id="hero_heading",
+                name="Hero Title",
+                type=DesignNodeType.TEXT,
+                text_content="Welcome",
+                font_size=32.0,
+                font_weight=700,
+                y=0,
+            ),
+        ],
+    )
+    row = DesignNode(
+        id="content",
+        name="Two Column Content",
+        type=DesignNodeType.FRAME,
+        width=600,
+        height=300,
+        layout_mode="HORIZONTAL",
+        item_spacing=20,
+        padding_top=32,
+        padding_right=24,
+        padding_bottom=32,
+        padding_left=24,
+        children=[column(1, 0, linked), column(2, 300, plain)],
+    )
+    page = DesignNode(id="page1", name="Page", type=DesignNodeType.PAGE, children=[hero, row])
+    tokens = ExtractedTokens(
+        colors=[
+            ExtractedColor(name="Background", hex="#FFFFFF"),
+            ExtractedColor(name="Text Color", hex="#333333"),
+        ],
+        typography=[
+            ExtractedTypography(
+                name="Body", family="Arial", weight="400", size=16.0, line_height=24.0
+            ),
+        ],
+    )
+    return EmailDesignDocument.from_legacy(
+        DesignFileStructure(file_name="Test.fig", pages=[page]), tokens
+    )
+
+
+def test_convert_document_keeps_column_text_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[str] = []
+    real_row = component_matcher._column_text_row
+
+    def _spy(text: TextBlock, *, is_heading: bool) -> str:
+        seen.append(text.content)
+        return real_row(text, is_heading=is_heading)
+
+    monkeypatch.setattr(component_matcher, "_column_text_row", _spy)
+    html = DesignConverterService().convert_document(_two_column_document()).html
+    assert _LINKED_BODY in seen  # routed through _column_text_row
+    assert (
+        f'<a href="{_LINK_URL}" style="color: #224466; text-decoration: underline;">blog</a>'
+        in html
+    )

@@ -808,7 +808,13 @@ def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
 
     decls.append("mso-line-height-rule:exactly")
     style = ";".join(decls) + ";"
-    return f'<tr><td style="{style}">{_multiline_to_br(text.content)}</td></tr>'
+    if any(r.link_url for r in text.style_runs):
+        inner = _render_text_runs(
+            text, link_fallback=_safe_color(text.text_color), collapse_breaks=False
+        )
+    else:
+        inner = _multiline_to_br(text.content)
+    return f'<tr><td style="{style}">{inner}</td></tr>'
 
 
 def _cta_label_typography(btn: ButtonElement) -> str:
@@ -2193,15 +2199,18 @@ _FOOTER_MULTI_BR_RE = re.compile(r"(?:<br />){2,}")
 _BR = "<br />"
 
 
-def _render_text_runs(text: TextBlock) -> str:
-    """Render a footer TEXT node, emitting ``<a>`` links from its style runs.
+def _render_text_runs(
+    text: TextBlock, *, link_fallback: str = "#0066cc", collapse_breaks: bool = True
+) -> str:
+    """Render a footer or column TEXT node, emitting ``<a>`` links from its style runs.
 
     Walks :attr:`TextBlock.style_runs` in ``start`` order, slicing
     ``content[start:end]`` and wrapping runs that carry a ``link_url`` in an
     anchor styled with the run's colour + underline (falling back to the node
-    colour). Hard line breaks are converted to ``<br />`` via
-    :func:`_multiline_to_br`; a break landing at a link boundary is hoisted
-    outside the anchor and adjacent breaks are collapsed to one. Offsets index
+    colour, then to ``link_fallback``). Hard line breaks are converted to
+    ``<br />`` via :func:`_multiline_to_br`; a break landing at a link boundary
+    is hoisted outside the anchor. Adjacent breaks are collapsed to one when
+    ``collapse_breaks`` is set, and always for a node with no runs. Offsets index
     the raw characters while ``content`` is stripped, so indices are clamped and
     overlapping/backward runs are skipped defensively.
     """
@@ -2211,7 +2220,7 @@ def _render_text_runs(text: TextBlock) -> str:
         return _FOOTER_MULTI_BR_RE.sub(_BR, _multiline_to_br(content))
 
     n = len(content)
-    default_color = _safe_color(text.text_color, "#0066cc")
+    default_color = _safe_color(text.text_color, link_fallback)
     parts: list[str] = []
     cursor = 0
     for run in sorted(runs, key=lambda r: r.start):
@@ -2245,7 +2254,8 @@ def _render_text_runs(text: TextBlock) -> str:
         cursor = end
     if cursor < n:
         parts.append(_multiline_to_br(content[cursor:]))
-    return _FOOTER_MULTI_BR_RE.sub(_BR, "".join(parts))
+    joined = "".join(parts)
+    return _FOOTER_MULTI_BR_RE.sub(_BR, joined) if collapse_breaks else joined
 
 
 def _footer_editorial_row(text: TextBlock, pad_bottom: int) -> str:

@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import re
 from html.parser import HTMLParser
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from app.design_sync.html_formatter import format_email_html
+from app.design_sync.tests.regression_runner import run_case_conversion
+from app.design_sync.unsubscribe_links import link_unsubscribe_text
+
+_DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -533,3 +541,90 @@ class TestFullEmailRoundTrip:
         document = EmailDesignDocument.from_legacy(structure, ExtractedTokens())
         result = DesignConverterService().convert_document(document)
         assert format_email_html(result.html) == result.html
+
+
+# ---------------------------------------------------------------------------
+# Touching inline content stays on one line (CE-2 #420, Task 8)
+# ---------------------------------------------------------------------------
+
+
+def _expected_cell(case: str, marker: str) -> str:
+    """Re-join the formatted ``<td>…</td>`` around *marker* from a case snapshot.
+
+    Each line of ``expected.html`` is one formatter token with its surrounding
+    whitespace stripped, so joining the stripped lines with ``""`` rebuilds the
+    cell as unformatted source in which every token touches its neighbour.
+    """
+    lines = (_DEBUG_DIR / case / "expected.html").read_text().splitlines()
+    idx = next(i for i, line in enumerate(lines) if marker in line)
+    start = next(i for i in range(idx, -1, -1) if lines[i].lstrip().startswith("<td"))
+    end = next(i for i in range(idx, len(lines)) if lines[i].strip() == "</td>")
+    return "".join(line.strip(" \t\r\n\f\v") for line in lines[start : end + 1])
+
+
+def _no_format(html: str, indent_size: int = 2) -> str:
+    return html
+
+
+def _mammut_footer_cell() -> str:
+    """Mammut's footer cell (case 10) with its unsubscribe anchor, unformatted.
+
+    The cell comes from the converter's real output with the formatter
+    switched off, so it is the formatter's true input. The anchor is the real unsubscribe pass's (idempotent if
+    already there).
+    """
+    with patch("app.design_sync.converter_service.format_email_html", _no_format):
+        result = run_case_conversion(_DEBUG_DIR / "10")
+    if result is None:
+        pytest.skip("case 10: structure.json/tokens.json not present")
+    found = re.search(r"<td\b[^>]*>Privacy Policy.*?</td>", result.html, re.DOTALL)
+    assert found is not None
+    return link_unsubscribe_text(found.group(0))
+
+
+class TestInlineGlue:
+    def test_link_followed_by_punctuation_stays_on_one_line(self) -> None:
+        """Lego footer: ``…</a>.`` must not render as "link ." (case 7)."""
+        cell = _expected_cell("7", ">email@brand.emaillove.com</a>")
+        assert "</a>.<br />" in cell
+        out = format_email_html(cell)
+        assert _find_line(out, ">email@brand.emaillove.com</a>").endswith("</a>.")
+        assert "." not in [line.strip() for line in out.splitlines()]
+
+    def test_nbsp_before_anchor_is_kept_and_glued(self) -> None:
+        """Review L2, Mammut footer (case 10): U+00A0 is content, not source
+        whitespace, so the three before "Unsubscribe" survive and the anchor
+        stays on the text's line."""
+        cell = _mammut_footer_cell()
+        assert "\xa0<a " in cell
+        line = _find_line(format_email_html(cell), "Privacy Policy")
+        assert '\xa0\xa0\xa0<a href="{{unsubscribeUrl}}"' in line
+        assert line.endswith(">Unsubscribe</a>")
+
+    @pytest.mark.parametrize("case", ["5", "6", "7", "8", "9", "10"])
+    def test_snapshot_reformats_to_the_same_rendering(self, case: str) -> None:
+        """Review L2: re-formatting a committed snapshot changes nothing but
+        ASCII layout whitespace (a dropped U+00A0 fails). Case 8 is not a byte
+        fixpoint: the anchor the unsubscribe pass wraps after formatting sits
+        between ASCII spaces, which re-formatting turns into line breaks."""
+        snapshot = (_DEBUG_DIR / case / "expected.html").read_text()
+        ascii_ws = re.compile(r"[ \t\r\n\f\v]+")
+        assert ascii_ws.sub(" ", format_email_html(snapshot)) == ascii_ws.sub(" ", snapshot)
+
+    def test_anchor_touching_text_joins_its_line(self) -> None:
+        """The same Mammut cell with the whitespace before the anchor removed:
+        the anchor touches the text, so it joins the text's line."""
+        cell = re.sub(r"\s+(?=<a )", "", _mammut_footer_cell(), count=1)
+        at = cell.index("<a ")
+        assert not cell[at - 1].isspace()
+        line = _find_line(format_email_html(cell), "Privacy Policy")
+        assert '|<a href="{{unsubscribeUrl}}"' in line
+        assert line.endswith(">Unsubscribe</a>")
+
+    def test_br_resets_the_glue(self) -> None:
+        """Text right after ``<br />`` starts its own line even when touching."""
+        cell = _expected_cell("7", ">email@brand.emaillove.com</a>")
+        assert ".<br />LEGO" in cell
+        lines = [line.strip() for line in format_email_html(cell).splitlines()]
+        idx = lines.index("LEGO Aastvej 1, Billund, 7190, Denmark")
+        assert lines[idx - 1] == "<br />"
