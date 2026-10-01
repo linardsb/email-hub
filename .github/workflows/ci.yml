@@ -21,7 +21,7 @@ permissions:
 jobs:
   backend:
     name: Backend (lint + types + security + test)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -54,6 +54,19 @@ jobs:
 
       - name: Test
         run: uv run pytest -v -m "not integration" --cov=app --cov-report=term --cov-fail-under=88
+
+      # CE-1 #419: per-section fidelity gate, rendered in the pinned Playwright image
+      # (tag follows uv.lock). docs/fidelity-gate.md.
+      - name: Fidelity gate (pinned Playwright image)
+        run: make fidelity-gate
+
+      - name: Upload fidelity gate scores
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fidelity-gate-scores
+          path: .tmpscratch/fidelity-gate/
+          if-no-files-found: ignore
 
       - name: Dependency vulnerability scan (pip-audit)
         run: uv run pip-audit --strict --ignore-vuln CVE-2026-3219 --ignore-vuln PYSEC-2026-196

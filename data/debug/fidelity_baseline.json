@@ -1,0 +1,850 @@
+{
+ "schema_version": 1,
+ "margin": 0.005,
+ "environment": {
+  "image": "mcr.microsoft.com/playwright/python:v1.63.0-noble",
+  "playwright": "1.63.0"
+ },
+ "stamps": [
+  {
+   "date": "2026-09-30",
+   "commit": "31598a90",
+   "reason": "CE-1 initial baseline",
+   "cases": [
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10"
+   ]
+  }
+ ],
+ "cases": {
+  "5": {
+   "design": "maap-kask",
+   "frame_width": 600,
+   "reference": "data/debug/5/reference_1x.png",
+   "sections": {
+    "2833:1624": {
+     "marker": "section_0",
+     "score": 0.9947,
+     "design_box": [
+      0,
+      0,
+      600,
+      800
+     ]
+    },
+    "2833:1629": {
+     "marker": "section_1",
+     "score": 0.9112,
+     "design_box": [
+      0,
+      800,
+      600,
+      302
+     ]
+    },
+    "2833:1643": {
+     "marker": "section_2",
+     "score": 0.6556,
+     "design_box": [
+      24,
+      1118,
+      272,
+      389
+     ]
+    },
+    "2833:1648": {
+     "marker": "section_3",
+     "score": 0.9993,
+     "design_box": [
+      296,
+      1118,
+      8,
+      32
+     ]
+    },
+    "2833:1650": {
+     "marker": "section_4",
+     "score": 0.8282,
+     "design_box": [
+      304,
+      1118,
+      272,
+      389
+     ]
+    },
+    "2833:1655": {
+     "marker": "section_5",
+     "score": 0.9923,
+     "design_box": [
+      0,
+      1523,
+      600,
+      71
+     ]
+    },
+    "2833:1660": {
+     "marker": "section_6",
+     "score": 0.8871,
+     "design_box": [
+      0,
+      1594,
+      600,
+      346
+     ]
+    },
+    "2833:1687": {
+     "marker": "section_7",
+     "score": 0.991,
+     "design_box": [
+      0,
+      1940,
+      600,
+      61
+     ]
+    },
+    "2833:1693": {
+     "marker": "section_8",
+     "score": 0.9875,
+     "design_box": [
+      24,
+      2025,
+      552,
+      14
+     ]
+    },
+    "2833:1697": {
+     "marker": "section_9",
+     "score": 0.7644,
+     "design_box": [
+      24,
+      2039,
+      552,
+      66
+     ]
+    },
+    "2833:1710": {
+     "marker": "section_10",
+     "score": 0.66,
+     "design_box": [
+      24,
+      2105,
+      552,
+      40
+     ]
+    },
+    "2833:1729": {
+     "marker": "section_11",
+     "score": 0.9969,
+     "design_box": [
+      0,
+      2185,
+      200,
+      141
+     ]
+    },
+    "2833:1732": {
+     "marker": "section_12",
+     "score": 0.9979,
+     "design_box": [
+      200,
+      2185,
+      200,
+      141
+     ]
+    },
+    "2833:1735": {
+     "marker": "section_13",
+     "score": 0.9972,
+     "design_box": [
+      400,
+      2185,
+      200,
+      141
+     ]
+    },
+    "2833:1738": {
+     "marker": "section_14",
+     "score": 0.9622,
+     "design_box": [
+      0,
+      2342,
+      600,
+      176
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {}
+  },
+  "6": {
+   "design": "starbucks-pumpkin-spice",
+   "frame_width": 640,
+   "reference": "data/debug/6/reference_1x.png",
+   "sections": {
+    "2833:1425": {
+     "marker": "section_0",
+     "score": 0.991,
+     "design_box": [
+      0,
+      0,
+      640,
+      540
+     ]
+    },
+    "2833:1430": {
+     "marker": "section_1",
+     "score": 0.9178,
+     "design_box": [
+      0,
+      540,
+      640,
+      425
+     ]
+    },
+    "2833:1445": {
+     "marker": "section_2",
+     "score": 0.566,
+     "design_box": [
+      306,
+      1015,
+      292,
+      244
+     ]
+    },
+    "2833:1442": {
+     "marker": "section_3",
+     "score": 0.8609,
+     "design_box": [
+      42,
+      1021,
+      264,
+      232
+     ]
+    },
+    "2833:1455": {
+     "marker": "section_4",
+     "score": 0.9827,
+     "design_box": [
+      7,
+      1337,
+      154,
+      64
+     ]
+    },
+    "2833:1460": {
+     "marker": "section_5",
+     "score": 0.974,
+     "design_box": [
+      161,
+      1337,
+      154,
+      64
+     ]
+    },
+    "2833:1465": {
+     "marker": "section_6",
+     "score": 0.9765,
+     "design_box": [
+      315,
+      1337,
+      154,
+      64
+     ]
+    },
+    "2833:1470": {
+     "marker": "section_7",
+     "score": 0.9629,
+     "design_box": [
+      469,
+      1337,
+      164,
+      64
+     ]
+    },
+    "2833:1475": {
+     "marker": "section_8",
+     "score": 0.9675,
+     "design_box": [
+      0,
+      1429,
+      640,
+      516
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {}
+  },
+  "7": {
+   "design": "lego-insiders-halloween",
+   "frame_width": 600,
+   "reference": "data/debug/7/reference_1x.png",
+   "sections": {
+    "2833:1870": {
+     "marker": "section_0",
+     "score": 0.9895,
+     "design_box": [
+      0,
+      0,
+      600,
+      30
+     ]
+    },
+    "2833:1875": {
+     "marker": "section_1",
+     "score": 0.9965,
+     "design_box": [
+      0,
+      30,
+      600,
+      467
+     ]
+    },
+    "2833:1882": {
+     "marker": "section_2",
+     "score": 0.9401,
+     "design_box": [
+      0,
+      497,
+      600,
+      206
+     ]
+    },
+    "2833:1892": {
+     "marker": "section_3",
+     "score": 0.9978,
+     "design_box": [
+      0,
+      703,
+      600,
+      40
+     ]
+    },
+    "2833:1898": {
+     "marker": "section_4",
+     "score": 0.9404,
+     "design_box": [
+      20,
+      763,
+      560,
+      89
+     ]
+    },
+    "2833:1904": {
+     "marker": "section_5",
+     "score": 0.8207,
+     "design_box": [
+      20,
+      852,
+      560,
+      307
+     ]
+    },
+    "2833:1924": {
+     "marker": "section_6",
+     "score": 0.8545,
+     "design_box": [
+      20,
+      1179,
+      560,
+      267
+     ]
+    },
+    "2833:1942": {
+     "marker": "section_7",
+     "score": 0.8611,
+     "design_box": [
+      20,
+      1486,
+      560,
+      61
+     ]
+    },
+    "2833:1946": {
+     "marker": "section_8",
+     "score": 0.892,
+     "design_box": [
+      20,
+      1547,
+      560,
+      228
+     ]
+    },
+    "2833:1969": {
+     "marker": "section_9",
+     "score": 0.8724,
+     "design_box": [
+      20,
+      1795,
+      560,
+      227
+     ]
+    },
+    "2833:1992": {
+     "marker": "section_10",
+     "score": 0.8969,
+     "design_box": [
+      20,
+      2042,
+      560,
+      227
+     ]
+    },
+    "2833:2015": {
+     "marker": "section_11",
+     "score": 0.9025,
+     "design_box": [
+      20,
+      2290,
+      560,
+      228
+     ]
+    },
+    "2833:2035": {
+     "marker": "section_12",
+     "score": 0.9996,
+     "design_box": [
+      0,
+      2538,
+      600,
+      55
+     ]
+    },
+    "2833:2041": {
+     "marker": "section_13",
+     "score": 0.9257,
+     "design_box": [
+      80,
+      2613,
+      440,
+      30
+     ]
+    },
+    "2833:2057": {
+     "marker": "section_14",
+     "score": 0.8532,
+     "design_box": [
+      80,
+      2663,
+      440,
+      369
+     ]
+    },
+    "2833:2067": {
+     "marker": "section_15",
+     "score": 0.9359,
+     "design_box": [
+      80,
+      3032,
+      440,
+      151
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {
+    "2833:1921": "spacer",
+    "2833:1966": "spacer",
+    "2833:1989": "spacer",
+    "2833:2012": "spacer",
+    "2833:2054": "spacer"
+   }
+  },
+  "8": {
+   "design": "performance-reimagined",
+   "frame_width": 600,
+   "reference": "data/debug/8/reference_1x.png",
+   "sections": {
+    "2833:2258": {
+     "marker": "section_0",
+     "score": 0.9572,
+     "design_box": [
+      0,
+      0,
+      600,
+      548
+     ]
+    },
+    "2833:2265": {
+     "marker": "section_1",
+     "score": 0.8984,
+     "design_box": [
+      0,
+      548,
+      600,
+      288
+     ]
+    },
+    "2833:2272": {
+     "marker": "section_2",
+     "score": 0.9927,
+     "design_box": [
+      0,
+      836,
+      600,
+      233
+     ]
+    },
+    "2833:2278": {
+     "marker": "section_3",
+     "score": 0.9225,
+     "design_box": [
+      48,
+      1101,
+      504,
+      96
+     ]
+    },
+    "2833:2289": {
+     "marker": "section_4",
+     "score": 0.8839,
+     "design_box": [
+      48,
+      1205,
+      504,
+      96
+     ]
+    },
+    "2833:2300": {
+     "marker": "section_5",
+     "score": 0.9757,
+     "design_box": [
+      0,
+      1333,
+      600,
+      608
+     ]
+    },
+    "2833:2305": {
+     "marker": "section_6",
+     "score": 0.9252,
+     "design_box": [
+      0,
+      1942,
+      600,
+      384
+     ]
+    },
+    "2833:2317": {
+     "marker": "section_7",
+     "score": 0.9822,
+     "design_box": [
+      0,
+      2326,
+      600,
+      608
+     ]
+    },
+    "2833:2322": {
+     "marker": "section_8",
+     "score": 0.9072,
+     "design_box": [
+      0,
+      2934,
+      600,
+      422
+     ]
+    },
+    "2833:2334": {
+     "marker": "section_9",
+     "score": 0.9715,
+     "design_box": [
+      0,
+      3356,
+      600,
+      94
+     ]
+    },
+    "2833:2348": {
+     "marker": "section_10",
+     "score": 0.913,
+     "design_box": [
+      0,
+      3450,
+      600,
+      406
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {}
+  },
+  "9": {
+   "design": "slate-newsletter",
+   "frame_width": 640,
+   "reference": "data/debug/9/reference_1x.png",
+   "sections": {
+    "2833:2074": {
+     "marker": "section_0",
+     "score": 0.8352,
+     "design_box": [
+      0,
+      0,
+      640,
+      110
+     ]
+    },
+    "2833:2079": {
+     "marker": "section_1",
+     "score": 0.9964,
+     "design_box": [
+      0,
+      110,
+      640,
+      427
+     ]
+    },
+    "2833:2085": {
+     "marker": "section_2",
+     "score": 0.9095,
+     "design_box": [
+      40,
+      577,
+      560,
+      71
+     ]
+    },
+    "2833:2089": {
+     "marker": "section_3",
+     "score": 0.9452,
+     "design_box": [
+      40,
+      648,
+      560,
+      90
+     ]
+    },
+    "2833:2109": {
+     "marker": "section_4",
+     "score": 0.3147,
+     "design_box": [
+      40,
+      758,
+      560,
+      90
+     ]
+    },
+    "2833:2117": {
+     "marker": "section_5",
+     "score": 0.3424,
+     "design_box": [
+      0,
+      872,
+      640,
+      248
+     ]
+    },
+    "2833:2127": {
+     "marker": "section_6",
+     "score": 0.9831,
+     "design_box": [
+      0,
+      1120,
+      640,
+      11
+     ]
+    },
+    "2833:2132": {
+     "marker": "section_7",
+     "score": 0.8763,
+     "design_box": [
+      0,
+      1131,
+      640,
+      634
+     ]
+    },
+    "2833:2144": {
+     "marker": "section_8",
+     "score": 0.9894,
+     "design_box": [
+      0,
+      1765,
+      640,
+      11
+     ]
+    },
+    "2833:2149": {
+     "marker": "section_9",
+     "score": 0.9445,
+     "design_box": [
+      0,
+      1776,
+      640,
+      345
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {
+    "2833:2106": "spacer"
+   }
+  },
+  "10": {
+   "design": "mammut-duvet-day",
+   "frame_width": 600,
+   "reference": "data/debug/10/reference_1x.png",
+   "sections": {
+    "2833:1136": {
+     "marker": "section_0",
+     "score": 0.9975,
+     "design_box": [
+      0,
+      0,
+      600,
+      600
+     ]
+    },
+    "2833:1141": {
+     "marker": "section_1",
+     "score": 0.9069,
+     "design_box": [
+      0,
+      600,
+      600,
+      406
+     ]
+    },
+    "2833:1154": {
+     "marker": "section_2",
+     "score": 0.9992,
+     "design_box": [
+      0,
+      1006,
+      600,
+      396
+     ]
+    },
+    "2833:1159": {
+     "marker": "section_3",
+     "score": 0.9478,
+     "design_box": [
+      0,
+      1402,
+      600,
+      330
+     ]
+    },
+    "2833:1168": {
+     "marker": "section_4",
+     "score": 0.7558,
+     "design_box": [
+      0,
+      1732,
+      600,
+      454
+     ]
+    },
+    "2833:1176": {
+     "marker": "section_5",
+     "score": 0.9125,
+     "design_box": [
+      32,
+      2218,
+      536,
+      418
+     ]
+    },
+    "2833:1197": {
+     "marker": "section_6",
+     "score": 0.8991,
+     "design_box": [
+      32,
+      2668,
+      536,
+      418
+     ]
+    },
+    "2833:1218": {
+     "marker": "section_7",
+     "score": 0.002,
+     "design_box": [
+      0,
+      3118,
+      600,
+      40
+     ]
+    },
+    "2833:1222": {
+     "marker": "section_8",
+     "score": 0.9964,
+     "design_box": [
+      0,
+      3158,
+      600,
+      400
+     ]
+    },
+    "2833:1227": {
+     "marker": "section_9",
+     "score": 0.9323,
+     "design_box": [
+      0,
+      3558,
+      600,
+      271
+     ]
+    },
+    "2833:1236": {
+     "marker": "section_10",
+     "score": 0.0027,
+     "design_box": [
+      0,
+      3829,
+      600,
+      40
+     ]
+    },
+    "2833:1241": {
+     "marker": "section_11",
+     "score": 0.955,
+     "design_box": [
+      32,
+      3899,
+      536,
+      37
+     ]
+    },
+    "2833:1252": {
+     "marker": "section_12",
+     "score": 0.9225,
+     "design_box": [
+      32,
+      3982,
+      536,
+      37
+     ]
+    },
+    "2833:1263": {
+     "marker": "section_13",
+     "score": 0.8759,
+     "design_box": [
+      32,
+      4065,
+      536,
+      37
+     ]
+    },
+    "2833:1270": {
+     "marker": "section_14",
+     "score": 0.0454,
+     "design_box": [
+      0,
+      4132,
+      600,
+      370
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {
+    "2833:1248": "divider",
+    "2833:1259": "divider"
+   }
+  }
+ }
+}

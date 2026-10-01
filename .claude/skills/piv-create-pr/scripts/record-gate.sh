@@ -166,6 +166,8 @@ with open(env["GATE_LOG"], encoding="utf-8", errors="replace") as fh:
     lines = [ansi.sub("", ln).rstrip("\r\n") for ln in fh]
 
 # 1. pytest summaries, each attributed to the last echoed `uv run pytest` line.
+#    `docker run` lines (the `fidelity-gate` target runs pytest inside the pinned
+#    image) also start a new command, so that run's summary is not taken as `test`'s.
 summary_re = re.compile(
     r"^(?:=+ )?((?:\d+ (?:passed|failed|skipped|deselected|xfailed|xpassed|errors?|warnings?)(?:, )?)+)"
     r" in [0-9.]+s.*?(?: =+)?$"
@@ -174,7 +176,7 @@ count_re = re.compile(r"(\d+) (passed|failed|skipped|deselected|xfailed|xpassed|
 last_cmd = ""
 summaries = []
 for ln in lines:
-    if ln.startswith("uv run pytest"):
+    if ln.startswith(("uv run pytest", "docker run ")):
         last_cmd = ln
         continue
     m = summary_re.match(ln.strip())

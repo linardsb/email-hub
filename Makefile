@@ -1,4 +1,4 @@
-.PHONY: bootstrap check-env check-env-drift ci ci-be ci-fe dev dev-be dev-fe dev-mock-esp dev-observe docker docker-down test test-integration test-fe lint types check check-fe db e2e install-hooks security-check sdk seed-knowledge ontology-sync ontology-sync-dry sync-ontology eval-verify eval-run eval-judge eval-labels eval-labeling-tool eval-analysis eval-blueprint eval-regression eval-check eval-calibrate eval-qa-calibrate eval-qa-coverage eval-dry-run eval-full eval-baseline eval-skill-test eval-golden eval-suggest cli-setup cli-list cli-search cli docker-logs test-properties e2e-ui sdk-local db-migrate db-revision db-squash eval-refresh seed-demo demo bench e2e-firefox e2e-webkit e2e-all-browsers e2e-smoke skill-versions skill-pin skill-unpin skill-rollback grafana lint-polling mutate help
+.PHONY: fidelity-gate fidelity-restamp bootstrap check-env check-env-drift ci ci-be ci-fe dev dev-be dev-fe dev-mock-esp dev-observe docker docker-down test test-integration test-fe lint types check check-fe db e2e install-hooks security-check sdk seed-knowledge ontology-sync ontology-sync-dry sync-ontology eval-verify eval-run eval-judge eval-labels eval-labeling-tool eval-analysis eval-blueprint eval-regression eval-check eval-calibrate eval-qa-calibrate eval-qa-coverage eval-dry-run eval-full eval-baseline eval-skill-test eval-golden eval-suggest cli-setup cli-list cli-search cli docker-logs test-properties e2e-ui sdk-local db-migrate db-revision db-squash eval-refresh seed-demo demo bench e2e-firefox e2e-webkit e2e-all-browsers e2e-smoke skill-versions skill-pin skill-unpin skill-rollback grafana lint-polling mutate help
 
 # === Local Development ===
 
@@ -163,6 +163,27 @@ snapshot-capture: ## Capture current converter output for a snapshot case (CASE=
 snapshot-visual: ## Visual fidelity metrics for snapshot cases (requires Playwright)
 	uv run pytest app/design_sync/tests/ -v -m visual_regression --tb=long || { [ $$? -eq 5 ] && echo "No visual regression tests found yet (pending 40.4)"; }
 
+# Per-section fidelity gate (CE-1 #419, docs/fidelity-gate.md). Check and re-stamp both run in the
+# pinned Playwright image so the baseline and CI see the same Chromium and fonts. The venv and uv
+# cache live under gitignored .tmpscratch/ so repeat runs skip the install; the host .venv is untouched.
+# The image tag follows the Playwright version locked in uv.lock: the image ships the Chromium build
+# that exact Playwright release drives, so a Playwright bump moves both together (and re-stamps if
+# rendering changed).
+FIDELITY_PLAYWRIGHT := $(shell awk '/^name = "playwright"$$/{getline; gsub(/[^0-9.]/, ""); print; exit}' uv.lock)
+FIDELITY_IMAGE := mcr.microsoft.com/playwright/python:v$(FIDELITY_PLAYWRIGHT)-noble
+FIDELITY_RUN = docker run --rm --ipc=host -v "$(CURDIR)":/work -w /work \
+	-e UV_PROJECT_ENVIRONMENT=/work/.tmpscratch/fidelity-venv -e UV_CACHE_DIR=/work/.tmpscratch/fidelity-uvcache \
+	-e FIDELITY_GATE_ENV=pinned -e FIDELITY_IMAGE=$(FIDELITY_IMAGE) -e FIDELITY_COMMIT=$$(git rev-parse --short HEAD) \
+	-e DESIGN_SYNC__SECTION_CACHE_ENABLED=false $(FIDELITY_IMAGE) bash -lc
+FIDELITY_SETUP = pip install -q uv==0.9.18 && uv sync --frozen -q
+
+fidelity-gate: ## Per-section fidelity gate in the pinned Playwright image
+	$(FIDELITY_RUN) "$(FIDELITY_SETUP) && uv run pytest -m fidelity_gate app/design_sync/tests/test_fidelity_gate.py -v -p no:cacheprovider"
+
+fidelity-restamp: ## Re-stamp the fidelity baseline (REASON="..." required; CASES="5 6", FROM=path optional)
+	@test -n "$(REASON)" || (echo 'REASON="..." is required'; exit 1)
+	$(FIDELITY_RUN) "$(FIDELITY_SETUP) && uv run python scripts/fidelity-gate.py restamp --reason \"$(REASON)\" $(if $(CASES),--cases $(CASES)) $(if $(FROM),--from $(FROM))"
+
 converter-regression: ## Converter quality regression check against baseline
 	python -m app.design_sync.converter_regression
 
@@ -179,7 +200,7 @@ converter-data-regression-report: ## Generate per-case regression reports
 
 check: lint types test check-fe security-check validate-overlays lint-numeric golden-conformance flag-audit check-env-drift ## Run all checks (backend + frontend + security)
 
-check-full: lint types test check-fe security-check migration-lint validate-overlays lint-numeric golden-conformance flag-audit check-env-drift ## Run all checks including migration lint
+check-full: lint types test fidelity-gate check-fe security-check migration-lint validate-overlays lint-numeric golden-conformance flag-audit check-env-drift ## Run all checks including migration lint
 
 ci: ci-be ci-fe ## Mirror CI exactly: backend (lint+types+tests+security) + frontend (lint+format+types+tests)
 
