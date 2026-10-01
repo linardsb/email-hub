@@ -1304,7 +1304,7 @@
       "summary": "With DESIGN_SYNC__TREE_BRIDGE_ENABLED=true and output_format='tree', case 7 (Lego) produces tree HTML with no footer text at all (observed on the CE-2 spike, E7). CE-2's link_unsubscribe_text pass runs on tree output but has no phrase to link there. Pre-existing tree-path loss; the tree path is off by default.",
       "code_refs": [
         "app/design_sync/tree_bridge.py:170 (_fill_to_slot_value)",
-        "app/design_sync/converter_service.py (tree branch, link_unsubscribe_text after `if not tree_html: return None`)"
+        "app/design_sync/converter_service.py:778 (tree branch, link_unsubscribe_text after `if not tree_html: return None`)"
       ],
       "symptom_if_broken": "Tree-path conversion of a design with an unsubscribe footer ships without footer text or an unsubscribe link.",
       "closes_when": "Case 7 tree-path output (tree bridge on, output_format='tree') contains the design footer text, and therefore a {{unsubscribeUrl}} link.",

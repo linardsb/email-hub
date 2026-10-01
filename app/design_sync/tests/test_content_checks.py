@@ -41,7 +41,13 @@ from app.design_sync.tests.content_checks import (
 
 _UNSUB_ANCHOR_RE = re.compile(r'<a\b[^>]*href="\{\{unsubscribeUrl\}\}"[^>]*>(.*?)</a>', re.DOTALL)
 _CTA_ANCHOR_RE = re.compile(r"<a\b[^>]*display:\s*inline-block[^>]*padding[^>]*>.*?</a>", re.DOTALL)
+_SECTION_MARKER_RE = re.compile(r"<!-- section:\S+ -->")
 _GEIST = "font-family:Geist Mono;"
+_MSO_OPEN = "<!--[if mso]>"
+_MSO_CLOSE = "<![endif]-->"
+_NON_MSO_OPEN = "<!--[if !mso]><!-->"
+_NON_MSO_CLOSE = "<!--<![endif]-->"
+_COND_BLOCK_RE = re.compile(r"<!--\[if[^\]]*\]>.*?<!\[endif\]-->", re.DOTALL)
 
 
 def _html(case: str) -> str:
@@ -111,6 +117,51 @@ def test_hidden_section_drops_its_design_ctas() -> None:
     assert design_cta_count(structure) == total - in_section
 
 
+def _filled_buttons(structure: dict[str, Any]) -> list[dict[str, Any]]:
+    """Case 5's ``mj-button`` frames with a dark fill (one TEXT child each)."""
+    return [
+        n
+        for page in structure["pages"]
+        for n in iter_visible_nodes(page)
+        if n.get("name") == "mj-button" and n.get("fill_color") == "#222222"
+    ]
+
+
+def test_tall_button_is_not_a_cta() -> None:
+    structure = copy.deepcopy(_structure("5"))
+    total = design_cta_count(structure)
+    _filled_buttons(structure)[0]["height"] = 81
+    assert design_cta_count(structure) == total - 1
+
+
+def test_long_label_is_not_a_cta() -> None:
+    structure = copy.deepcopy(_structure("5"))
+    total = design_cta_count(structure)
+    label = next(c for c in _filled_buttons(structure)[0]["children"] if c.get("type") == "TEXT")
+    label["text_content"] = (f"{label['text_content']} " * 4)[:31]
+    assert len(label["text_content"]) == 31
+    assert design_cta_count(structure) == total - 1
+
+
+def test_fill_decides_a_button_without_a_hint_name() -> None:
+    structure = copy.deepcopy(_structure("5"))
+    total = design_cta_count(structure)
+    button = _filled_buttons(structure)[0]
+    assert any(n.get("name") == "mj-column" for n in iter_visible_nodes(structure["pages"][0]))
+    button["name"] = "mj-column"  # a real non-hint name from the same design
+    assert design_cta_count(structure) == total  # dark fill still counts it
+    button["fill_color"] = "#FFFFFF"
+    assert design_cta_count(structure) == total - 1
+
+
+def test_counted_button_is_not_recursed() -> None:
+    structure = copy.deepcopy(_structure("5"))
+    total = design_cta_count(structure)
+    first, second = _filled_buttons(structure)[:2]
+    first["children"].append(copy.deepcopy(second))
+    assert design_cta_count(structure) == total
+
+
 # ── Output readers on mutated real output ───────────────────────
 
 
@@ -132,6 +183,13 @@ def test_unsubscribe_check_fails_without_any_link() -> None:
     assert result[ContentCheck.UNSUBSCRIBE_LINK] == CheckResult(
         "5", ContentCheck.UNSUBSCRIBE_LINK, False, "links=0"
     )
+
+
+def test_hash_href_is_not_an_unsubscribe_link() -> None:
+    html = _html("5")
+    mutated, n = re.subn(r'href="\{\{unsubscribeUrl\}\}"', 'href="#"', html)
+    assert n == 1
+    assert output_unsubscribe_links(mutated) == output_unsubscribe_links(html) - 1
 
 
 def _bare_geist(html: str) -> int:
@@ -157,18 +215,80 @@ def test_generic_fallback_with_important_is_accepted() -> None:
     assert _bare_geist(mutated) < _bare_geist(html)
 
 
+def _in_cond_block(html: str, pos: int) -> bool:
+    return any(m.start() <= pos < m.end() for m in _COND_BLOCK_RE.finditer(html))
+
+
+# Each test moves one of case 10's bare ``font-family:Geist Mono;`` out of its
+# inline style into another place the reader must cover; the count holds.
+
+
+def test_bare_font_moved_into_style_block_is_read() -> None:
+    html = _html("10")
+    assert _GEIST in html
+    removed = html.replace(_GEIST, "", 1)
+    style = next(
+        m for m in re.finditer(r"<style\b[^>]*>", removed) if not _in_cond_block(removed, m.start())
+    )
+    brace = removed.index("{", style.end()) + 1
+    mutated = removed[:brace] + _GEIST + removed[brace:]
+    assert _bare_geist(mutated) == _bare_geist(html)
+
+
+def test_bare_font_moved_into_mso_block_is_read() -> None:
+    html = _html("10")
+    assert _GEIST in html
+    removed = html.replace(_GEIST, "", 1)
+    block = removed.find(_MSO_OPEN, removed.find("<body"))
+    attr = removed.index('style="', block) + len('style="')
+    assert block > 0 and attr < removed.index(_MSO_CLOSE, block)
+    mutated = removed[:attr] + _GEIST + removed[attr:]
+    assert _bare_geist(mutated) == _bare_geist(html)
+
+
+def test_bare_font_moved_into_face_attribute_is_read() -> None:
+    html = _html("10")
+    at = html.index(_GEIST)
+    tag = html.rfind("<", 0, at)
+    name = re.match(r"<\w+", html[tag:])
+    assert name is not None
+    head = name.group(0)
+    mutated = (
+        f'{html[:tag]}{head} face="Geist Mono"{html[tag + len(head) : at]}'
+        f"{html[at + len(_GEIST) :]}"
+    )
+    assert _bare_geist(mutated) == _bare_geist(html)
+
+
 def test_mso_duplicate_cta_does_not_count() -> None:
+    """A CTA copy in an MSO block does not count, even where a parser sees it:
+    case 5's own section-marker comment inside the block ends the HTML comment
+    early, so only ``strip_mso`` hides the copy."""
     html = _html("5")
     match = _CTA_ANCHOR_RE.search(html)
-    assert match is not None
+    marker = _SECTION_MARKER_RE.search(html)
+    assert match is not None and marker is not None
+    assert _MSO_OPEN in html and _MSO_CLOSE in html
     before = output_cta_count(html)
     end = match.end()
 
-    in_mso = f"{html[:end]}<!--[if mso]>{match.group(0)}<![endif]-->{html[end:]}"
+    in_mso = f"{html[:end]}{_MSO_OPEN}{marker.group(0)}{match.group(0)}{_MSO_CLOSE}{html[end:]}"
     assert output_cta_count(in_mso) == before
 
     outside = f"{html[:end]}{match.group(0)}{html[end:]}"
     assert output_cta_count(outside) == before + 1
+
+
+def test_non_mso_wrapped_cta_still_counts() -> None:
+    """Case 5's own ``<!--[if !mso]><!-->`` wrapper around one of its CTAs
+    keeps the CTA: wrapper content is what non-MSO clients render."""
+    html = _html("5")
+    match = _CTA_ANCHOR_RE.search(html)
+    assert match is not None
+    assert _NON_MSO_OPEN in html and _NON_MSO_CLOSE in html
+    cta = match.group(0)
+    wrapped = html.replace(cta, f"{_NON_MSO_OPEN}{cta}{_NON_MSO_CLOSE}", 1)
+    assert output_cta_count(wrapped) == output_cta_count(html)
 
 
 # ── evaluate rules ───────────────────────────────────────────────

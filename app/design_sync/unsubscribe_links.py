@@ -36,7 +36,7 @@ UNSUBSCRIBE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_COMMENT_SPLIT_RE = re.compile(r"(<!--.*?-->)", re.DOTALL)
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _TOKEN_RE = re.compile(r"(<!--.*?-->|<[^>]+>)", re.DOTALL)
 _TAG_RE = re.compile(r"<\s*(/?)\s*([a-zA-Z][\w:-]*)([^>]*)>", re.DOTALL)
 _STYLE_ATTR_RE = re.compile(r"""\bstyle\s*=\s*(["'])(.*?)\1""", re.DOTALL | re.IGNORECASE)
@@ -89,11 +89,16 @@ def _repoint(html: str) -> tuple[str, int]:
         count += 1
         return f"<a{new_attrs}>{inner}</a>"
 
-    parts = [
-        part if part.startswith("<!--") else _ANCHOR_RE.sub(_point_at_esp, part)
-        for part in _COMMENT_SPLIT_RE.split(html)
-    ]
-    return "".join(parts), count
+    # Scan the whole document: an anchor may hold comments (the ``button``
+    # seed's MSO spacers). Only anchors that start inside a comment are kept.
+    comments = [(m.start(), m.end()) for m in _COMMENT_RE.finditer(html)]
+
+    def _outside_comments(match: re.Match[str]) -> str:
+        if any(start <= match.start() < end for start, end in comments):
+            return match.group(0)
+        return _point_at_esp(match)
+
+    return _ANCHOR_RE.sub(_outside_comments, html), count
 
 
 def link_unsubscribe_text(html: str) -> str:

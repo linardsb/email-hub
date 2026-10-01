@@ -566,6 +566,23 @@ def _no_format(html: str, indent_size: int = 2) -> str:
     return html
 
 
+def _mammut_footer_cell() -> str:
+    """Mammut's footer cell (case 10) with its unsubscribe anchor, unformatted.
+
+    The snapshot's formatted lines drop the whitespace before the anchor, so
+    this cell comes from the converter's real output with the formatter
+    switched off. The anchor is the real unsubscribe pass's (idempotent if
+    already there).
+    """
+    with patch("app.design_sync.converter_service.format_email_html", _no_format):
+        result = run_case_conversion(_DEBUG_DIR / "10")
+    if result is None:
+        pytest.skip("case 10: structure.json/tokens.json not present")
+    found = re.search(r"<td\b[^>]*>Privacy Policy.*?</td>", result.html, re.DOTALL)
+    assert found is not None
+    return link_unsubscribe_text(found.group(0))
+
+
 class TestInlineGlue:
     def test_link_followed_by_punctuation_stays_on_one_line(self) -> None:
         """Lego footer: ``…</a>.`` must not render as "link ." (case 7)."""
@@ -577,23 +594,22 @@ class TestInlineGlue:
 
     def test_whitespace_before_anchor_keeps_the_split(self) -> None:
         """Mammut footer (case 10): the text before the linked "Unsubscribe" ends
-        in whitespace, so the anchor keeps its own line, as today.
-
-        The snapshot's formatted lines drop that whitespace, so this cell comes
-        from the converter's real output with the formatter switched off. The
-        anchor is the real unsubscribe pass's (idempotent if already there).
-        """
-        with patch("app.design_sync.converter_service.format_email_html", _no_format):
-            result = run_case_conversion(_DEBUG_DIR / "10")
-        if result is None:
-            pytest.skip("case 10: structure.json/tokens.json not present")
-        found = re.search(r"<td\b[^>]*>Privacy Policy.*?</td>", result.html, re.DOTALL)
-        assert found is not None
-        cell = link_unsubscribe_text(found.group(0))
+        in whitespace, so the anchor keeps its own line, as today."""
+        cell = _mammut_footer_cell()
         assert "\xa0<a " in cell
         out = format_email_html(cell)
         assert "<a " not in _find_line(out, "Privacy Policy")
         assert _find_line(out, "Unsubscribe").strip().startswith('<a href="{{unsubscribeUrl}}"')
+
+    def test_anchor_touching_text_joins_its_line(self) -> None:
+        """The same Mammut cell with the whitespace before the anchor removed:
+        the anchor touches the text, so it joins the text's line."""
+        cell = re.sub(r"\s+(?=<a )", "", _mammut_footer_cell(), count=1)
+        at = cell.index("<a ")
+        assert not cell[at - 1].isspace()
+        line = _find_line(format_email_html(cell), "Privacy Policy")
+        assert '|<a href="{{unsubscribeUrl}}"' in line
+        assert line.endswith(">Unsubscribe</a>")
 
     def test_br_resets_the_glue(self) -> None:
         """Text right after ``<br />`` starts its own line even when touching."""

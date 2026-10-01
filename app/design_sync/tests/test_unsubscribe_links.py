@@ -39,7 +39,8 @@ from app.design_sync.protocol import (
 from app.design_sync.tests.regression_runner import run_case_conversion
 from app.design_sync.unsubscribe_links import UNSUBSCRIBE_RE, link_unsubscribe_text
 
-_DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
+_REPO = Path(__file__).resolve().parents[3]
+_DEBUG_DIR = _REPO / "data" / "debug"
 _CASES = ["5", "6", "7", "8", "9", "10"]
 _UNSUB_HREF = "{{unsubscribeUrl}}"
 _UNSUB_ANCHOR_RE = re.compile(
@@ -307,15 +308,48 @@ class TestRealCases:
 
     def test_wrap_skips_phrase_inside_mso_comment(self) -> None:
         """Step 3 never edits comments: slate's footer cell copied into one of
-        its own MSO blocks stays unlinked there."""
+        its own MSO blocks in ``<body>`` stays unlinked there (the first MSO
+        block sits in ``<head>``, which the walk skips anyway)."""
         pre = _pre_pass_html("9")
         cell = re.search(r"<td\b[^>]*>\s*Unsubscribe\s*</td>", pre)
         assert cell is not None
-        assert _MSO_OPEN in pre
-        mutated = pre.replace(_MSO_OPEN, _MSO_OPEN + cell.group(0), 1)
+        at = pre.find(_MSO_OPEN, pre.find("<body"))
+        assert at > pre.find("<body") > 0
+        k = at + len(_MSO_OPEN)
+        mutated = pre[:k] + cell.group(0) + pre[k:]
         post = link_unsubscribe_text(mutated)
         assert _COMMENT_RE.findall(post) == _COMMENT_RE.findall(mutated)
         assert len(_unsub_anchors(post)) == 1
+
+    def test_repoint_anchor_with_mso_comments_inside(self) -> None:
+        """The ``button`` seed puts MSO comments inside its anchor; an
+        "Unsubscribe" label there is still repointed, comments untouched."""
+        seed = (_REPO / "email-templates" / "components" / "button.html").read_text()
+        label = '<span data-slot="cta_text">Button</span>'
+        assert label in seed
+        mutated = seed.replace(label, '<span data-slot="cta_text">Unsubscribe</span>')
+        post = link_unsubscribe_text(mutated)
+        assert 'href="https://example.com/link"' not in post
+        assert f'data-slot="cta_url" href="{_UNSUB_HREF}"' in post
+        assert _COMMENT_RE.findall(post) == _COMMENT_RE.findall(mutated)
+        assert post.count("<a ") == mutated.count("<a ")  # nothing wrapped
+
+    def test_merge_tag_href_is_not_repointed(self) -> None:
+        """Case 5's footer anchor pointed at its other ESP merge tag keeps it."""
+        pre = _pre_pass_html("5")
+        assert "{{preferencesUrl}}" in pre
+        mutated = pre.replace(f'href="{_UNSUB_HREF}"', 'href="{{preferencesUrl}}"')
+        assert _UNSUB_HREF not in mutated
+        assert link_unsubscribe_text(mutated) == mutated
+
+    def test_every_phrase_in_a_text_node_is_wrapped(self) -> None:
+        """Slate's footer cell with its phrase doubled gains two anchors."""
+        pre = _pre_pass_html("9")
+        cell = re.search(r"<td\b[^>]*>\s*Unsubscribe\s*</td>", pre)
+        assert cell is not None
+        doubled = cell.group(0).replace("Unsubscribe", "Unsubscribe Unsubscribe")
+        post = link_unsubscribe_text(pre.replace(cell.group(0), doubled, 1))
+        assert len(_unsub_anchors(post)) == 2
 
     def test_colour_inherit_without_enclosing_colour(self) -> None:
         """Slate's footer text without its cell has no colour to copy."""

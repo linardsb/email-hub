@@ -228,8 +228,11 @@ def output_default_blue(html: str) -> int:
 
 
 def strip_mso(html: str) -> str:
-    """Drop MSO conditional blocks; keep the content of ``<!--[if !mso]><!-->`` wrappers."""
-    return _NON_MSO_WRAPPER_RE.sub(r"\1", _MSO_BLOCK_RE.sub("", html))
+    """Drop MSO conditional blocks; keep the content of ``<!--[if !mso]><!-->`` wrappers.
+
+    Unwrap first: ``_MSO_BLOCK_RE`` also matches a whole ``!mso`` wrapper.
+    """
+    return _MSO_BLOCK_RE.sub("", _NON_MSO_WRAPPER_RE.sub(r"\1", html))
 
 
 def output_cta_count(html: str) -> int:
