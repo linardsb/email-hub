@@ -21,9 +21,18 @@ logger = get_logger(__name__)
 
 # Word-bounded on purpose (diverges from app/qa_engine/checks/deliverability.py:81):
 # without \b, opt[\s-]?out matches inside "adopt outdoor".
+# Privacy opt-outs ("Opt-out of sale", "cookie opt-out") are not unsubscribes:
+# they keep their design href and never count as an unsubscribe link.
+_OPT_OUT = (
+    r"(?<!cookie[\s-])(?<!cookies[\s-])"
+    r"opt[\s-]?out"
+    r"(?![\s/_-]+of[\s/_-]+(?:the[\s/_-]+)?"
+    r"(?:sale|sell|selling|share|sharing|cookies?|tracking|targeted|personali[sz]ed"
+    r"|interest[\s-]based|ads|advertising|data)\b)"
+)
 UNSUBSCRIBE_RE = re.compile(
     r"\b(?:"
-    r"unsubscribe|opt[\s-]?out"  # en
+    rf"unsubscribe|{_OPT_OUT}"  # en
     r"|abmelden|abbestellen"  # de
     r"|(?:se\s+)?d[ée]sabonner|(?:se\s+)?d[ée]sinscrire|d[ée]sinscription"  # fr
     r"|darse\s+de\s+baja|date\s+de\s+baja|cancelar\s+(?:la\s+)?suscripci[óo]n"  # es
@@ -126,11 +135,7 @@ def link_unsubscribe_text(html: str) -> str:
                     if stack[i][0] == name:
                         del stack[i:]
                         break
-            elif (
-                name not in _VOID
-                and not attrs.rstrip().endswith("/")
-                and not token.startswith("<!")
-            ):
+            elif name not in _VOID and not attrs.rstrip().endswith("/"):
                 stack.append((name, _tag_color(attrs)))
             out.append(token)
             continue

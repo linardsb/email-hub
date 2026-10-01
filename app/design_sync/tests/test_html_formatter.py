@@ -559,7 +559,7 @@ def _expected_cell(case: str, marker: str) -> str:
     idx = next(i for i, line in enumerate(lines) if marker in line)
     start = next(i for i in range(idx, -1, -1) if lines[i].lstrip().startswith("<td"))
     end = next(i for i in range(idx, len(lines)) if lines[i].strip() == "</td>")
-    return "".join(line.strip() for line in lines[start : end + 1])
+    return "".join(line.strip(" \t\r\n\f\v") for line in lines[start : end + 1])
 
 
 def _no_format(html: str, indent_size: int = 2) -> str:
@@ -569,9 +569,8 @@ def _no_format(html: str, indent_size: int = 2) -> str:
 def _mammut_footer_cell() -> str:
     """Mammut's footer cell (case 10) with its unsubscribe anchor, unformatted.
 
-    The snapshot's formatted lines drop the whitespace before the anchor, so
-    this cell comes from the converter's real output with the formatter
-    switched off. The anchor is the real unsubscribe pass's (idempotent if
+    The cell comes from the converter's real output with the formatter
+    switched off, so it is the formatter's true input. The anchor is the real unsubscribe pass's (idempotent if
     already there).
     """
     with patch("app.design_sync.converter_service.format_email_html", _no_format):
@@ -592,14 +591,25 @@ class TestInlineGlue:
         assert _find_line(out, ">email@brand.emaillove.com</a>").endswith("</a>.")
         assert "." not in [line.strip() for line in out.splitlines()]
 
-    def test_whitespace_before_anchor_keeps_the_split(self) -> None:
-        """Mammut footer (case 10): the text before the linked "Unsubscribe" ends
-        in whitespace, so the anchor keeps its own line, as today."""
+    def test_nbsp_before_anchor_is_kept_and_glued(self) -> None:
+        """Review L2, Mammut footer (case 10): U+00A0 is content, not source
+        whitespace, so the three before "Unsubscribe" survive and the anchor
+        stays on the text's line."""
         cell = _mammut_footer_cell()
         assert "\xa0<a " in cell
-        out = format_email_html(cell)
-        assert "<a " not in _find_line(out, "Privacy Policy")
-        assert _find_line(out, "Unsubscribe").strip().startswith('<a href="{{unsubscribeUrl}}"')
+        line = _find_line(format_email_html(cell), "Privacy Policy")
+        assert '\xa0\xa0\xa0<a href="{{unsubscribeUrl}}"' in line
+        assert line.endswith(">Unsubscribe</a>")
+
+    @pytest.mark.parametrize("case", ["5", "6", "7", "8", "9", "10"])
+    def test_snapshot_reformats_to_the_same_rendering(self, case: str) -> None:
+        """Review L2: re-formatting a committed snapshot changes nothing but
+        ASCII layout whitespace (a dropped U+00A0 fails). Case 8 is not a byte
+        fixpoint: the anchor the unsubscribe pass wraps after formatting sits
+        between ASCII spaces, which re-formatting turns into line breaks."""
+        snapshot = (_DEBUG_DIR / case / "expected.html").read_text()
+        ascii_ws = re.compile(r"[ \t\r\n\f\v]+")
+        assert ascii_ws.sub(" ", format_email_html(snapshot)) == ascii_ws.sub(" ", snapshot)
 
     def test_anchor_touching_text_joins_its_line(self) -> None:
         """The same Mammut cell with the whitespace before the anchor removed:

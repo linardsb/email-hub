@@ -192,6 +192,23 @@ def test_hash_href_is_not_an_unsubscribe_link() -> None:
     assert output_unsubscribe_links(mutated) == output_unsubscribe_links(html) - 1
 
 
+def test_unsubscribe_check_fails_when_repoint_regresses() -> None:
+    """Review L1: with the repoint undone (case 6's design emaillove URL left
+    in place) the check fails; a design URL is not an unsubscribe link."""
+    html = _html("6")
+    design_url = "https://emaillove.com/email-inspiration-from-starbucks-18?action=email-cleaned"
+    assert f'href="{design_url}"' in html  # case 6's sibling footer links
+    assert _UNSUB_ANCHOR_RE.search(html) is not None
+    reverted = _UNSUB_ANCHOR_RE.sub(
+        lambda m: m.group(0).replace("{{unsubscribeUrl}}", design_url), html
+    )
+    assert "{{unsubscribeUrl}}" not in reverted
+    result = {r.check: r for r in check_case("6", _structure("6"), reverted)}
+    assert result[ContentCheck.UNSUBSCRIBE_LINK] == CheckResult(
+        "6", ContentCheck.UNSUBSCRIBE_LINK, False, "links=0"
+    )
+
+
 def _bare_geist(html: str) -> int:
     return sum(1 for v in font_family_values(html) if "Geist Mono" in v and is_bare_font(v))
 

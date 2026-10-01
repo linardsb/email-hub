@@ -367,6 +367,8 @@ _MATCHES = [
     "Opt out",
     "opt-out",
     "optout",
+    "Opt out of these emails",
+    "opt-out of marketing emails",
     "Hier abmelden",
     "Newsletter abbestellen",
     "Se désabonner",
@@ -388,7 +390,18 @@ _MATCHES = [
     "wypisz się",
 ]
 
-_NON_MATCHES = ["adopt outdoor gear", "subscribe now", "Subscribe", "Manage Preferences"]
+_NON_MATCHES = [
+    "adopt outdoor gear",
+    "subscribe now",
+    "Subscribe",
+    "Manage Preferences",
+    # Privacy opt-outs (review M1): not unsubscribe links.
+    "Do Not Sell or Share / Opt-out of sale",
+    "Opt out of the sale of my personal information",
+    "Opt out of targeted advertising",
+    "Cookie opt-out",
+    "https://brand.com/opt-out-of-sale",
+]
 
 
 @pytest.mark.parametrize("text", _MATCHES)
@@ -399,3 +412,21 @@ def test_unsubscribe_re_matches(text: str) -> None:
 @pytest.mark.parametrize("text", _NON_MATCHES)
 def test_unsubscribe_re_rejects(text: str) -> None:
     assert UNSUBSCRIBE_RE.search(text) is None
+
+
+def test_privacy_opt_out_link_keeps_its_href() -> None:
+    """Review M1, verbatim: a CCPA link is neither repointed nor wrapped."""
+    html = '<td><a href="https://brand.com/ccpa">Do Not Sell or Share / Opt-out of sale</a></td>'
+    assert link_unsubscribe_text(html) == html
+
+
+def test_privacy_opt_out_does_not_block_wrapping() -> None:
+    """A CCPA link does not count as the unsubscribe link, so the bare phrase
+    in the same footer is still wrapped; bare privacy text is not."""
+    ccpa = '<a href="https://brand.com/ccpa">Do Not Sell or Share / Opt-out of sale</a>'
+    html = f"<td>{ccpa} | Cookie opt-out | Unsubscribe</td>"
+    out = link_unsubscribe_text(html)
+    assert ccpa in out
+    assert _unsub_anchors(out) == [
+        f'<a href="{_UNSUB_HREF}" style="color:inherit;text-decoration:underline;">Unsubscribe</a>'
+    ]

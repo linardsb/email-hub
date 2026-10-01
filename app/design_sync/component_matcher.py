@@ -2202,14 +2202,15 @@ _BR = "<br />"
 def _render_text_runs(
     text: TextBlock, *, link_fallback: str = "#0066cc", collapse_breaks: bool = True
 ) -> str:
-    """Render a footer TEXT node, emitting ``<a>`` links from its style runs.
+    """Render a footer or column TEXT node, emitting ``<a>`` links from its style runs.
 
     Walks :attr:`TextBlock.style_runs` in ``start`` order, slicing
     ``content[start:end]`` and wrapping runs that carry a ``link_url`` in an
     anchor styled with the run's colour + underline (falling back to the node
-    colour). Hard line breaks are converted to ``<br />`` via
-    :func:`_multiline_to_br`; a break landing at a link boundary is hoisted
-    outside the anchor and adjacent breaks are collapsed to one. Offsets index
+    colour, then to ``link_fallback``). Hard line breaks are converted to
+    ``<br />`` via :func:`_multiline_to_br`; a break landing at a link boundary
+    is hoisted outside the anchor. Adjacent breaks are collapsed to one when
+    ``collapse_breaks`` is set, and always for a node with no runs. Offsets index
     the raw characters while ``content`` is stripped, so indices are clamped and
     overlapping/backward runs are skipped defensively.
     """

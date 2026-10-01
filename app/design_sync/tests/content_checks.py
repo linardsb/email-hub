@@ -3,7 +3,7 @@
 Four per-case checks, each compared to the design file (``structure.json``):
 
 * ``unsubscribe_link``: the design text has an unsubscribe phrase, so the
-  output must carry an ``<a>`` for it with a real href.
+  output must carry an ``<a>`` for it pointed at an ESP merge tag (``{{…}}``).
 * ``font_generic``: every ``font-family`` in the output ends in a generic family.
 * ``default_blue``: ``#0066cc`` / ``#06c`` is absent unless the design uses it.
 * ``cta_count``: non-MSO output CTAs >= design CTAs.
@@ -162,12 +162,13 @@ _NON_MSO_WRAPPER_RE = re.compile(r"<!--\[if\s+!mso\]><!-->(.*?)<!--<!\[endif\]--
 
 
 def output_unsubscribe_links(html: str) -> int:
-    """``<a>`` elements with an unsubscribe phrase in href or text and a real href."""
+    """``<a>`` elements with an unsubscribe phrase in href or text and an ESP
+    merge-tag href (``{{…}}``); a design URL left in place does not count."""
     doc = lxml_html.document_fromstring(html)
     count = 0
     for a in doc.iter("a"):
         href = a.get("href") or ""
-        if href in ("", "#"):
+        if not href.startswith("{{"):
             continue
         if UNSUBSCRIBE_RE.search(href) or UNSUBSCRIBE_RE.search(a.text_content()):
             count += 1

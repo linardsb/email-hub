@@ -322,7 +322,7 @@ None new; snapshot, ladder and fidelity gate cover the full conversion.
 
 ## ACCEPTANCE CRITERIA
 
-- [ ] AC #1 Unsubscribe check: fails when design text has a phrase and output has no unsubscribe `<a>` with a real href; n/a without a phrase.
+- [ ] AC #1 Unsubscribe check: fails when design text has a phrase and output has no unsubscribe `<a>` whose href is an ESP merge tag (`{{…}}`; tightened from "a real href" in PR #450 review L1); n/a without a phrase.
 - [ ] AC #2 Font check: every `font-family` (attrs, `<style>`, `face`, MSO) ends in a generic family.
 - [ ] AC #3 Blue check: `#0066cc`/`#06c` absent unless a `structure.json` colour field has it.
 - [ ] AC #4 CTA check: non-MSO output CTAs ≥ design CTAs from `structure.json`.
@@ -368,3 +368,14 @@ None open. Former risks and how each was closed:
 ## AMENDMENTS
 
 - 2026-10-01 — Risks R1–R4 closed by a measured spike at the user's request ("address all risks"); scope extended by U4/U5 (text links in column text, href repoint) and the formatter glue the spike exposed. Confidence 8 → 10.
+
+## Amendment: PR #450 review round 1 (2026-10-01)
+
+| Finding | Change | Supersedes |
+|---|---|---|
+| M1 | `UNSUBSCRIBE_RE`'s English opt-out excludes privacy opt-outs ("opt-out of sale/sharing/cookies/targeted ads…", "cookie opt-out"); they are not repointed, not wrapped, not counted | Task 6 regex `opt[\s-]?out` |
+| L1 | `output_unsubscribe_links` counts only `{{…}}` hrefs | AC #1 "real href" |
+| L2 | `format_email_html` strips and glues ASCII whitespace only, so U+00A0 at token edges survives; snapshots 6, 7, 8 regenerated | Task 8 glue `isspace()`; Task 10.1 list for 6/7/8 |
+| L3 | VML twin never filled (label + href) → ledger `ce-2-cta-button-vml-twin-unfilled` | none |
+
+Detail and evidence: `.claude/reports/pr-450-review-fixes.md`.

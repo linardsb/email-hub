@@ -96,6 +96,10 @@ _TOKEN_RE: re.Pattern[str] = re.compile(
     re.DOTALL,
 )
 
+# Source whitespace only. U+00A0 is content: str.strip()/isspace() would drop
+# the design's non-breaking spaces at a token edge.
+_ASCII_WS = " \t\n\r\f\v"
+
 _OPEN_TAG_RE: re.Pattern[str] = re.compile(r"^<\s*([a-zA-Z][a-zA-Z0-9:._-]*)")
 _CLOSE_TAG_RE: re.Pattern[str] = re.compile(r"^<\s*/\s*([a-zA-Z][a-zA-Z0-9:._-]*)")
 
@@ -136,12 +140,12 @@ def format_email_html(html: str, indent_size: int = 2) -> str:
     prev_raw = ""
 
     for token in tokens:
-        stripped = token.strip()
+        stripped = token.strip(_ASCII_WS)
         if not stripped:
             if token:
                 prev_raw = token
             continue
-        touches = prev_flow and not prev_raw[-1:].isspace() and not token[:1].isspace()
+        touches = prev_flow and prev_raw[-1:] not in _ASCII_WS and token[:1] not in _ASCII_WS
         prev_raw = token
         prev_flow = False
 

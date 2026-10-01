@@ -1309,6 +1309,25 @@
       "symptom_if_broken": "Tree-path conversion of a design with an unsubscribe footer ships without footer text or an unsubscribe link.",
       "closes_when": "Case 7 tree-path output (tree bridge on, output_format='tree') contains the design footer text, and therefore a {{unsubscribeUrl}} link.",
       "available_data": "data/debug/7/structure.json"
+    },
+    {
+      "id": "ce-2-cta-button-vml-twin-unfilled",
+      "phase": "ce-2",
+      "title": "cta-button's Outlook VML twin (v:roundrect) never receives the CTA label or URL fill",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-10-01",
+      "introduced_commit": "pending",
+      "summary": "PR #450 review L3: an 'Unsubscribe' cta-button repoints its non-MSO <a> to {{unsubscribeUrl}} but the VML button keeps https://example.com/cta. Root cause is wider and pre-existing: _fill_cta_slot rewrites only the <a data-slot> href and _fill_text_slot fills only the data-slot span, so the v:roundrect href and its <center> label keep the seed's 'https://example.com/cta' / 'Shop Now' for every filled cta-button (read-confirmed). Repointing the roundrect inside link_unsubscribe_text was declined: it would give Outlook a 'Shop Now' button that unsubscribes. No corpus case 5-10 emits a v:roundrect today.",
+      "code_refs": [
+        "app/design_sync/component_renderer.py:1359 (_fill_cta_slot)",
+        "app/design_sync/component_renderer.py:1176 (_fill_text_slot)",
+        "email-templates/components/cta-button.html:6 (v:roundrect href + center label)",
+        "app/design_sync/unsubscribe_links.py (_repoint skips anchors/VML inside comments)"
+      ],
+      "symptom_if_broken": "In Outlook desktop (Word engine) a converted cta-button reads 'Shop Now' and opens https://example.com/cta, including an unsubscribe button, while other clients show the design label and URL.",
+      "closes_when": "A filled cta-button's v:roundrect href equals its <a> href and its <center> label equals the cta_text fill (asserted on a real seed through the real fill path); the unsubscribe pass then covers the VML href through that shared fill or an explicit test.",
+      "fix_sketch": "Extend _fill_cta_slot to rewrite the v:roundrect href in the same component and _fill_text_slot (cta_text) to rewrite the <center> text; the unsubscribe pass can then pair the roundrect with the adjacent repointed anchor's old href."
     }
   ],
   "tooling_followups": [
