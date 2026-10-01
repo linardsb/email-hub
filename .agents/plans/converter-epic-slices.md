@@ -236,7 +236,7 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 - **Files:** templates (overlap with CE-13's 15), `component_renderer.py`, tests. ~300–600 lines.
 - **Depends on:** CE-6, CE-13 (same template files; land after the codemod).
 
-#### CE-21: Jev section-boundary shadow question (o5) — added 2026-10-01 (A1)
+#### CE-25: Jev section-boundary shadow question (o5) — added 2026-10-01 (A1)
 
 - **Closes:** no R-cause directly. Tests whether a model should make the boundary call where geometry is ambiguous. Today boundaries are pure heuristics (`_get_section_candidates` `layout_analyzer.py:661`, `_expand_container_wrappers` `:681`, semantic peel `:717`); no model touches boundaries, and none of the O1–O3 questions ask about them (observed, scout pass 2026-10-01).
 - **Scope:**
@@ -302,17 +302,17 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 | CE-18 VLM shadow | CE-1 (transfer: CE-5) | W4 | no |
 | CE-19 O1 spike | CE-1, CE-4, CE-5, CE-6, CE-11 | W3 | no (Q7: maap + one held-out) |
 | CE-20 T8 residual | CE-19 (CE-15) | W4 | no |
-| CE-21 Jev boundary o5 | none | W1 | no |
+| CE-25 Jev boundary o5 | none | W1 | no |
 
 **File-overlap notes for parallel worktrees:** CE-8, CE-9 and CE-11 all touch `component_renderer.py`/`component_matcher.py` in different functions; run in parallel worktrees but rebase in merge order. CE-6, CE-10 and CE-16 all touch `layout_analyzer.py`. CE-11 → CE-13 → CE-17 share templates, so they run in sequence.
 
 ## Suggested execution order
 
-Revised 2026-10-01 (A2: spike before role hooks; A1: CE-21 added).
+Revised 2026-10-01 (A2: spike before role hooks; A1: CE-25 added). CE-21 to CE-24 (#440–#443: convert CLI, design_sync MCP tools, output lint and size check, Figma MCP debug server) were added to the epic by another session on 2026-09-30 and are not sliced in this file; the epic issue is their source.
 
 | Wave | Tickets | Notes |
 |---|---|---|
-| 1 | CE-1, CE-2, CE-4, CE-15, CE-21 in parallel | CE-15 and CE-21 share `jev_shadow/*`: rebase in merge order |
+| 1 | CE-1, CE-2, CE-4, CE-15, CE-25 in parallel | CE-15 and CE-25 share `jev_shadow/*`: rebase in merge order |
 | 2 | CE-3, CE-5, CE-6, CE-7, CE-8, CE-9, CE-10, CE-11, CE-12, CE-18 | CE-3 and CE-5 land early (stable baseline, held-out check). Same-file: CE-6/CE-10 (`layout_analyzer.py`); CE-8/CE-9/CE-11 (renderer/matcher) |
 | 3 | CE-19 spike, CE-16 | CE-19 needs CE-4, CE-5, CE-6, CE-11 |
 | 4 | CE-13 (only if CE-19 says stay on templates), CE-20 scoped | CE-20 also needs CE-15 |
@@ -332,7 +332,7 @@ Revised 2026-10-01 (A2: spike before role hooks; A1: CE-21 added).
 | `phase-53g-t1-social-non-icon-images-as-icons` | CE-9 | avoid unless the icon-column route fixes it too |
 | `phase-53g-t1-tree-path-social-label-default` | CE-9 | avoid; tree path is non-production (flag off) |
 | `phase-53g-g4-tree-html-slot-row-shape` | CE-19 | carry forward; relevant only if the spike reuses the tree path |
-| `phase-53-d3-mammut-below-candidate-undercount` | CE-21 | evidence for the o5 question; close only if a later ticket wires a boundary fix |
+| `phase-53-d3-mammut-below-candidate-undercount` | CE-25 | evidence for the o5 question; close only if a later ticket wires a boundary fix |
 
 ## T-draft absorption
 
@@ -373,7 +373,7 @@ Revised 2026-10-01 (A2: spike before role hooks; A1: CE-21 added).
 - [ ] CE-18 — VLM fallback on Jev-heuristic disagreement, shadow (depends on CE-1)
 - [ ] CE-19 — O1 spike on the MJML path (depends on CE-1, CE-4, CE-5, CE-6, CE-11)
 - [ ] CE-20 — T8 residual, scoped after the spike (depends on CE-19, CE-15)
-- [ ] CE-21 — Jev section-boundary shadow question o5 (depends on none)
+- [ ] CE-25 — Jev section-boundary shadow question o5 (depends on none)
 
 ## GitHub issues (created 2026-09-30)
 
