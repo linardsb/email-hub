@@ -1,6 +1,6 @@
 # Converter fidelity epic: ticket slices
 
-Status: **created on GitHub** (2026-09-30): epic #439, tickets #419–#438 (mapping table below). Issues get created only after the user says "create".
+Status: **created on GitHub** (2026-09-30): epic #439, tickets #419–#438, CE-25 as #448 (mapping table below; #440–#443 are CE-21 to CE-24 from another session, not sliced here). Issues get created only after the user says "create".
 Source: converter epic brief 2026-09-29 (vault, not in repo). §6a and its "Revised sequence for the epic" win over §8/§9 wherever they differ.
 Base: origin/main `da8dbd86` (observed: `git fetch` 2026-09-29, origin/main == `da8dbd86`). Branch `plan/converter-epic-slices`.
 Line refs below were re-verified at `da8dbd86` (observed, read-only scout pass 2026-09-29). They replace the brief's refs where the two differ.
@@ -400,3 +400,4 @@ Revised 2026-10-01 (A2: spike before role hooks; A1: CE-25 added). CE-21 to CE-2
 | CE-18 | #436 |
 | CE-19 | #437 |
 | CE-20 | #438 |
+| CE-25 | #448 |
