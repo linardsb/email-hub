@@ -12,6 +12,7 @@ from app.connectors.exceptions import (
     ESPConnectionNotFoundError,
     ESPSyncFailedError,
     InvalidESPCredentialsError,
+    InvalidRemoteTemplateIdError,
 )
 from app.connectors.sync_schemas import (
     ESPConnectionResponse,
@@ -495,6 +496,75 @@ class TestImportTemplate:
 
             with pytest.raises(ESPSyncFailedError, match="Failed to fetch remote template"):
                 await service.import_template(1, "tpl_1", user)
+
+
+# ── Remote Template ID Guard ──
+
+_BAD_REMOTE_IDS = ["../account", "a/b", "a?b=c", "a#b", "..", ".hidden", "", "a b", "x" * 257]
+_GOOD_REMOTE_IDS = [
+    "tpl_1",
+    "d-55",
+    "TMPL_5",
+    "cb_2",
+    "200",
+    "09024c5a-5864-46a4-b061-eed128b2af2d",
+    "@AbC-12_x",
+]
+
+
+class TestRemoteTemplateIdGuard:
+    """The remote ID is a provider URL path segment; malformed IDs never reach the wire."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("template_id", _BAD_REMOTE_IDS)
+    async def test_get_remote_rejects_malformed_id(
+        self, service: ConnectorSyncService, template_id: str
+    ) -> None:
+        with (
+            patch.object(service, "_get_connection_with_bola", new_callable=AsyncMock) as bola,
+            patch.object(service, "_get_provider") as mock_get_provider,
+        ):
+            with pytest.raises(InvalidRemoteTemplateIdError):
+                await service.get_remote_template(1, template_id, _make_user())
+        bola.assert_not_called()
+        mock_get_provider.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("template_id", _BAD_REMOTE_IDS)
+    async def test_import_rejects_malformed_id(
+        self, service: ConnectorSyncService, template_id: str
+    ) -> None:
+        with (
+            patch.object(service, "_get_connection_with_bola", new_callable=AsyncMock) as bola,
+            patch.object(service, "_get_provider") as mock_get_provider,
+        ):
+            with pytest.raises(InvalidRemoteTemplateIdError):
+                await service.import_template(1, template_id, _make_user())
+        bola.assert_not_called()
+        mock_get_provider.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("template_id", _GOOD_REMOTE_IDS)
+    async def test_get_remote_accepts_real_id_shapes(
+        self, service: ConnectorSyncService, template_id: str
+    ) -> None:
+        with (
+            patch.object(
+                service,
+                "_get_connection_with_bola",
+                new_callable=AsyncMock,
+                return_value=(_make_connection(), {"api_key": "k"}),
+            ),
+            patch.object(service, "_get_provider") as mock_get_provider,
+        ):
+            mock_provider = AsyncMock()
+            mock_provider.get_template = AsyncMock(return_value=_make_esp_template(id=template_id))
+            mock_get_provider.return_value = mock_provider
+
+            result = await service.get_remote_template(1, template_id, _make_user())
+
+        mock_provider.get_template.assert_awaited_once_with(template_id, {"api_key": "k"})
+        assert result.id == template_id
 
 
 # ── Push Template ──

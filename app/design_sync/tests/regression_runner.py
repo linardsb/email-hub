@@ -97,10 +97,8 @@ class CaseMetrics:
     """Per-case quality scores (0.0-1.0)."""
 
     section_count_accuracy: float
-    component_match_accuracy: float
     slot_fill_rate: float
     content_coverage: float
-    token_compliance: float
     overall_score: float
     details: dict[str, str | float | int] = field(
         default_factory=lambda: {}  # noqa: PIE807
@@ -117,9 +115,6 @@ def collect_metrics(manifest: CaseManifest, html: str, result: ConversionResult)
         1.0 - abs(actual_sections - expected_sections) / max(expected_sections, 1),
     )
 
-    # Component match accuracy (stub — requires section-by-section analysis)
-    component_acc = 1.0  # placeholder until component matching is wired
-
     # Slot fill rate
     sfr = compute_slot_fill_rate(html)
 
@@ -132,24 +127,13 @@ def collect_metrics(manifest: CaseManifest, html: str, result: ConversionResult)
     else:
         content_cov = 1.0
 
-    # Token compliance (stub)
-    token_comp = 1.0
-
-    # Weighted overall
-    overall = (
-        section_acc * 0.25
-        + component_acc * 0.25
-        + sfr * 0.15
-        + content_cov * 0.20
-        + token_comp * 0.15
-    )
+    # Weighted overall, renormalised over the three measured metrics (weights sum to 0.60)
+    overall = (section_acc * 0.25 + sfr * 0.15 + content_cov * 0.20) / 0.60
 
     return CaseMetrics(
         section_count_accuracy=round(section_acc, 4),
-        component_match_accuracy=round(component_acc, 4),
         slot_fill_rate=round(sfr, 4),
         content_coverage=round(content_cov, 4),
-        token_compliance=round(token_comp, 4),
         overall_score=round(overall, 4),
     )
 

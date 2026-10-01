@@ -23,6 +23,10 @@ class InvalidESPCredentialsError(DomainValidationError):
     """Raised when ESP credentials are invalid."""
 
 
+class InvalidRemoteTemplateIdError(DomainValidationError):
+    """Raised when a remote ESP template ID is not a safe URL path segment."""
+
+
 class ESPConflictError(ConflictError):
     """Raised when an ESP returns 409 for a duplicate resource."""
 
