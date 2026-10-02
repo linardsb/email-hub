@@ -30,6 +30,7 @@ from _pytest.mark.structures import ParameterSet
 from app.design_sync.converter_service import ConversionResult, DesignConverterService
 from app.design_sync.diagnose.report import load_structure_from_json, load_tokens_from_json
 from app.design_sync.email_design_document import EmailDesignDocument
+from app.design_sync.tests.known_failures import known_failure_marks
 from app.design_sync.tests.ladder_harness import (
     SEMANTIC_UNDERCOUNT_CASES,
     SEMANTIC_UNDERCOUNT_REASON,
@@ -297,9 +298,12 @@ def _section_count_params() -> list[ParameterSet]:
     return [
         pytest.param(
             cid,
-            marks=[pytest.mark.xfail(strict=False, reason=SEMANTIC_UNDERCOUNT_REASON)]
-            if cid in SEMANTIC_UNDERCOUNT_CASES
-            else [],
+            marks=(
+                [pytest.mark.xfail(strict=False, reason=SEMANTIC_UNDERCOUNT_REASON)]
+                if cid in SEMANTIC_UNDERCOUNT_CASES
+                else []
+            )
+            + known_failure_marks(cid, "test_section_count"),
         )
         for cid in _get_active_case_ids()
     ]

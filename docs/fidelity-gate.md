@@ -42,6 +42,9 @@ A section **fails** when `baseline − now > margin`, or when it is lost (absent
 | 8 | performance-reimagined | 600 | 11 | 0.8839 | 0.9252 | 0 |
 | 9 | slate-newsletter | 640 | 10 | 0.3147 | 0.9445 | 1 spacer |
 | 10 | mammut-duvet-day | 600 | 15 | 0.0020 | 0.9125 | 2 dividers |
+| reframe | reframe-2025 | 640 | 16 | 0.7959 | 0.9026 | 0 |
+
+The reframe row comes from the CE-3 stamp (`make fidelity-restamp CASES="reframe"`, 2026-10-02, observed); its median is derived as the mean of the two middle scores, (0.8970 + 0.9081) / 2 = 0.90255.
 
 Low values are real converter defects, not crop errors: mammut's dark footer and 40px black bands render white (crop pairs checked with `scripts/fidelity-gate.py check --dump-crops`). The Lego reference is 40px taller than the section extent (3223 vs 3183); the trailing frame area is never scored.
 
@@ -96,6 +99,12 @@ All 65 unchanged sections stay at 0.0000 on the gate while the A3 bands over the
 - a new case is added (see below), or the Playwright version changes.
 
 Each stamp appends `{date, commit, reason, cases}` to `stamps`. `commit` is the host HEAD when the stamp ran; a stamp made on a branch commit that is later squashed names a pre-squash SHA.
+
+**CE-3 stamps (#421, 2026-10-02, branch commit `98355b2f`).** Three stamps, all taken from one pinned-image check run (`FROM=`), so each reason quotes that run's deltas (observed):
+
+1. Case 5: maap re-synced from its raw Figma snapshot (strokes, text-align, style-run links). Six sections moved, all inside the 0.005 margin: `2833:1629` −0.0013, `2833:1643` −0.0028, `2833:1650` +0.0009, `2833:1655` +0.0014, `2833:1687` +0.0043, `2833:1738` +0.0022. Per-section causes are in `.claude/reports/ce-3-corpus-refresh-report.md`.
+2. Cases 6, 8, 9, 10: #450 (CE-2) moved four footer sections and never re-stamped: 6 `2833:1475` −0.0011, 8 `2833:2348` −0.0005, 9 `2833:2149` −0.0004, 10 `2833:1270` +0.0001. CE-3 does not change these cases' inputs; the stamp gives later tickets a baseline equal to `main`.
+3. Reframe added as a case (16 sections, row above).
 
 ## Adding a case (CE-3, CE-5)
 

@@ -229,9 +229,24 @@ class TestRealCases:
         """The pass is the only difference between pre-pass and shipped output."""
         assert link_unsubscribe_text(_pre_pass_html(case)) == _converted_html(case)
 
-    def test_case_5_unchanged(self) -> None:
+    def test_case_5_only_design_anchor_repointed(self) -> None:
+        """Maap's design links its own phrase; the pass repoints that href and
+        nothing else (template merge-tag link untouched, nothing wrapped)."""
         pre = _pre_pass_html("5")
-        assert link_unsubscribe_text(pre) == pre
+        design = [
+            attrs
+            for attrs, inner in _ANCHOR_RE.findall(pre)
+            if inner == "unsubscribe here" and _UNSUB_HREF not in attrs
+        ]
+        assert len(design) == 1  # the design's style-run hyperlink
+        design_href = re.search(r'href="([^"]*)"', design[0])
+        assert design_href is not None
+        anchor = f"<a{design[0]}>unsubscribe here</a>"
+        repointed = anchor.replace(design_href.group(1), _UNSUB_HREF)
+        assert pre.count(anchor) == 1
+        # Sibling design links (Facebook, Strava) share the URL and keep it.
+        expected = pre.replace(anchor, repointed)
+        assert link_unsubscribe_text(pre) == expected
 
     def test_case_9_gains_one_anchor_in_footer_colour(self) -> None:
         pre = _pre_pass_html("9")
@@ -335,10 +350,11 @@ class TestRealCases:
         assert post.count("<a ") == mutated.count("<a ")  # nothing wrapped
 
     def test_merge_tag_href_is_not_repointed(self) -> None:
-        """Case 5's footer anchor pointed at its other ESP merge tag keeps it."""
-        pre = _pre_pass_html("5")
-        assert "{{preferencesUrl}}" in pre
-        mutated = pre.replace(f'href="{_UNSUB_HREF}"', 'href="{{preferencesUrl}}"')
+        """Case 5's phrase anchors pointed at another ESP merge tag keep it."""
+        shipped = _converted_html("5")
+        assert "{{preferencesUrl}}" in shipped
+        mutated = shipped.replace(f'href="{_UNSUB_HREF}"', 'href="{{preferencesUrl}}"')
+        assert len(_unsub_anchors(shipped)) == 2  # template link + repointed design link
         assert _UNSUB_HREF not in mutated
         assert link_unsubscribe_text(mutated) == mutated
 

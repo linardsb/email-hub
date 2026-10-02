@@ -37,6 +37,7 @@ CASES = {
     "8": "performance_reimagined",
     "9": "slate",
     "10": "mammut",
+    "reframe": "reframe_2025",
 }
 REF_ROOT = REPO / "email-templates/training_HTML/for_converter_engine"
 OUT = REPO / ".tmpscratch/fidelity"

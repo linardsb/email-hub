@@ -48,6 +48,16 @@ class SectionExpectations(BaseModel):
     components: list[ComponentExpectation] = []
 
 
+class KnownFailure(BaseModel):
+    """A manifest expectation the converter fails today, owned by the ticket
+    that fixes it. Applied as a strict xfail: once it passes, the row fails the
+    run and the fixing PR deletes it (same ratchet as content_check_allowlist.yaml)."""
+
+    test: str
+    owner: str
+    reason: str
+
+
 class CaseManifest(BaseModel):
     """Top-level manifest for a single regression case."""
 
@@ -62,3 +72,4 @@ class CaseManifest(BaseModel):
     required_content: list[str] = []
     forbidden_content: list[str] = []
     patterns: list[str] = []
+    known_failures: list[KnownFailure] = []

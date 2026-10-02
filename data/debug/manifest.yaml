@@ -81,3 +81,13 @@ cases:
     status: active
     design_image: false  # image capture missed for this node
     visual_threshold: 0.95
+
+  - id: "reframe"
+    name: "Vimeo REFRAME 2025 — 12-section event invitation (repeating reasons, 3 CTAs, event card)"
+    source: "The Ultimate Email Design System (Community)"
+    figma_node: "2833-1491"
+    sections: 11  # converter current (CE-3 #421); target is 12 (see known_failures in reframe/manifest.yaml)
+    target_sections: 12
+    status: active
+    design_image: false
+    visual_threshold: 0.95

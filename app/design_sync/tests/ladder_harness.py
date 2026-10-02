@@ -43,7 +43,7 @@ from app.design_sync.figma.tree_normalizer import normalize_tree
 from app.design_sync.tests.regression_runner import run_case_conversion
 
 _DEBUG_DIR = Path(__file__).resolve().parents[3] / "data" / "debug"
-_CASE_IDS = ("5", "6", "7", "8", "9", "10")
+_CASE_IDS = ("5", "6", "7", "8", "9", "10", "reframe")
 
 # Committed expected-ladder snapshot. The A2 drift gate asserts the converter
 # reproduces this; the target gate (rendered vs target) xfails the gap. Regen

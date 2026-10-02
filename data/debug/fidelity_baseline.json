@@ -18,6 +18,33 @@
     "9",
     "10"
    ]
+  },
+  {
+   "date": "2026-10-02",
+   "commit": "98355b2f",
+   "reason": "CE-3 #421: maap re-synced from raw_figma (strokes, text-align, style-run links); moved 2833:1629 -0.0013, 2833:1643 -0.0028, 2833:1650 +0.0009, 2833:1655 +0.0014, 2833:1687 +0.0043, 2833:1738 +0.0022; causes in .claude/reports/ce-3-corpus-refresh-report.md",
+   "cases": [
+    "5"
+   ]
+  },
+  {
+   "date": "2026-10-02",
+   "commit": "98355b2f",
+   "reason": "CE-3 #421: absorb #450 (CE-2) footer-link moves never stamped: 6 2833:1475 -0.0011, 8 2833:2348 -0.0005, 9 2833:2149 -0.0004, 10 2833:1270 +0.0001",
+   "cases": [
+    "6",
+    "8",
+    "9",
+    "10"
+   ]
+  },
+  {
+   "date": "2026-10-02",
+   "commit": "98355b2f",
+   "reason": "CE-3 #421: add case reframe",
+   "cases": [
+    "reframe"
+   ]
   }
  ],
  "cases": {
@@ -38,7 +65,7 @@
     },
     "2833:1629": {
      "marker": "section_1",
-     "score": 0.9112,
+     "score": 0.9099,
      "design_box": [
       0,
       800,
@@ -48,7 +75,7 @@
     },
     "2833:1643": {
      "marker": "section_2",
-     "score": 0.6556,
+     "score": 0.6528,
      "design_box": [
       24,
       1118,
@@ -68,7 +95,7 @@
     },
     "2833:1650": {
      "marker": "section_4",
-     "score": 0.8282,
+     "score": 0.8291,
      "design_box": [
       304,
       1118,
@@ -78,7 +105,7 @@
     },
     "2833:1655": {
      "marker": "section_5",
-     "score": 0.9923,
+     "score": 0.9937,
      "design_box": [
       0,
       1523,
@@ -98,7 +125,7 @@
     },
     "2833:1687": {
      "marker": "section_7",
-     "score": 0.991,
+     "score": 0.9953,
      "design_box": [
       0,
       1940,
@@ -168,7 +195,7 @@
     },
     "2833:1738": {
      "marker": "section_14",
-     "score": 0.9622,
+     "score": 0.9644,
      "design_box": [
       0,
       2342,
@@ -267,7 +294,7 @@
     },
     "2833:1475": {
      "marker": "section_8",
-     "score": 0.9675,
+     "score": 0.9664,
      "design_box": [
       0,
       1429,
@@ -561,7 +588,7 @@
     },
     "2833:2348": {
      "marker": "section_10",
-     "score": 0.913,
+     "score": 0.9125,
      "design_box": [
       0,
       3450,
@@ -670,7 +697,7 @@
     },
     "2833:2149": {
      "marker": "section_9",
-     "score": 0.9445,
+     "score": 0.9441,
      "design_box": [
       0,
       1776,
@@ -831,7 +858,7 @@
     },
     "2833:1270": {
      "marker": "section_14",
-     "score": 0.0454,
+     "score": 0.0455,
      "design_box": [
       0,
       4132,
@@ -845,6 +872,175 @@
     "2833:1248": "divider",
     "2833:1259": "divider"
    }
+  },
+  "reframe": {
+   "design": "reframe-2025",
+   "frame_width": 640,
+   "reference": "data/debug/reframe/reference_1x.png",
+   "sections": {
+    "2833:1492": {
+     "marker": "section_0",
+     "score": 0.9647,
+     "design_box": [
+      0,
+      0,
+      640,
+      419
+     ]
+    },
+    "2833:1497": {
+     "marker": "section_1",
+     "score": 0.8821,
+     "design_box": [
+      0,
+      419,
+      640,
+      230
+     ]
+    },
+    "2833:1508": {
+     "marker": "section_2",
+     "score": 0.8913,
+     "design_box": [
+      32,
+      649,
+      576,
+      135
+     ]
+    },
+    "2833:1517": {
+     "marker": "section_3",
+     "score": 0.8925,
+     "design_box": [
+      32,
+      784,
+      576,
+      135
+     ]
+    },
+    "2833:1526": {
+     "marker": "section_4",
+     "score": 0.897,
+     "design_box": [
+      32,
+      919,
+      576,
+      135
+     ]
+    },
+    "2833:1535": {
+     "marker": "section_5",
+     "score": 0.9126,
+     "design_box": [
+      32,
+      1054,
+      576,
+      114
+     ]
+    },
+    "2833:1544": {
+     "marker": "section_6",
+     "score": 0.9081,
+     "design_box": [
+      32,
+      1168,
+      576,
+      130
+     ]
+    },
+    "2833:1553": {
+     "marker": "section_7",
+     "score": 0.8682,
+     "design_box": [
+      0,
+      1318,
+      640,
+      88
+     ]
+    },
+    "2833:1561": {
+     "marker": "section_8",
+     "score": 0.9765,
+     "design_box": [
+      0,
+      1406,
+      640,
+      394
+     ]
+    },
+    "2833:1566": {
+     "marker": "section_9",
+     "score": 0.9404,
+     "design_box": [
+      0,
+      1800,
+      640,
+      304
+     ]
+    },
+    "2833:1577": {
+     "marker": "section_10",
+     "score": 0.9399,
+     "design_box": [
+      0,
+      2104,
+      640,
+      349
+     ]
+    },
+    "2833:1582": {
+     "marker": "section_11",
+     "score": 0.9381,
+     "design_box": [
+      0,
+      2453,
+      640,
+      240
+     ]
+    },
+    "2833:1589": {
+     "marker": "section_12",
+     "score": 0.8577,
+     "design_box": [
+      0,
+      2693,
+      640,
+      88
+     ]
+    },
+    "2833:1597": {
+     "marker": "section_13",
+     "score": 0.9796,
+     "design_box": [
+      0,
+      2781,
+      640,
+      429
+     ]
+    },
+    "2833:1603": {
+     "marker": "section_14",
+     "score": 0.7959,
+     "design_box": [
+      32,
+      3244,
+      576,
+      270
+     ]
+    },
+    "2833:1607": {
+     "marker": "section_15",
+     "score": 0.8655,
+     "design_box": [
+      32,
+      3514,
+      576,
+      60
+     ]
+    }
+   },
+   "skipped": {},
+   "unmarked": {}
   }
  }
 }

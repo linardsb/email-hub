@@ -15,11 +15,12 @@ Reads the untracked design PNGs under
 machine that has them. The gate itself never reads them.
 
 Usage:
-    uv run python scripts/prepare-fidelity-fixtures.py
+    uv run python scripts/prepare-fidelity-fixtures.py [--cases reframe]
 """
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import sys
 from pathlib import Path
@@ -39,6 +40,7 @@ CASES = {
     "8": "performance_reimagined",
     "9": "slate",
     "10": "mammut",
+    "reframe": "reframe_2025",
 }
 REF_ROOT = REPO / "email-templates/training_HTML/for_converter_engine"
 MAX_ASSET_WIDTH = 600
@@ -46,8 +48,12 @@ COMMITTED_ASSET_CASES = {"5"}
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cases", nargs="+", default=list(CASES), help="case ids (default all)")
+    args = parser.parse_args()
     allow: list[str] = ["!data/debug/*/reference_1x.png"]
-    for case, design in CASES.items():
+    for case in args.cases:
+        design = CASES[case]
         case_dir = REPO / "data/debug" / case
         result = run_case_conversion(case_dir)
         if result is None or result.layout is None:
@@ -90,7 +96,11 @@ def main() -> None:
         allow += [f"!data/debug/{case}/assets/", f"data/debug/{case}/assets/*"]
         allow += [f"!data/debug/{case}/assets/{n}.png" for n in nodes]
 
-    print("\n# .gitignore block")
+    partial = set(args.cases) != set(CASES)
+    print(
+        "\n# .gitignore block"
+        + (" (APPEND these lines; the existing block stays)" if partial else "")
+    )
     print("\n".join(allow))
 
 

@@ -51,7 +51,7 @@ from app.design_sync.fidelity_gate import (
 from app.design_sync.figma.layout_analyzer import EmailSection
 from app.design_sync.tests.regression_runner import run_case_conversion
 
-CASES = ["5", "6", "7", "8", "9", "10"]
+CASES = ["5", "6", "7", "8", "9", "10", "reframe"]
 _MARKER_RE = re.compile(r"<!-- (/?)section:section_(\d+) -->")
 _ENV = Environment(image="img:1", playwright="1.0")
 

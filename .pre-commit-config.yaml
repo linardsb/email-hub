@@ -26,7 +26,7 @@ repos:
         # they cannot be recompressed under the cap.
         # CE-1 fidelity-gate references (reference_1x.png) are lossless 1x copies
         # of the design exports, scored pixel for pixel.
-        exclude: ^(data/debug/\d+/(assets/[^/]+\.png|rendered_w600\.png|reference_1x\.png)|email-templates/training_HTML/for_converter_engine/[^/]+/[^/]+\.png)$
+        exclude: ^(data/debug/(\d+|reframe)/(assets/[^/]+\.png|rendered_w600\.png|reference_1x\.png)|email-templates/training_HTML/for_converter_engine/[^/]+/[^/]+\.png)$
       - id: detect-private-key
       - id: no-commit-to-branch
         args: [--branch, main]

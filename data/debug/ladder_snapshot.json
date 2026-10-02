@@ -568,5 +568,112 @@
         0
       ]
     ]
+  },
+  "reframe": {
+    "name": "reframe-2025",
+    "target": 12,
+    "candidates": 11,
+    "analyzed": 16,
+    "rendered": 11,
+    "bands": 11,
+    "band_desc": "wrappers[1507=5, 1602=2] solo=9",
+    "bags": [
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        1,
+        1,
+        1
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        4,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-wrapper",
+        2,
+        0,
+        0
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        1
+      ],
+      [
+        "mj-wrapper",
+        0,
+        1,
+        0
+      ],
+      [
+        "mj-section",
+        1,
+        0,
+        0
+      ],
+      [
+        "mj-section",
+        2,
+        4,
+        0
+      ]
+    ]
   }
 }

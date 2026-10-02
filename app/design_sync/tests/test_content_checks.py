@@ -187,7 +187,7 @@ def test_unsubscribe_check_fails_without_any_link() -> None:
 
 def test_hash_href_is_not_an_unsubscribe_link() -> None:
     html = _html("5")
-    mutated, n = re.subn(r'href="\{\{unsubscribeUrl\}\}"', 'href="#"', html)
+    mutated, n = re.subn(r'href="\{\{unsubscribeUrl\}\}"', 'href="#"', html, count=1)
     assert n == 1
     assert output_unsubscribe_links(mutated) == output_unsubscribe_links(html) - 1
 
