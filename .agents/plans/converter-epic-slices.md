@@ -263,6 +263,7 @@ Already done, not re-sliced: T1 (#409/#410), AI-layer import (#404), Jev shadow 
 
 #### CE-19: O1 spike on the MJML path (P1b / P3)
 
+- **Spec:** [`docs/architecture/dsl-compiler.md`](../../docs/architecture/dsl-compiler.md) (pre-spike DSL spec, proposed 2026-10-02).
 - **Closes:** no R-cause. Decides T8 fix-sprint vs primitives rewrite.
 - **Scope:** a node-tree emitter producing `mj-wrapper/section/column/text/button/image/spacer` for maap plus one held-out CE-5 design (Q7; the brief's version is maap only), mapping fill, padding, radius, font fields and style runs to MJML attributes, behind `output_format="mjml"` (`convert_document_mjml`, `converter_service.py:408`). Throwaway branch unless it passes.
 - **Kill tests:** nested surfaces needed (card on band, illegal in MJML); output over Gmail's 102KB clip (maap measured, mammut extrapolated); Outlook buttons lose radius or stroke (CE-4 source). MJML 4.18's `mj-button` emits no VML (observed 2026-10-01: no `roundrect` in any `mjml-*` package in the sidecar), so the spike wraps buttons with CE-11's VML builder; without it kill test 3 fails by construction.
