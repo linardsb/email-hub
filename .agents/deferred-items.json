@@ -611,7 +611,7 @@
       "closed_commit": "phase-54.2-flag-resolution",
       "severity": "soft",
       "introduced": "2026-06-21",
-      "introduced_commit": "pending commit",
+      "introduced_commit": "c2836da9",
       "summary": "A 34-flag batch (created ~2026-03-16) shared removal_date 2026-06-15, which slipped 6 days and hard-errored flag-audit (make check), blocking all pushes via the local CI fallback. Investigation (config introspection) found all 34 are default-OFF alpha/beta — none is default-on/shipped, so there is no clean 'graduate by removal' subset. 8 hard-blocker flags (external dep / infra / cost) were reclassified to permanent opt-in (removal_date: null + permanent_reason). The remaining 26 in-house, off-by-default capabilities were rescheduled to 2026-09-15 as this tracked deferral — each still needs an owner-team graduate-or-kill decision. NOT a silent date bump: recorded here with owners.",
       "code_refs": [
         "feature-flags.yaml (26 entries at removal_date 2026-09-15)",
@@ -639,7 +639,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-06-22",
-      "introduced_commit": "pending commit",
+      "introduced_commit": "9826ba7f",
       "summary": "Phase 54.1 built the reward corpus, but real LLM-judge calibration is limited by corpus composition. 84% of verdicts are deterministic QA-backed (verifiable, trivially TPR/TNR=1.0 - NOT judge calibration). Only scaffolder/brief_fidelity and dark_mode/color_coherence have both-class LLM-judge data; against independent blind bootstrap labels they land at TPR 0.62/TNR 0.86 and TPR 0.80/TNR 1.00 - TNR meets target, TPR does not. personalisation/logic_match is vacuous (empty-brief component fixtures), scaffolder/design_fidelity is degenerate auto-pass; both left unlabeled. The residual brief_fidelity disagreement is a criterion-definition ambiguity (terse 'snippet/effect' briefs the judge wants as full HTML), not a clear judge defect. Bootstrap labels are model-assisted, provisional, pending human review.",
       "code_refs": [
         "traces/scaffolder_calibration.json (brief_fidelity TPR 0.62/TNR 0.86)",
@@ -659,7 +659,7 @@
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-06-22",
-      "introduced_commit": "pending commit",
+      "introduced_commit": "9826ba7f",
       "summary": "Phase 54.1 committed the real corpus for the 5 populated agents (scaffolder, dark_mode, outlook_fixer, accessibility, personalisation). The other 4 agents have 0-byte traces/verdicts/human_labels, so get_failure_warnings() returns None for them and their judges are uncalibrated. code_reviewer is in the QA->recovery loop; content, knowledge, innovation are advisory/non-loop. The 2 P54 activates (recovery_ledger, judge_on_retry) are functionally covered by the 5 populated agents. Generating the missing corpus needs a live eval run (runner + judge_runner: LLM cost, provider keys), out of 54.1 scope (user scoped it out in the execution Q&A).",
       "available_data": "traces/{content,code_reviewer,knowledge,innovation}_{traces,verdicts,human_labels}.jsonl exist but are 0 bytes (gitignored, not committed).",
       "code_refs": [
@@ -684,7 +684,7 @@
       ],
       "symptom_if_broken": "A design-sync import section renders raw seed placeholder text (fakeimg.pl image, 'Shop Now'/'Read More' CTA, 'Feature icon' alt) because it matched a builder-less extended component type.",
       "closes_when": "The 5 builder-less slugs are removed from _score_extended_candidates so only builder-backed slugs can be scored — done in F4d; verified by inspection that no corpus fixture (cases 5-10) matched any of them.",
-      "closed_commit": "pending commit",
+      "closed_commit": "15cf2ff8",
       "notes": "The 5 slugs remain full component-library citizens; if a converter fill builder is later written for any, re-add its scoring block and the _build_slot_fills builder together."
     },
     {
@@ -692,11 +692,11 @@
       "phase": "53.f",
       "title": "BrandRepair._repair_footer is dead as a compliance backstop — never reached from design-sync and never injects unsub links",
       "status": "closed",
-      "closed_commit": "pending",
+      "closed_commit": "99667765",
       "closed_note": "Track G · G8 / 51.6 makes _fills_footer (component_matcher.py) the converter footer's compliance owner: it now ALWAYS emits the footer_legal {{unsubscribeUrl}} unsubscribe row and rebuilds footer_legal deterministically (FooterConfig substitution when a project DesignSystem is present, else drop the seed placeholder ©/address rows), superseding RC-F5's preserve-verbatim approach. A working unsubscribe is guaranteed even when the design carries none (c5's 'unsubscribe here' is dead plain text) and no '© Company Name / 123 Business Street' literals leak. BrandRepair stays unwired/dead for the converter path (RepairPipeline still not imported). SCOPE NOTE: the entry's symptom_if_broken is the SCAFFOLDER-pipeline (non-converter) path, which G8 does NOT touch; this closure covers the converter path (the entry's code_refs home) — the scaffolder decorative-footer edge is a separate concern not exercised by any converter fixture.",
       "severity": "speculative",
       "introduced": "2026-07-04",
-      "introduced_commit": "pending",
+      "introduced_commit": "1422e444",
       "summary": "Audit-4 (RC-F5) found the comment claiming BrandRepair fixes footer legal/unsub content downstream is false. RepairPipeline is never invoked from any design-sync path (converter_service.py / import_service.py / routes.py have zero repair imports), and BrandRepair._repair_footer early-returns on any element matching class=\"...footer...\" (the seed's footer-bg qualifies) and, even when it does fire, injects only a <footer> with copyright/address/legal_text from DesignSystem — never an unsubscribe LINK. F5 makes the converter self-sufficient instead: the email-footer seed's footer_legal cell (unsub/preferences/address rows) is preserved verbatim and never overwritten by _fills_footer.",
       "code_refs": [
         "app/qa_engine/repair/brand.py:141-172 (BrandRepair._repair_footer — early-return at :149 on footer class; no unsub-link injection)",
@@ -713,7 +713,7 @@
       "status": "deferred",
       "severity": "soft",
       "introduced": "2026-07-04",
-      "introduced_commit": "pending",
+      "introduced_commit": "1422e444",
       "summary": "Extraction sets is_background only for frame fills (layout_analyzer.py), so a plain IMAGE node that is decorative (arrow, pin, texture, thermometer) carries no signal distinguishing it from a content photo. The F1/F3 image-width work uses a size heuristic (<=64px never stretches; design-width threading) as a stopgap to keep small decorations from ballooning, but a genuinely large decorative image is still treated as content. The real fix is z-order / semantic-role capture at ingest (53.3d territory).",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py:105 (is_background field), :1296 (set True only on frame fills)",
@@ -731,7 +731,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-07-04",
-      "introduced_commit": "pending",
+      "introduced_commit": "3a626dcd",
       "summary": "F6 splices pre-heading eyebrow <tr><td data-node-id> rows above the heading row and uses a padding-bottom LONGHAND so the section _cell padding override (_replace_first_css_prop on the `padding:` shorthand) still lands on the heading <td>, not the eyebrow. This dodge only covers 4-side (shorthand) section padding. When a section has PARTIAL padding, _build_token_overrides emits per-side _cell longhands applied via _upsert_first_td_css_prop, which targets the FIRST <td> in the HTML — after the splice that is the eyebrow row, so the heading loses its intended per-side padding to the eyebrow. Both corpus acceptance cases (c5/c8) use 4-side padding, so this is unexercised.",
       "code_refs": [
         "app/design_sync/component_matcher.py (_pre_heading_rows_html — padding-bottom longhand)",
@@ -748,7 +748,7 @@
       "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-05",
-      "introduced_commit": "pending",
+      "introduced_commit": "57e90031",
       "summary": "The text-block CTA-append path in _fills_text_block emits a hardcoded `border-radius:4px` for every button, discarding btn.border_radius (which the document model carries correctly). The sibling column path _column_cta_row honors btn.border_radius with a '4' fallback. Surfaced during the RC-F7 pill-radius fixture recovery (fix/phase-53f-f7-pills-radius): c5 section-[1] 'Discover →' carries border_radius=25.0 (verified via from_legacy) yet renders 4px; corpus-wide the same hardcode forces every text-block CTA that has a design radius to 4px — confirmed on c6 'Order your fall favorite' and c7 'Explore now' (both 25.0 in the model, 4px in expected.html). c5's 7 COLUMN city pills route through _column_cta_row and correctly render 25px, which is why the fixture patch alone recovered them.",
       "code_refs": [
         "app/design_sync/component_matcher.py:1345 (_fills_text_block CTA-append — hardcoded border-radius:4px)",
@@ -758,7 +758,7 @@
       "closes_when": "_fills_text_block threads btn.border_radius (fallback '4', mirroring _column_cta_row:843), and the c5/c6/c7 expected.html baselines are regenerated + diff-audited (text-block CTA border-radius 4px→25px only) with the ladder unchanged (13/9/8/10/8/12).",
       "notes": "Split out of RC-F7 half-2 during the pill recovery (2026-07-05). User-ratified (2026-07-05) to recover only the 7 c5 column pills via the fixture patch and DEFER this shared render-path fix, because fixing it moves the c6/c7 baselines (they are NOT byte-identical after) and belongs in its own scoped effort. Companion to phase-53f-f7-stale-case5-fixture-drops-pill-radius (closed by the fixture patch) — that was the fixture staleness; this is the residual render-path bug that keeps the section-[1] Discover pill square.",
       "closed_date": "2026-07-06",
-      "closed_commit": "pending commit",
+      "closed_commit": "91d8752a",
       "resolution": "FIXED (branch fix/phase-53f-app-render-field-parity) exactly per closes_when: _fills_text_block threads btn.border_radius with fallback '4' mirroring _column_cta_row (component_matcher.py); c5/c6/c7 expected.html regenerated and diff-audited — exactly 3 changed lines, all text-block CTA border-radius 4px->25px ('Discover ->', 'Order your fall favorite', 'Explore now'); c8 regen churn was trailing-whitespace-only and reverted; c9/c10 byte-identical; ladder 13/9/8/10/8/12 held (snapshot regression 34 passed/1 xfail). Guarded by TestTextBlockCTARadius (RED-proven) in test_cta_fidelity.py. A3: c7 0.770->0.771, c5/c6 flat (sub-rounding pill deltas, cf. the F7-pills row)."
     },
     {
@@ -827,7 +827,7 @@
       "severity": "known-bug",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
-      "closed_commit": "pending commit",
+      "closed_commit": "baf5beaf",
       "summary": "_wrap_col_bg_inner_card inserts a width=100% card table whose <td> becomes the first cell, so the section's _cell padding override (component_matcher.py:2169, applied after inner_bg -> deterministic) lands 20px on the WRAPPER cell, which sits OUTSIDE the MSO ghost (<table width=600>). In the Word/Outlook engine the card is: 100% wrapper -> td with 40px horizontal padding -> a fixed 600px ghost inside a 560px content box; Word will not shrink the ghost, so the card overflows the 600px email column (~640px). Chromium honours the 100% wrapper and renders correctly; the fidelity scorer (Chromium) + DOM/string unit tests + make test never exercise the MSO path, so no gate caught it. Same class as the F3 Outlook attr/width latent.",
       "code_refs": [
         "app/design_sync/component_renderer.py:_wrap_col_bg_inner_card (wrapper td, width=100%)",
@@ -846,7 +846,7 @@
       "severity": "speculative",
       "introduced": "2026-07-05",
       "introduced_commit": "97bfb77c",
-      "closed_commit": "pending commit",
+      "closed_commit": "baf5beaf",
       "summary": "The converter's img builders (_column_image_row, _spec_icon_img, _stacked_image_row, _card_image_row in component_matcher.py) set width=\"{w}\" attr AND max-width:{w}px from one w=int(img.width), and _clamp_img_max_width is a max-width-only mutator that never touches the width= attr. Outlook honours the fixed width= attr and ignores max-width, so an edit that mutates only one surface would leave an image wider in the Word engine than its CSS box, while browsers (honouring width:100%+max-width) render correctly and the Chromium scorer never sees it. G9 locks this self-consistency: the static gate asserts width= attr == inline max-width for every img (that carries a max-width) in all 6 baselines.",
       "code_refs": [
         "app/design_sync/component_matcher.py:_column_image_row / _spec_icon_img / _stacked_image_row / _card_image_row (set both from one w)",
@@ -919,7 +919,7 @@
       "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-06",
-      "introduced_commit": "pending commit",
+      "introduced_commit": "91d8752a",
       "summary": "Validating the ceiling-doc §3 ops caveat end-to-end (2026-07-06, imports 39/41 on connection 5) disproved its remedy: after a fresh connection re-sync (snapshot 20, fresh _file_structure with text_color) and cache-free conversions, the LEGO 'Explore now' CTA still renders white-on-white, borderless, r4 — byte-identical output (70686B) to the stale 2026-04 render — while the harness (same renderer code, data/debug/7/structure.json) renders black-on-white + 2px border + r4. Mechanism: run_conversion's legacy path consumes protocol DesignNodes rebuilt from snapshot.tokens_json._file_structure via cached_dict_to_node, whose schema has NO corner_radius/stroke_weight/stroke_color/text_align (the sync serializer never persists them either — fresh snapshot has 0 occurrences), and text_color survives the cache but is dropped in the downstream protocol->converter bridge (fresh-vs-March snapshot outputs are byte-identical). The harness bypasses all of this by loading structure.json with the converter-native deserializer.",
       "code_refs": [
         "app/design_sync/services/_serialization.py:135 (cached_dict_to_node — reduced field map)",
@@ -931,7 +931,7 @@
       "closes_when": "An app-side POST /imports conversion of the LEGO frame (connection-5 class data) renders 'Explore now' with text_color + stroke parity with data/debug/7/expected.html (r25 additionally needs phase-53f-f7-text-block-cta-hardcoded-radius), guarded by a test that round-trips a DesignNode with stroke/radius/text-align through the snapshot cache serializer and the protocol->converter bridge.",
       "notes": "Found while executing the 2026-07-06 asset-restore ops task. Same inert-serializer-bridge class as RC-A/RC-B (Phase 52). Validation artifacts left in the dev DB: imports 39 (tmpl 42, pre-sync) and 41 (tmpl 44, post-sync forced-legacy via nulled snapshot-20 document_json) — both byte-identical to stale tmpl 41 (import 38, 2026-07-05). Stale tmpl 28 (import 26, 2026-04-19) additionally lacks text-align/centering. The ceiling doc §3 ops caveat is amended to point here.",
       "closed_date": "2026-07-06",
-      "closed_commit": "pending commit",
+      "closed_commit": "91d8752a",
       "resolution": "FIXED same day (branch fix/phase-53f-app-render-field-parity). Two mechanisms, one of them mis-hypothesized at filing: (1) serialize_node/cached_dict_to_node extended to round-trip every DesignNode render field (corner_radius, corner_radii, stroke_weight, stroke_color, text_align, primary/counter_axis_align, style_runs, image_ref, hyperlink, line_height_relative, visible, opacity) — guarded by test_serialization_roundtrip.py incl. a dataclass-fields parity test that fails when DesignNode grows a field the cache pair does not carry. (2) The 'text_color dies in the protocol->converter bridge' hypothesis was WRONG — normalize_tree/_filter_structure use dataclasses.replace (lossless) and ButtonElement carried #000000 correctly; the label was repainted by the _sanitize_email_html post-pass: _fix_text_contrast treated only table/td/tr as background carriers and started ranges after the opening tag, so an inline CTA's own white pill background was invisible and its style-attr color was judged against the dark band. Fixed by adding 'a' to the bg-tag set and starting ranges at the opening tag; guarded by test_contrast_fix_outlined_button_own_light_bg_preserved / test_contrast_fix_dark_button_own_bg_still_corrected. End-to-end closes_when met: POST /connections/sync (snapshot 21, stroke x277/corner_radius x631/text_align x2615 in _file_structure) -> import 43 -> tmpl 46 renders 'Explore now' background #FFFFFF / color #000000 / border 2px solid #000000 / border-radius 25px with the heading text-align:center — full parity with data/debug/7/expected.html (r25 via the text-block radius fix, same branch). Screenshot-verified on the purple band."
     },
     {
@@ -941,7 +941,7 @@
       "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-06",
-      "introduced_commit": "pending commit",
+      "introduced_commit": "91d8752a",
       "summary": "When the latest DesignTokenSnapshot carries document_json (a fresh POST /connections/sync now writes one — 691KB for connection 5), run_conversion prefers EmailDesignDocument.from_json(snapshot.document_json) and converts it WITHOUT filtering to the import's selected_node_ids. Observed 2026-07-06: import 40 (145 selected LEGO nodes) produced a 2,056,671-byte template (tmpl 43) containing zero occurrences of 'Explore now'/'LEGO'/any of the email's content — the whole community-file document was converted instead of the selected frame.",
       "code_refs": [
         "app/design_sync/import_service.py:203 (document path: from_json(snapshot.document_json), no node filtering)",
@@ -951,7 +951,7 @@
       "closes_when": "The document path filters the document to the import's selected_node_ids (or run_conversion falls back to the legacy path when selected_node_ids is non-empty), with a test converting a selected-nodes import against a multi-frame snapshot document.",
       "notes": "Ops workaround used for the 2026-07-06 validation and LEFT IN PLACE for connection 5: snapshot 20's document_json set to NULL in the dev DB so the legacy path engages (a future sync will regenerate document_json and re-expose this bug). Blocks meaningful use of the fresh document_json snapshots that re-sync now produces.",
       "closed_date": "2026-07-06",
-      "closed_commit": "pending commit",
+      "closed_commit": "91d8752a",
       "resolution": "FIXED same day (branch fix/phase-53f-app-render-field-parity) via the closes_when's sanctioned fallback: run_conversion takes the snapshot document path only when design_import.selected_node_ids is empty; selected-nodes imports use the legacy path, which filters via _filter_structure. Guarded by test_run_conversion_selected_nodes_skip_document_path (RED-proven on pre-fix code) + test_run_conversion_whole_file_import_uses_document_path (document path preserved for whole-file imports). Live-proven: snapshot 21 HAS document_json, yet imports 42/43 (145 selected LEGO nodes) produced the 71,869-byte LEGO email, not the 2MB whole-file output. The interim dev-DB workaround (snapshot 20 document_json nulled) is obsolete but harmless — snapshot 21 supersedes it."
     },
     {
@@ -999,7 +999,7 @@
       "severity": "known-bug",
       "introduced": "2026-07-07",
       "introduced_commit": "a660262c",
-      "closed_commit": "uncommitted (working tree, branch investigate/converter-v2-deep-audit)",
+      "closed_commit": "44f8b47b",
       "summary": "Grouped band sections took y/height from the CHILD bbox, so a band wrapper FRAME's internal top/bottom padding surfaced as a phantom white spacing_after gap between bands (c7 zigzag->lime idx3 + lime->gray idx16; the band the audit cited at A3 0.478). Fixed (M1) by threading each band wrapper's frame bbox (_wrapper_frame_bounds) into _calculate_spacing: a solo section before/after a band measures to the frame edge, not the child bbox, so spacing_after collapses 20->0 for both c7 slits. Two safety nets shipped alongside: M2 paints an inter-band spacer with the FOLLOWING band's bg when a real gap sits between two solid coloured bands (and only then; 0px gaps suppressed); M3 suppresses a section's own WHITE bg_color when it sits on a coloured wrapper (container_bg) with no inner_bg card.",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py (_wrapper_frame_bounds; _calculate_spacing(wrapper_bounds) — M1)",
@@ -1019,7 +1019,7 @@
       "severity": "known-bug",
       "introduced": "2026-07-07",
       "introduced_commit": "a660262c",
-      "closed_commit": "uncommitted (working tree, branch investigate/converter-v2-deep-audit)",
+      "closed_commit": "44f8b47b",
       "summary": "Three coupled text-slot defects (M2/M9). (1) _detect_content_hierarchy returned no heading for uniform-size sections, so single-text banners (c7 'Expect lots' 30px, c9 'NO SWEAT.' 44px, c10 24px) landed in the BODY slot while the seed heading slot ghosted; fixed with an absolute >=24px floor on the uniform branch (_UNIFORM_HEADING_MIN_PX — corpus gap: largest uniform body copy 20px, smallest uniform display text 24px). (2) B3's blank pass emptied unfilled text cells but kept their padded <td> (16-36px phantom rows; c7 preheader ~2x design height); _collapse_blanked_slot now drops the whole <tr> when the blanked cell is alone in its row (also letting the _cell padding override land on the next content cell) or zeroes the cell padding when the row is shared. (3) text-block slot h-padding rescales to the design content width (F9 budget mirrored): per-side clamp to max(0,(available-section.width)/2), shrink-only, skipped when the section carries explicit h-padding, tightened again inside band rows by the row inset.",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py (_detect_content_hierarchy uniform branch; _UNIFORM_HEADING_MIN_PX — M2 heading rule)",
@@ -1038,7 +1038,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-07-14",
-      "introduced_commit": "pending",
+      "introduced_commit": "44f8b47b",
       "summary": "_resolve_item_spacing falls back to defaults (first_top=20, subsequent_top=16, horizontal=24) because wrapper-band grouping never populates RepeatingGroup.container_padding from the wrapper FRAME's real padding. Design truth differs: c9 wrapper 2833:2084 has padT=40 padL/R=40 padB=24; c7 wrapper 2833:1941 has 20 on all sides (render uses horizontal=24). Until G2, blanked-slot phantom rows partially masked the vertical deficit — G2's ghost collapse exposed it as a measurable full-image y-shift (c9 -0.007, c5 -0.005).",
       "code_refs": [
         "app/design_sync/component_renderer.py (_resolve_item_spacing — default fallbacks)",
@@ -1055,8 +1055,8 @@
       "status": "closed",
       "severity": "known-bug",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
-      "closed_commit": "pending",
+      "introduced_commit": "9d66eae5",
+      "closed_commit": "9d66eae5",
       "summary": "Both CTA render sites emitted a hardcoded padding:10px 24px and fell back to border-radius:4px when the design carried no corner radius. ButtonElement/DocumentButton had no padding fields, so the button frame's auto-layout padding (present in every structure.json) died before the renderer; and an absent Figma cornerRadius (a square frame) parsed to None → 4px, flattening every square pill/CTA. G3 threads padding_(top/right/bottom/left) through the 9-surface ingest→document→render chain and normalizes absent radius to 0.0 at capture.",
       "code_refs": [
         "app/design_sync/figma/layout_analyzer.py (_walk_for_buttons — padding capture + border_radius None→0.0)",
@@ -1076,7 +1076,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
+      "introduced_commit": "9d66eae5",
       "summary": "G3 threads design padding into the two matcher render sites (_column_cta_row, _fills_text_block) but NOT the template-based CTA path. email-templates/components/{cta,cta-pair,cta-button}.html carry their own hardcoded padding (15px 30px / 12px 32px) that _replace_cta_* fills color/url into but never swaps. CTA-typed sections with >=2 buttons route to cta-pair (match_section). Unexercised by the current corpus (verified — no case renders through cta-pair today), so no baseline moves, but a future >=2-button CTA section would emit template padding, not design padding.",
       "code_refs": [
         "email-templates/components/cta-pair.html (hardcoded padding)",
@@ -1151,8 +1151,8 @@
       "status": "closed",
       "severity": "soft",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
-      "closed_commit": "pending",
+      "introduced_commit": "1a4fee05",
+      "closed_commit": "1a4fee05",
       "summary": "G5 threads CornerRadiusSpec.per_corner (Rule 8 — r12/r18 asymmetric pills) to the three button radius render sites via a shared _cta_radius_css helper (mirroring the image per-corner emitter), and retires the inert Rule 7 pill-alignment path (rule_7_pill_alignment was never called; TextBlock/DocumentText.layout_align never assigned in prod; the _build_token_overrides consumer loop inert). The corpus already renders pills at design fidelity post-G3/G4/F10 (c7 'Art prints'/'Stationery' 5px 10px #4E3092/#FFFFFF/700 square; c5 city pills 12px #222222/#FFFFFF r25) — every corpus button carries corner_radii:null, so the per-corner branch is defensive plumbing and the whole change is corpus byte-identical. Satisfies the per-corner deferral noted in phase-53g-g3-button-box-geometry.",
       "code_refs": [
         "app/design_sync/component_matcher.py (_cta_radius_css helper)",
@@ -1173,7 +1173,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-07-18",
-      "introduced_commit": "pending",
+      "introduced_commit": "1a4fee05",
       "summary": "The filled-pill/CTA default label color is white (_column_cta_row txt_color and _fills_text_block fg both fall back to #ffffff). A pill whose text_color was NOT captured AND whose fill is light would render white-on-light (invisible). No corpus fixture exercises this — every corpus pill carries a captured text_color (c7 #FFFFFF, c5 #FFFFFF, both on dark fills), so white-bold is design-correct-as-captured, not a default. G5 deliberately does NOT add speculative luminance-based inversion (Simplicity First); the safe effective rule already holds — honor captured values, keep white as the filled-pill fallback, never force dark.",
       "code_refs": [
         "app/design_sync/component_matcher.py (_column_cta_row — txt_color = _safe_color(btn.text_color, '#ffffff'))",
@@ -1190,8 +1190,8 @@
       "status": "closed",
       "severity": "soft",
       "introduced": "2026-07-19",
-      "introduced_commit": "pending",
-      "closed_commit": "pending",
+      "introduced_commit": "e4f4d587",
+      "closed_commit": "e4f4d587",
       "summary": "G7 promotes 51.4 (spec mini-table) + 51.5 (multi-line splitter) and fixes M6 hug-row centering + divider, all matcher/renderer-side. (1) _multiline_to_br normalizes \\n/\\r\\n/U+2028/U+2029 to <br> in _column_text_row + spec cells (51.5 reduces to cell-text normalization: one TEXT node per value, uniform font, no node split). (2) _group_spec_pairs/_spec_minitable_row fold an adjacent (icon<=30px, text<40char) run in content_order into one centered horizontal <td>xN mini-table in _build_column_fill_html (matcher-only, no G4 composite seam). (3) _apply_hug_column_widths renders a column-layout section at design px centered when sum(col widths)<=0.7*section width; _is_hug_row gates the F9 shrink sites off so a band inset cannot re-compress it. (4) ColumnGroup gains stroke_color/stroke_weight (threaded through DocumentColumn serialization per #327) and _apply_column_dividers emits border-left on a hug-row cell carrying a stroke.",
       "code_refs": [
         "app/design_sync/component_matcher.py (_multiline_to_br, _group_spec_pairs, _spec_minitable_row, _build_column_fill_html)",
@@ -1211,7 +1211,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-07-19",
-      "introduced_commit": "pending",
+      "introduced_commit": "e4f4d587",
       "summary": "G7 renders a column's border-left divider from the UNIFORM stroke_color/stroke_weight captured on the source mj-column node, scoped to hug rows (c7 user-info). Figma's individualStrokeWeights (left/top/right/bottom) are NOT ingested, so a design that strokes only one side of a NON-hug column, or wants a border on a side other than left, is not reproduced. The hug-row scope is the disambiguator today: a full-width column with a uniform stroke (c9 Place|Temperature #545454) is treated as a box, not a divider, and gets no border.",
       "code_refs": [
         "app/design_sync/figma/service.py (_extract_stroke - reads strokeWeight/strokes, not individualStrokeWeights)",
@@ -1336,7 +1336,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-10-02",
-      "introduced_commit": "pending",
+      "introduced_commit": "35d82942",
       "summary": "All seven corpus cases share one tokens.json (identical md5) extracted from the whole 'Ultimate Email Design System' file (234 typography styles, Inter in 57). convert_typography takes the first style whose name contains body/paragraph/text/regular as body (its docstring's 'most common family' is stale); in this file that is 'Button Text', Inter 16px, and the heading falls to Inter too. So every case's shell renders 'Inter, Arial, Helvetica, sans-serif' (4 occurrences each in cases 5, 6 and reframe, observed on the CE-3 spike). diagnose.extract per-campaign mode loads cached tokens or does a full-file fetch, so a live re-extract reproduces it. Reframe's manifest bans Inter and is the first case to assert it.",
       "code_refs": [
         "app/design_sync/token_transforms.py:948-953 (convert_typography body_style: first name keyword match)",
@@ -1353,7 +1353,7 @@
       "status": "deferred",
       "severity": "speculative",
       "introduced": "2026-10-02",
-      "introduced_commit": "pending",
+      "introduced_commit": "35d82942",
       "summary": "CE-3 re-synced case 5 from its raw Figma snapshot and added a schema-freshness test over every committed structure. Cases 6-10 (extracted 2026-06-06) lack 4 keys the current dump writes (observed: round trip on every node), so they load defaults for those fields. Tolerated by name in _KNOWN_LAGGING_KEYS; re-syncing them is out of CE-3's scope and would move their baselines (image_ref and these fields).",
       "code_refs": [
         "app/design_sync/tests/test_converter_data_regression.py (_KNOWN_LAGGING_KEYS per case, TestFixtureFreshness)",
