@@ -239,6 +239,24 @@ data/debug/10/assets/*
 !data/debug/10/assets/2833_1281.png
 !data/debug/10/assets/2833_1283.png
 !data/debug/10/assets/2833_1285.png
+!data/debug/reframe/assets/
+data/debug/reframe/assets/*
+!data/debug/reframe/assets/2833_1496.png
+!data/debug/reframe/assets/2833_1506.png
+!data/debug/reframe/assets/2833_1511.png
+!data/debug/reframe/assets/2833_1520.png
+!data/debug/reframe/assets/2833_1529.png
+!data/debug/reframe/assets/2833_1538.png
+!data/debug/reframe/assets/2833_1547.png
+!data/debug/reframe/assets/2833_1560.png
+!data/debug/reframe/assets/2833_1565.png
+!data/debug/reframe/assets/2833_1581.png
+!data/debug/reframe/assets/2833_1596.png
+!data/debug/reframe/assets/2833_1601.png
+!data/debug/reframe/assets/2833_1616.png
+!data/debug/reframe/assets/2833_1618.png
+!data/debug/reframe/assets/2833_1620.png
+!data/debug/reframe/assets/2833_1622.png
 
 # Top-level debug hygiene (F063)
 *.zip
