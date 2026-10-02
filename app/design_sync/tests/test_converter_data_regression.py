@@ -16,15 +16,20 @@ Run a single case::
 
 from __future__ import annotations
 
+import html as html_lib
+import json
 import re
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import pytest
 from _pytest.mark.structures import ParameterSet
 from lxml import etree
 
 from app.design_sync.converter_service import ConversionResult
+from app.design_sync.diagnose.report import dump_structure_to_json, load_structure_from_json
+from app.design_sync.tests.known_failures import apply_known_failures, known_failure_marks
 from app.design_sync.tests.ladder_harness import (
     SEMANTIC_UNDERCOUNT_CASES,
     SEMANTIC_UNDERCOUNT_REASON,
@@ -34,6 +39,7 @@ from app.design_sync.tests.ladder_harness import (
     drift_view,
     ladder_to_dict,
     load_ladder_snapshot,
+    load_target_sections,
 )
 from app.design_sync.tests.manifest_schema import CaseManifest
 from app.design_sync.tests.regression_runner import (
@@ -110,6 +116,7 @@ def _load_case(case_name: str) -> tuple[Path, CaseManifest, str]:
 @pytest.fixture(params=_discover_ids())
 def case(request: pytest.FixtureRequest) -> tuple[Path, CaseManifest, str]:
     """Parametrized fixture yielding (case_dir, manifest, html) for all cases."""
+    apply_known_failures(request, request.param)
     return _load_case(request.param)
 
 
@@ -117,6 +124,7 @@ def case(request: pytest.FixtureRequest) -> tuple[Path, CaseManifest, str]:
 def converter_case(request: pytest.FixtureRequest) -> tuple[Path, CaseManifest, str]:
     """Parametrized fixture for cases with actual converter output only."""
     case_name: str = request.param
+    apply_known_failures(request, case_name)
     case_dir = _DEBUG_DIR / case_name
     manifest = load_case_manifest(case_dir)
     result = run_case_conversion(case_dir)
@@ -131,6 +139,7 @@ def case_with_result(
 ) -> tuple[Path, CaseManifest, ConversionResult]:
     """Parametrized fixture that requires actual converter output."""
     case_name: str = request.param
+    apply_known_failures(request, case_name)
     case_dir = _DEBUG_DIR / case_name
     manifest = load_case_manifest(case_dir)
     result = run_case_conversion(case_dir)
@@ -289,9 +298,12 @@ def _target_gate_params() -> list[ParameterSet]:
     return [
         pytest.param(
             cid,
-            marks=[pytest.mark.xfail(strict=False, reason=SEMANTIC_UNDERCOUNT_REASON)]
-            if cid in SEMANTIC_UNDERCOUNT_CASES
-            else [],
+            marks=(
+                [pytest.mark.xfail(strict=False, reason=SEMANTIC_UNDERCOUNT_REASON)]
+                if cid in SEMANTIC_UNDERCOUNT_CASES
+                else []
+            )
+            + known_failure_marks(cid, "test_rendered_matches_target"),
         )
         for cid in discover_ladder_case_ids()
     ]
@@ -310,19 +322,22 @@ def test_rendered_matches_target(case_id: str) -> None:
     )
 
 
+def _fold_quotes(text: str) -> str:
+    return text.replace("\u2019", "'").replace("\u2018", "'")
+
+
+def _decoded_text(html: str) -> str:
+    """Lower-cased HTML with entities decoded and typographic quotes folded."""
+    return _fold_quotes(html_lib.unescape(html).lower())
+
+
 class TestRequiredContent:
     def test_required_content(self, case: tuple[Path, CaseManifest, str]) -> None:
         _, manifest, html = case
         if not manifest.required_content:
             pytest.skip("No required_content in manifest")
-        import html as html_lib
-
-        # Decode HTML entities and normalize typographic quotes
-        decoded = html_lib.unescape(html).lower()
-        decoded = decoded.replace("\u2019", "'").replace("\u2018", "'")
-        missing = [
-            r for r in manifest.required_content if r.lower().replace("\u2019", "'") not in decoded
-        ]
+        decoded = _decoded_text(html)
+        missing = [r for r in manifest.required_content if _fold_quotes(r.lower()) not in decoded]
         assert not missing, f"Missing required content: {missing}"
 
     def test_forbidden_content(self, case: tuple[Path, CaseManifest, str]) -> None:
@@ -386,10 +401,10 @@ class TestComponentSelection:
         components = manifest.sections.components
         if not components:
             pytest.skip("No component expectations")
-        html_lower = html.lower()
+        decoded = _decoded_text(html)
         for comp in components:
             if comp.match_by == "content" and comp.content_hint:
-                assert comp.content_hint.lower() in html_lower, (
+                assert _fold_quotes(comp.content_hint.lower()) in decoded, (
                     f"Component content hint '{comp.content_hint}' "
                     f"(expected: {comp.expected_component}) not found"
                 )
@@ -449,3 +464,99 @@ class TestMetricsReport:
         report_path = case_dir / "report.json"
         assert report_path.exists(), f"report.json not written for {case_dir.name}"
         assert metrics.overall_score >= 0.0
+
+
+# ── Fixture freshness (CE-3) ─────────────────────────────────────
+
+# Keys the current dump writes that cases 6-10 predate (their structures were
+# extracted 2026-06-06). Tolerated per case until re-synced; deferred item
+# ce-3-fixture-schema-lag-6-10. A case not listed here must carry every key, and
+# a listed key that a case now carries fails the test (delete it from the map).
+_LAG_6_10 = frozenset({"effects_summary", "line_height_relative", "rotation", "scale_mode"})
+_KNOWN_LAGGING_KEYS: dict[str, frozenset[str]] = dict.fromkeys(
+    ("6", "7", "8", "9", "10"), _LAG_6_10
+)
+
+
+def _node_key_sets(structure: dict[str, Any]) -> list[tuple[str, frozenset[str]]]:
+    out: list[tuple[str, frozenset[str]]] = []
+
+    def _walk(node: dict[str, Any]) -> None:
+        out.append((node["id"], frozenset(node)))
+        for child in node.get("children", []):
+            _walk(child)
+
+    for page in structure["pages"]:
+        _walk(page)
+    return out
+
+
+def _structure_case_ids() -> list[str]:
+    return [p.name for p in discover_cases(_DEBUG_DIR) if (p / "structure.json").exists()]
+
+
+class TestFixtureFreshness:
+    @pytest.mark.parametrize("case_id", _structure_case_ids())
+    def test_structure_written_by_current_schema(self, case_id: str, tmp_path: Path) -> None:
+        """A committed structure.json carries every key the current dump writes."""
+        committed_path = _DEBUG_DIR / case_id / "structure.json"
+        dumped_path = tmp_path / "structure.json"
+        dump_structure_to_json(load_structure_from_json(committed_path), dumped_path)
+        committed = _node_key_sets(json.loads(committed_path.read_text()))
+        dumped = _node_key_sets(json.loads(dumped_path.read_text()))
+        assert [i for i, _ in committed] == [i for i, _ in dumped]
+        missing = {
+            k for (_, have), (_, want) in zip(committed, dumped, strict=True) for k in want - have
+        }
+        allowed = _KNOWN_LAGGING_KEYS.get(case_id, frozenset())
+        lagging = sorted(missing - allowed)
+        assert not lagging, (
+            f"case {case_id}: structure.json predates the dump schema, missing {lagging}. "
+            f"Re-sync: uv run python scripts/resync-case-structure.py {case_id}"
+        )
+        stale = sorted(allowed - missing)
+        assert not stale, (
+            f"case {case_id}: no longer lags {stale}; drop it from _KNOWN_LAGGING_KEYS"
+        )
+
+
+# ── known_failures rows (CE-3) ───────────────────────────────────
+
+_LEDGER_PATH = _DEBUG_DIR.parents[1] / ".agents" / "deferred-items.json"
+_OWNER_ISSUE_RE = re.compile(r"^#\d+$")
+_COUNT_TESTS = frozenset({"test_rendered_matches_target", "test_section_count"})
+
+
+def _hooked_test_names() -> set[str]:
+    """Tests that consult known_failures: fixture-driven classes + both target gates."""
+    classes = (
+        TestUniversalChecks,
+        TestRequiredContent,
+        TestTokenCompliance,
+        TestCTAProperties,
+        TestComponentSelection,
+        TestStructuralDiff,
+        TestMetricsReport,
+    )
+    names = {n for cls in classes for n in dir(cls) if n.startswith("test_")}
+    return names | _COUNT_TESTS
+
+
+def test_known_failures_name_hooked_tests_and_owners() -> None:
+    ledger_ids = {item["id"] for item in json.loads(_LEDGER_PATH.read_text())["items"]}
+    hooked = _hooked_test_names()
+    for case_dir in discover_cases(_DEBUG_DIR):
+        for row in load_case_manifest(case_dir).known_failures:
+            assert row.test in hooked, f"{case_dir.name}: {row.test} is not a hooked test"
+            assert _OWNER_ISSUE_RE.match(row.owner) or row.owner in ledger_ids, (
+                f"{case_dir.name}: owner {row.owner!r} is neither #<issue> nor a ledger id"
+            )
+            assert row.reason.strip(), f"{case_dir.name}: {row.test} has no reason"
+            # A row on a test that never runs for this case is a dead ratchet.
+            assert not load_case_manifest(case_dir).reference_only, (
+                f"{case_dir.name}: known_failures on a reference_only case never run"
+            )
+            if row.test in _COUNT_TESTS:
+                assert load_target_sections().get(case_dir.name) is not None, (
+                    f"{case_dir.name}: {row.test} skips without target_sections"
+                )
