@@ -33,8 +33,8 @@ The DSL plan grows only at these points. Each has an owner artefact, so the ques
 | Code | Issue | Title | Spec | Depends on |
 |---|---|---|---|---|
 | M1 | CE-6 #424 (exists) + scope addition | Read auto-layout sizing fields, and re-sync committed `structure.json` so the fields reach CI | S3, M1 | CE-1 #419 |
-| CE-26 | new | Document schema v2: `body` tree beside `sections`, version dispatch in loader and validator | S1, M2 | none |
-| CE-27 | new | DSL case runner into the CE-1 gate (`score_rendered_case`) with the section-id assertion | S5, M5 | CE-1 #419 |
+| CE-26 | #466 | Document schema v2: `body` tree beside `sections`, version dispatch in loader and validator | S1, M2 | none |
+| CE-27 | #467 | DSL case runner into the CE-1 gate (`score_rendered_case`) with the section-id assertion | S5, M5 | CE-1 #419 |
 
 #### CE-26: Document schema v2 and version dispatch (M2)
 
@@ -51,7 +51,7 @@ The DSL plan grows only at these points. Each has an owner artefact, so the ques
 
 ## The spike
 
-CE-19 (#437) builds M3 (tree builder, FR1–FR6) and M4 (compiler) for maap plus one held-out design, behind the default-off flag (N3). It depends on #419, #422, #423, #424, #429, and here also CE-26 and CE-27. Its report adds the re-plan trigger table above.
+CE-19 (#437) builds M3 (tree builder, FR1–FR6) and M4 (compiler) for maap plus one held-out design, behind the default-off flag (N3). It depends on #419, #422, #423, #424, #429, and here also CE-26 (#466) and CE-27 (#467) (added to #437's dependencies 2026-10-02). Its report adds the re-plan trigger table above.
 
 ## DSL tickets (create under #438 only at G1 "win")
 
