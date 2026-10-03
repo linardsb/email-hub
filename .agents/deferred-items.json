@@ -1419,13 +1419,14 @@
       "phase": "ce-10",
       "title": "CTA seeds ignore ButtonElement.icon_node_id, so a design's after-icon arrow is absent",
       "status": "deferred",
-      "severity": "soft",
+      "severity": "known-bug",
       "introduced": "2026-10-03",
       "introduced_commit": "pending",
       "summary": "CE-10 keeps a button's trailing icon out of section.images and names it by icon_node_id (the measured leaf), which restores the CTA. No CTA fill reads icon_node_id, so the arrow drawn after the label in the design (c9 WATCH THE VIDEO / SHOP NOW, reframe Register now / Grab your spot / Register for livestream) is not rendered. It was not rendered before CE-10 either: the CTA itself was lost.",
       "code_refs": [
-        "app/design_sync/component_matcher.py (_fills_cta / cta-button + cta-pair fills: icon_node_id unread)",
-        "app/design_sync/figma/layout_analyzer.py (_walk_for_buttons, _icon_leaf)"
+        "app/design_sync/component_matcher.py:2245 (_fills_cta: cta-button + cta-pair fills, icon_node_id unread)",
+        "app/design_sync/figma/layout_analyzer.py:1893 (_walk_for_buttons)",
+        "app/design_sync/figma/layout_analyzer.py:1876 (_icon_leaf)"
       ],
       "symptom_if_broken": "A CTA whose design carries an arrow/icon after the label renders label-only.",
       "closes_when": "The button fill path renders the icon at its design size beside the label (with the export URL from icon_node_id) on c9 and reframe."
@@ -1440,9 +1441,11 @@
       "introduced_commit": "pending",
       "summary": "CE-10 excludes every image under a detected button from section/column/content-group images, and _collect_image_node_ids exports button icons only via icon_node_id. Three shapes get no icon_node_id and are therefore neither in section.images nor exported: (1) an image whose direct-child wrapper name lacks 'icon'; (2) an icon whose measured size exceeds 64 px (leaf, or the wrapper when the leaf is a GROUP); (3) an IMAGE-filled button frame (image_ref on the button itself). No corpus case has any of these (corpus invariant, all 7 cases).",
       "code_refs": [
-        "app/design_sync/figma/layout_analyzer.py (_walk_for_buttons icon-name test, 64 px cap, _icon_leaf)",
-        "app/design_sync/import_service.py (_collect_image_node_ids button icon append)",
-        "app/design_sync/component_matcher.py (_fills_social icon lookup)"
+        "app/design_sync/figma/layout_analyzer.py:1934 (_walk_for_buttons icon-name test)",
+        "app/design_sync/figma/layout_analyzer.py:1946 (_walk_for_buttons 64 px cap)",
+        "app/design_sync/figma/layout_analyzer.py:1876 (_icon_leaf)",
+        "app/design_sync/import_service.py:598 (_collect_image_node_ids button icon append)",
+        "app/design_sync/component_matcher.py:2675 (_fills_social icon lookup)"
       ],
       "symptom_if_broken": "A labelled social button whose icon is unnamed, oversized or a button image fill renders no icon; such a button image has no exported asset.",
       "closes_when": "Every image excluded from a button subtree is exported, or icon detection stops requiring the 'icon' name."

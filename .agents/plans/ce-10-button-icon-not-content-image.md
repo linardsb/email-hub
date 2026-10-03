@@ -55,7 +55,7 @@ Text extraction excludes detected button subtrees (`_extract_texts(..., exclude_
 ## Solution Statement
 
 1. `_extract_images` / `_walk_for_images` take `exclude_node_ids` and skip those subtrees, mirroring `_walk_for_texts` (`:1428-1457`). Every extraction caller (`:495`, `:1298`, `:1338`, `:2014`) passes the button ids it already computes; the generic classifier call (`:946`) is left alone.
-2. `_walk_for_buttons` measures the icon on its leaf (follow a single-child FRAME/GROUP chain) and sets `icon_node_id` to the leaf.
+2. `_walk_for_buttons` measures the icon on its leaf (follow a single-child FRAME/GROUP chain, stopping at a wrapper with its own fill, image-ref or effects) and sets `icon_node_id` to the leaf (styled-wrapper stop added by PR #470 review M1).
 3. New predicate `_is_button_only(node, buttons)`: 1–2 buttons and nothing outside the button subtrees except structural frames. `_classify_mj_section` returns CTA on it (after the social/nav checks); `_classify_by_content`'s dead button-only rule uses it.
 4. Export continuity: `ButtonElementResponse.icon_node_id`, populated in `service.py`, exported by `_collect_image_node_ids`.
 
@@ -151,9 +151,9 @@ The generality rule holds: every rule reads node type, subtree membership, child
 ### T3 IMPLEMENT the image exclusion and icon leaf
 
 - **IMPLEMENT** in `layout_analyzer.py`:
-  - `_extract_images(node, *, exclude_node_ids: set[str] | None = None)` and `_walk_for_images(..., skip_vectors=..., exclude_node_ids=...)`: return early when `node.id in exclude_node_ids`; pass the kwarg through both recursive calls.
+  - `_extract_images(node, *, exclude_node_ids: set[str] | None = None)` and `_walk_for_images(..., skip_vectors=..., exclude_node_ids=...)`: return early when `node.id in exclude_node_ids`; pass the kwarg through both recursive calls. `_extract_images` drops the root's own id from the set, so a button-shaped extraction root keeps its images (PR #470 review M2).
   - Callers: `:495` pass `button_node_ids`; `:1298`, `:1338` pass `btn_ids`; `:2014` pass `button_ids`. Leave `_classify_section` `:945-947` unchanged (texts and images): its hero and bottom-footer rules read `has_images`, the corpus is all mj-named so nothing measures that path, and `_is_button_only` (T4) does its own subtree walk.
-  - `_icon_leaf(node) -> DesignNode`: while `node.type in (FRAME, GROUP)` and `len(node.children) == 1`, step into the child. In `_walk_for_buttons` (`:1858-1872`) keep the `"icon" in child.name.lower()` test on the direct child, then measure `leaf = _icon_leaf(child)`: type in (VECTOR, FRAME, IMAGE), `leaf.width`/`leaf.height` ≤ 64, `icon_node_id = leaf.id`.
+  - `_icon_leaf(node) -> DesignNode`: while `node.type in (FRAME, GROUP)` and `len(node.children) == 1` and the wrapper has no `fill_color`, `image_ref` or `effects_summary`, step into the child. In `_walk_for_buttons` (`:1858-1872`) keep the `"icon" in child.name.lower()` test on the direct child, then measure `leaf = _icon_leaf(child)`: type in (VECTOR, FRAME, IMAGE), `leaf.width`/`leaf.height` ≤ 64, `icon_node_id = leaf.id`.
 - **GOTCHA**: the `is_background` FRAME branch (`:1594-1614`) and the frame-wrapping-image branch run before recursion; the exclude check must come first in `_walk_for_images` so an excluded button with an `image_ref` fill is skipped too. `_detect_mj_columns`/`_build_column_groups` call `_extract_buttons` without `extra_hints` today; do not add hints (behaviour change outside the ticket).
 - **VALIDATE**: `TestImageExclusion` and `TestIconLeaf` green; `uv run pytest app/design_sync/tests/test_cta_fidelity.py app/design_sync/tests/test_layout_analyzer.py app/design_sync/tests/test_image_export_fidelity.py -q -p no:cacheprovider` green; `uv run ruff check --no-fix app/design_sync/ && uv run ruff format --check app/design_sync/figma/layout_analyzer.py app/design_sync/tests/test_button_icon_exclusion.py`.
 - **SATISFIES**: AC 1, AC 2.
@@ -193,7 +193,7 @@ The generality rule holds: every rule reads node type, subtree membership, child
 - **IMPLEMENT** via the `deferred-items` skill:
   - F3: correct the `phase-53g6-card-tree-path-text-only` summary sentence (`attr` goes through `_fill_text_slot`, `component_renderer.py:1010-1017`, a raw insert).
   - F4: stamp `introduced_commit` `522f11ed` on the three `ce-9-*` entries.
-  - Add `ce-10-cta-icon-not-rendered` (soft): CTA seeds ignore `ButtonElement.icon_node_id`, so a design's after-icon arrow is absent; closes when the button path renders the icon at design size. `code_refs` `component_matcher.py` CTA fills, `layout_analyzer.py` `_walk_for_buttons`.
+  - Add `ce-10-cta-icon-not-rendered` (known-bug, re-graded from soft by PR #470 review L3): CTA seeds ignore `ButtonElement.icon_node_id`, so a design's after-icon arrow is absent; closes when the button path renders the icon at design size. `code_refs` `component_matcher.py` CTA fills, `layout_analyzer.py` `_walk_for_buttons`.
   - Add `ce-10-unnamed-button-icon-not-exported` (speculative): an image inside a button whose wrapper and leaf names lack "icon" gets no `icon_node_id`, is excluded from `section.images`, and is not exported; a labelled social button with such an icon renders no icon. Closes when every excluded button image is exported or the predicate stops needing the name.
   - New entries use `introduced_commit: "pending"` (stamped after merge).
 - F1: add the two params to `test_non_tile_shapes_do_not_route_to_td` (`test_icon_label_columns.py:231-246`): `_tile_section(texts=[_label("APP"), _label("Lorem ipsum", node_id="t2")])` id `real-plus-placeholder`, and an icon `ImagePlaceholder` with `width=42, height=65` id `height-only-too-big`. Mutate each clause out of `_is_icon_label_tile` (`component_matcher.py:1312`, the clause the reviewer cited is at `:1331`) in turn and confirm the new param goes red; restore.

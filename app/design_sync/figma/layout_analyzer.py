@@ -1500,9 +1500,12 @@ def _extract_images(
     """Identify IMAGE nodes and FRAMEs containing only an IMAGE child.
 
     ``exclude_node_ids`` skips whole subtrees (detected buttons: their icon is
-    button content, not a section image — CE-10).
+    button content, not a section image — CE-10). The root itself is never
+    excluded: a button-shaped extraction root keeps its own images.
     """
     results: list[ImagePlaceholder] = []
+    if exclude_node_ids:
+        exclude_node_ids = exclude_node_ids - {node.id}
     _walk_for_images(node, results, exclude_node_ids=exclude_node_ids)
     return results
 
@@ -1863,6 +1866,7 @@ def _extract_buttons(
 
 
 _DEFAULT_BUTTON_HINTS = ("button", "btn", "cta", "action", "link", "mj-button")
+_BUTTON_ICON_MAX_PX = 64
 
 
 def _collect_button_node_ids(buttons: list[ButtonElement]) -> set[str]:
@@ -1871,8 +1875,26 @@ def _collect_button_node_ids(buttons: list[ButtonElement]) -> set[str]:
 
 
 def _icon_leaf(node: DesignNode) -> DesignNode:
-    """Follow a chain of single-child FRAME/GROUP wrappers down to the icon."""
+    """Follow a chain of single-child FRAME/GROUP wrappers down to the icon.
+
+    Stops at an icon-sized wrapper that bakes its own fill / image-ref / effects
+    (a glyph on a circle): that wrapper is the icon, as in ``_walk_for_images``.
+    A styled FILL-width wrapper is still walked through to the icon.
+    """
     while node.type in (DesignNodeType.FRAME, DesignNodeType.GROUP) and len(node.children) == 1:
+        styled = (
+            node.image_ref is not None
+            or node.fill_color is not None
+            or node.effects_summary is not None
+        )
+        if (
+            styled
+            and node.width is not None
+            and node.height is not None
+            and node.width <= _BUTTON_ICON_MAX_PX
+            and node.height <= _BUTTON_ICON_MAX_PX
+        ):
+            break
         node = node.children[0]
     return node
 
@@ -1930,8 +1952,8 @@ def _walk_for_buttons(
                         if (
                             leaf.width is not None
                             and leaf.height is not None
-                            and leaf.width <= 64
-                            and leaf.height <= 64
+                            and leaf.width <= _BUTTON_ICON_MAX_PX
+                            and leaf.height <= _BUTTON_ICON_MAX_PX
                         ):
                             icon_node_id = leaf.id
                             break

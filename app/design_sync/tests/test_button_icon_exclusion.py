@@ -271,6 +271,26 @@ class TestImageExclusion:
             assert len(group.buttons) == 1
             assert group.images == []
 
+    def test_guard_button_shaped_column_keeps_its_own_images(self) -> None:
+        # The extraction root itself passes the button test (filled, <= 80 px, one
+        # short TEXT): only buttons BELOW the root are excluded, so its logo stays.
+        strip = DesignNode(
+            id="strip",
+            name="mj-column",
+            type=_FRAME,
+            fill_color="#000000",
+            x=0,
+            y=0,
+            width=600,
+            height=40,
+            children=[
+                _image("logo", w=80, h=24, name="logo"),
+                _text("strip:t", "Free shipping over $50", font_size=12, name="copy"),
+            ],
+        )
+        (group,) = _detect_mj_columns(_mj_section([strip]))
+        assert [img.node_id for img in group.images] == ["logo"]
+
 
 # ── Icon measured on its leaf ──
 
@@ -286,6 +306,41 @@ class TestIconLeaf:
     @pytest.mark.parametrize("wrapper_w", [430, 40])
     def test_icon_id_is_the_leaf_image(self, wrapper_w: float) -> None:
         assert self._walk(_btn("b1", icon_wrapper_w=wrapper_w)).icon_node_id == "b1:img"
+
+    @pytest.mark.parametrize(
+        ("fill_color", "image_ref", "effects_summary"),
+        [("#000000", None, None), (None, "ref", None), (None, None, "1:DROP_SHADOW")],
+    )
+    def test_styled_wrapper_is_the_icon(
+        self, fill_color: str | None, image_ref: str | None, effects_summary: str | None
+    ) -> None:
+        # A wrapper that bakes its own fill/image/effects is the icon (glyph on a
+        # circle): exporting the bare leaf would drop the circle.
+        wrap = DesignNode(
+            id="b1:wrap",
+            name="social-icon-Frame",
+            type=_FRAME,
+            width=32,
+            height=32,
+            fill_color=fill_color,
+            image_ref=image_ref,
+            effects_summary=effects_summary,
+            children=[_image("b1:img", w=24, h=24)],
+        )
+        assert self._walk(_btn("b1", icon=wrap)).icon_node_id == "b1:wrap"
+
+    def test_guard_styled_fill_width_wrapper_is_walked_through(self) -> None:
+        # A filled FILL-width wrapper is wider than any icon: measure the leaf.
+        wrap = DesignNode(
+            id="b1:wrap",
+            name="afterIcon-Frame",
+            type=_FRAME,
+            fill_color="#FFFFFF",
+            width=430,
+            height=17,
+            children=[_image("b1:img")],
+        )
+        assert self._walk(_btn("b1", icon=wrap)).icon_node_id == "b1:img"
 
     def test_large_leaf_is_not_an_icon(self) -> None:
         wrap = DesignNode(
@@ -438,7 +493,13 @@ class TestIconExport:
         resp = ButtonElementResponse(node_id="b", text="Go", icon_node_id="ic:1")
         assert getattr(resp, "icon_node_id", None) == "ic:1"
 
-    def test_guard_social_icons_reach_the_fill_through_export(self) -> None:
+    @pytest.mark.parametrize(
+        ("wrapper_fill", "exported"),
+        [(None, "img"), ("#000000", "wrap")],
+    )
+    def test_guard_social_icons_reach_the_fill_through_export(
+        self, wrapper_fill: str | None, exported: str
+    ) -> None:
         def social_btn(i: int) -> DesignNode:
             return DesignNode(
                 id=f"s{i}",
@@ -452,6 +513,7 @@ class TestIconExport:
                         id=f"s{i}:wrap",
                         name="social-icon-Frame",
                         type=_FRAME,
+                        fill_color=wrapper_fill,
                         width=32,
                         height=32,
                         children=[_image(f"s{i}:img", w=24, h=24)],
@@ -479,7 +541,7 @@ class TestIconExport:
             str(f.value) for f in match_section(section, 0, image_urls=image_urls).slot_fills
         )
         for i in range(2):
-            assert f"https://cdn.example/s{i}:img.png" in fills
+            assert f"https://cdn.example/s{i}:{exported}.png" in fills
 
 
 # ── Real corpus (local only: data/debug structure.json is gitignored) ──
