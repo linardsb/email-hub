@@ -4,7 +4,7 @@
 
 ## Summary
 
-Images inside a detected button frame no longer count as section, column or content-group images. The button's icon is measured on its leaf, through single-child FRAME/GROUP wrappers that carry no fill, image-ref or effects of their own, and `icon_node_id` names that leaf. A section holding only one or two buttons now classifies as CTA, on both the mj path and the generic path. Excluded icons stay exported through `ButtonElementResponse.icon_node_id` and `_collect_image_node_ids`. On the corpus, all five lost CTAs now render: slate (c9) WATCH THE VIDEO and SHOP NOW, reframe Register now, Grab your spot and Register for livestream. Non-target cases are byte-identical.
+Images inside a detected button frame no longer count as section, column or content-group images. The button's icon is measured on its leaf, through single-child FRAME/GROUP wrappers (stopping at an icon-sized wrapper with its own fill, image-ref or effects), and `icon_node_id` names that leaf. A section holding only one or two buttons now classifies as CTA, on both the mj path and the generic path. Excluded icons stay exported through `ButtonElementResponse.icon_node_id` and `_collect_image_node_ids`. On the corpus, all five lost CTAs now render: slate (c9) WATCH THE VIDEO and SHOP NOW, reframe Register now, Grab your spot and Register for livestream. Non-target cases are byte-identical.
 
 ## Tasks completed
 
@@ -13,7 +13,7 @@ Images inside a detected button frame no longer count as section, column or cont
 - T3 image exclusion + icon leaf → `app/design_sync/figma/layout_analyzer.py` (UPDATE). Changes:
   - `_extract_images` and `_walk_for_images` gain `exclude_node_ids`. The check runs first; both recursive calls thread it. `_extract_images` never excludes the extraction root itself (PR #470 review M2).
   - The callers at section extraction, `_detect_mj_columns`, `_build_column_groups` and `_extract_content_groups` pass their button ids. `_classify_section` is unchanged.
-  - New `_icon_leaf`; it stops at a styled wrapper, which is then the icon (PR #470 review M1). `_walk_for_buttons` keeps the direct-child type and "icon" name gate, then measures the leaf. When the leaf is not a VECTOR, FRAME or IMAGE (for example a GROUP of vectors), it measures the direct child, as base did (D9).
+  - New `_icon_leaf`; it stops at an icon-sized (≤ 64 px) styled wrapper, which is then the icon (PR #470 review M1). `_walk_for_buttons` keeps the direct-child type and "icon" name gate, then measures the leaf. When the leaf is not a VECTOR, FRAME or IMAGE (for example a GROUP of vectors), it measures the direct child, as base did (D9).
 - T4 button-only rule → `layout_analyzer.py` (UPDATE). New `_is_button_only` and `_BUTTON_ONLY_ROLES`. The mj rule (CTA 0.90) sits after the social and nav checks. The dead `_classify_by_content` condition is replaced in place (0.70, same position).
 - T5 export → `app/design_sync/schemas.py`, `app/design_sync/service.py`, `app/design_sync/import_service.py` (UPDATE). The icon is appended inside the per-section loop, before the section-frame fallback. SDK regenerated: `cms/packages/sdk/openapi.json` and `cms/packages/sdk/src/client/types.gen.ts`, the only two files in `git diff --stat cms/packages/sdk` (observed).
 - T6 → `app/design_sync/jev_shadow/shadow.py` comment (UPDATE).
