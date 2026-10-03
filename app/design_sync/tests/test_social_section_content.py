@@ -31,10 +31,6 @@ def _section_chunk(case_id: str, idx: int) -> str:
 
 
 def _social_matches(case_id: str) -> list[ComponentMatch]:
-    return [m for m in _all_matches(case_id) if m.component_slug == "social-icons"]
-
-
-def _all_matches(case_id: str) -> list[ComponentMatch]:
     captured: list[list[ComponentMatch]] = []
     original = component_matcher.match_all
 
@@ -45,7 +41,7 @@ def _all_matches(case_id: str) -> list[ComponentMatch]:
 
     with patch.object(component_matcher, "match_all", spy):
         _run_conversion(_DEBUG_DIR / case_id)
-    return captured[-1]
+    return [m for m in captured[-1] if m.component_slug == "social-icons"]
 
 
 class TestSocialSectionRendersContent:
@@ -203,9 +199,7 @@ class TestSocialColumnOrderEdges:
 
     def test_content_group_follows_design_order(self) -> None:
         """F5: inside a content group, a text that precedes its image renders above the icons."""
-        # c6's REWARDS column is the real-fixture content-group shape; since CE-9
-        # it renders as an icon-label tile, so pick it by node id, not by slug.
-        (match,) = [m for m in _all_matches("6") if m.section.node_id == "2833:1470"]
+        (match,) = [m for m in _social_matches("6") if m.section.node_id == "2833:1470"]
         section = match.section
         img_group, text_group = section.child_content_groups
         (img,) = img_group.images
