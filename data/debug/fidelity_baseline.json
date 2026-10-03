@@ -45,6 +45,14 @@
    "cases": [
     "reframe"
    ]
+  },
+  {
+   "date": "2026-10-03",
+   "commit": "e2a0b56c",
+   "reason": "CE-9 #427: nav band icon+label tiles render: 2833:1455 +0.0064, 2833:1460 +0.0047, 2833:1465 +0.0016, 2833:1470 +0.0173; other case-6 sections +0.0000",
+   "cases": [
+    "6"
+   ]
   }
  ],
  "cases": {
@@ -254,7 +262,7 @@
     },
     "2833:1455": {
      "marker": "section_4",
-     "score": 0.9827,
+     "score": 0.9891,
      "design_box": [
       7,
       1337,
@@ -264,7 +272,7 @@
     },
     "2833:1460": {
      "marker": "section_5",
-     "score": 0.974,
+     "score": 0.9787,
      "design_box": [
       161,
       1337,
@@ -274,7 +282,7 @@
     },
     "2833:1465": {
      "marker": "section_6",
-     "score": 0.9765,
+     "score": 0.9781,
      "design_box": [
       315,
       1337,
@@ -284,7 +292,7 @@
     },
     "2833:1470": {
      "marker": "section_7",
-     "score": 0.9629,
+     "score": 0.9802,
      "design_box": [
       469,
       1337,
