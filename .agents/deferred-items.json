@@ -799,7 +799,7 @@
       ],
       "symptom_if_broken": "A LEGO-style membership card rendered through the tree path shows only the identity text, no card/images; the renderer (default) path is correct.",
       "closes_when": "tree_bridge grows an HtmlSlot-capable path for the card fill (or the card routes through a composite/html slot type the TreeCompiler renders as raw HTML), and the tree-path c7 card matches the renderer-path card.",
-      "notes": "Non-blocking: the corpus (expected.html) + fidelity scorer + snapshot gate all use the DEFAULT renderer path, where the card is correct (c7 full_image 0.771->0.893). The tree path is opt-in (converter_service tree_bridge_enabled). Ledgered per the no-silent-caps discipline, mirroring the G4 own-row-CTA tree-path deferral (phase-53g-g4-tree-html-slot-row-shape)."
+      "notes": "Non-blocking: the corpus (expected.html) + fidelity scorer + snapshot gate all use the DEFAULT renderer path, where the card is correct (c7 full_image 0.771->0.893). The tree path is opt-in (converter_service tree_bridge_enabled). Ledgered per the no-silent-caps discipline, mirroring the G4 own-row-CTA tree-path deferral (phase-53g-g4-tree-html-slot-row-shape). CE-9 (#427, 2026-10-03): the icon-label tile also fills the td seed's content slot with HTML but uses slot_type='attr' (the _fills_social precedent), so the tree bridge keeps it as an HtmlSlot (test_c6_nav_tiles_compile_on_the_tree_path). Switching _fills_card to 'attr' is the candidate fix here."
     },
     {
       "id": "phase-53f-f7-column-seed-no-inner",
@@ -1046,7 +1046,7 @@
       ],
       "symptom_if_broken": "Banded content sits vertically offset vs the design (band top pad 20 vs design 40 in c9) and band horizontal insets are 24px regardless of the design's value; full-image A3 penalised below every band.",
       "closes_when": "Wrapper-band grouping threads the wrapper frame's padding into RepeatingGroup.container_padding AND subsequent_top derives from member y-gaps (NOT top padding — the current container_padding branch reuses top for subsequent rows, which would inflate intra-band gaps). Verified: c9 banner offset within ~4px of design, c9 A3 recovers >=0.687, c5 >=0.838, no band case regresses.",
-      "notes": "Fast closure path: populate container_padding at the wrapper-band grouping site from the wrapper node's padding_(top/right/bottom/left), and fix _resolve_item_spacing's subsequent_top to use inter-member y-deltas (element_gaps / child y-geometry) with the current 16px default as fallback. Blast radius: every banded case (c5/c7/c9/c10) — F9 column budgets and the G2 M9 text budget both read the row inset, so they follow automatically, but baselines churn corpus-wide; needs its own diff-audited session."
+      "notes": "Fast closure path: populate container_padding at the wrapper-band grouping site from the wrapper node's padding_(top/right/bottom/left), and fix _resolve_item_spacing's subsequent_top to use inter-member y-deltas (element_gaps / child y-geometry) with the current 16px default as fallback. Blast radius: every banded case (c5/c7/c9/c10) — F9 column budgets and the G2 M9 text budget both read the row inset, so they follow automatically, but baselines churn corpus-wide; needs its own diff-audited session. CE-9 (#427, 2026-10-03): peeled row members also lose their wrapper's vertical padding (c6 nav band 2833:1453, 28/28): _expand_container_wrappers passes only the fill. The CE-9 tile derives its internal icon-to-label gap from geometry; the band padding stays open here."
     },
     {
       "id": "phase-53g-g3-button-box-geometry",
@@ -1291,7 +1291,8 @@
         "email-templates/components/social-icons.html (social_label seed text 'Follow us')"
       ],
       "symptom_if_broken": "With the tree bridge enabled, a social section that carries design text renders a stray 'Follow us' label row above the icons in addition to the design text (c9 today).",
-      "closes_when": "The tree schema can express an empty/collapsed slot and the tree path collapses the social_label row, so c9 on the tree path shows no 'Follow us'."
+      "closes_when": "The tree schema can express an empty/collapsed slot and the tree path collapses the social_label row, so c9 on the tree path shows no 'Follow us'.",
+      "notes": "CE-9 (#427, 2026-10-03): default path checked on every case, no 'Follow us' (grep of expected.html); the c6 nav columns no longer route to social-icons/cta-button. Tree-path half unchanged."
     },
     {
       "id": "ce-2-tree-path-drops-footer-text",
@@ -1361,6 +1362,56 @@
       ],
       "symptom_if_broken": "A converter fix that reads line_height_relative, rotation, scale_mode or effects_summary cannot move cases 6-10.",
       "closes_when": "Cases 6-10 are re-synced with scripts/resync-case-structure.py, their baselines audited and re-stamped, and _KNOWN_LAGGING_KEYS is emptied."
+    },
+    {
+      "id": "ce-9-peel-row-fixed-width-wrap",
+      "phase": "ce-9",
+      "title": "Peel-row composer wraps its last cell at viewports between 600 and the container width",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-10-03",
+      "introduced_commit": "pending",
+      "summary": "render_peel_row gives each cell a fixed max-width scaled so the cells sum to the container width (c6 nav row: 157+157+157+169 = 640). Inline-block cells at fixed px wrap as soon as the viewport is narrower than the container, so at 600-639px the last cell drops to a second row; the mobile .column override only applies below 600px. Observed in the A3 harness (600px viewport) on base and after CE-9.",
+      "code_refs": [
+        "app/design_sync/component_renderer.py:758 (render_peel_row - fixed max-width cells summing to container_width)"
+      ],
+      "symptom_if_broken": "A side-by-side peeled row (c6 nav band, c6 2833:1440 promo pair) shows its last cell on a second row in a 600-639px wide reading pane.",
+      "closes_when": "Peel-row cells use percentage widths (or the shell's mobile breakpoint covers the container width), and a 600px render of c6 shows the four nav tiles in one row.",
+      "available_data": "A3 composites: scripts/score-fidelity-cases.py renders at 600px; c6 case6_side_by_side.png shows the wrap."
+    },
+    {
+      "id": "ce-9-c6-mobile-page-overflow",
+      "phase": "ce-9",
+      "title": "Case 6 output is 463px wide at a 375px viewport",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-10-03",
+      "introduced_commit": "pending",
+      "summary": "At a 375px viewport document.documentElement.scrollWidth is 463 for data/debug/6/expected.html, identical on origin/main 1a891e70 and after CE-9; the widest element is a width=100% layout table, so some child forces it wider. Found while screenshotting the CE-9 nav row at 375px; not investigated further (outside CE-9).",
+      "code_refs": [
+        "data/debug/6/expected.html (converter output; widest element a width=100% layout table at 375px)",
+        "app/design_sync/component_renderer.py:758 (render_peel_row - candidate: fixed max-width cells)"
+      ],
+      "symptom_if_broken": "Horizontal scroll on phones for the Starbucks email; stacked tiles sit off-centre in a 463px box.",
+      "closes_when": "scrollWidth == viewport width at 375px for every corpus case (a Playwright check over data/debug/*/expected.html).",
+      "fast_closure_path": "Playwright at 375px: walk body descendants, report the deepest element whose right edge exceeds 375, map it to its <!-- section:section_N --> marker."
+    },
+    {
+      "id": "ce-9-tree-path-corpus-compile-fallback",
+      "phase": "ce-9",
+      "title": "Tree-bridge compile falls back to the legacy renderer on cases 5, 6 and reframe",
+      "status": "deferred",
+      "severity": "known-bug",
+      "introduced": "2026-10-03",
+      "introduced_commit": "pending",
+      "summary": "With DESIGN_SYNC__TREE_BRIDGE_ENABLED and output_format='tree', TreeCompiler raises and convert_document falls back (tree_bridge.compile_fallback): case 5 'slot hero_image not defined for component hero-block'; cases 6 and reframe \"Unsafe URL scheme in button href: '#'\". Observed on origin/main 1a891e70 (cases 7-10 compile). The tree path is non-production (flag off).",
+      "code_refs": [
+        "app/design_sync/tree_bridge.py:193 (_fill_to_slot_value cta -> ButtonSlot href=fill.value or https://example.com; '#' passes through)",
+        "app/components/tree_compiler.py:292-296 (_fill_button rejects '#')",
+        "app/design_sync/converter_service.py:737 (_try_tree_bridge fallback)"
+      ],
+      "symptom_if_broken": "A tree-path conversion of c5/c6/reframe silently returns legacy HTML; tree-path tests on those cases test the legacy renderer.",
+      "closes_when": "convert_document(..., output_format='tree') returns result.tree is not None for every corpus case."
     }
   ],
   "tooling_followups": [

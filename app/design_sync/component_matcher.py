@@ -121,6 +121,18 @@ def match_section(
             spacing_after=section.spacing_after,
         )
 
+    # CE-9: a peeled icon + label column renders as a tile in the generic
+    # single-cell seed, whatever type the position fallback gave it.
+    if _is_icon_label_tile(section):
+        return ComponentMatch(
+            section_idx=idx,
+            section=section,
+            component_slug="td",
+            slot_fills=_fills_icon_label_tile(section, image_urls),
+            token_overrides=_build_token_overrides(section, gradients=gradients),
+            spacing_after=section.spacing_after,
+        )
+
     slug, confidence = _match_by_type(section)
     fills = _build_slot_fills(
         slug, section, container_width, image_urls=image_urls, design_system=design_system
@@ -223,6 +235,9 @@ async def match_section_with_vlm_fallback(
 
     # Rebuild match with VLM-classified component type
     new_slug = vlm_result.component_type
+    if new_slug in _CTA_FAMILY_SLUGS and not section.buttons:
+        # CE-9: a CTA seed for a button-less section renders empty.
+        return match
     fills = _build_slot_fills(
         new_slug, section, container_width, image_urls=image_urls, design_system=design_system
     )
@@ -280,6 +295,11 @@ def _match_by_type(section: EmailSection) -> tuple[str, float]:
         if has_images:
             return "full-width-image", 1.0
         return "hero-block", 0.8
+
+    if st == EmailSectionType.CTA and not has_buttons:
+        # CE-9: a CTA type with no button (position fallback, name rule) would
+        # render an empty, pruned cta-button and drop the section's content.
+        st = EmailSectionType.CONTENT
 
     if st == EmailSectionType.CONTENT:
         slug, confidence = _score_candidates(
@@ -742,7 +762,7 @@ def _safe_url(url: str | None) -> str:
 _ALLOWED_TEXT_ALIGN = frozenset({"left", "center", "right", "justify"})
 
 
-def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
+def _column_text_row(text: TextBlock, *, is_heading: bool, padding: str = "0 0 8px") -> str:
     """Build a column-text ``<tr><td>…</td></tr>`` row from design properties.
 
     Shared by ``_build_column_fill_html`` (real fixtures) and the round-robin
@@ -755,7 +775,7 @@ def _column_text_row(text: TextBlock, *, is_heading: bool) -> str:
     raw — with only a web-safe fallback appended. Falls back to the pre-52.x
     hardcoded heading/body defaults when a property is absent.
     """
-    decls = ["padding:0 0 8px"]
+    decls = [f"padding:{padding}"]
 
     # font-family — design value with a web-safe fallback appended, else Arial.
     # Escaped (quote=True) so a font name can't break out of the style attr —
@@ -970,6 +990,7 @@ def _column_image_row(
     image_urls: dict[str, str] | None,
     *,
     column_width: float | None = None,
+    align: str | None = None,
 ) -> str:
     """Wrap a column image in its own ``<tr><td>`` row (Phase 53 B2).
 
@@ -993,7 +1014,8 @@ def _column_image_row(
         f'alt="{html.escape(_derive_image_alt(img))}"{width_attr} '
         f'style="{style}" />'
     )
-    return f"<tr><td>{tag}</td></tr>"
+    td_open = f'<td align="{align}">' if align else "<td>"
+    return f"<tr>{td_open}{tag}</td></tr>"
 
 
 def _column_divider_row(divider: ColumnDivider) -> str:
@@ -1269,6 +1291,93 @@ def _build_column_fill_html(
                 continue
             rows.append(_column_cta_row(element))
     return _wrap_column_table(rows)
+
+
+# CTA-family seeds: every slug ``_build_slot_fills`` dispatches to ``_fills_cta``
+# (checked mapping, ``test_icon_label_columns.py``).
+_CTA_FAMILY_SLUGS: frozenset[str] = frozenset(
+    {
+        "cta-button",
+        "cta-pair",
+        "button",
+        "button-filled",
+        "button-ghost",
+        "button-responsive",
+        "cta",
+        "text-link",
+    }
+)
+
+
+def _is_icon_label_tile(section: EmailSection) -> bool:
+    """A peeled row column holding one small icon over a short label (CE-9).
+
+    The failure class: a row of icon + label columns (a nav band) is peeled
+    into solo sections, and a position fallback types them CTA or SOCIAL
+    although none holds a button, so the CTA filler drops both icon and label.
+    The rule reads structure only: a member of a peeled row (``peel_row_id``),
+    no button, exactly one image no larger than ``_ICON_MAX_WIDTH_PX`` on either
+    side, and one or two texts each shorter than ``_SPEC_LABEL_MAX_CHARS``.
+    Requiring row membership keeps a standalone one-icon social link on
+    ``social-icons``. No section-type exclusion: a nav row at the top of an
+    email types its first column HEADER.
+    """
+    if section.peel_row_id is None or section.buttons or len(section.images) != 1:
+        return False
+    img = section.images[0]
+    if img.width is None or img.height is None:
+        return False
+    if img.width > _ICON_MAX_WIDTH_PX or img.height > _ICON_MAX_WIDTH_PX:
+        return False
+    labels = _tile_labels(section)
+    if not 1 <= len(labels) <= 2 or len(labels) != len(section.texts):
+        return False
+    return all(len(t.content.strip()) < _SPEC_LABEL_MAX_CHARS for t in labels)
+
+
+def _tile_labels(section: EmailSection) -> list[TextBlock]:
+    """The section's texts that render as labels: non-blank, non-placeholder."""
+    return [t for t in section.texts if t.content.strip() and not _is_placeholder(t.content)]
+
+
+def _fills_icon_label_tile(
+    section: EmailSection, image_urls: dict[str, str] | None
+) -> list[SlotFill]:
+    """Fill the ``td`` seed's ``content`` slot with a centred icon over its label.
+
+    Reuses the column row builders, so the icon is pinned at its design width
+    and the label carries its design typography. ``slot_type="attr"`` (the
+    ``_fills_social`` raw-HTML precedent): the default renderer inserts it like
+    text, and the tree bridge keeps it as an ``HtmlSlot`` instead of stripping
+    the icon.
+    """
+    rows = [
+        _column_image_row(section.images[0], image_urls, column_width=section.width, align="center")
+    ]
+    labels = _tile_labels(section)
+    for i, t in enumerate(labels):
+        top = _icon_label_gap(section, labels) if i == 0 else 0
+        rows.append(_column_text_row(t, is_heading=t.is_heading, padding=f"{top}px 0 0"))
+    return [SlotFill("content", _wrap_column_table(rows), slot_type="attr")]
+
+
+def _icon_label_gap(section: EmailSection, labels: list[TextBlock]) -> int:
+    """Icon-to-label gap from geometry: column height minus icon and label lines.
+
+    The gap lives on the label's wrapper frame (``padding-top``), which the
+    section does not carry; the column's own height does. Zero when any line
+    height or the column height is unknown, or the parts overflow the column.
+    Assumes each label is one line (labels are short by the tile predicate) and
+    puts the whole remainder above the first label, so a label that wraps or a
+    column with its own vertical padding overstates the gap.
+    """
+    img = section.images[0]
+    if section.height is None or img.height is None:
+        return 0
+    if any(t.line_height is None for t in labels):
+        return 0
+    used = img.height + sum(t.line_height for t in labels if t.line_height is not None)
+    return max(0, round(section.height - used))
 
 
 def _image_node_id_attrs(img: ImagePlaceholder) -> dict[str, str]:
