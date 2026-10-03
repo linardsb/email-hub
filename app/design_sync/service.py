@@ -151,6 +151,7 @@ def _layout_to_response(
                     text=btn.text,
                     width=btn.width,
                     height=btn.height,
+                    icon_node_id=btn.icon_node_id,
                 )
                 for btn in s.buttons
             ],

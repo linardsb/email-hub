@@ -242,6 +242,18 @@ class TestMatcherRules:
             pytest.param(_tile_section(texts=[]), id="no-label"),
             pytest.param(_tile_section(texts=[_label("Lorem ipsum")]), id="placeholder-label"),
             pytest.param(_tile_section(texts=[_label("   ")]), id="blank-label"),
+            pytest.param(
+                _tile_section(texts=[_label("APP"), _label("Lorem ipsum", node_id="t2")]),
+                id="real-plus-placeholder",
+            ),
+            pytest.param(
+                _tile_section(
+                    images=[
+                        ImagePlaceholder(node_id="img1", node_name="mj-image", width=42, height=65)
+                    ]
+                ),
+                id="height-only-too-big",
+            ),
         ],
     )
     def test_non_tile_shapes_do_not_route_to_td(self, section: EmailSection) -> None:

@@ -42,11 +42,6 @@ entries:
     owner: "#425"
     detail: "Arial"
     note: "CE-7: non-generic font fallback"
-  - case: "9"
-    check: cta_count
-    owner: "#428"
-    detail: "output=0 design=2"
-    note: "CE-10: slate CTAs WATCH THE VIDEO / SHOP NOW lost"
   - case: "10"
     check: font_generic
     owner: "#425"

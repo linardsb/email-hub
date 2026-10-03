@@ -792,7 +792,7 @@
       "severity": "known-bug",
       "introduced": "2026-07-19",
       "introduced_commit": "fix/phase-53g6-card-composite",
-      "summary": "_fills_card returns SlotFill('content', <card table html>, slot_type='text'). In the DEFAULT renderer path _fill_text_slot inserts the value RAW (correct card). In the EmailTree path (tree_bridge_enabled, non-default / flag-off) tree_bridge._fill_to_slot_value strips ALL HTML tags from a text fill (_HTML_TAG_RE.sub('', fill.value)) and returns TextSlot(text=...), so the card collapses to the bare identity text ('Andy email@brand.emaillove.com') — the white r18 shell, the 440px images, and the layout are lost. No single slot_type renders raw table HTML in BOTH paths (slot_type='attr' -> HtmlSlot works in the tree path but breaks the renderer's attr handling). Same class as phase-53g-g4-tree-html-slot-row-shape.",
+      "summary": "_fills_card returns SlotFill('content', <card table html>, slot_type='text'). In the DEFAULT renderer path _fill_text_slot inserts the value RAW (correct card). In the EmailTree path (tree_bridge_enabled, non-default / flag-off) tree_bridge._fill_to_slot_value strips ALL HTML tags from a text fill (_HTML_TAG_RE.sub('', fill.value)) and returns TextSlot(text=...), so the card collapses to the bare identity text ('Andy email@brand.emaillove.com') — the white r18 shell, the 440px images, and the layout are lost. slot_type='attr' renders raw table HTML in BOTH paths: HtmlSlot in the tree path, and the renderer has no attr branch, so component_renderer.py:1010-1017 sends it through _fill_text_slot, a raw insert (the CE-9 c6 tile relies on this). Same class as phase-53g-g4-tree-html-slot-row-shape.",
       "code_refs": [
         "app/design_sync/component_matcher.py:_fills_card (returns slot_type='text' carrying card-table HTML)",
         "app/design_sync/tree_bridge.py:_fill_to_slot_value (text branch strips HTML -> TextSlot)"
@@ -1370,7 +1370,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-10-03",
-      "introduced_commit": "pending",
+      "introduced_commit": "522f11ed",
       "summary": "render_peel_row gives each cell a fixed max-width scaled so the cells sum to the container width (c6 nav row: 157+157+157+169 = 640). Inline-block cells at fixed px wrap as soon as the viewport is narrower than the container, so at 600-639px the last cell drops to a second row; the mobile .column override only applies below 600px. Observed in the A3 harness (600px viewport) on base and after CE-9.",
       "code_refs": [
         "app/design_sync/component_renderer.py:758 (render_peel_row - fixed max-width cells summing to container_width)"
@@ -1386,7 +1386,7 @@
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-10-03",
-      "introduced_commit": "pending",
+      "introduced_commit": "522f11ed",
       "summary": "At a 375px viewport document.documentElement.scrollWidth is 463 for data/debug/6/expected.html, identical on origin/main 1a891e70 and after CE-9; the widest element is a width=100% layout table, so some child forces it wider. Found while screenshotting the CE-9 nav row at 375px; not investigated further (outside CE-9).",
       "code_refs": [
         "data/debug/6/expected.html (converter output; widest element a width=100% layout table at 375px)",
@@ -1399,19 +1399,53 @@
     {
       "id": "ce-9-tree-path-corpus-compile-fallback",
       "phase": "ce-9",
-      "title": "Tree-bridge compile falls back to the legacy renderer on cases 5, 6 and reframe",
+      "title": "Tree-bridge compile falls back to the legacy renderer on cases 5, 6, 9 and reframe",
       "status": "deferred",
       "severity": "known-bug",
       "introduced": "2026-10-03",
-      "introduced_commit": "pending",
-      "summary": "With DESIGN_SYNC__TREE_BRIDGE_ENABLED and output_format='tree', TreeCompiler raises and convert_document falls back (tree_bridge.compile_fallback): case 5 'slot hero_image not defined for component hero-block'; cases 6 and reframe \"Unsafe URL scheme in button href: '#'\". Observed on origin/main 1a891e70 (cases 7-10 compile). The tree path is non-production (flag off).",
+      "introduced_commit": "522f11ed",
+      "summary": "With DESIGN_SYNC__TREE_BRIDGE_ENABLED and output_format='tree', TreeCompiler raises and convert_document falls back (tree_bridge.compile_fallback): case 5 'slot hero_image not defined for component hero-block'; cases 6 and reframe \"Unsafe URL scheme in button href: '#'\". Observed on origin/main 1a891e70 (cases 7-10 compile). Since CE-10 (#428) case 9 falls back too: its two CTAs now render with href '#'; test_c9_tree_path_social_label_has_no_placeholder is a strict xfail on this entry. The tree path is non-production (flag off).",
       "code_refs": [
         "app/design_sync/tree_bridge.py:193 (_fill_to_slot_value cta -> ButtonSlot href=fill.value or https://example.com; '#' passes through)",
         "app/components/tree_compiler.py:292-296 (_fill_button rejects '#')",
-        "app/design_sync/converter_service.py:737 (_try_tree_bridge fallback)"
+        "app/design_sync/converter_service.py:737 (_try_tree_bridge fallback)",
+        "app/design_sync/tests/test_bridge_roundtrip.py (test_c9_tree_path_social_label_has_no_placeholder, strict xfail)"
       ],
       "symptom_if_broken": "A tree-path conversion of c5/c6/reframe silently returns legacy HTML; tree-path tests on those cases test the legacy renderer.",
       "closes_when": "convert_document(..., output_format='tree') returns result.tree is not None for every corpus case."
+    },
+    {
+      "id": "ce-10-cta-icon-not-rendered",
+      "phase": "ce-10",
+      "title": "CTA seeds ignore ButtonElement.icon_node_id, so a design's after-icon arrow is absent",
+      "status": "deferred",
+      "severity": "soft",
+      "introduced": "2026-10-03",
+      "introduced_commit": "pending",
+      "summary": "CE-10 keeps a button's trailing icon out of section.images and names it by icon_node_id (the measured leaf), which restores the CTA. No CTA fill reads icon_node_id, so the arrow drawn after the label in the design (c9 WATCH THE VIDEO / SHOP NOW, reframe Register now / Grab your spot / Register for livestream) is not rendered. It was not rendered before CE-10 either: the CTA itself was lost.",
+      "code_refs": [
+        "app/design_sync/component_matcher.py (_fills_cta / cta-button + cta-pair fills: icon_node_id unread)",
+        "app/design_sync/figma/layout_analyzer.py (_walk_for_buttons, _icon_leaf)"
+      ],
+      "symptom_if_broken": "A CTA whose design carries an arrow/icon after the label renders label-only.",
+      "closes_when": "The button fill path renders the icon at its design size beside the label (with the export URL from icon_node_id) on c9 and reframe."
+    },
+    {
+      "id": "ce-10-unnamed-button-icon-not-exported",
+      "phase": "ce-10",
+      "title": "Button images that get no icon_node_id are excluded from section images and not exported",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-10-03",
+      "introduced_commit": "pending",
+      "summary": "CE-10 excludes every image under a detected button from section/column/content-group images, and _collect_image_node_ids exports button icons only via icon_node_id. Three shapes get no icon_node_id and are therefore neither in section.images nor exported: (1) an image whose direct-child wrapper name lacks 'icon'; (2) an icon whose measured size exceeds 64 px (leaf, or the wrapper when the leaf is a GROUP); (3) an IMAGE-filled button frame (image_ref on the button itself). No corpus case has any of these (corpus invariant, all 7 cases).",
+      "code_refs": [
+        "app/design_sync/figma/layout_analyzer.py (_walk_for_buttons icon-name test, 64 px cap, _icon_leaf)",
+        "app/design_sync/import_service.py (_collect_image_node_ids button icon append)",
+        "app/design_sync/component_matcher.py (_fills_social icon lookup)"
+      ],
+      "symptom_if_broken": "A labelled social button whose icon is unnamed, oversized or a button image fill renders no icon; such a button image has no exported asset.",
+      "closes_when": "Every image excluded from a button subtree is exported, or icon detection stops requiring the 'icon' name."
     }
   ],
   "tooling_followups": [

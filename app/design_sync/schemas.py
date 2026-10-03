@@ -495,6 +495,7 @@ class ButtonElementResponse(BaseModel):
     text: str
     width: float | None = None
     height: float | None = None
+    icon_node_id: str | None = None
 
 
 class AnalyzedSectionResponse(BaseModel):

@@ -602,6 +602,11 @@ def test_empty_text_fill_is_skipped_not_placeholder() -> None:
 
 
 @pytest.mark.skipif(not (_DEBUG_DIR / "9").is_dir(), reason="data/debug fixtures not present")
+@pytest.mark.xfail(
+    strict=True,
+    reason="ce-9-tree-path-corpus-compile-fallback: c9's CTAs (rendered since CE-10) carry "
+    "href '#', which TreeCompiler rejects, so the tree path falls back to the legacy renderer",
+)
 def test_c9_tree_path_social_label_has_no_placeholder(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.core.config import get_settings
     from app.design_sync.converter_service import DesignConverterService

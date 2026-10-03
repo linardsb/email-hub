@@ -183,8 +183,9 @@ def plan_section(match: ComponentMatch, node: DesignNode, index: int, total: int
 
 
 def _o2_heuristic(node_id: str, section: EmailSection) -> str:
-    # images first: on slate the icon id is the wrapper frame while its IMAGE
-    # child sits in ``section.images`` — that child ships as a content image.
+    # images first: a node in ``section.images`` ships as a content image. A
+    # button's icon is excluded from ``section.images`` (CE-10) and named by
+    # ``icon_node_id`` (the measured leaf), so it answers ``button_icon``.
     if node_id in {i.node_id for i in section.images}:
         return CONTENT_IMAGE
     if node_id in {b.icon_node_id for b in section.buttons if b.icon_node_id}:

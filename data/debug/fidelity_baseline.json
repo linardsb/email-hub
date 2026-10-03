@@ -53,6 +53,15 @@
    "cases": [
     "6"
    ]
+  },
+  {
+   "date": "2026-10-03",
+   "commit": "17b03bd8",
+   "reason": "CE-10 #428: button icons excluded from section images; c9 2833:2117 +0.5374, 2833:2132 -0.0025; reframe 2833:1497 +0.0253, 2833:1553 +0.0289, 2833:1589 +0.0389; other sections +0.0000",
+   "cases": [
+    "9",
+    "reframe"
+   ]
   }
  ],
  "cases": {
@@ -665,7 +674,7 @@
     },
     "2833:2117": {
      "marker": "section_5",
-     "score": 0.3424,
+     "score": 0.8798,
      "design_box": [
       0,
       872,
@@ -685,7 +694,7 @@
     },
     "2833:2132": {
      "marker": "section_7",
-     "score": 0.8763,
+     "score": 0.8738,
      "design_box": [
       0,
       1131,
@@ -898,7 +907,7 @@
     },
     "2833:1497": {
      "marker": "section_1",
-     "score": 0.8821,
+     "score": 0.9074,
      "design_box": [
       0,
       419,
@@ -958,7 +967,7 @@
     },
     "2833:1553": {
      "marker": "section_7",
-     "score": 0.8682,
+     "score": 0.8971,
      "design_box": [
       0,
       1318,
@@ -1008,7 +1017,7 @@
     },
     "2833:1589": {
      "marker": "section_12",
-     "score": 0.8577,
+     "score": 0.8966,
      "design_box": [
       0,
       2693,

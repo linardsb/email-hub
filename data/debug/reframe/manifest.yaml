@@ -88,18 +88,6 @@ patterns:
 # test passes fails the run; the fixing PR deletes it. Two rows on one test = two
 # causes; the test passes only when both owners have landed.
 known_failures:
-  - test: test_required_content
-    owner: "#428"
-    reason: "CTA labels dropped: each mj-button has an afterIcon frame, so its section renders as a bannerimg of the icon (CE-10)"
-  - test: test_cta_colors
-    owner: "#428"
-    reason: "CTA buttons not rendered (button icon counted as content image, CE-10)"
-  - test: test_cta_vml
-    owner: "#428"
-    reason: "no button rendered, so no v:roundrect (CE-10; VML on every button path is CE-11 #429)"
-  - test: test_component_selection
-    owner: "#428"
-    reason: "CTA content hints missing (CE-10)"
   - test: test_font_family
     owner: "ce-3-file-wide-tokens-body-font"
     reason: "body/heading font Inter: corpus tokens.json spans the whole Figma file and convert_typography takes the first style named body/paragraph/text/regular, here 'Button Text' (Inter 16px)"
