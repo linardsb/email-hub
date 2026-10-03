@@ -583,7 +583,8 @@ class DesignImportService:
         When no IMAGE nodes are detected (common at low tree depth), falls back
         to exporting each section frame as an image — Figma's export API can
         render any node as PNG.  Also includes the top-level selected nodes so
-        the Scaffolder gets a full visual reference.
+        the Scaffolder gets a full visual reference.  Button icons (kept out of
+        ``section.images`` since CE-10) are exported via ``icon_node_id``.
         """
         node_ids: list[str] = []
         export_to_display: dict[str, str] = {}
@@ -593,6 +594,9 @@ class DesignImportService:
                 node_ids.append(export_id)
                 if img.export_node_id is not None and img.export_node_id != img.node_id:
                     export_to_display[img.export_node_id] = img.node_id
+            for btn in section.buttons:
+                if btn.icon_node_id and btn.icon_node_id not in node_ids:
+                    node_ids.append(btn.icon_node_id)
 
         # Fallback: if no IMAGE nodes detected, export section frames themselves
         if not node_ids:

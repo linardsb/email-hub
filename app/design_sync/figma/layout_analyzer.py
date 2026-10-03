@@ -492,7 +492,7 @@ def analyze_layout(
         buttons = _extract_buttons(node, extra_hints=button_name_hints)
         button_node_ids = _collect_button_node_ids(buttons)
         texts = _detect_content_hierarchy(_extract_texts(node, exclude_node_ids=button_node_ids))
-        images = _extract_images(node)
+        images = _extract_images(node, exclude_node_ids=button_node_ids)
         roles = _compute_content_roles(texts, images, buttons)
 
         # Extract child content groups (preserves parent-child structure)
@@ -986,6 +986,8 @@ def _classify_mj_section(
         return EmailSectionType.SOCIAL, 0.95
     if "nav" in content_roles:
         return EmailSectionType.NAV, 0.95
+    if _is_button_only(node, _extract_buttons(node)):
+        return EmailSectionType.CTA, 0.90
     if content_roles == {"divider"} or (content_roles == {"divider", "text"}):
         return EmailSectionType.DIVIDER, 0.95
     if content_roles == {"spacer"}:
@@ -1038,6 +1040,39 @@ def _walk_mj_children(node: DesignNode, max_depth: int = 5) -> list[DesignNode]:
 
     _recurse(node, 0)
     return result
+
+
+_BUTTON_ONLY_ROLES = frozenset({"section", "column", "wrapper", "button"})
+
+
+def _is_button_only(node: DesignNode, buttons: list[ButtonElement]) -> bool:
+    """1-2 buttons and nothing outside their subtrees but structural frames (CE-10).
+
+    The walk skips button internals (label, icon), so a section holding only a
+    CTA reads as button-only. Bounded to two: a row of link-buttons stays on
+    the nav path.
+    """
+    if not 1 <= len(buttons) <= 2:
+        return False
+    button_ids = _collect_button_node_ids(buttons)
+
+    def has_content(n: DesignNode) -> bool:
+        for child in n.children:
+            if child.id in button_ids:
+                continue
+            role = _get_mj_role(child.name)
+            if (
+                (child.type == DesignNodeType.TEXT and child.text_content)
+                or child.type == DesignNodeType.IMAGE
+                or (child.type == DesignNodeType.FRAME and child.image_ref)
+                or (child.type == DesignNodeType.VECTOR and child.visible)
+                or (role is not None and role not in _BUTTON_ONLY_ROLES)
+                or has_content(child)
+            ):
+                return True
+        return False
+
+    return not has_content(node)
 
 
 def _get_mj_role(name: str) -> str | None:
@@ -1107,7 +1142,7 @@ def _classify_by_content(
         return EmailSectionType.SOCIAL, 0.75
 
     # Button-only section -> CTA
-    if has_buttons and not has_texts and not has_images:
+    if _is_button_only(node, buttons):
         return EmailSectionType.CTA, 0.70
 
     # Many short texts -> navigation
@@ -1295,7 +1330,7 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
             buttons = _extract_buttons(child)
             btn_ids = _collect_button_node_ids(buttons)
             texts = _extract_texts(child, exclude_node_ids=btn_ids)
-            images = _extract_images(child)
+            images = _extract_images(child, exclude_node_ids=btn_ids)
             dividers = _column_divider_lines(child)
 
             # Skip spacer-only columns (e.g., mj-column containing only mj-spacer)
@@ -1335,7 +1370,7 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
         buttons = _extract_buttons(child)
         btn_ids = _collect_button_node_ids(buttons)
         texts = _extract_texts(child, exclude_node_ids=btn_ids)
-        images = _extract_images(child)
+        images = _extract_images(child, exclude_node_ids=btn_ids)
         dividers = _column_divider_lines(child)
         groups.append(
             ColumnGroup(
@@ -1457,10 +1492,21 @@ def _walk_for_texts(
         _walk_for_texts(child, results, exclude_node_ids=exclude_node_ids)
 
 
-def _extract_images(node: DesignNode) -> list[ImagePlaceholder]:
-    """Identify IMAGE nodes and FRAMEs containing only an IMAGE child."""
+def _extract_images(
+    node: DesignNode,
+    *,
+    exclude_node_ids: set[str] | None = None,
+) -> list[ImagePlaceholder]:
+    """Identify IMAGE nodes and FRAMEs containing only an IMAGE child.
+
+    ``exclude_node_ids`` skips whole subtrees (detected buttons: their icon is
+    button content, not a section image — CE-10). The root itself is never
+    excluded: a button-shaped extraction root keeps its own images.
+    """
     results: list[ImagePlaceholder] = []
-    _walk_for_images(node, results)
+    if exclude_node_ids:
+        exclude_node_ids = exclude_node_ids - {node.id}
+    _walk_for_images(node, results, exclude_node_ids=exclude_node_ids)
     return results
 
 
@@ -1573,13 +1619,17 @@ def _walk_for_images(
     results: list[ImagePlaceholder],
     *,
     skip_vectors: bool = False,
+    exclude_node_ids: set[str] | None = None,
 ) -> None:
     """Collect IMAGE nodes, IMAGE-filled FRAMEs, and standalone vectors (53.5).
 
     ``skip_vectors`` suppresses vector collection inside a subtree that is
     already exported as an image (the frame's node render bakes its children
     in — collecting the vector again would double-capture it).
+    ``exclude_node_ids`` skips those subtrees entirely, before any branch.
     """
+    if exclude_node_ids and node.id in exclude_node_ids:
+        return
     if node.type == DesignNodeType.IMAGE:
         results.append(
             ImagePlaceholder(
@@ -1611,7 +1661,7 @@ def _walk_for_images(
         # Still recurse into children (frame has content over the bg) — but
         # the bg export renders the whole frame, so vectors are already baked.
         for child in node.children:
-            _walk_for_images(child, results, skip_vectors=True)
+            _walk_for_images(child, results, skip_vectors=True, exclude_node_ids=exclude_node_ids)
     elif (
         node.type in (DesignNodeType.FRAME, DesignNodeType.GROUP)
         and len(node.children) == 1
@@ -1676,7 +1726,9 @@ def _walk_for_images(
         )
     else:
         for child in node.children:
-            _walk_for_images(child, results, skip_vectors=skip_vectors)
+            _walk_for_images(
+                child, results, skip_vectors=skip_vectors, exclude_node_ids=exclude_node_ids
+            )
 
 
 def _corner_spec_or_none(spec: CornerRadiusSpec) -> CornerRadiusSpec | None:
@@ -1814,11 +1866,37 @@ def _extract_buttons(
 
 
 _DEFAULT_BUTTON_HINTS = ("button", "btn", "cta", "action", "link", "mj-button")
+_BUTTON_ICON_MAX_PX = 64
 
 
 def _collect_button_node_ids(buttons: list[ButtonElement]) -> set[str]:
     """Collect node IDs of detected buttons for text extraction exclusion."""
     return {b.node_id for b in buttons}
+
+
+def _icon_leaf(node: DesignNode) -> DesignNode:
+    """Follow a chain of single-child FRAME/GROUP wrappers down to the icon.
+
+    Stops at an icon-sized wrapper that bakes its own fill / image-ref / effects
+    (a glyph on a circle): that wrapper is the icon, as in ``_walk_for_images``.
+    A styled FILL-width wrapper is still walked through to the icon.
+    """
+    while node.type in (DesignNodeType.FRAME, DesignNodeType.GROUP) and len(node.children) == 1:
+        styled = (
+            node.image_ref is not None
+            or node.fill_color is not None
+            or node.effects_summary is not None
+        )
+        if (
+            styled
+            and node.width is not None
+            and node.height is not None
+            and node.width <= _BUTTON_ICON_MAX_PX
+            and node.height <= _BUTTON_ICON_MAX_PX
+        ):
+            break
+        node = node.children[0]
+    return node
 
 
 def _walk_for_buttons(
@@ -1855,20 +1933,30 @@ def _walk_for_buttons(
                 # Resolve hyperlink: prefer frame hyperlink, fall back to text child
                 btn_url = node.hyperlink or text_children[0].hyperlink
                 btn_text_color = text_children[0].text_color
-                # Detect icon child: small RECTANGLE/VECTOR/FRAME named "icon"
+                # Detect icon child: VECTOR/FRAME/IMAGE named "icon", measured on
+                # its leaf — a FILL-width wrapper frame hides a small icon (CE-10)
                 icon_node_id: str | None = None
                 for child in node.children:
                     if (
                         child.type
                         in (DesignNodeType.VECTOR, DesignNodeType.FRAME, DesignNodeType.IMAGE)
                         and "icon" in child.name.lower()
-                        and child.width is not None
-                        and child.height is not None
-                        and child.width <= 64
-                        and child.height <= 64
                     ):
-                        icon_node_id = child.id
-                        break
+                        leaf = _icon_leaf(child)
+                        if leaf.type not in (
+                            DesignNodeType.VECTOR,
+                            DesignNodeType.FRAME,
+                            DesignNodeType.IMAGE,
+                        ):
+                            leaf = child  # e.g. a GROUP of vectors: the wrapper is the icon
+                        if (
+                            leaf.width is not None
+                            and leaf.height is not None
+                            and leaf.width <= _BUTTON_ICON_MAX_PX
+                            and leaf.height <= _BUTTON_ICON_MAX_PX
+                        ):
+                            icon_node_id = leaf.id
+                            break
                 results.append(
                     ButtonElement(
                         node_id=node.id,
@@ -2011,7 +2099,7 @@ def _extract_content_groups(
         buttons = _extract_buttons(child, extra_hints=button_name_hints)
         button_ids = _collect_button_node_ids(buttons)
         texts = _extract_texts(child, exclude_node_ids=button_ids)
-        images = _extract_images(child)
+        images = _extract_images(child, exclude_node_ids=button_ids)
 
         if not texts and not images and not buttons:
             continue

@@ -1136,6 +1136,10 @@ export type ButtonElementResponse = {
      * Height
      */
     height?: number | null;
+    /**
+     * Icon Node Id
+     */
+    icon_node_id?: string | null;
 };
 
 /**
