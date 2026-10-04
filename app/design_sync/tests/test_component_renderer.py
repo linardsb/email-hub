@@ -294,7 +294,7 @@ class TestTokenOverrideExpansion:
             overrides=[TokenOverride("font-family", "_body", "Trebuchet MS, sans-serif")],
         )
         result = renderer.render_section(match)
-        assert "Trebuchet MS, sans-serif" in result.html
+        assert "'Trebuchet MS', sans-serif" in result.html
 
     def test_heading_font_override_by_class(self, renderer: ComponentRenderer) -> None:
         """Elements with heading semantic class (no data-slot) get font override."""

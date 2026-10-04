@@ -72,7 +72,7 @@ def test_column_row_emits_all_design_properties() -> None:
     assert "letter-spacing:1.50px" in row
     assert "text-transform:uppercase" in row
     assert "text-decoration:underline" in row
-    assert "font-family:Georgia,sans-serif" in row  # web-safe fallback appended
+    assert "font-family:Georgia, 'Times New Roman', serif" in row  # category stack appended
     assert "font-size:22px" in row
     assert "color:#112233" in row
     # Structure rules: <td> only, padding + mso line-height rule preserved.
@@ -102,7 +102,7 @@ def test_column_row_justify_align_allowed() -> None:
 def test_column_row_heading_fallbacks() -> None:
     bare = TextBlock(node_id="t", content="Title", is_heading=True)
     row = _column_text_row(bare, is_heading=True)
-    assert "font-family:Arial,sans-serif" in row
+    assert "font-family:Arial, Helvetica, sans-serif" in row
     assert "font-weight:bold" in row
     assert "line-height:1.3" in row  # unitless heading default (no px)
     assert "font-size:18px" in row
@@ -149,8 +149,9 @@ def test_column_row_escapes_font_family() -> None:
     evil = _styled_text(font_family='Arial" onmouseover="x')
     row = _column_text_row(evil, is_heading=True)
     style = row.split('style="', 1)[1].split('">', 1)[0]
-    assert '" onmouseover' not in style  # the breakout quote is neutralised
-    assert "&quot;" in row
+    assert '" onmouseover' not in style  # the breakout quote is stripped
+    assert 'onmouseover="' not in row
+    assert "&quot;" not in row  # stripped, not escaped
 
 
 # ── Both call sites honour the design (no drift) ─────────────────
@@ -169,7 +170,7 @@ def test_build_column_fill_html_renders_design() -> None:
     assert "line-height:28px" in html
     assert "letter-spacing:1.50px" in html
     assert "text-transform:uppercase" in html
-    assert "font-family:Georgia,sans-serif" in html
+    assert "font-family:Georgia, 'Times New Roman', serif" in html
 
 
 def test_build_column_fills_roundrobin_renders_design() -> None:
@@ -215,7 +216,7 @@ def _styled_button(**overrides: object) -> ButtonElement:
 
 def test_cta_label_typography_emits_design() -> None:
     css = _cta_label_typography(_styled_button())
-    assert "font-family:Geist Mono,sans-serif" in css  # web-safe fallback appended
+    assert "font-family:'Geist Mono', 'Courier New', Courier, monospace" in css  # category stack
     assert "font-size:18px" in css  # coerced to int
     assert "font-weight:400" in css  # raw design weight, not forced bold
 
@@ -231,7 +232,8 @@ def test_cta_label_typography_escapes_font_family() -> None:
     """A CTA font name must not break out of the style attribute."""
     css = _cta_label_typography(_styled_button(font_family='Arial" onmouseover="x'))
     assert '" onmouseover' not in css
-    assert "&quot;" in css
+    assert 'onmouseover="' not in css
+    assert "&quot;" not in css  # stripped, not escaped
 
 
 def test_build_column_fill_html_styles_cta_label() -> None:
@@ -243,7 +245,7 @@ def test_build_column_fill_html_styles_cta_label() -> None:
         buttons=[_styled_button()],
     )
     html = _build_column_fill_html(group)
-    assert "font-family:Geist Mono,sans-serif" in html
+    assert "font-family:'Geist Mono', 'Courier New', Courier, monospace" in html
     assert "font-size:18px" in html
     assert "font-weight:400" in html
     assert "font-size:14px;font-weight:bold" not in html  # the old hardcode is gone

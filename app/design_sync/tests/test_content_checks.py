@@ -209,12 +209,29 @@ def test_unsubscribe_check_fails_when_repoint_regresses() -> None:
     )
 
 
+_GEIST_STACK = "font-family:'Geist Mono', 'Courier New', Courier, monospace;"
+
+
+def _html_with_bare_geist() -> str:
+    """Case 10's real output with its first Geist Mono stack outside a conditional
+    block rewritten back to the bare ``font-family:Geist Mono;`` that CE-7 (#425)
+    removed, so the reader tests still mutate real converted output. (Inside an
+    ``<!--[if !mso]><!-->`` wrapper the reader sees a value twice.)"""
+    html = _html("10")
+    at = next(
+        m.start()
+        for m in re.finditer(re.escape(_GEIST_STACK), html)
+        if not _in_cond_block(html, m.start())
+    )
+    return html[:at] + _GEIST + html[at + len(_GEIST_STACK) :]
+
+
 def _bare_geist(html: str) -> int:
     return sum(1 for v in font_family_values(html) if "Geist Mono" in v and is_bare_font(v))
 
 
 def test_quoted_font_is_still_bare() -> None:
-    html = _html("10")
+    html = _html_with_bare_geist()
     assert _GEIST in html
     mutated = html.replace(_GEIST, "font-family:&quot;Geist Mono&quot;;", 1)
     assert '"Geist Mono"' in font_family_values(mutated)
@@ -223,7 +240,7 @@ def test_quoted_font_is_still_bare() -> None:
 
 
 def test_generic_fallback_with_important_is_accepted() -> None:
-    html = _html("10")
+    html = _html_with_bare_geist()
     assert _GEIST in html
     value = "'Geist Mono', monospace !important"
     mutated = html.replace(_GEIST, f"font-family:{value};", 1)
@@ -236,12 +253,12 @@ def _in_cond_block(html: str, pos: int) -> bool:
     return any(m.start() <= pos < m.end() for m in _COND_BLOCK_RE.finditer(html))
 
 
-# Each test moves one of case 10's bare ``font-family:Geist Mono;`` out of its
+# Each test moves case 10's rebuilt bare ``font-family:Geist Mono;`` out of its
 # inline style into another place the reader must cover; the count holds.
 
 
 def test_bare_font_moved_into_style_block_is_read() -> None:
-    html = _html("10")
+    html = _html_with_bare_geist()
     assert _GEIST in html
     removed = html.replace(_GEIST, "", 1)
     style = next(
@@ -253,7 +270,7 @@ def test_bare_font_moved_into_style_block_is_read() -> None:
 
 
 def test_bare_font_moved_into_mso_block_is_read() -> None:
-    html = _html("10")
+    html = _html_with_bare_geist()
     assert _GEIST in html
     removed = html.replace(_GEIST, "", 1)
     block = removed.find(_MSO_OPEN, removed.find("<body"))
@@ -264,7 +281,7 @@ def test_bare_font_moved_into_mso_block_is_read() -> None:
 
 
 def test_bare_font_moved_into_face_attribute_is_read() -> None:
-    html = _html("10")
+    html = _html_with_bare_geist()
     at = html.index(_GEIST)
     tag = html.rfind("<", 0, at)
     name = re.match(r"<\w+", html[tag:])

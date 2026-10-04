@@ -106,6 +106,11 @@ Each stamp appends `{date, commit, reason, cases}` to `stamps`. `commit` is the 
 2. Cases 6, 8, 9, 10: #450 (CE-2) moved four footer sections and never re-stamped: 6 `2833:1475` −0.0011, 8 `2833:2348` −0.0005, 9 `2833:2149` −0.0004, 10 `2833:1270` +0.0001. CE-3 does not change these cases' inputs; the stamp gives later tickets a baseline equal to `main`.
 3. Reframe added as a case (16 sections, row above).
 
+**CE-7 stamp (#425, 2026-10-04, branch commit `6c5c6f18`).** Cases 6, 7, 10; deltas from the pinned-image check run on that commit (observed, identical to the planning spike). Design fonts now carry a category fallback stack, and the image has none of Roboto, Noto Sans or Geist Mono, so these cells move from the browser default serif to Liberation Sans or Mono:
+
+- 7 `2833:1942` −0.0059 (beyond the 0.005 margin, ratified at planning): the 30px Noto Sans heading renders in Liberation Sans instead of Liberation Serif; the design reference is a sans.
+- In margin: 6 `2833:1430` +0.0004; 7 `2833:1870` −0.0024, `2833:1882` −0.0034, `2833:1898` −0.0011; 10 `2833:1141` −0.0007, `2833:1176` +0.0001, `2833:1197` +0.0003, `2833:1227` −0.0004.
+
 ## Adding a case (CE-3, CE-5)
 
 1. Commit `data/debug/<case>/structure.json`, `tokens.json` and `manifest.yaml`.

@@ -982,18 +982,19 @@ class TestCtaRadiusRenderSites:
 
 
 # Byte-identical reference for the corpus tag-pills, recorded from the committed
-# ``data/debug/{7,5}/expected.html`` at the G5 branch point (post-G3/G4/F10).
+# ``data/debug/{7,5}/expected.html`` at the G5 branch point (post-G3/G4/F10);
+# font-family re-recorded for the CE-7 (#425) category stacks.
 _C7_ART_PRINTS = (
     '<a href="#" style="display:inline-block;padding:5px 10px;'
     "background-color:#4E3092;color:#FFFFFF;text-decoration:none;"
-    "font-family:Noto Sans,sans-serif;font-size:10px;font-weight:700;"
+    "font-family:'Noto Sans', Helvetica, Arial, sans-serif;font-size:10px;font-weight:700;"
     'border-radius:0px;">Art prints</a>'
 )
 _C7_STATIONERY = _C7_ART_PRINTS.replace(">Art prints<", ">Stationery<")
 _C5_MELBOURNE = (
     '<a href="#" style="display:inline-block;padding:12px;'
     "background-color:#222222;color:#FFFFFF;text-decoration:none;"
-    "font-family:Helvetica,sans-serif;font-size:14px;font-weight:400;"
+    "font-family:Helvetica, Arial, sans-serif;font-size:14px;font-weight:400;"
     'border-radius:25px;">Melbourne</a>'
 )
 

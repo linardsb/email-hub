@@ -62,6 +62,16 @@
     "9",
     "reframe"
    ]
+  },
+  {
+   "date": "2026-10-04",
+   "commit": "6c5c6f18",
+   "reason": "CE-7 #425 font fallback stacks: c7 2833:1942 heading renders Liberation Sans instead of Liberation Serif (Noto Sans absent from image; reference is sans), -0.0059 ratified; c6/c7/c10 in-margin moves from Roboto/Noto Sans/Geist Mono fallbacks",
+   "cases": [
+    "6",
+    "7",
+    "10"
+   ]
   }
  ],
  "cases": {
@@ -241,7 +251,7 @@
     },
     "2833:1430": {
      "marker": "section_1",
-     "score": 0.9178,
+     "score": 0.9182,
      "design_box": [
       0,
       540,
@@ -330,7 +340,7 @@
    "sections": {
     "2833:1870": {
      "marker": "section_0",
-     "score": 0.9895,
+     "score": 0.9871,
      "design_box": [
       0,
       0,
@@ -350,7 +360,7 @@
     },
     "2833:1882": {
      "marker": "section_2",
-     "score": 0.9401,
+     "score": 0.9367,
      "design_box": [
       0,
       497,
@@ -370,7 +380,7 @@
     },
     "2833:1898": {
      "marker": "section_4",
-     "score": 0.9404,
+     "score": 0.9393,
      "design_box": [
       20,
       763,
@@ -400,7 +410,7 @@
     },
     "2833:1942": {
      "marker": "section_7",
-     "score": 0.8611,
+     "score": 0.8552,
      "design_box": [
       20,
       1486,
@@ -745,7 +755,7 @@
     },
     "2833:1141": {
      "marker": "section_1",
-     "score": 0.9069,
+     "score": 0.9062,
      "design_box": [
       0,
       600,
@@ -785,7 +795,7 @@
     },
     "2833:1176": {
      "marker": "section_5",
-     "score": 0.9125,
+     "score": 0.9126,
      "design_box": [
       32,
       2218,
@@ -795,7 +805,7 @@
     },
     "2833:1197": {
      "marker": "section_6",
-     "score": 0.8991,
+     "score": 0.8994,
      "design_box": [
       32,
       2668,
@@ -825,7 +835,7 @@
     },
     "2833:1227": {
      "marker": "section_9",
-     "score": 0.9323,
+     "score": 0.9319,
      "design_box": [
       0,
       3558,

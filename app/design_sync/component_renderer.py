@@ -18,6 +18,7 @@ from app.design_sync.component_matcher import (
     render_composite,
 )
 from app.design_sync.figma.layout_analyzer import EmailSection
+from app.design_sync.font_stacks import font_stack
 from app.design_sync.sibling_detector import BandRule, RepeatingGroup
 from app.design_sync.vml_button import render_vml_button
 
@@ -1665,14 +1666,14 @@ class ComponentRenderer:
 
     def _replace_heading_font(self, html_str: str, font: str) -> str:
         """Replace font-family on heading elements (data-slot or semantic class)."""
-        safe = html.escape(font, quote=True)
+        safe = font_stack(font)
         repl = rf"\g<1>font-family:{safe}\g<2>"
         result = _HEADING_SLOT_FONT_RE.sub(repl, html_str)
         return _HEADING_CLASS_FONT_RE.sub(repl, result)
 
     def _replace_body_font(self, html_str: str, font: str) -> str:
         """Replace font-family on body elements (data-slot or semantic class)."""
-        safe = html.escape(font, quote=True)
+        safe = font_stack(font)
         repl = rf"\g<1>font-family:{safe}\g<2>"
         result = _BODY_SLOT_FONT_RE.sub(repl, html_str)
         return _BODY_CLASS_FONT_RE.sub(repl, result)
@@ -2063,7 +2064,7 @@ class ComponentRenderer:
         typography. ``<img>`` tags carry the same attribute and are excluded
         by matching ``<td`` only.
         """
-        safe_val = html.escape(value, quote=True)
+        safe_val = font_stack(value) if prop == "font-family" else html.escape(value, quote=True)
         safe_node = re.escape(node_id)
         td_tag = re.compile(rf'<td\b[^>]*\bdata-node-id="{safe_node}"[^>]*>')
         style_decl = re.compile(r'(style=")([^"]*)(")')

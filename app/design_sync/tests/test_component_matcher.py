@@ -789,14 +789,14 @@ class TestPerNodeTypography:
         for o in m.token_overrides:
             by_target.setdefault(o.target_class, {})[o.css_property] = o.value
         assert by_target["_text_p1"] == {
-            "font-family": "Georgia",
+            "font-family": "Georgia, 'Times New Roman', serif",
             "font-size": "18.0px",
             "color": "#111111",
             "font-weight": "700",
             "line-height": "24px",
         }
         assert by_target["_text_p2"] == {
-            "font-family": "Arial",
+            "font-family": "Arial, Helvetica, sans-serif",
             "font-size": "14.0px",
             "color": "#666666",
             "font-weight": "400",

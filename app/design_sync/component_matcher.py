@@ -20,6 +20,7 @@ from app.design_sync.figma.layout_analyzer import (
     ImagePlaceholder,
     TextBlock,
 )
+from app.design_sync.font_stacks import font_stack
 from app.design_sync.vml_button import VmlButton, render_vml_button
 
 if TYPE_CHECKING:
@@ -771,23 +772,20 @@ def _column_text_row(text: TextBlock, *, is_heading: bool, padding: str = "0 0 8
     validation in ``_typography_overrides`` byte-for-byte (font-weight ``str``,
     line-height ``round(px)``, letter-spacing ``{:.2f}px`` skipping ``0.0``,
     transform/decoration/align ``.lower()`` + allowlist, color ``_safe_color``).
-    ``font-family`` is passed through unvalidated — matching the existing
-    override path (``_build_token_overrides`` line ~1542) which also emits it
-    raw — with only a web-safe fallback appended. Falls back to the pre-52.x
-    hardcoded heading/body defaults when a property is absent.
+    ``font-family`` goes through ``font_stack`` (the design family plus its
+    category fallback stack), as on the override path (``_build_token_overrides``).
+    Falls back to the pre-52.x hardcoded heading/body defaults when a property
+    is absent.
     """
     decls = [f"padding:{padding}"]
 
-    # font-family — design value with a web-safe fallback appended, else Arial.
-    # Escaped (quote=True) so a font name can't break out of the style attr —
-    # the override path is escaped equivalently by the renderer (_replace_heading_font).
+    # font-family — design value plus its category fallback stack, else Arial's.
+    # font_stack strips characters that could break out of the style attr.
     if text.font_family:
-        family = html.escape(text.font_family, quote=True)
-        if "," not in family:
-            family = f"{family},sans-serif"
+        family = font_stack(text.font_family)
         decls.append(f"font-family:{family}")
     else:
-        decls.append("font-family:Arial,sans-serif")
+        decls.append(f"font-family:{font_stack('Arial')}")
 
     # font-size — keep the 18/14 heading/body fallback.
     size = int(text.font_size) if text.font_size else (18 if is_heading else 14)
@@ -843,16 +841,13 @@ def _cta_label_typography(btn: ButtonElement) -> str:
 
     Phase 52.4b — sources the button label's font from its design ``TextBlock``,
     falling back to the pre-52.4b hardcoded ``14px``/``bold`` when a property is
-    absent. Mirrors ``_column_text_row``'s validation: font-family is
-    ``html.escape``d (quote=True) with a web-safe fallback appended so a font
-    name cannot break out of the style attr; font-size is coerced to ``int``;
-    font-weight is emitted raw.
+    absent. Mirrors ``_column_text_row``'s validation: font-family goes through
+    ``font_stack`` (category fallback stack, unsafe characters stripped);
+    font-size is coerced to ``int``; font-weight is emitted raw.
     """
     decls: list[str] = []
     if btn.font_family:
-        family = html.escape(btn.font_family, quote=True)
-        if "," not in family:
-            family = f"{family},sans-serif"
+        family = font_stack(btn.font_family)
         decls.append(f"font-family:{family}")
     size = int(btn.font_size) if btn.font_size else 14
     decls.append(f"font-size:{size}px")
@@ -1060,9 +1055,7 @@ def _vml_button_spec(
         radius = float(max(corners.per_corner))
     else:
         radius = btn.border_radius if btn.border_radius is not None else 4.0
-    family = btn.font_family or "Arial"
-    if "," not in family:
-        family = f"{family},sans-serif"
+    family = font_stack(btn.font_family or "Arial")
     size = int(btn.font_size) if btn.font_size is not None and btn.font_size > 0 else 14
     weight = str(btn.font_weight) if btn.font_weight is not None else "bold"
     pl = btn.padding_left if btn.padding_left is not None else 24.0
@@ -1282,12 +1275,10 @@ def _spec_label_style(text: TextBlock) -> str:
     """Compact inline typography for a spec value/label cell (mirrors ``_column_text_row``)."""
     decls = ["text-align:left"]
     if text.font_family:
-        family = html.escape(text.font_family, quote=True)
-        if "," not in family:
-            family = f"{family},sans-serif"
+        family = font_stack(text.font_family)
         decls.append(f"font-family:{family}")
     else:
-        decls.append("font-family:Arial,sans-serif")
+        decls.append(f"font-family:{font_stack('Arial')}")
     decls.append(f"font-size:{int(text.font_size) if text.font_size else 11}px")
     if text.font_weight is not None:
         decls.append(f"font-weight:{text.font_weight}")
@@ -1585,14 +1576,9 @@ def _card_image_row(img: ImagePlaceholder, image_urls: dict[str, str] | None, pa
 def _card_text_row(text: TextBlock, bg: str) -> str:
     r"""One text row inside a card (full inline font props; ``\n`` -> ``<br>``)."""
     content = _safe_text(text.content).replace("\n", "<br />")
-    # font-family: escaped (quote=True) so a design font name can't break out of the
-    # style attr; web-safe fallback appended when absent (mirrors _column_text_row).
-    if text.font_family:
-        ff = html.escape(text.font_family, quote=True)
-        if "," not in ff:
-            ff = f"{ff},sans-serif"
-    else:
-        ff = "Arial,sans-serif"
+    # font-family: design family + its category fallback stack, else Arial's
+    # (mirrors _column_text_row). font_stack strips unsafe characters.
+    ff = font_stack(text.font_family or "Arial")
     fs = int(text.font_size) if text.font_size else 14
     lh = int(text.line_height) if text.line_height else 19
     fw = text.font_weight if text.font_weight is not None else 600
@@ -2451,8 +2437,8 @@ def _render_text_runs(
 def _footer_editorial_row(text: TextBlock, pad_bottom: int) -> str:
     """Build one footer editorial ``<tr><td>`` from a TEXT node's design props.
 
-    Mirrors :func:`_column_text_row` typography (font-family escaped + web-safe
-    fallback; size ``int`` default 12; weight raw; ``_safe_color``; line-height
+    Mirrors :func:`_column_text_row` typography (font-family via ``font_stack`` category
+    stack; size ``int`` default 12; weight raw; ``_safe_color``; line-height
     ``round(px)``; align allowlist default centre; letter-spacing skipping
     ``0.0``; transform/decoration allowlist; ``mso-line-height-rule:exactly``)
     but sources content from :func:`_render_text_runs` (style-run links) and
@@ -2460,12 +2446,10 @@ def _footer_editorial_row(text: TextBlock, pad_bottom: int) -> str:
     """
     decls = [f"padding:0 0 {pad_bottom}px 0"]
     if text.font_family:
-        family = html.escape(text.font_family, quote=True)
-        if "," not in family:
-            family = f"{family},sans-serif"
+        family = font_stack(text.font_family)
         decls.append(f"font-family:{family}")
     else:
-        decls.append("font-family:Arial,sans-serif")
+        decls.append(f"font-family:{font_stack('Arial')}")
 
     size = int(text.font_size) if text.font_size else 12
     decls.append(f"font-size:{size}px")
@@ -3057,7 +3041,7 @@ def _text_node_overrides(text: TextBlock) -> list[TokenOverride]:
     target = f"_text_{text.node_id}"
     out: list[TokenOverride] = []
     if text.font_family:
-        out.append(TokenOverride("font-family", target, text.font_family))
+        out.append(TokenOverride("font-family", target, font_stack(text.font_family)))
     if text.font_size:
         out.append(TokenOverride("font-size", target, f"{text.font_size}px"))
     if text.text_color and _HEX_COLOR_RE.match(text.text_color):
@@ -3231,12 +3215,12 @@ def _build_token_overrides(
     # Font overrides from first heading text
     for text in section.texts:
         if text.is_heading and text.font_family:
-            overrides.append(TokenOverride("font-family", "_heading", text.font_family))
+            overrides.append(TokenOverride("font-family", "_heading", font_stack(text.font_family)))
             break
 
     for text in section.texts:
         if not text.is_heading and text.font_family:
-            overrides.append(TokenOverride("font-family", "_body", text.font_family))
+            overrides.append(TokenOverride("font-family", "_body", font_stack(text.font_family)))
             break
 
     # Font-size overrides from typography
