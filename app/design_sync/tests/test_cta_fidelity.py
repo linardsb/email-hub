@@ -306,12 +306,14 @@ class TestRendererCTAOverrides:
             # label so the button isn't pruned as an empty CTA.
             fills=[SlotFill("cta_text", "Shop")],
             overrides=[TokenOverride("background-color", "_cta", "#c6fc6a")],
+            section=_make_section(buttons=[_button(fill_color="#c6fc6a")]),
         )
         result = renderer.render_section(match)
         assert (
             "background-color:#c6fc6a" in result.html or "background-color: #c6fc6a" in result.html
         )
-        # VML fillcolor
+        # CE-11: VML fillcolor comes from the design button
+        assert result.html.count("<v:roundrect ") == 1
         assert 'fillcolor="#c6fc6a"' in result.html
 
     def test_cta_border_radius_applied(self, renderer: ComponentRenderer) -> None:
@@ -319,11 +321,12 @@ class TestRendererCTAOverrides:
             "cta-button",
             fills=[SlotFill("cta_text", "Shop")],  # F4a: keep the button present
             overrides=[TokenOverride("border-radius", "_cta", "6px")],
+            section=_make_section(buttons=[_button(border_radius=6)]),
         )
         result = renderer.render_section(match)
         assert "border-radius:6px" in result.html
-        # VML arcsize updated
-        assert "arcsize=" in result.html
+        # CE-11: arcsize from the design box, floor(6 / min(220, 48) * 100)
+        assert 'arcsize="12%"' in result.html
 
     def test_cta_text_color_applied(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
@@ -376,7 +379,13 @@ class TestOwnRowCTAComposite:
         html = renderer.render_section(match).html
         body_cell = html.split('data-slot="body"')[1].split("</td>")[0]
         assert "<a " not in body_cell  # anchor moved out of the body cell
-        assert re.search(r'<td align="center"[^>]*>\s*<a [^>]*>Explore now</a>', html)
+        # CE-11: the VML twin and the !mso wrapper sit between the cell and the anchor.
+        assert re.search(
+            r'<td align="center"[^>]*>\s*<!--\[if mso\]>.*?<!\[endif\]-->'
+            r"<!--\[if !mso\]><!--><a [^>]*>Explore now</a>",
+            html,
+            re.DOTALL,
+        )
         assert html.index("Explore now") > html.index('data-slot="body"')
 
     def test_multi_button_both_in_one_centered_row(self, renderer: ComponentRenderer) -> None:
@@ -522,6 +531,7 @@ class TestMultipleCTAs:
                 "cta-button",
                 fills=[SlotFill("cta_text", "Shop")],  # F4a: keep the button present
                 overrides=[TokenOverride("background-color", "_cta", color)],
+                section=_make_section(buttons=[_button(fill_color=color)]),
             )
             result = renderer.render_section(match)
             assert f'fillcolor="{color}"' in result.html

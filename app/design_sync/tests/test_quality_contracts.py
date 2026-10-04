@@ -168,6 +168,19 @@ class TestCheckCompleteness:
         warnings = check_completeness(html, input_button_count=2)
         assert len(warnings) == 0
 
+    def test_vml_twin_counts_once(self) -> None:
+        """CE-11: one VML-wrapped anchor is one button, not two (open + close tag)."""
+        anchor = '<a href="#" style="display:inline-block;padding:12px 24px;">CTA</a>'
+        wrapped = (
+            '<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="#" '
+            'style="height:40px;v-text-anchor:middle;width:200px;" arcsize="10%" stroke="f" '
+            'fillcolor="#FF0000"><center>CTA</center></v:roundrect><![endif]-->'
+            f"<!--[if !mso]><!-->{anchor}<!--<![endif]-->"
+        )
+        warnings = check_completeness(_make_html(wrapped), input_button_count=2)
+        assert len(warnings) == 1
+        assert warnings[0].context["found"] == 1
+
 
 # ---------------------------------------------------------------------------
 # Placeholder tests (4)

@@ -20,6 +20,7 @@ from app.design_sync.figma.layout_analyzer import (
     ImagePlaceholder,
     TextBlock,
 )
+from app.design_sync.vml_button import VmlButton, render_vml_button
 
 if TYPE_CHECKING:
     from app.design_sync.protocol import ExtractedGradient
@@ -1037,12 +1038,68 @@ def _column_divider_row(divider: ColumnDivider) -> str:
     )
 
 
-def _column_cta_row(btn: ButtonElement) -> str:
+def _vml_button_spec(
+    btn: ButtonElement,
+    *,
+    fill: str | None,
+    text_color: str,
+    stroke_color: str | None,
+    stroke_weight_px: int | None,
+    max_width: int,
+) -> VmlButton:
+    """Map a design button onto the VML builder's input (CE-11).
+
+    Radius, font and padding fallbacks mirror ``_cta_radius_css`` and
+    ``_cta_label_typography`` so the VML and its HTML twin agree. VML has one
+    radius, so a per-corner button uses its largest corner. Width and height
+    are the design box (stroke not subtracted), clamped to ``max_width``; the
+    no-size fallback estimates the box from the label and padding.
+    """
+    corners = btn.corner_radius_spec
+    if corners is not None and corners.per_corner is not None:
+        radius = float(max(corners.per_corner))
+    else:
+        radius = btn.border_radius if btn.border_radius is not None else 4.0
+    family = btn.font_family or "Arial"
+    if "," not in family:
+        family = f"{family},sans-serif"
+    size = int(btn.font_size) if btn.font_size is not None and btn.font_size > 0 else 14
+    weight = str(btn.font_weight) if btn.font_weight is not None else "bold"
+    pl = btn.padding_left if btn.padding_left is not None else 24.0
+    pr = btn.padding_right if btn.padding_right is not None else 24.0
+    pt = btn.padding_top if btn.padding_top is not None else 10.0
+    pb = btn.padding_bottom if btn.padding_bottom is not None else 10.0
+    if btn.width is not None and btn.width > 0:
+        width = round(btn.width)
+    else:
+        width = round(len(btn.text) * size * 0.6 + pl + pr)
+    if btn.height is not None and btn.height > 0:
+        height = round(btn.height)
+    else:
+        height = round(size * 1.2 + pt + pb)
+    return VmlButton(
+        href=_safe_url(btn.url),
+        label=btn.text,
+        width_px=max(1, min(width, max_width)),
+        height_px=max(1, height),
+        radius_px=radius,
+        fill=fill,
+        text_color=text_color,
+        stroke_color=stroke_color,
+        stroke_weight_px=stroke_weight_px,
+        font_family=family,
+        font_size_px=size,
+        font_weight=weight,
+    )
+
+
+def _column_cta_row(btn: ButtonElement, *, column_width: float | None = None) -> str:
     """Wrap a column CTA ``<a>`` in its own ``<tr><td>`` row (Phase 53 B2).
 
     The anchor markup (fill/text color, radius, stroke, design-sourced label
     typography) is unchanged from the pre-B2 bare ``<a>`` — only the enclosing
-    ``<tr><td>`` is new.
+    ``<tr><td>`` is new. CE-11 pairs the anchor with a VML twin for classic
+    Outlook, never wider than the column.
     """
     btn_url = html.escape(_safe_url(btn.url))
     bg = _safe_color(btn.fill_color, "#0066cc")
@@ -1057,7 +1114,16 @@ def _column_cta_row(btn: ButtonElement) -> str:
         f"text-decoration:none;{_cta_label_typography(btn)}"
         f'{_cta_radius_css(btn)};{border_css}">{_safe_text(btn.text)}</a>'
     )
-    return f"<tr><td>{anchor}</td></tr>"
+    stroke_px = round(btn.stroke_weight) if btn.stroke_weight is not None else 1
+    vml = _vml_button_spec(
+        btn,
+        fill=_safe_color(btn.fill_color, "") or None,
+        text_color=txt_color,
+        stroke_color=(_safe_color(btn.stroke_color, "") or None) if border_css else None,
+        stroke_weight_px=max(1, stroke_px) if border_css else None,
+        max_width=int(column_width) if column_width is not None else 600,
+    )
+    return f"<tr><td>{render_vml_button(vml, anchor)}</td></tr>"
 
 
 _MAX_COMPOSITE_DEPTH = 3
@@ -1289,7 +1355,7 @@ def _build_column_fill_html(
         else:
             if _is_placeholder(element.text):
                 continue
-            rows.append(_column_cta_row(element))
+            rows.append(_column_cta_row(element, column_width=group.width))
     return _wrap_column_table(rows)
 
 
@@ -1907,12 +1973,27 @@ def _fills_text_block(
             if stroke:
                 fg = _safe_color(btn.text_color, "#1a1a1a")
                 border = f"border:{max(1, round(btn.stroke_weight))}px solid {stroke};"
-        cta_parts.append(
+        anchor = (
             f'<a href="{btn_url}" style="display:inline-block;'
             f"padding:{_cta_padding_css(btn)};background-color:{bg};color:{fg};"
             f"text-decoration:none;{_cta_label_typography(btn)}{border}"
             f'{_cta_radius_css(btn)};">{_safe_text(btn.text)}</a>'
         )
+        # CE-11: VML twin for classic Outlook. No design fill -> transparent,
+        # never the #0066cc twin fallback; the label colour follows the twin.
+        vml = _vml_button_spec(
+            btn,
+            fill=_safe_color(btn.fill_color, "") or None,
+            text_color=fg,
+            stroke_color=(_safe_color(btn.stroke_color, "") or None) if border else None,
+            stroke_weight_px=(
+                max(1, round(btn.stroke_weight))
+                if border and btn.stroke_weight is not None
+                else None
+            ),
+            max_width=_cw,
+        )
+        cta_parts.append(render_vml_button(vml, anchor))
     if cta_parts:
         # 51.1 own-row CTA (M8): emit the CTA as a composite row spliced after the
         # body (or heading) row instead of folding the anchors INTO the body <td>

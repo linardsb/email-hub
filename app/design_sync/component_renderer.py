@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import html
 import re
 from dataclasses import dataclass, field
@@ -12,10 +13,13 @@ from app.design_sync.component_matcher import (
     ComponentMatch,
     SlotFill,
     TokenOverride,
+    _safe_color,
+    _vml_button_spec,
     render_composite,
 )
 from app.design_sync.figma.layout_analyzer import EmailSection
 from app.design_sync.sibling_detector import BandRule, RepeatingGroup
+from app.design_sync.vml_button import render_vml_button
 
 logger = get_logger(__name__)
 
@@ -270,6 +274,76 @@ def _load_seeds() -> dict[str, dict[str, Any]]:
 
     _seed_cache = {seed["slug"]: seed for seed in COMPONENT_SEEDS}
     return _seed_cache
+
+
+# CE-11: the converter's VML buttons come from ``vml_button.render_vml_button``
+# only. A seed's static ``<v:roundrect>`` twin (cta-button) is dropped at load
+# and its ``!mso`` wrapper unwrapped, so the HTML button is the template.
+_SEED_VML_RE = re.compile(
+    r"<!--\[if mso\]>\s*<v:roundrect\b.*?</v:roundrect>\s*<!\[endif\]-->\s*"
+    r"<!--\[if !mso\]><!-->(.*?)<!--<!\[endif\]-->",
+    re.DOTALL,
+)
+_VML_CTA_ANCHOR_RE = re.compile(
+    r'<a\b[^>]*\bdata-slot="(cta_url|primary_url|secondary_url|primary_cta_url|secondary_cta_url)"'
+    r"[^>]*>(.*?)</a>",
+    re.DOTALL,
+)
+_COMMENT_SPAN_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_TABLE_TAG_RE = re.compile(r"<(/?)table\b[^>]*>")
+_OUTLOOK_ONLY_BLOCK_RE = re.compile(r"<!--\[if (?!!)[^\]]*mso[^\]]*\]>.*?<!\[endif\]-->", re.DOTALL)
+_NON_MSO_MARKER_RE = re.compile(r"<!--\[if !mso\]><!-->|<!--<!\[endif\]-->")
+_NON_MSO_SPAN_RE = re.compile(r"<!--\[if !mso\]><!-->.*?<!--<!\[endif\]-->", re.DOTALL)
+_TWIN_TEXT_COLOR_RE = re.compile(r"(?<!-)color:\s*(#[0-9a-fA-F]{3,6})\b")
+_TWIN_BORDER_RE = re.compile(r"border:\s*(\d+)px\s+solid\s+(#[0-9a-fA-F]{3,6})\b")
+_HREF_RE = re.compile(r'\bhref="([^"]*)"')
+_TAG_STRIP_RE = re.compile(r"<[^>]+>")
+
+
+def _strip_seed_vml(template: str) -> str:
+    """Drop a seed ``<v:roundrect>`` twin and unwrap its ``!mso`` HTML button."""
+    return _SEED_VML_RE.sub(r"\1", template)
+
+
+def _visible_text(fragment: str) -> str:
+    return " ".join(html.unescape(_TAG_STRIP_RE.sub(" ", fragment)).split())
+
+
+def _chrome_span(html_str: str, a_start: int, a_end: int, label: str) -> tuple[int, int]:
+    """Span of the markup a VML button replaces for Outlook (CE-11 D6).
+
+    The innermost ``<table>`` that truly encloses the anchor (a tag-stack scan,
+    so a closed sibling table before the anchor is skipped) when it holds only
+    this button: no nested table, no image, exactly one ``<a>`` and visible text
+    equal to the label. Otherwise the anchor alone. Hiding anything wider from
+    Outlook would drop the enclosing layout tags from its view.
+    """
+    # Table tags inside comments (MSO ghost tables) are not structure: blank
+    # them, keeping offsets, before the scan and the close search.
+    scan = _COMMENT_SPAN_RE.sub(lambda c: " " * len(c.group(0)), html_str)
+    stack: list[re.Match[str]] = []
+    for tag in _TABLE_TAG_RE.finditer(scan, 0, a_start):
+        if tag.group(1):
+            if stack:
+                stack.pop()
+        else:
+            stack.append(tag)
+    if not stack:
+        return a_start, a_end
+    open_tag = stack[-1]
+    close = _find_matching_close(scan, "table", open_tag.end())
+    if close is None or close < a_end:
+        return a_start, a_end
+    end = html_str.index(">", close) + 1
+    body = html_str[open_tag.end() : end]
+    if (
+        "<table" in body
+        or "<img" in body
+        or len(re.findall(r"<a\b", body)) != 1
+        or _visible_text(body) != label
+    ):
+        return a_start, a_end
+    return open_tag.start(), end
 
 
 @dataclass(frozen=True)
@@ -652,7 +726,7 @@ class ComponentRenderer:
         for slug, seed in seeds.items():
             html_source = seed.get("html_source", "")
             if html_source:
-                self._templates[slug] = html_source
+                self._templates[slug] = _strip_seed_vml(html_source)
         self._loaded = True
 
     def render_section(self, match: ComponentMatch) -> RenderedSection:
@@ -685,6 +759,9 @@ class ComponentRenderer:
 
         # 2. Apply token overrides (inline style replacement)
         result_html = self._apply_token_overrides(result_html, match.token_overrides)
+
+        # 2a. CE-11: a design-driven VML twin for every surviving template CTA.
+        result_html = self._apply_vml_buttons(result_html, match)
 
         # 3. Update MSO table widths to match container width
         result_html = self._update_mso_widths(result_html, self._container_width)
@@ -748,6 +825,70 @@ class ComponentRenderer:
             dark_mode_classes=tuple(dark_classes),
             images=images,
         )
+
+    def _apply_vml_buttons(self, html_str: str, match: ComponentMatch) -> str:
+        """Pair every filled template CTA anchor with a VML button (CE-11).
+
+        Runs after pruning and token overrides, so only CTAs that survive get a
+        twin. ``secondary*`` slots take ``buttons[1]``, the rest ``buttons[0]``.
+        Size, radius, font and fill come from the design button; a missing
+        design fill stays transparent (the twin's colour is a template default).
+        The label colour and stroke fall back to the twin's. ``href`` and label
+        come from the rendered anchor, which is what other clients show.
+        Anchors inside comments (MSO blocks, matcher-built VML) are skipped.
+        """
+        # An anchor already hidden from Outlook (a VML twin) is skipped too.
+        comments = [(m.start(), m.end()) for m in _COMMENT_SPAN_RE.finditer(html_str)]
+        comments += [(m.start(), m.end()) for m in _NON_MSO_SPAN_RE.finditer(html_str)]
+        hits: list[tuple[re.Match[str], str]] = []
+        for m in _VML_CTA_ANCHOR_RE.finditer(html_str):
+            if any(start <= m.start() < end for start, end in comments):
+                continue
+            label = _visible_text(m.group(2))
+            if label:
+                hits.append((m, label))
+        buttons = match.section.buttons
+        result = html_str
+        for m, label in reversed(hits):
+            idx = 1 if m.group(1).startswith("secondary") else 0
+            if idx >= len(buttons):
+                logger.warning(
+                    "design_sync.vml_button_skipped",
+                    slug=match.component_slug,
+                    slot=m.group(1),
+                )
+                continue
+            btn = buttons[idx]
+            start, end = _chrome_span(result, m.start(), m.end(), label)
+            # A conditional inside the twin would end the !mso wrapper early: drop
+            # Outlook-only blocks, unwrap non-Outlook ones (their content stays).
+            chrome = _NON_MSO_MARKER_RE.sub("", _OUTLOOK_ONLY_BLOCK_RE.sub("", result[start:end]))
+            anchor = m.group(0)
+            twin_text = _TWIN_TEXT_COLOR_RE.search(anchor)
+            twin_border = _TWIN_BORDER_RE.search(chrome)
+            stroke = _safe_color(btn.stroke_color, "") or (
+                twin_border.group(2) if twin_border else ""
+            )
+            if btn.stroke_weight is not None and btn.stroke_weight > 0:
+                stroke_px = max(1, round(btn.stroke_weight))
+            else:
+                stroke_px = int(twin_border.group(1)) if twin_border else 1
+            spec = _vml_button_spec(
+                btn,
+                fill=_safe_color(btn.fill_color, "") or None,
+                text_color=_safe_color(
+                    btn.text_color, twin_text.group(1) if twin_text else "#ffffff"
+                ),
+                stroke_color=stroke or None,
+                stroke_weight_px=stroke_px if stroke else None,
+                max_width=self._container_width,
+            )
+            href = _HREF_RE.search(anchor)
+            spec = dataclasses.replace(
+                spec, href=html.unescape(href.group(1)) if href else spec.href, label=label
+            )
+            result = result[:start] + render_vml_button(spec, chrome) + result[end:]
+        return result
 
     def render_all(self, matches: list[ComponentMatch]) -> list[RenderedSection]:
         """Render all matched sections."""
@@ -1118,11 +1259,10 @@ class ComponentRenderer:
         no non-empty fill is a leaked seed default. Blanking the span alone
         would leave an empty clickable anchor (B3 rule), so the whole anchor is
         removed. For the standalone cta-button seed the anchor is wrapped in a
-        ``class="cta-btn"`` table with an Outlook ``<v:roundrect>`` twin whose
-        ``<center>`` carries the same seed literal — both are stripped too, so
-        no empty blue box or MSO-only "Shop Now" survives. Scoped per section
-        (``_fill_slots`` runs once per component), so there is at most one
-        anchor + one roundrect to consider.
+        ``class="cta-btn"`` table, which is stripped too, so no empty blue box
+        survives. The seed's Outlook ``<v:roundrect>`` twin is already gone at
+        load (CE-11 ``_strip_seed_vml``), and VML twins are added only after
+        pruning. Scoped per section (``_fill_slots`` runs once per component).
         """
         result = html_str
         pruned_any = False
@@ -1145,11 +1285,9 @@ class ComponentRenderer:
         """Drop button chrome left behind by a pruned CTA anchor.
 
         Removes ``class="cta-btn"/"cta-ghost"/"cta-primary"/"cta-secondary"``
-        tables that no longer contain an ``<a>`` and the Outlook
-        ``<!--[if mso]>…<v:roundrect>…</v:roundrect>…<![endif]-->`` twin. The
-        cta-button seed renders its label on both surfaces, so leaving either
-        would keep a blue box / an MSO-only leak. A filled sibling button keeps
-        its ``<a>`` and survives the empty-check (cta-pair partial fill).
+        tables that no longer contain an ``<a>``, so no empty blue box is left.
+        A filled sibling button keeps its ``<a>`` and survives the empty-check
+        (cta-pair partial fill).
         """
 
         def _drop_empty_table(match: re.Match[str]) -> str:
@@ -1159,19 +1297,12 @@ class ComponentRenderer:
             # anchor still lives inside it.
             return "" if re.search(r"<a\b", block) is None else block
 
-        result = re.sub(
+        return re.sub(
             r'<table\b[^>]*\bclass="[^"]*cta-(?:btn|ghost|primary|secondary)[^"]*"[^>]*>.*?</table>',
             _drop_empty_table,
             html_str,
             flags=re.DOTALL,
         )
-        result = re.sub(
-            r"<!--\[if mso\]>\s*<v:roundrect\b.*?</v:roundrect>\s*<!\[endif\]-->",
-            "",
-            result,
-            flags=re.DOTALL,
-        )
-        return result
 
     def _fill_text_slot(self, html_str: str, slot_id: str, fill: SlotFill) -> str:
         """Replace text content of a data-slot element.
@@ -1492,17 +1623,12 @@ class ComponentRenderer:
                 if prop == "background-color":
                     result = self._replace_cta_background_color(result, val)
                     result = self._replace_cta_bgcolor_attr(result, val)
-                    result = self._replace_cta_fillcolor(result, val)
                 elif prop == "color":
                     result = self._replace_cta_text_color(result, val)
                 elif prop == "border-radius":
                     result = self._replace_cta_css_prop(result, "border-radius", val)
-                    # Only cta-button.html emits <v:roundrect>, at most one per
-                    # component — global update is acceptable.
-                    result = self._update_vml_arcsize(result, val)
                 elif prop == "border-color":
                     result = self._replace_cta_css_prop(result, "border-color", val)
-                    result = self._replace_cta_strokecolor(result, val)
                 elif prop == "border-width":
                     result = self._replace_cta_css_prop(result, "border-width", val)
             elif target in ("_cta_primary", "_cta_secondary"):
@@ -1975,14 +2101,7 @@ class ComponentRenderer:
     def _replace_cta_text_color(self, html_str: str, color: str) -> str:
         """Replace color on <a> elements with data-slot='cta_url'."""
         safe = html.escape(color, quote=True)
-        result = self._CTA_LINK_COLOR_RE.sub(rf"\g<1>color:{safe}\g<2>", html_str)
-        # Also update VML center text color
-        result = re.sub(
-            r'(<center\s+style="[^"]*?)color:\s*[^;"]+(;?)',
-            rf"\g<1>color:{safe}\g<2>",
-            result,
-        )
-        return result
+        return self._CTA_LINK_COLOR_RE.sub(rf"\g<1>color:{safe}\g<2>", html_str)
 
     # CTA-scoped CSS property replacement.
     #
@@ -2034,23 +2153,11 @@ class ComponentRenderer:
     _CTA_BGCOLOR_ATTR_RE = re.compile(
         r'(<[^>]*\bclass="(?:[^"]*\s)?cta-(?:btn|ghost)(?:\s[^"]*)?"[^>]*)\bbgcolor="[^"]*"'
     )
-    _CTA_FILLCOLOR_RE = re.compile(r'(<v:roundrect\b[^>]*)\bfillcolor="[^"]*"')
-    _CTA_STROKECOLOR_RE = re.compile(r'(<v:roundrect\b[^>]*)\bstrokecolor="[^"]*"')
 
     def _replace_cta_bgcolor_attr(self, html_str: str, color: str) -> str:
         """Replace bgcolor="..." on tags carrying cta-btn/cta-ghost class."""
         safe = html.escape(color, quote=True)
         return self._CTA_BGCOLOR_ATTR_RE.sub(rf'\g<1>bgcolor="{safe}"', html_str)
-
-    def _replace_cta_fillcolor(self, html_str: str, color: str) -> str:
-        """Replace fillcolor on <v:roundrect> (Outlook VML button fallback)."""
-        safe = html.escape(color, quote=True)
-        return self._CTA_FILLCOLOR_RE.sub(rf'\g<1>fillcolor="{safe}"', html_str)
-
-    def _replace_cta_strokecolor(self, html_str: str, color: str) -> str:
-        """Replace strokecolor on <v:roundrect>."""
-        safe = html.escape(color, quote=True)
-        return self._CTA_STROKECOLOR_RE.sub(rf'\g<1>strokecolor="{safe}"', html_str)
 
     # Per-button cta-pair override (phase-53-b8-cta-pair-color-fidelity).
     # The cta-pair seed encodes button color as a bgcolor="" attribute (filled
@@ -2105,19 +2212,6 @@ class ComponentRenderer:
 
         return html_str[: m.start()] + open_tag + body + close_tag + html_str[m.end() :]
 
-    _VML_ARCSIZE_RE = re.compile(r'arcsize="\d+%"')
-
-    def _update_vml_arcsize(self, html_str: str, radius_val: str) -> str:
-        """Convert border-radius px to VML arcsize percentage."""
-        # Extract numeric px value
-        match = re.match(r"(\d+)", radius_val)
-        if not match:
-            return html_str
-        radius_px = int(match.group(1))
-        # Default button height ~48px; arcsize = radius / (height/2) * 100
-        arcsize = min(round(radius_px / 48 * 100), 50)
-        return self._VML_ARCSIZE_RE.sub(f'arcsize="{arcsize}%"', html_str)
-
     # A converter-emitted real image always resolves to a RELATIVE
     # ``/api/v1/design-sync/assets/…`` src (both the corpus fallback in
     # ``_resolve_image_url`` and the production asset map in import_service). So
@@ -2157,6 +2251,9 @@ class ComponentRenderer:
         # Only rewrite within <!--[if mso]> ... <![endif]--> blocks.
         def _replace_mso_width(match: re.Match[str]) -> str:
             block = match.group(0)
+            # A VML button's width is the design's, already clamped (CE-11).
+            if "<v:roundrect" in block:
+                return block
             # Attribute form: width="600" / width="640".
             block = re.sub(r'width="(?:600|640)"', f'width="{width}"', block)
             # Style form: width:600px / width:640px / max-width:…px — the

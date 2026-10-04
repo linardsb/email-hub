@@ -297,15 +297,20 @@ def test_mso_duplicate_cta_does_not_count() -> None:
 
 
 def test_non_mso_wrapped_cta_still_counts() -> None:
-    """Case 5's own ``<!--[if !mso]><!-->`` wrapper around one of its CTAs
-    keeps the CTA: wrapper content is what non-MSO clients render."""
+    """Case 5's CTAs sit in ``<!--[if !mso]><!-->`` wrappers next to their VML
+    twin (CE-11); wrapper content is what non-MSO clients render, so removing
+    every wrapper and MSO block leaves the count unchanged."""
     html = _html("5")
-    match = _CTA_ANCHOR_RE.search(html)
-    assert match is not None
-    assert _NON_MSO_OPEN in html and _NON_MSO_CLOSE in html
-    cta = match.group(0)
-    wrapped = html.replace(cta, f"{_NON_MSO_OPEN}{cta}{_NON_MSO_CLOSE}", 1)
-    assert output_cta_count(wrapped) == output_cta_count(html)
+    assert html.count(_NON_MSO_OPEN) >= 8
+    assert html.count("<v:roundrect ") == 8
+    unwrapped = re.sub(
+        r"<!--\[if mso\]>.*?<!\[endif\]-->",
+        "",
+        html.replace(_NON_MSO_OPEN, "").replace(_NON_MSO_CLOSE, ""),
+        flags=re.DOTALL,
+    )
+    assert "<v:roundrect" not in unwrapped
+    assert output_cta_count(unwrapped) == output_cta_count(html) == 8
 
 
 # ── evaluate rules ───────────────────────────────────────────────

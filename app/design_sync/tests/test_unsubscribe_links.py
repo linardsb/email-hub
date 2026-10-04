@@ -22,12 +22,15 @@ import pytest
 from lxml import html as lxml_html
 
 from app.core.config import get_settings
+from app.design_sync.component_matcher import ComponentMatch, SlotFill
+from app.design_sync.component_renderer import ComponentRenderer
 from app.design_sync.converter_service import (
     ConversionResult,
     DesignConverterService,
     MjmlCompileResult,
 )
 from app.design_sync.email_design_document import EmailDesignDocument
+from app.design_sync.figma.layout_analyzer import ButtonElement, EmailSection, EmailSectionType
 from app.design_sync.protocol import (
     DesignFileStructure,
     DesignNode,
@@ -490,3 +493,46 @@ def test_canonical_ccpa_text_is_not_wrapped() -> None:
     assert _unsub_anchors(out) == [
         f'<a href="{_UNSUB_HREF}" style="color:inherit;text-decoration:underline;">Unsubscribe</a>'
     ]
+
+
+def _cta_button_html(label: str) -> str:
+    """A rendered ``cta-button`` section: VML twin + HTML anchor (CE-11)."""
+    btn = ButtonElement(
+        node_id="b1",
+        text=label,
+        width=200,
+        height=44,
+        fill_color="#123456",
+        url="https://brand.com/manage",
+    )
+    section = EmailSection(
+        section_type=EmailSectionType.CTA, node_id="s", node_name="s", buttons=[btn]
+    )
+    match = ComponentMatch(
+        section_idx=0,
+        section=section,
+        component_slug="cta-button",
+        slot_fills=[
+            SlotFill("cta_text", label),
+            SlotFill("cta_url", "https://brand.com/manage", slot_type="cta"),
+        ],
+        token_overrides=[],
+    )
+    renderer = ComponentRenderer()
+    renderer.load()
+    return renderer.render_section(match).html
+
+
+def test_unsubscribe_button_vml_href_repointed() -> None:
+    """CE-11: Outlook clicks the VML twin, so it unsubscribes like the anchor."""
+    out = link_unsubscribe_text(_cta_button_html("Unsubscribe"))
+    vml_hrefs = re.findall(r'<v:roundrect\b[^>]*\bhref="([^"]*)"', out)
+    assert vml_hrefs == [_UNSUB_HREF]
+    assert "https://brand.com/manage" not in out
+    assert re.search(r'<a\b[^>]*href="\{\{unsubscribeUrl\}\}"[^>]*>', out)
+
+
+def test_non_unsubscribe_button_vml_keeps_href() -> None:
+    html = _cta_button_html("Shop now")
+    out = link_unsubscribe_text(html)
+    assert re.findall(r'<v:roundrect\b[^>]*\bhref="([^"]*)"', out) == ["https://brand.com/manage"]
