@@ -211,17 +211,17 @@ def test_card_text_row_carries_mso_and_font_props() -> None:
 
 
 def test_card_font_family_escaped_with_fallback() -> None:
-    """H1 regression: a design font name can't break out of the style attr, and a
-    web-safe fallback is appended when the value has no comma."""
+    """H1 regression: a design font name can't break out of the style attr, and the
+    category fallback stack is appended when the value has no comma."""
     from app.design_sync.component_matcher import _card_text_row
 
     evil = TextBlock(node_id="t", content="X", font_family='Arial;" onmouseover="x')
     row = _card_text_row(evil, "#FFFFFF")
     assert '" onmouseover="' not in row  # not a live attribute
-    assert "&quot;" in row  # the double-quote was escaped
-    # a plain multi-word family gets the web-safe fallback appended
+    assert "&quot;" not in row  # the double-quote was stripped, not escaped
+    # a plain multi-word family gets the category fallback stack appended
     plain = _card_text_row(TextBlock(node_id="t", content="X", font_family="Noto Sans"), "#FFFFFF")
-    assert "font-family:Noto Sans,sans-serif" in plain
+    assert "font-family:'Noto Sans', Helvetica, Arial, sans-serif" in plain
 
 
 def test_fills_card_renders_all_children_with_stale_content_order() -> None:
