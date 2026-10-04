@@ -241,7 +241,7 @@ Re-run before T1: `grep -n 'component_renderer\|component_matcher\|unsubscribe_l
   3. cta-pair: first VML uses `buttons[0]`, second `buttons[1]` (fill, stroke); no bleed.
   4. `button` slug: the twin holds no `<!--[if` (D6 nested-MSO strip).
   5. Pruned: `_make_match("cta-button")` → no VML (`test_component_renderer.py:843` stays green).
-  6. No design button but a filled slot → no VML, `design_sync.vml_button.no_design_button` warning (`caplog`).
+  6. No design button but a filled slot → no VML, `design_sync.vml_button_skipped` warning (`caplog`).
   7. Text-block with a `_cta` `color` override → matcher VML `<center>` colour unchanged (E12 guard).
   8. One Figma-tree test that routes to `cta-button` through `match_section` (generality rule).
 - **VALIDATE**: `uv run pytest app/design_sync/tests/test_vml_button_paths.py -q -k template` → fails (RED).
@@ -446,4 +446,5 @@ Corpus invariant over the 7 real cases (T11; local only, `structure.json` gitign
   - T6 mutation: the naive finder also turns `pricing-table` and `pricing-table-highlight` red. T7 mutation: the two matcher-path tests are checked with an identity `render_vml_button` in the matcher.
   - T15 visual check: byte-compared the A3 rendered PNGs (c6/c9/c10/reframe identical to the `c63874d8` run) instead of eyeballed side-by-sides. Added a VML geometry table: 28/28 match the design box and fill, none wider than its container.
   - E4/D9 corpus impact: 3 reframe buttons carry 0/12/12/0 corners, not 1; all get `arcsize="25%"`.
+- 2026-10-04 — PR #471 review fixes (`.claude/reports/pr-471-review-fixes.md`): the no-design-button event is `design_sync.vml_button_skipped` (two-part form, F1). D6's chrome strip deletes Outlook-only blocks and unwraps `!mso` ones instead of deleting them (F2). The chrome finder ignores table tags inside comments, takes the end offset from the close tag, and skips anchors already inside a `!mso` wrapper (F3). `_update_mso_widths` leaves `<v:roundrect>` blocks alone, so the design width survives the 600/640 clamp on both the template and the matcher paths (F4). Corpus output and A3 `scores.json` are unchanged.
   - T15 diff list: 21 files; the report stays untracked (`.claude/reports` convention).

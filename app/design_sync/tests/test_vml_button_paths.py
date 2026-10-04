@@ -10,6 +10,7 @@ from __future__ import annotations
 import functools
 import html
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -466,7 +467,7 @@ class TestTemplatePath:
         out = _render(renderer, _template_match(renderer, "cta-button", []))
         assert "v:roundrect" not in out
         assert _filled_ctas(out) == 1
-        assert "design_sync.vml_button.no_design_button" in capsys.readouterr().out
+        assert "design_sync.vml_button_skipped" in capsys.readouterr().out
 
     def test_template_cta_override_cannot_repaint_matcher_vml(
         self, renderer: ComponentRenderer
@@ -505,6 +506,135 @@ class TestTemplatePath:
         assert _attr(tag, "fillcolor") == "#123456"
         assert _attr(tag, "href") == "https://example.com/b1"
         assert "Book a table</center>" in out
+
+
+# ── PR #471 review hardening: real cta-button seed, one mutation each ──
+
+_CTA_BTN_TABLE_RE = re.compile(r'<table[^>]*class="cta-btn".*?</table>', re.DOTALL)
+
+
+def _mutated_cta_button(
+    renderer: ComponentRenderer, monkeypatch: pytest.MonkeyPatch, mutate: Callable[[str], str]
+) -> ComponentMatch:
+    """Swap the loaded cta-button template for ``mutate(template)`` (test-scoped)."""
+    template = renderer._templates["cta-button"]
+    mutated = mutate(template)
+    assert mutated != template
+    monkeypatch.setitem(renderer._templates, "cta-button", mutated)
+    return _template_match(renderer, "cta-button", [_PRIMARY])
+
+
+def _normalised(markup: str) -> str:
+    return " ".join(markup.split())
+
+
+def _conditional_issues(fragment: str) -> list[str]:
+    """MSO issues bar the namespace ones (an ``<html>`` check; a section has none)."""
+    issues = validate_mso_conditionals(fragment).issues
+    return [i.message for i in issues if i.category != "namespace"]
+
+
+class TestReviewHardening:
+    def test_non_mso_block_in_chrome_stays_browser_visible(
+        self, renderer: ComponentRenderer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # F2: the review's input, <!--[if !mso]><!-->X<!--<![endif]-->, inside CTA chrome.
+        match = _mutated_cta_button(
+            renderer,
+            monkeypatch,
+            lambda t: t.replace(
+                "</span>\n            </a>",
+                "</span><!--[if !mso]><!--><span>X</span><!--<![endif]-->\n            </a>",
+            ),
+        )
+        on = _render(renderer, match)
+        off = _without_vml(renderer, match, monkeypatch)
+        assert _normalised(browser_view(on)) == _normalised(browser_view(off))
+        assert "<span>X</span>" in browser_view(on)
+        outlook = outlook_view(on)
+        assert "<a" not in outlook
+        assert outlook.count("Primary Go") == 1
+        assert _conditional_issues(on) == []
+
+    def test_second_pass_does_not_rewrap(
+        self, renderer: ComponentRenderer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # F3 (idempotence): an anchor already inside a VML !mso wrapper is skipped.
+        match = _template_match(renderer, "cta-button", [_PRIMARY])
+        filled = renderer._fill_slots(
+            renderer._templates["cta-button"], match.slot_fills, "cta-button"
+        )
+        once = renderer._apply_vml_buttons(filled, match)
+        assert len(_roundrect_tags(once)) == 1
+        assert renderer._apply_vml_buttons(once, match) == once
+
+    def test_cta_in_ghost_cell_keeps_conditionals_intact(
+        self, renderer: ComponentRenderer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # F3 (comment table tags): a CTA directly inside an MSO ghost cell.
+        def ghost(t: str) -> str:
+            btn = _CTA_BTN_TABLE_RE.search(t)
+            assert btn is not None
+            anchor = re.search(r"<a\b.*?</a>", btn.group(0), re.DOTALL)
+            assert anchor is not None
+            cell = (
+                '<!--[if mso]><table role="presentation"><tr><td><![endif]-->'
+                f"{anchor.group(0)}"
+                "<!--[if mso]></td></tr></table><![endif]-->"
+            )
+            return t[: btn.start()] + cell + t[btn.end() :]
+
+        match = _mutated_cta_button(renderer, monkeypatch, ghost)
+        on = _render(renderer, match)
+        assert assert_paired(on) == 1
+        assert _twins(on)[0].startswith("<a")
+        assert _conditional_issues(on) == []
+        assert balanced(outlook_view(on))
+
+    def test_spaced_table_close_tag_kept_whole(
+        self, renderer: ComponentRenderer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # F3 (end offset): the chrome table closes with ``</table >``.
+        def spaced(t: str) -> str:
+            btn = _CTA_BTN_TABLE_RE.search(t)
+            assert btn is not None
+            return t[: btn.end() - len("</table>")] + "</table >" + t[btn.end() :]
+
+        match = _mutated_cta_button(renderer, monkeypatch, spaced)
+        on = _render(renderer, match)
+        twin = _twins(on)[0]
+        assert twin.startswith("<table")
+        assert twin.endswith("</table >")
+        assert "<!--<![endif]-->>" not in on
+
+    def test_mso_width_clamp_spares_vml_template_path(self) -> None:
+        # F4: a 600px design button in a 640 container stays 600px in Outlook.
+        wide = ComponentRenderer(container_width=640)
+        wide.load()
+        button = ButtonElement(
+            node_id="w1",
+            text="Wide Go",
+            width=600,
+            height=44,
+            fill_color="#123456",
+            text_color="#FFFFFF",
+            border_radius=8,
+            url="https://a.example/w",
+        )
+        out = _render(wide, _template_match(wide, "cta-button", [button]))
+        style = _attr(_roundrect_tags(out)[0], "style") or ""
+        assert "width:600px;" in style
+
+    def test_mso_width_clamp_spares_vml_matcher_path(self) -> None:
+        # F4 on the matcher path: VML arrives in a slot fill, before step 3.
+        wide = ComponentRenderer(container_width=640)
+        wide.load()
+        out = _text_block_html(wide, _button_node("b1", "Wide button", width=600))
+        style = _attr(_roundrect_tags(out)[0], "style") or ""
+        assert "width:600px;" in style
+        # The ghost table in the same section is still clamped to the container.
+        assert 'width="640"' in out
+        assert 'width="600"' not in out
 
 
 # ── Corpus invariant (local only: structure.json is gitignored) ──

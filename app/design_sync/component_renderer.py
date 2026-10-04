@@ -291,7 +291,9 @@ _VML_CTA_ANCHOR_RE = re.compile(
 )
 _COMMENT_SPAN_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 _TABLE_TAG_RE = re.compile(r"<(/?)table\b[^>]*>")
-_OUTLOOK_ONLY_BLOCK_RE = re.compile(r"<!--\[if [^\]]*mso[^\]]*\]>.*?<!\[endif\]-->", re.DOTALL)
+_OUTLOOK_ONLY_BLOCK_RE = re.compile(r"<!--\[if (?!!)[^\]]*mso[^\]]*\]>.*?<!\[endif\]-->", re.DOTALL)
+_NON_MSO_MARKER_RE = re.compile(r"<!--\[if !mso\]><!-->|<!--<!\[endif\]-->")
+_NON_MSO_SPAN_RE = re.compile(r"<!--\[if !mso\]><!-->.*?<!--<!\[endif\]-->", re.DOTALL)
 _TWIN_TEXT_COLOR_RE = re.compile(r"(?<!-)color:\s*(#[0-9a-fA-F]{3,6})\b")
 _TWIN_BORDER_RE = re.compile(r"border:\s*(\d+)px\s+solid\s+(#[0-9a-fA-F]{3,6})\b")
 _HREF_RE = re.compile(r'\bhref="([^"]*)"')
@@ -316,8 +318,11 @@ def _chrome_span(html_str: str, a_start: int, a_end: int, label: str) -> tuple[i
     equal to the label. Otherwise the anchor alone. Hiding anything wider from
     Outlook would drop the enclosing layout tags from its view.
     """
+    # Table tags inside comments (MSO ghost tables) are not structure: blank
+    # them, keeping offsets, before the scan and the close search.
+    scan = _COMMENT_SPAN_RE.sub(lambda c: " " * len(c.group(0)), html_str)
     stack: list[re.Match[str]] = []
-    for tag in _TABLE_TAG_RE.finditer(html_str, 0, a_start):
+    for tag in _TABLE_TAG_RE.finditer(scan, 0, a_start):
         if tag.group(1):
             if stack:
                 stack.pop()
@@ -326,10 +331,10 @@ def _chrome_span(html_str: str, a_start: int, a_end: int, label: str) -> tuple[i
     if not stack:
         return a_start, a_end
     open_tag = stack[-1]
-    close = _find_matching_close(html_str, "table", open_tag.end())
+    close = _find_matching_close(scan, "table", open_tag.end())
     if close is None or close < a_end:
         return a_start, a_end
-    end = close + len("</table>")
+    end = html_str.index(">", close) + 1
     body = html_str[open_tag.end() : end]
     if (
         "<table" in body
@@ -832,7 +837,9 @@ class ComponentRenderer:
         come from the rendered anchor, which is what other clients show.
         Anchors inside comments (MSO blocks, matcher-built VML) are skipped.
         """
+        # An anchor already hidden from Outlook (a VML twin) is skipped too.
         comments = [(m.start(), m.end()) for m in _COMMENT_SPAN_RE.finditer(html_str)]
+        comments += [(m.start(), m.end()) for m in _NON_MSO_SPAN_RE.finditer(html_str)]
         hits: list[tuple[re.Match[str], str]] = []
         for m in _VML_CTA_ANCHOR_RE.finditer(html_str):
             if any(start <= m.start() < end for start, end in comments):
@@ -846,15 +853,16 @@ class ComponentRenderer:
             idx = 1 if m.group(1).startswith("secondary") else 0
             if idx >= len(buttons):
                 logger.warning(
-                    "design_sync.vml_button.no_design_button",
+                    "design_sync.vml_button_skipped",
                     slug=match.component_slug,
                     slot=m.group(1),
                 )
                 continue
             btn = buttons[idx]
             start, end = _chrome_span(result, m.start(), m.end(), label)
-            # An Outlook-only block inside the twin would end the !mso wrapper early.
-            chrome = _OUTLOOK_ONLY_BLOCK_RE.sub("", result[start:end])
+            # A conditional inside the twin would end the !mso wrapper early: drop
+            # Outlook-only blocks, unwrap non-Outlook ones (their content stays).
+            chrome = _NON_MSO_MARKER_RE.sub("", _OUTLOOK_ONLY_BLOCK_RE.sub("", result[start:end]))
             anchor = m.group(0)
             twin_text = _TWIN_TEXT_COLOR_RE.search(anchor)
             twin_border = _TWIN_BORDER_RE.search(chrome)
@@ -2243,6 +2251,9 @@ class ComponentRenderer:
         # Only rewrite within <!--[if mso]> ... <![endif]--> blocks.
         def _replace_mso_width(match: re.Match[str]) -> str:
             block = match.group(0)
+            # A VML button's width is the design's, already clamped (CE-11).
+            if "<v:roundrect" in block:
+                return block
             # Attribute form: width="600" / width="640".
             block = re.sub(r'width="(?:600|640)"', f'width="{width}"', block)
             # Style form: width:600px / width:640px / max-width:…px — the
