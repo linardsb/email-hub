@@ -207,6 +207,17 @@ class TestTokenOverrides:
         result = renderer.render_section(match)
         assert "Georgia, serif" in result.html
 
+    def test_heading_font_override_quotes_unescaped(self, renderer: ComponentRenderer) -> None:
+        """A multi-word family keeps its bare quotes; ``html.escape`` would emit ``&#x27;``."""
+        match = _make_match(
+            "text-block",
+            fills=[SlotFill("heading", "Title")],
+            overrides=[TokenOverride("font-family", "_heading", "Noto Sans")],
+        )
+        result = renderer.render_section(match)
+        assert "font-family:'Noto Sans', Helvetica, Arial, sans-serif" in result.html
+        assert "&#x27;" not in result.html
+
     def test_heading_color_override(self, renderer: ComponentRenderer) -> None:
         match = _make_match(
             "text-block",

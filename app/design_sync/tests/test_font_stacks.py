@@ -92,6 +92,19 @@ def test_category_stack_covers_enum() -> None:
         *[(f, FontCategory.SERIF) for f in _SERIF],
         ("Brandname Display", FontCategory.SANS),  # unknown → sans
         ("Consolas", FontCategory.MONO),  # prefix match
+        ("Source Code Pro", FontCategory.MONO),  # whole token "code"
+        # "mono"/"code" are whole tokens, not prefixes (PR #472 F1)
+        ("Codec Pro", FontCategory.SANS),
+        ("Monotype Corsiva", FontCategory.SANS),
+        ("Monoton", FontCategory.SANS),
+        ("Monofett", FontCategory.SANS),
+        ("Monotype Garamond", FontCategory.SERIF),
+        # one-word mono brands match by stem (PR #473 F1)
+        ("MonoLisa", FontCategory.MONO),
+        ("Monoid", FontCategory.MONO),
+        ("Mononoki", FontCategory.MONO),
+        ("Monofur", FontCategory.MONO),
+        ("CodeNewRoman", FontCategory.MONO),
     ],
 )
 def test_font_category(family: str, category: FontCategory) -> None:
@@ -115,6 +128,19 @@ def test_font_stack_exact(family: str, expected: str) -> None:
 
 def test_generic_terminated_list_is_unchanged() -> None:
     assert font_stack("Georgia, serif") == "Georgia, serif"
+
+
+@pytest.mark.parametrize(
+    ("family", "expected"),
+    [
+        ("ui-monospace, Menlo", "ui-monospace, Menlo, 'Courier New', Courier, monospace"),
+        # the stack's "monospace" is already present, so dedup drops it
+        ("monospace, Foo", "monospace, Foo, 'Courier New', Courier"),
+    ],
+)
+def test_leading_generic_monospace_gets_mono_stack(family: str, expected: str) -> None:
+    # PR #473 F2: a generic first family with no trailing generic
+    assert font_stack(family) == expected
 
 
 def test_list_without_generic_gets_first_familys_stack() -> None:
@@ -356,7 +382,7 @@ def test_minimal_tree_every_font_matches_category() -> None:
     assert category_violations(html) == []
     values = font_family_values(html)
     assert any(v.startswith("'JetBrains Mono'") and v.endswith("monospace") for v in values)
-    assert any(v.startswith("Lora") and v.endswith("serif") for v in values)
+    assert any(v.startswith("Lora") and v.endswith(", serif") for v in values)
 
 
 # ── Corpus ───────────────────────────────────────────────────────
