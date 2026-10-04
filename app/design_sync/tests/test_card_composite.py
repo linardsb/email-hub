@@ -210,7 +210,7 @@ def test_card_text_row_carries_mso_and_font_props() -> None:
         assert prop in value, f"missing {prop} on the card text cell"
 
 
-def test_card_font_family_escaped_with_fallback() -> None:
+def test_card_font_family_stripped_with_fallback() -> None:
     """H1 regression: a design font name can't break out of the style attr, and the
     category fallback stack is appended when the value has no comma."""
     from app.design_sync.component_matcher import _card_text_row

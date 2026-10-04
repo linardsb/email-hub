@@ -53,8 +53,10 @@ _GENERIC = frozenset(
     }
 )
 
-# Token prefixes, so "Consolas" matches "consol".
-_MONO_PREFIXES = ("mono", "code", "courier", "consol", "menlo", "monaco")
+# Whole tokens, so "Codec Pro" and "Monotype Corsiva" are not mono.
+_MONO_TOKENS = frozenset({"mono", "code"})
+# Brand-stem prefixes, so "Consolas" matches "consol".
+_MONO_PREFIXES = ("courier", "consol", "menlo", "monaco")
 _SANS_PREFIXES = ("sans", "grotesk", "grotesque")
 # Whole tokens, so "EB Garamond" matches "garamond".
 _SERIF_TOKENS = frozenset(
@@ -97,7 +99,7 @@ def _split(value: str) -> list[str]:
 def font_category(family: str) -> FontCategory:
     """Category of one family name, inferred from its tokens."""
     tokens = _TOKEN_SPLIT_RE.split(_clean(family).lower())
-    if any(t.startswith(p) for t in tokens for p in _MONO_PREFIXES):
+    if any(t in _MONO_TOKENS or t.startswith(_MONO_PREFIXES) for t in tokens):
         return FontCategory.MONO
     if any(t.startswith(p) for t in tokens for p in _SANS_PREFIXES):
         return FontCategory.SANS

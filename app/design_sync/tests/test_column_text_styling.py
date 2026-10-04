@@ -144,7 +144,7 @@ def test_column_row_skips_zero_letter_spacing() -> None:
     assert "letter-spacing" not in row  # 0.0 is the no-op default
 
 
-def test_column_row_escapes_font_family() -> None:
+def test_column_row_strips_font_family_breakout() -> None:
     """A font name must not break out of the style attribute (CSS injection)."""
     evil = _styled_text(font_family='Arial" onmouseover="x')
     row = _column_text_row(evil, is_heading=True)
@@ -228,7 +228,7 @@ def test_cta_label_typography_falls_back_to_legacy_defaults() -> None:
     assert "font-weight:bold" in css  # pre-52.4b default
 
 
-def test_cta_label_typography_escapes_font_family() -> None:
+def test_cta_label_typography_strips_font_family_breakout() -> None:
     """A CTA font name must not break out of the style attribute."""
     css = _cta_label_typography(_styled_button(font_family='Arial" onmouseover="x'))
     assert '" onmouseover' not in css
