@@ -54,9 +54,21 @@ _GENERIC = frozenset(
 )
 
 # Whole tokens, so "Codec Pro" and "Monotype Corsiva" are not mono.
-_MONO_TOKENS = frozenset({"mono", "code"})
-# Brand-stem prefixes, so "Consolas" matches "consol".
-_MONO_PREFIXES = ("courier", "consol", "menlo", "monaco")
+# "monospace" also catches a leading generic ("ui-monospace" splits on "-").
+_MONO_TOKENS = frozenset({"mono", "code", "monospace"})
+# Brand-stem prefixes, so "Consolas" matches "consol" and one-word mono
+# brands ("MonoLisa", "CodeNewRoman") stay mono.
+_MONO_PREFIXES = (
+    "courier",
+    "consol",
+    "menlo",
+    "monaco",
+    "monolisa",
+    "monoid",
+    "mononoki",
+    "monofur",
+    "codenewroman",
+)
 _SANS_PREFIXES = ("sans", "grotesk", "grotesque")
 # Whole tokens, so "EB Garamond" matches "garamond".
 _SERIF_TOKENS = frozenset(
