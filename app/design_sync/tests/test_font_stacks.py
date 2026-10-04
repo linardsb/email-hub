@@ -92,6 +92,13 @@ def test_category_stack_covers_enum() -> None:
         *[(f, FontCategory.SERIF) for f in _SERIF],
         ("Brandname Display", FontCategory.SANS),  # unknown → sans
         ("Consolas", FontCategory.MONO),  # prefix match
+        ("Source Code Pro", FontCategory.MONO),  # whole token "code"
+        # "mono"/"code" are whole tokens, not prefixes (PR #472 F1)
+        ("Codec Pro", FontCategory.SANS),
+        ("Monotype Corsiva", FontCategory.SANS),
+        ("Monoton", FontCategory.SANS),
+        ("Monofett", FontCategory.SANS),
+        ("Monotype Garamond", FontCategory.SERIF),
     ],
 )
 def test_font_category(family: str, category: FontCategory) -> None:
@@ -356,7 +363,7 @@ def test_minimal_tree_every_font_matches_category() -> None:
     assert category_violations(html) == []
     values = font_family_values(html)
     assert any(v.startswith("'JetBrains Mono'") and v.endswith("monospace") for v in values)
-    assert any(v.startswith("Lora") and v.endswith("serif") for v in values)
+    assert any(v.startswith("Lora") and v.endswith(", serif") for v in values)
 
 
 # ── Corpus ───────────────────────────────────────────────────────
