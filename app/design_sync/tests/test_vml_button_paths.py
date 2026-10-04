@@ -554,6 +554,9 @@ class TestReviewHardening:
         outlook = outlook_view(on)
         assert "<a" not in outlook
         assert outlook.count("Primary Go") == 1
+        # A nested !mso block would close the twin's wrapper early in Outlook.
+        assert "<!--[if" not in _twins(on)[0]
+        assert balanced(outlook)
         assert _conditional_issues(on) == []
 
     def test_second_pass_does_not_rewrap(
