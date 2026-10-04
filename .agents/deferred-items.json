@@ -1082,12 +1082,12 @@
         "email-templates/components/cta-pair.html (hardcoded padding)",
         "email-templates/components/cta.html",
         "email-templates/components/cta-button.html",
-        "app/design_sync/component_renderer.py:1071-1149 (_replace_cta_* — fills color/url, not padding)",
+        "app/design_sync/component_renderer.py:2093-2160 (_replace_cta_* — fills color/url, not padding)",
         "app/design_sync/component_matcher.py (_cta_overrides — emits border-radius incl. new 0.0 for square, but not padding)"
       ],
       "symptom_if_broken": "A CTA-typed section with >=2 buttons renders template padding (15px 30px) instead of the design's captured padding; radius honored (via _cta_overrides) but box padding wrong.",
       "closes_when": "Prompt 5/51.3 composite pill work threads design padding into the seed CTAs (cta-pair.html etc.) via a padding token override in _cta_overrides, OR routes >=2-button CTA sections through the matcher render sites.",
-      "notes": "G3's border_radius None→0.0 normalization DOES reach _cta_overrides (was skipped when None; now emits border-radius:0px for square) — a latent correctness improvement on the template path, but padding remains untouched there. Cross-ref phase-53-b8-non-cta-multibutton-drop (case 9 buttons dropped upstream — separate defect)."
+      "notes": "G3's border_radius None→0.0 normalization DOES reach _cta_overrides (was skipped when None; now emits border-radius:0px for square) — a latent correctness improvement on the template path, but padding remains untouched there. Cross-ref phase-53-b8-non-cta-multibutton-drop (case 9 buttons dropped upstream — separate defect). CE-11 (2026-10-04): template CTAs now carry a VML twin (ComponentRenderer._apply_vml_buttons) sized from the design box, so classic Outlook shows the design width/height while the HTML twin keeps template padding and font (c9 'SHOP NOW': VML 16px + 2px #FE5219 stroke, twin 14px, no border). The gap is now the HTML twin only."
     },
     {
       "id": "phase-53g-g4-composite-slot-infra",
@@ -1181,7 +1181,7 @@
       ],
       "symptom_if_broken": "A pill/CTA with absent text_color on a light (near-white) fill renders an invisible white label.",
       "closes_when": "A real fixture surfaces a light-fill absent-text_color pill, OR a luminance-based label-color fallback ships (cf the stroke-gated dark-text precedent phase-53-b8-text-block-solid-cta-text-color).",
-      "notes": "Latent only — the stroke-gated branch in _fills_text_block already darkens to #1a1a1a for OUTLINED buttons; the uncovered case is a FILLED light pill with no stroke and no captured text color. Cross-ref phase-53-b8-text-block-solid-cta-text-color (the stroke-gated dark-text precedent)."
+      "notes": "Latent only — the stroke-gated branch in _fills_text_block already darkens to #1a1a1a for OUTLINED buttons; the uncovered case is a FILLED light pill with no stroke and no captured text color. Cross-ref phase-53-b8-text-block-solid-cta-text-color (the stroke-gated dark-text precedent). CE-11 (2026-10-04): the matcher-path VML twin (_vml_button_spec) takes its label colour from the same txt_color/fg, so the fallback applies on both surfaces."
     },
     {
       "id": "phase-53g-g7-spec-minitable",
@@ -1315,7 +1315,8 @@
       "id": "ce-2-cta-button-vml-twin-unfilled",
       "phase": "ce-2",
       "title": "cta-button's Outlook VML twin (v:roundrect) never receives the CTA label or URL fill",
-      "status": "deferred",
+      "status": "closed",
+      "closed_commit": "pending",
       "severity": "known-bug",
       "introduced": "2026-10-01",
       "introduced_commit": "28c944ea",

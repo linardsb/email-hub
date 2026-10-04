@@ -64,10 +64,22 @@ _NON_MSO_WRAPPER_RE = re.compile(
 
 
 def _strip_mso_blocks(html: str) -> str:
-    """Remove all MSO conditional blocks for structural analysis."""
-    result = _MSO_BLOCK_RE.sub("", html)
-    # Keep content inside non-MSO wrappers but remove the wrappers themselves
-    return _NON_MSO_WRAPPER_RE.sub(r"\1", result)
+    """Remove all MSO conditional blocks for structural analysis.
+
+    Unwrap the non-MSO wrappers first: ``_MSO_BLOCK_RE`` also matches a whole
+    ``<!--[if !mso]><!-->…<!--<![endif]-->`` wrapper and would drop its content.
+    """
+    result = _NON_MSO_WRAPPER_RE.sub(r"\1", html)
+    return _MSO_BLOCK_RE.sub("", result)
+
+
+def test_strip_mso_blocks_keeps_non_mso_content() -> None:
+    """CE-11: a VML-paired anchor survives; the VML block is dropped."""
+    wrapped = (
+        '<td><!--[if mso]><v:roundrect href="#"><center>Go</center></v:roundrect>'
+        '<![endif]--><!--[if !mso]><!--><a href="#">Go</a><!--<![endif]--></td>'
+    )
+    assert _strip_mso_blocks(wrapped) == '<td><a href="#">Go</a></td>'
 
 
 # ── Fixtures ─────────────────────────────────────────────────────

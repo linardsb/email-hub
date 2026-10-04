@@ -7,8 +7,10 @@ Runs on final HTML in every output path (default, MJML, tree):
 2. If no unsubscribe link exists afterwards, every unlinked phrase in visible
    text is wrapped in ``<a href="{{unsubscribeUrl}}">`` coloured like its cell.
 
-Comments (including MSO conditional blocks) are never edited. The pass is
-idempotent, so it is safe on cached HTML.
+Comments (including MSO conditional blocks) are never edited, with one
+exception: a ``<v:roundrect>`` VML button (CE-11) whose label is an unsubscribe
+phrase gets the same href as its HTML twin. The pass is idempotent, so it is
+safe on cached HTML.
 """
 
 from __future__ import annotations
@@ -91,6 +93,7 @@ _STYLE_ATTR_RE = re.compile(r"""\bstyle\s*=\s*(["'])(.*?)\1""", re.DOTALL | re.I
 _COLOR_DECL_RE = re.compile(r"(?:^|;)\s*color\s*:\s*([^;]+)", re.IGNORECASE)
 _HREF_RE = re.compile(r"""\bhref\s*=\s*(["'])(.*?)\1""", re.DOTALL | re.IGNORECASE)
 _ANCHOR_RE = re.compile(r"<a\b([^>]*)>(.*?)</a\s*>", re.DOTALL | re.IGNORECASE)
+_ROUNDRECT_RE = re.compile(r"<v:roundrect\b([^>]*)>(.*?)</v:roundrect>", re.DOTALL | re.IGNORECASE)
 _STRIP_TAGS_RE = re.compile(r"<[^>]+>")
 _VOID = frozenset(
     {"img", "br", "hr", "meta", "link", "input", "col", "area", "source", "wbr", "base"}
@@ -146,7 +149,24 @@ def _repoint(html: str) -> tuple[str, int]:
             return match.group(0)
         return _point_at_esp(match)
 
-    return _ANCHOR_RE.sub(_outside_comments, html), count
+    html = _ANCHOR_RE.sub(_outside_comments, html)
+
+    def _point_vml_at_esp(match: re.Match[str]) -> str:
+        # The VML twin is Outlook's clickable button: it must unsubscribe too.
+        nonlocal count
+        attrs, inner = match.group(1), match.group(2)
+        href = _HREF_RE.search(attrs)
+        if (
+            href is None
+            or href.group(2).startswith("{{")
+            or not has_unsubscribe_phrase(_STRIP_TAGS_RE.sub(" ", inner))
+        ):
+            return match.group(0)
+        count += 1
+        new_attrs = attrs[: href.start()] + f'href="{_UNSUB_HREF}"' + attrs[href.end() :]
+        return f"<v:roundrect{new_attrs}>{inner}</v:roundrect>"
+
+    return _ROUNDRECT_RE.sub(_point_vml_at_esp, html), count
 
 
 def link_unsubscribe_text(html: str) -> str:

@@ -167,8 +167,9 @@ def check_completeness(
                 style = a_tag.get("style", "")
                 if "display:inline-block" in style and "padding:" in style:
                     button_links += 1
-            # Also count MSO v:roundrect patterns
-            vml_buttons = len(re.findall(r"v:roundrect", html))
+            # Also count MSO v:roundrect buttons (opening tags only: the
+            # closing tag would count one button twice)
+            vml_buttons = len(re.findall(r"<v:roundrect\b", html))
             # Each button produces one <a> + one v:roundrect; take the max
             found_buttons = max(button_links, vml_buttons)
         except Exception:
