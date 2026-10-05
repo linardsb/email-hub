@@ -169,6 +169,15 @@ class DesignNode:
     # ``"<count>:<TYPE,...>"`` — carried into conversion warnings; email HTML
     # cannot reproduce shadows/blurs/blends (ceiling doc §2).
     effects_summary: str | None = None
+    # CE-6 (#424) — Figma auto-layout child sizing, raw upper-case values
+    layout_sizing_horizontal: str | None = None  # FIXED|HUG|FILL
+    layout_sizing_vertical: str | None = None  # FIXED|HUG|FILL
+    layout_grow: float | None = None
+    layout_align: str | None = None  # INHERIT|STRETCH|MIN|CENTER|MAX
+    layout_positioning: str | None = None  # AUTO|ABSOLUTE
+    layout_wrap: str | None = None  # NO_WRAP|WRAP (auto-layout containers)
+    min_width: float | None = None
+    max_width: float | None = None
 
 
 @dataclass(frozen=True)

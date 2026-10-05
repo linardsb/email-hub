@@ -58,7 +58,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "43336baa74ffc892674b18bcef02a75e143e5833",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -72,7 +72,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -111,7 +119,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -150,7 +166,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -189,7 +213,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -228,7 +260,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1497",
@@ -303,7 +343,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -342,7 +390,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1502",
@@ -395,7 +451,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": null,
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "HUG",
+                                  "layout_sizing_vertical": "HUG",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 },
                                 {
                                   "id": "2833:1505",
@@ -429,7 +493,7 @@
                                       "letter_spacing_px": null,
                                       "text_transform": null,
                                       "text_decoration": null,
-                                      "image_ref": null,
+                                      "image_ref": "c0c3e172846e1ddedd81bbad8fd4167ed31be8ef",
                                       "hyperlink": null,
                                       "corner_radius": null,
                                       "corner_radii": null,
@@ -443,7 +507,15 @@
                                       "opacity": 1.0,
                                       "scale_mode": "FILL",
                                       "rotation": null,
-                                      "effects_summary": null
+                                      "effects_summary": null,
+                                      "layout_sizing_horizontal": "FIXED",
+                                      "layout_sizing_vertical": "FIXED",
+                                      "layout_grow": 0.0,
+                                      "layout_align": "INHERIT",
+                                      "layout_positioning": null,
+                                      "layout_wrap": null,
+                                      "min_width": null,
+                                      "max_width": null
                                     }
                                   ],
                                   "width": 430.0,
@@ -482,7 +554,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": null,
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "HUG",
+                                  "layout_sizing_vertical": "HUG",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": "NO_WRAP",
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 576.0,
@@ -526,7 +606,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -565,7 +653,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -604,7 +700,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -643,7 +747,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -682,7 +794,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1507",
@@ -731,7 +851,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "1c284d44abb97e0feeb496d49a530f1e3e28d7bb",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -745,7 +865,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FIXED",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 60.0,
@@ -784,7 +912,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 60.0,
@@ -823,7 +959,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FIXED",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 0.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     },
                     {
                       "id": "2833:1512",
@@ -876,7 +1020,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -915,7 +1067,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1515",
@@ -963,7 +1123,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -1002,7 +1170,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 452.0,
@@ -1041,7 +1217,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -1080,7 +1264,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 },
                 {
                   "id": "2833:1517",
@@ -1124,7 +1316,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "a0bd432c595e8d05f4cc166389c54addf659998c",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -1138,7 +1330,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FIXED",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 60.0,
@@ -1177,7 +1377,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 60.0,
@@ -1216,7 +1424,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FIXED",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 0.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     },
                     {
                       "id": "2833:1521",
@@ -1269,7 +1485,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -1308,7 +1532,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1524",
@@ -1356,7 +1588,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -1395,7 +1635,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 452.0,
@@ -1434,7 +1682,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -1473,7 +1729,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 },
                 {
                   "id": "2833:1526",
@@ -1517,7 +1781,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "3bb2dd5701b13a90c932ebb40380e50b5f5a34d0",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -1531,7 +1795,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FIXED",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 60.0,
@@ -1570,7 +1842,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 60.0,
@@ -1609,7 +1889,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FIXED",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 0.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     },
                     {
                       "id": "2833:1530",
@@ -1662,7 +1950,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -1701,7 +1997,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1533",
@@ -1749,7 +2053,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -1788,7 +2100,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 452.0,
@@ -1827,7 +2147,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -1866,7 +2194,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 },
                 {
                   "id": "2833:1535",
@@ -1910,7 +2246,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "2e3f0ff9d525afe13ab7026ba30f93b40eda7452",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -1924,7 +2260,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FIXED",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 60.0,
@@ -1963,7 +2307,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 60.0,
@@ -2002,7 +2354,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FIXED",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 0.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     },
                     {
                       "id": "2833:1539",
@@ -2055,7 +2415,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -2094,7 +2462,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1542",
@@ -2142,7 +2518,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -2181,7 +2565,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 452.0,
@@ -2220,7 +2612,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -2259,7 +2659,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 },
                 {
                   "id": "2833:1544",
@@ -2303,7 +2711,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "e97853913a4fee5e333cd6e66cd2c6990af6fc76",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -2317,7 +2725,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FIXED",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 60.0,
@@ -2356,7 +2772,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 60.0,
@@ -2395,7 +2819,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FIXED",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 0.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     },
                     {
                       "id": "2833:1548",
@@ -2448,7 +2880,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -2487,7 +2927,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1551",
@@ -2535,7 +2983,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 452.0,
@@ -2574,7 +3030,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 452.0,
@@ -2613,7 +3077,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -2657,7 +3129,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -2696,7 +3176,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1553",
@@ -2764,7 +3252,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": null,
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "HUG",
+                                  "layout_sizing_vertical": "HUG",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 },
                                 {
                                   "id": "2833:1559",
@@ -2798,7 +3294,7 @@
                                       "letter_spacing_px": null,
                                       "text_transform": null,
                                       "text_decoration": null,
-                                      "image_ref": null,
+                                      "image_ref": "c0c3e172846e1ddedd81bbad8fd4167ed31be8ef",
                                       "hyperlink": null,
                                       "corner_radius": null,
                                       "corner_radii": null,
@@ -2812,7 +3308,15 @@
                                       "opacity": 1.0,
                                       "scale_mode": "FILL",
                                       "rotation": null,
-                                      "effects_summary": null
+                                      "effects_summary": null,
+                                      "layout_sizing_horizontal": "FIXED",
+                                      "layout_sizing_vertical": "FIXED",
+                                      "layout_grow": 0.0,
+                                      "layout_align": "INHERIT",
+                                      "layout_positioning": null,
+                                      "layout_wrap": null,
+                                      "min_width": null,
+                                      "max_width": null
                                     }
                                   ],
                                   "width": 416.0,
@@ -2851,7 +3355,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": null,
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "HUG",
+                                  "layout_sizing_vertical": "HUG",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": "NO_WRAP",
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 576.0,
@@ -2895,7 +3407,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -2934,7 +3454,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -2973,7 +3501,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -3012,7 +3548,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -3051,7 +3595,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1561",
@@ -3100,7 +3652,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "8f399f0a0064c29879765eebe047cbc872158656",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -3114,7 +3666,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -3153,7 +3713,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -3192,7 +3760,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -3231,7 +3807,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -3270,7 +3854,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1566",
@@ -3333,7 +3925,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 484.0,
@@ -3372,7 +3972,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1571",
@@ -3432,7 +4040,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 484.0,
@@ -3471,7 +4087,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1573",
@@ -3531,7 +4155,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 484.0,
@@ -3570,7 +4202,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1575",
@@ -3630,7 +4270,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 484.0,
@@ -3669,7 +4317,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -3708,7 +4364,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -3747,7 +4411,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -3786,7 +4458,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1577",
@@ -3835,7 +4515,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "b2ce85cfd253059660cb59a94a408ba4368db13a",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -3849,7 +4529,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -3888,7 +4576,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -3927,7 +4623,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -3966,7 +4670,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -4005,7 +4717,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1582",
@@ -4068,7 +4788,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 484.0,
@@ -4107,7 +4835,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1587",
@@ -4155,7 +4891,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 484.0,
@@ -4194,7 +4938,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -4233,7 +4985,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -4272,7 +5032,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -4311,7 +5079,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1589",
@@ -4379,7 +5155,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": null,
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "HUG",
+                                  "layout_sizing_vertical": "HUG",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 },
                                 {
                                   "id": "2833:1595",
@@ -4413,7 +5197,7 @@
                                       "letter_spacing_px": null,
                                       "text_transform": null,
                                       "text_decoration": null,
-                                      "image_ref": null,
+                                      "image_ref": "c0c3e172846e1ddedd81bbad8fd4167ed31be8ef",
                                       "hyperlink": null,
                                       "corner_radius": null,
                                       "corner_radii": null,
@@ -4427,7 +5211,15 @@
                                       "opacity": 1.0,
                                       "scale_mode": "FILL",
                                       "rotation": null,
-                                      "effects_summary": null
+                                      "effects_summary": null,
+                                      "layout_sizing_horizontal": "FIXED",
+                                      "layout_sizing_vertical": "FIXED",
+                                      "layout_grow": 0.0,
+                                      "layout_align": "INHERIT",
+                                      "layout_positioning": null,
+                                      "layout_wrap": null,
+                                      "min_width": null,
+                                      "max_width": null
                                     }
                                   ],
                                   "width": 354.0,
@@ -4466,7 +5258,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": null,
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "HUG",
+                                  "layout_sizing_vertical": "HUG",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": "NO_WRAP",
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 575.0,
@@ -4510,7 +5310,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -4549,7 +5357,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -4588,7 +5404,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -4627,7 +5451,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -4666,7 +5498,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1597",
@@ -4715,7 +5555,7 @@
                               "letter_spacing_px": null,
                               "text_transform": null,
                               "text_decoration": null,
-                              "image_ref": null,
+                              "image_ref": "720bf9f65539f0ce614f56d113727156a5b1aa25",
                               "hyperlink": null,
                               "corner_radius": null,
                               "corner_radii": null,
@@ -4729,7 +5569,15 @@
                               "opacity": 1.0,
                               "scale_mode": "FILL",
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "FIXED",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -4768,7 +5616,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -4807,7 +5663,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -4846,7 +5710,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -4885,7 +5757,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             },
             {
               "id": "2833:1602",
@@ -4982,7 +5862,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 576.0,
@@ -5021,7 +5909,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 576.0,
@@ -5060,7 +5956,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -5099,7 +6003,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 },
                 {
                   "id": "2833:1607",
@@ -5191,7 +6103,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 288.0,
@@ -5230,7 +6150,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         },
                         {
                           "id": "2833:1611",
@@ -5278,7 +6206,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "FILL",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 1.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": null,
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 288.0,
@@ -5317,7 +6253,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 288.0,
@@ -5356,7 +6300,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     },
                     {
                       "id": "2833:1613",
@@ -5400,7 +6352,7 @@
                                   "letter_spacing_px": null,
                                   "text_transform": null,
                                   "text_decoration": null,
-                                  "image_ref": null,
+                                  "image_ref": "3c107813946330f26b12e158e4eae277d30ace22",
                                   "hyperlink": null,
                                   "corner_radius": null,
                                   "corner_radii": null,
@@ -5414,7 +6366,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": "FILL",
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "FIXED",
+                                  "layout_sizing_vertical": "FIXED",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 38.0,
@@ -5453,7 +6413,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             },
                             {
                               "id": "2833:1617",
@@ -5487,7 +6455,7 @@
                                   "letter_spacing_px": null,
                                   "text_transform": null,
                                   "text_decoration": null,
-                                  "image_ref": null,
+                                  "image_ref": "05220dd9f8943e9759a8d8e348032f8a6754dc34",
                                   "hyperlink": null,
                                   "corner_radius": null,
                                   "corner_radii": null,
@@ -5501,7 +6469,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": "FILL",
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "FIXED",
+                                  "layout_sizing_vertical": "FIXED",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 42.0,
@@ -5540,7 +6516,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             },
                             {
                               "id": "2833:1619",
@@ -5574,7 +6558,7 @@
                                   "letter_spacing_px": null,
                                   "text_transform": null,
                                   "text_decoration": null,
-                                  "image_ref": null,
+                                  "image_ref": "4c115ee44419eda1f6c75dcae49d3b8022689da3",
                                   "hyperlink": null,
                                   "corner_radius": null,
                                   "corner_radii": null,
@@ -5588,7 +6572,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": "FILL",
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "FIXED",
+                                  "layout_sizing_vertical": "FIXED",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 42.0,
@@ -5627,7 +6619,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             },
                             {
                               "id": "2833:1621",
@@ -5661,7 +6661,7 @@
                                   "letter_spacing_px": null,
                                   "text_transform": null,
                                   "text_decoration": null,
-                                  "image_ref": null,
+                                  "image_ref": "81644397bd6767fc60c23fc4c2f29b0cd21e7781",
                                   "hyperlink": null,
                                   "corner_radius": null,
                                   "corner_radii": null,
@@ -5675,7 +6675,15 @@
                                   "opacity": 1.0,
                                   "scale_mode": "FILL",
                                   "rotation": null,
-                                  "effects_summary": null
+                                  "effects_summary": null,
+                                  "layout_sizing_horizontal": "FIXED",
+                                  "layout_sizing_vertical": "FIXED",
+                                  "layout_grow": 0.0,
+                                  "layout_align": "INHERIT",
+                                  "layout_positioning": null,
+                                  "layout_wrap": null,
+                                  "min_width": null,
+                                  "max_width": null
                                 }
                               ],
                               "width": 38.0,
@@ -5714,7 +6722,15 @@
                               "opacity": 1.0,
                               "scale_mode": null,
                               "rotation": null,
-                              "effects_summary": null
+                              "effects_summary": null,
+                              "layout_sizing_horizontal": "HUG",
+                              "layout_sizing_vertical": "HUG",
+                              "layout_grow": 0.0,
+                              "layout_align": "INHERIT",
+                              "layout_positioning": null,
+                              "layout_wrap": "NO_WRAP",
+                              "min_width": null,
+                              "max_width": null
                             }
                           ],
                           "width": 218.0,
@@ -5753,7 +6769,15 @@
                           "opacity": 1.0,
                           "scale_mode": null,
                           "rotation": null,
-                          "effects_summary": null
+                          "effects_summary": null,
+                          "layout_sizing_horizontal": "FILL",
+                          "layout_sizing_vertical": "HUG",
+                          "layout_grow": 0.0,
+                          "layout_align": "STRETCH",
+                          "layout_positioning": null,
+                          "layout_wrap": "NO_WRAP",
+                          "min_width": null,
+                          "max_width": null
                         }
                       ],
                       "width": 288.0,
@@ -5792,7 +6816,15 @@
                       "opacity": 1.0,
                       "scale_mode": null,
                       "rotation": null,
-                      "effects_summary": null
+                      "effects_summary": null,
+                      "layout_sizing_horizontal": "FILL",
+                      "layout_sizing_vertical": "HUG",
+                      "layout_grow": 1.0,
+                      "layout_align": "INHERIT",
+                      "layout_positioning": null,
+                      "layout_wrap": "NO_WRAP",
+                      "min_width": null,
+                      "max_width": null
                     }
                   ],
                   "width": 576.0,
@@ -5831,7 +6863,15 @@
                   "opacity": 1.0,
                   "scale_mode": null,
                   "rotation": null,
-                  "effects_summary": null
+                  "effects_summary": null,
+                  "layout_sizing_horizontal": "FILL",
+                  "layout_sizing_vertical": "HUG",
+                  "layout_grow": 0.0,
+                  "layout_align": "STRETCH",
+                  "layout_positioning": null,
+                  "layout_wrap": "NO_WRAP",
+                  "min_width": null,
+                  "max_width": null
                 }
               ],
               "width": 640.0,
@@ -5870,7 +6910,15 @@
               "opacity": 1.0,
               "scale_mode": null,
               "rotation": null,
-              "effects_summary": null
+              "effects_summary": null,
+              "layout_sizing_horizontal": "FIXED",
+              "layout_sizing_vertical": "HUG",
+              "layout_grow": 0.0,
+              "layout_align": "INHERIT",
+              "layout_positioning": null,
+              "layout_wrap": "NO_WRAP",
+              "min_width": null,
+              "max_width": null
             }
           ],
           "width": 640.0,
@@ -5909,7 +6957,15 @@
           "opacity": 1.0,
           "scale_mode": null,
           "rotation": null,
-          "effects_summary": null
+          "effects_summary": null,
+          "layout_sizing_horizontal": "FIXED",
+          "layout_sizing_vertical": "HUG",
+          "layout_grow": null,
+          "layout_align": null,
+          "layout_positioning": null,
+          "layout_wrap": "NO_WRAP",
+          "min_width": null,
+          "max_width": null
         }
       ],
       "width": null,
@@ -5948,7 +7004,15 @@
       "opacity": 1.0,
       "scale_mode": null,
       "rotation": null,
-      "effects_summary": null
+      "effects_summary": null,
+      "layout_sizing_horizontal": null,
+      "layout_sizing_vertical": null,
+      "layout_grow": null,
+      "layout_align": null,
+      "layout_positioning": null,
+      "layout_wrap": null,
+      "min_width": null,
+      "max_width": null
     }
   ],
   "design_image": null

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 from app.design_sync.figma.layout_analyzer import (
     ColumnGroup,
     ColumnLayout,
@@ -230,6 +232,31 @@ class TestColumnGroupContentPreservation:
         assert len(groups[1].images) == 0
         assert len(groups[1].texts) == 1
         assert groups[1].texts[0].content == "Description text"
+
+
+class TestColumnGroupSizing:
+    def test_groups_carry_source_horizontal_sizing(self) -> None:
+        """CE-6: each column keeps its frame's layoutSizingHorizontal for CE-16."""
+        cols = [
+            dataclasses.replace(
+                _node(name, width=180, x=x, children=[_text_node(f"t-{name}", name)]),
+                layout_sizing_horizontal=sizing,
+            )
+            for name, x, sizing in (("A", 0, "FILL"), ("B", 200, "FILL"), ("C", 400, "FIXED"))
+        ]
+        groups = _build_column_groups(cols)
+        assert [g.sizing_horizontal for g in groups] == ["FILL", "FILL", "FIXED"]
+
+    def test_section_carries_source_horizontal_sizing(self) -> None:
+        sections = [
+            _node("Header", y=0, height=80),
+            dataclasses.replace(
+                _node("Body", y=80, height=200, children=[_text_node("t", "Body copy")]),
+                layout_sizing_horizontal="FILL",
+            ),
+        ]
+        layout = analyze_layout(_make_structure(sections))
+        assert layout.sections[1].sizing_horizontal == "FILL"
 
 
 # ── Full Pipeline Column Groups ──

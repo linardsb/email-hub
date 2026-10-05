@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from app.design_sync.protocol import DesignNode, DesignNodeType, StyleRun
 from app.design_sync.services._serialization import cached_dict_to_node, serialize_node
+from app.design_sync.tests.conftest import make_full_design_node
 
 
 def _outlined_cta_node() -> DesignNode:
@@ -119,6 +120,40 @@ class TestRenderFieldRoundTrip:
 
         node = _outlined_cta_node()
         got = _roundtrip(node)
+        for f in dataclasses.fields(DesignNode):
+            if f.name == "children":
+                continue
+            assert getattr(got, f.name) == getattr(node, f.name), f.name
+
+    def test_every_field_round_trips_the_cache(self) -> None:
+        """A node with every field non-default must survive the cache unchanged.
+
+        ``make_full_design_node`` is pinned complete by
+        ``test_sentinel_sets_every_field``, so a field added to DesignNode but
+        not to the serializer pair fails here even when no render test sets it.
+        """
+        import dataclasses
+
+        node = make_full_design_node()
+        got = _roundtrip(node)
+        for f in dataclasses.fields(DesignNode):
+            if f.name == "children":
+                continue
+            assert getattr(got, f.name) == getattr(node, f.name), f.name
+
+    def test_every_field_survives_the_production_cache_read(self) -> None:
+        """Every field must survive serialize_node → JSON → report._node_from_dict.
+
+        This is the pair conversion_service reads the DB cache with; the test
+        above covers cached_dict_to_node, which production does not call there.
+        """
+        import dataclasses
+        import json
+
+        from app.design_sync.diagnose.report import _node_from_dict
+
+        node = make_full_design_node()
+        got = _node_from_dict(json.loads(json.dumps(serialize_node(node))))
         for f in dataclasses.fields(DesignNode):
             if f.name == "children":
                 continue

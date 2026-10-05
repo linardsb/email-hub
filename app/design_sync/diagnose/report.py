@@ -138,6 +138,14 @@ def _node_from_dict(data: dict[str, Any]) -> DesignNode:
         scale_mode=data.get("scale_mode"),
         rotation=data.get("rotation"),
         effects_summary=data.get("effects_summary"),
+        layout_sizing_horizontal=data.get("layout_sizing_horizontal"),
+        layout_sizing_vertical=data.get("layout_sizing_vertical"),
+        layout_grow=data.get("layout_grow"),
+        layout_align=data.get("layout_align"),
+        layout_positioning=data.get("layout_positioning"),
+        layout_wrap=data.get("layout_wrap"),
+        min_width=data.get("min_width"),
+        max_width=data.get("max_width"),
     )
 
 

@@ -176,6 +176,10 @@ class ColumnGroup:
     # border-left divider between hug-row cells (c7 user-info #D9D9D9/1px).
     stroke_color: str | None = None
     stroke_weight: float | None = None
+    # CE-6 (#424) — source frame's layoutSizingHorizontal; read by CE-16.
+    # Dropped at the document bridge (to_layout_description rebuilds this
+    # without it): ledger ce-6-sizing-horizontal-dropped-at-document-bridge
+    sizing_horizontal: str | None = None
 
 
 @dataclass(frozen=True)
@@ -279,6 +283,10 @@ class EmailSection:
     # blurs/blends are not reproducible in email HTML (ceiling doc §2); this
     # carries the loss into conversion warnings instead of silence.
     effects_summary: str | None = None
+    # CE-6 (#424) — source frame's layoutSizingHorizontal; read by CE-16.
+    # Dropped at the document bridge (to_layout_description rebuilds this
+    # without it): ledger ce-6-sizing-horizontal-dropped-at-document-bridge
+    sizing_horizontal: str | None = None
 
 
 @dataclass(frozen=True)
@@ -484,6 +492,7 @@ def analyze_layout(
                         parent_wrapper_id=parent_wrapper_id,
                         peel_row_id=peel_row_id,
                         effects_summary=_collect_effects_summary(node),
+                        sizing_horizontal=node.layout_sizing_horizontal,
                     )
                 )
                 continue
@@ -604,6 +613,7 @@ def analyze_layout(
                 peel_row_id=peel_row_id,
                 gradient_ref=gradient_ref,
                 effects_summary=_collect_effects_summary(node),
+                sizing_horizontal=node.layout_sizing_horizontal,
             )
         )
 
@@ -1358,6 +1368,7 @@ def _detect_mj_columns(node: DesignNode) -> list[ColumnGroup]:
                     content_order=_column_content_order(child, texts, images, buttons, dividers),
                     stroke_color=child.stroke_color,
                     stroke_weight=child.stroke_weight,
+                    sizing_horizontal=child.layout_sizing_horizontal,
                 )
             )
     return all_columns
@@ -1385,6 +1396,7 @@ def _build_column_groups(frame_children: list[DesignNode]) -> list[ColumnGroup]:
                 content_order=_column_content_order(child, texts, images, buttons, dividers),
                 stroke_color=child.stroke_color,
                 stroke_weight=child.stroke_weight,
+                sizing_horizontal=child.layout_sizing_horizontal,
             )
         )
     return groups
