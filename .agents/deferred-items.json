@@ -1482,10 +1482,10 @@
       "introduced_commit": "pending",
       "summary": "PR #474 review F1. CE-6 sets sizing_horizontal on ColumnGroup and EmailSection, but production conversion goes through document.to_layout_description(), and DocumentColumn.from_column_group/to_column_group and DocumentSection.from_email_section rebuild both without it (read-confirmed). compute_column_width_fractions then reruns on the rebuilt groups. Keeping the field off DocumentSection was a CE-6 plan decision (GOTCHA :252), so this is a code-shape concession, not a CE-6 regression: nothing reads the field yet.",
       "code_refs": [
-        "app/design_sync/email_design_document.py:936 (DocumentColumn.from_column_group)",
-        "app/design_sync/email_design_document.py:951 (DocumentColumn.to_column_group)",
-        "app/design_sync/email_design_document.py:1254 (compute_column_width_fractions on rebuilt groups)",
-        "app/design_sync/email_design_document.py:1279 (DocumentSection.from_email_section)",
+        "app/design_sync/email_design_document.py:953 (DocumentColumn.from_column_group)",
+        "app/design_sync/email_design_document.py:968 (DocumentColumn.to_column_group)",
+        "app/design_sync/email_design_document.py:1271 (compute_column_width_fractions on rebuilt groups)",
+        "app/design_sync/email_design_document.py:1296 (DocumentSection.from_email_section)",
         "app/design_sync/figma/layout_analyzer.py:182 (ColumnGroup.sizing_horizontal)",
         "app/design_sync/figma/layout_analyzer.py:289 (EmailSection.sizing_horizontal)",
         "app/design_sync/converter_service.py:352 (document.to_layout_description)"
@@ -1505,8 +1505,11 @@
       "introduced_commit": "pending",
       "summary": "The 2 local design_token_snapshots.document_json rows are one whole design-system file (\"The Ultimate Email Design System (Community)\"): 397 sections vs cap 100, section texts 103 vs 50, element_gaps 106 vs 100, content-group texts 73 vs 50 (observed 2026-10-05). They load and round-trip, but EmailDesignDocument.validate() rejects them. Latent because no load path validates. CE-26 raised only the typography cap and declared `dividers` (user decision 2026-10-05).",
       "code_refs": [
-        "data/schemas/email-design-document-v1.json (properties.sections maxItems 100, $defs/section texts/element_gaps, $defs/content_group texts)",
-        "app/design_sync/email_design_document.py (EmailDesignDocument.validate)",
+        "data/schemas/email-design-document-v1.json:23 (properties.sections maxItems 100)",
+        "data/schemas/email-design-document-v1.json:221 ($defs/section texts maxItems 50)",
+        "data/schemas/email-design-document-v1.json:258 ($defs/section element_gaps maxItems 100)",
+        "data/schemas/email-design-document-v1.json:306 ($defs/content_group texts maxItems 50)",
+        "app/design_sync/email_design_document.py:1520 (EmailDesignDocument.validate)",
         "app/design_sync/import_service.py:239 (persisted-document load, no validate)"
       ],
       "symptom_if_broken": "A future import gate, snapshot lint or API contract check that validates persisted documents hard-fails on whole-file imports with maxItems errors, looking like a converter regression.",

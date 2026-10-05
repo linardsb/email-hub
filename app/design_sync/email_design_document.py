@@ -66,6 +66,18 @@ def _get_validator(version: str = "1.0") -> Draft202012Validator:
     return Draft202012Validator(_load_schema(version))
 
 
+# jsonschema messages open with the repr of the failing value, which can be a
+# 100 kB raw.html string; keep both ends so the verb ("is too long") survives.
+_ERROR_HEAD = 120
+_ERROR_TAIL = 120
+
+
+def _cap_message(message: str) -> str:
+    if len(message) <= _ERROR_HEAD + _ERROR_TAIL:
+        return message
+    return f"{message[:_ERROR_HEAD]} … {message[-_ERROR_TAIL:]}"
+
+
 # ── Document sub-structures ─────────────────────────────────────────
 
 
@@ -1501,7 +1513,7 @@ class EmailDesignDocument:
                 token_warnings=[TokenWarning.from_json(w) for w in data.get("token_warnings", [])],
                 body=body,
             )
-        except (KeyError, TypeError) as exc:
+        except (KeyError, TypeError, AttributeError) as exc:
             raise ValueError(f"Malformed EmailDesignDocument: {exc}") from exc
 
     @staticmethod
@@ -1519,7 +1531,7 @@ class EmailDesignDocument:
             path = (
                 ".".join(str(p) for p in error.absolute_path) if error.absolute_path else "(root)"
             )
-            errors.append(f"{path}: {error.message}")
+            errors.append(f"{path}: {_cap_message(error.message)}")
         return errors
 
     @staticmethod

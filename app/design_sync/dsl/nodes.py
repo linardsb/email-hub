@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 
 from app.design_sync.email_design_document import DocumentButton, DocumentImage, DocumentText
 from app.design_sync.font_stacks import FontCategory
@@ -76,10 +76,27 @@ Radius = int | tuple[int, int, int, int]
 _GENERIC_FAMILIES = frozenset(c.value for c in FontCategory)
 
 
-def _four(value: list[int]) -> tuple[int, int, int, int]:
+def _px(value: object) -> int:
+    """Return a px length as ``int``.
+
+    A whole float (``12.0``) is what JSON Schema calls an integer, so it loads as
+    one; a bool or a fraction raises ``TypeError``, as the schema rejects both.
+    """
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    raise TypeError(f"expected an integer px length, got {value!r}")
+
+
+def _opt_px(value: object) -> int | None:
+    return _px(value) if value is not None else None
+
+
+def _four(value: list[object]) -> tuple[int, int, int, int]:
     if len(value) != 4:
         raise ValueError(f"expected 4 values, got {len(value)}")
-    return (value[0], value[1], value[2], value[3])
+    return (_px(value[0]), _px(value[1]), _px(value[2]), _px(value[3]))
 
 
 def _opt_sizing(value: str | None) -> Sizing | None:
@@ -119,12 +136,16 @@ class ContainerStyle:
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> ContainerStyle:
         radius = data.get("radius")
+        if radius is not None:
+            radius = (
+                _four(cast("list[object]", radius)) if isinstance(radius, list) else _px(radius)
+            )
         padding = data.get("padding")
         vertical_align = data.get("vertical_align")
         background_image = data.get("background_image")
         return cls(
             background_color=data.get("background_color"),
-            radius=None if radius is None else radius if isinstance(radius, int) else _four(radius),
+            radius=radius,
             padding=_four(padding) if padding is not None else None,
             vertical_align=VerticalAlign(vertical_align) if vertical_align is not None else None,
             sizing=_opt_sizing(data.get("sizing")),
@@ -268,10 +289,10 @@ class DividerNode(_Node):
         return cls(
             id=data["id"],
             name=data["name"],
-            thickness=data["thickness"],
+            thickness=_px(data["thickness"]),
             color=data["color"],
             style=DividerStyle(data["style"]),
-            width=data.get("width"),
+            width=_opt_px(data.get("width")),
         )
 
 
@@ -293,7 +314,7 @@ class SpacerNode(_Node):
         return cls(
             id=data["id"],
             name=data["name"],
-            height=data["height"],
+            height=_px(data["height"]),
             background_color=data.get("background_color"),
         )
 

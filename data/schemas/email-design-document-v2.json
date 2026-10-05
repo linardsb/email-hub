@@ -38,15 +38,67 @@
       "maxItems": 100,
       "description": "Typed layout tree: top-level wrapper, section or raw nodes.",
       "items": {
-        "oneOf": [
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "wrapper",
+              "section",
+              "raw"
+            ]
+          }
+        },
+        "allOf": [
           {
-            "$ref": "#/$defs/node_wrapper"
+            "if": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "wrapper"
+                }
+              }
+            },
+            "then": {
+              "$ref": "#/$defs/node_wrapper"
+            }
           },
           {
-            "$ref": "#/$defs/node_section"
+            "if": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "section"
+                }
+              }
+            },
+            "then": {
+              "$ref": "#/$defs/node_section"
+            }
           },
           {
-            "$ref": "#/$defs/node_raw"
+            "if": {
+              "type": "object",
+              "required": [
+                "type"
+              ],
+              "properties": {
+                "type": {
+                  "const": "raw"
+                }
+              }
+            },
+            "then": {
+              "$ref": "#/$defs/node_raw"
+            }
           }
         ]
       }
@@ -1499,12 +1551,50 @@
           "type": "array",
           "maxItems": 50,
           "items": {
-            "oneOf": [
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "section",
+                  "raw"
+                ]
+              }
+            },
+            "allOf": [
               {
-                "$ref": "#/$defs/node_section"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "section"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_section"
+                }
               },
               {
-                "$ref": "#/$defs/node_raw"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "raw"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_raw"
+                }
               }
             ]
           },
@@ -1552,12 +1642,50 @@
           "type": "array",
           "maxItems": 50,
           "items": {
-            "oneOf": [
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "column",
+                  "raw"
+                ]
+              }
+            },
+            "allOf": [
               {
-                "$ref": "#/$defs/node_column"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "column"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_column"
+                }
               },
               {
-                "$ref": "#/$defs/node_raw"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "raw"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_raw"
+                }
               }
             ]
           },
@@ -1605,24 +1733,118 @@
           "type": "array",
           "maxItems": 100,
           "items": {
-            "oneOf": [
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "enum": [
+                  "text",
+                  "image",
+                  "button",
+                  "divider",
+                  "spacer",
+                  "raw"
+                ]
+              }
+            },
+            "allOf": [
               {
-                "$ref": "#/$defs/node_text"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "text"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_text"
+                }
               },
               {
-                "$ref": "#/$defs/node_image"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "image"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_image"
+                }
               },
               {
-                "$ref": "#/$defs/node_button"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "button"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_button"
+                }
               },
               {
-                "$ref": "#/$defs/node_divider"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "divider"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_divider"
+                }
               },
               {
-                "$ref": "#/$defs/node_spacer"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "spacer"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_spacer"
+                }
               },
               {
-                "$ref": "#/$defs/node_raw"
+                "if": {
+                  "type": "object",
+                  "required": [
+                    "type"
+                  ],
+                  "properties": {
+                    "type": {
+                      "const": "raw"
+                    }
+                  }
+                },
+                "then": {
+                  "$ref": "#/$defs/node_raw"
+                }
               }
             ]
           }

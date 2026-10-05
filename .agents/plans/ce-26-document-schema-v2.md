@@ -146,7 +146,7 @@ file below.
 
 - `docs/architecture/dsl-compiler.md` § S1 (node schema, loader rule), § S2 (DSL nesting table), § S3 (value contracts) — the decided shapes; do not re-decide.
 - [JSON Schema 2020-12 `contains`](https://json-schema.org/understanding-json-schema/reference/array#contains) — "at least one section in a wrapper" while `raw` siblings stay allowed.
-- [`oneOf` + `const` discriminator](https://json-schema.org/understanding-json-schema/reference/combining#oneOf) — child unions. Errors from a failed `oneOf` report at the parent path (`body.0.children.0`), which is what the unknown-type test asserts.
+- [`if`/`then` conditional](https://json-schema.org/understanding-json-schema/reference/conditionals) — child unions dispatch on the `type` tag, so an error reports at the failing field (`body.0.children.0.children.0.children.0.type`). *(Amended after PR #475 F2: the original `oneOf` reported every nested failure at `body.0`, with the whole subtree's repr as the message.)*
 
 ### Patterns to Follow
 
@@ -205,15 +205,15 @@ Tasks 6–12 (Task 11 touches `cms/packages/sdk/`).
 - **IMPLEMENT**: copy the Task-1 v1 file, then change only:
   - `$id` → `email-design-document/v2`; `title` → `Email Design Document v2`; `description` names the `body` tree.
   - `properties.version` → `{"const": "2.0", …}`.
-  - `properties.body` → `{"type": "array", "maxItems": 100, "items": {"oneOf": [{"$ref": "#/$defs/node_wrapper"}, {"$ref": "#/$defs/node_section"}, {"$ref": "#/$defs/node_raw"}]}}`; add `"body"` to root `required`.
+  - `properties.body` → `{"type": "array", "maxItems": 100, "items": <dispatch over wrapper, section, raw>}`; add `"body"` to root `required`. A dispatch is `{"type": "object", "required": ["type"], "properties": {"type": {"enum": [...]}}, "allOf": [{"if": {"type": "object", "required": ["type"], "properties": {"type": {"const": "<t>"}}}, "then": {"$ref": "#/$defs/node_<t>"}}, …]}` (amended after PR #475 F2).
   - New `$defs` (all `"type": "object"`, `"additionalProperties": false`, `required` includes `type`, `id`, `name`; `id`/`name` are `string` `maxLength: 200`; `type` is `{"const": "<node>"}`):
 
 | def | extra properties (required in **bold**) |
 |---|---|
 | `container_style` | `background_color` (`#/$defs/hex6`), `radius` (`oneOf`: integer ≥0, or array of exactly 4 integers ≥0), `padding` (array of exactly 4 integers ≥0: top, right, bottom, left), `vertical_align` (enum `top middle bottom`), `sizing` (`#/$defs/sizing`), `full_width` (boolean, default false), `background_image` (`#/$defs/image`) |
-| `node_wrapper` | `style` (`container_style`), **`children`**: array, `minItems: 1`, `maxItems: 50`, items `oneOf` [`node_section`, `node_raw`], `contains: {"properties": {"type": {"const": "section"}}}` |
-| `node_section` | `style`, **`children`**: same shape, items `oneOf` [`node_column`, `node_raw`], `contains` type `column` |
-| `node_column` | `style`, **`children`**: array `maxItems: 100`, items `oneOf` [`node_text`, `node_image`, `node_button`, `node_divider`, `node_spacer`, `node_raw`] |
+| `node_wrapper` | `style` (`container_style`), **`children`**: array, `minItems: 1`, `maxItems: 50`, items dispatch [`node_section`, `node_raw`], `contains: {"properties": {"type": {"const": "section"}}}` |
+| `node_section` | `style`, **`children`**: same shape, items dispatch [`node_column`, `node_raw`], `contains` type `column` |
+| `node_column` | `style`, **`children`**: array `maxItems: 100`, items dispatch [`node_text`, `node_image`, `node_button`, `node_divider`, `node_spacer`, `node_raw`] |
 | `node_text` | **`text`** (`#/$defs/text`), **`role`** (enum `heading body label cta`), **`font_stack`** (array of strings `maxLength: 200`, `minItems: 1`, `maxItems: 20`) |
 | `node_image` | **`image`** (`#/$defs/image`), **`alt`** (string `maxLength: 2000`), `href` (string `maxLength: 2000`), `sizing` |
 | `node_button` | **`button`** (`#/$defs/button`), `align` (enum `left center right`), `sizing` |
@@ -246,7 +246,7 @@ Tasks 6–12 (Task 11 touches `cms/packages/sdk/`).
   - `TextNode.__post_init__`: `font_stack` non-empty and `font_stack[-1] in {c.value for c in FontCategory}`, else `ValueError` (S3).
 - **PATTERN**: `DocumentButton.to_json`/`from_json` (`email_design_document.py:740-805`); `FontCategory` from `app/design_sync/font_stacks.py:26`.
 - **IMPORTS**: `from app.design_sync.email_design_document import DocumentButton, DocumentImage, DocumentText`; `from app.design_sync.font_stacks import FontCategory`.
-- **GOTCHA**: radius/padding JSON is a list; `from_json` converts to `tuple` (and 4-length check) so round-trip equality and hashing hold; a scalar radius stays `int`.
+- **GOTCHA**: radius/padding JSON is a list; `from_json` converts to `tuple` (and 4-length check) so round-trip equality and hashing hold; a scalar radius stays `int`. Every int length (radius, padding, `thickness`, `width`, `height`) goes through `_px`: a whole float loads as `int`, a bool or fraction raises (amended after PR #475 F1).
 - **GOTCHA**: `from_json` must not use `data.get("type")` defaults; a missing `type` is `KeyError`, which `EmailDesignDocument.from_json` already converts to `ValueError`.
 - **GOTCHA (strict pyright, prototyped)**: the shared parser returns the node union, which strict pyright will not assign to `tuple[ColumnNode | RawNode, ...]`. Use this shape (prototyped 2026-10-05 on a 4-node cut: `pyright` 0 errors, `mypy` clean, `ruff check` clean, observed):
   - `_node_from_json(data, allowed: frozenset[NodeType], parent: str) -> AnyNode`: `NodeType(data["type"])` first, then `if node_type not in allowed: raise ValueError(f"node type {node_type.value!r} not allowed in a {parent}")`, **then** `NODE_CLASSES[node_type].from_json(data)`.
@@ -307,8 +307,8 @@ Tasks 6–12 (Task 11 touches `cms/packages/sdk/`).
 - **IMPLEMENT**:
   - `_all_nine_body()` helper: one `WrapperNode` → `SectionNode` → `ColumnNode` holding one each of text (`font_stack=("Inter", "Helvetica", "sans-serif")`), image, button, divider, spacer, raw; plus a top-level `RawNode` and a top-level `SectionNode`. Leaf payloads (`DocumentText`, `DocumentImage`, `DocumentButton`) are **taken from case 5's `from_legacy` sections** (first text/image/button found), so the v2 fixture carries real payloads, not invented ones.
   - `test_v2_all_nine_round_trip_and_validate`: `doc = replace(case5_doc, version="2.0", body=_all_nine_body())`; `j = doc.to_json()`; `validate(j) == []`; `json.dumps(EmailDesignDocument.from_json(json.loads(json.dumps(j))).to_json()) == json.dumps(j)`; and `{n.type for n in walk(doc.body)} == set(NodeType)`.
-  - `test_v2_unknown_node_type_fails_validation`: copy `j`, set the column's first child `type` to `"carousel"`; assert errors non-empty and **every** error path equals `body.0` (control: the unmutated `j` validated clean above). A nested failure surfaces at the outermost `oneOf`, not at the leaf: prototyped, an unknown leaf type, an unknown top-level type, a section with only `raw` children and an upper-case hex colour each report exactly `[("body.0", "oneOf")]` (observed 2026-10-05, jsonschema 4.26.0). Do not assert a deep path such as `body.0.children.0.children.0`. Also `from_json` raises `ValueError`.
-  - `test_v2_illegal_nesting_fails`: a `node_text` directly under `body` → error path `body.<index>` (`oneOf`); `from_json` raises `ValueError`.
+  - `test_v2_unknown_node_type_fails_validation`: copy `j`, set the column's first child `type` to `"carousel"`; assert the only error path is `body.0.children.0.children.0.children.0.type` and the message names `'carousel'` (control: the unmutated `j` validated clean above). *(Amended after PR #475 F2: this bullet first pinned every path to `body.0`, which was the `oneOf` behaviour. That instruction is reversed.)* `test_v2_errors_point_at_the_bad_field` pins the other three prototyped shapes at their deep paths: unknown top-level type → `body.0.type`, upper-case hex → `…children.3.color`, section with only `raw` children → `body.0.children.0.children`. Also `from_json` raises `ValueError`.
+  - `test_v2_illegal_nesting_fails`: a `node_text` directly under `body` → error path `body.<index>.type` (`enum`); `from_json` raises `ValueError`.
   - `test_v2_missing_body_fails_validation`.
   - Corpus (parametrized over `discover_cases()` that have `structure.json` and `tokens.json`; `pytest.skip` otherwise, as `test_converter_data_regression.py:132`): `test_case_v1_round_trip_byte_identical` (`json.dumps` equality after `from_json`) and `test_case_v1_document_validates` (`validate(doc.to_json()) == []`). This is the ledger's `closes_when` test.
   - `TestSchemaParity`: v2 `$defs[k] == v1 $defs[k]` for every v1 key; v2 `properties` minus `body`/`version` equals v1's; `set(v2.required) == set(v1.required) | {"body"}`; new defs == `{f"node_{t.value}" for t in NodeType} | {"container_style", "hex6", "sizing"}`.
@@ -410,7 +410,7 @@ No DB, network or WebSocket surface. The real-data checks are the corpus tests i
 
 - [ ] AC 1 — Every committed v1 document round-trips byte-identically: 7/7 `data/debug` cases (Task 7) and the golden components (Task 9).
 - [ ] AC 2 — A v2 document using all nine node types validates and round-trips byte-identically (Task 7).
-- [ ] AC 3 — A v2 document with an unknown node `type` fails validation with errors at `body.0` only, and fails to load with `ValueError`.
+- [ ] AC 3 — A v2 document with an unknown node `type` fails validation with one error at that node's `type` path, and fails to load with `ValueError`. *(Amended after PR #475 F2: was "errors at `body.0` only".)*
 - [ ] AC 4 — `"1.0"` loads with `body=()` against the v1 file; a v1 document with `body` is rejected by both `validate` and `from_json`; unknown versions raise `ValueError`.
 - [ ] AC 5 — Converter output byte-identical on all 7 cases (Level 4 step 1); ladder unchanged.
 - [ ] AC 6 — `validate()` returns `[]` for every case's `from_legacy` document (closes `phase-53.7-typography-maxitems-cap`).
@@ -461,3 +461,7 @@ No DB, network or WebSocket surface. The real-data checks are the corpus tests i
   - Task 4: `schema()` calls `_load_schema("1.0")` so it shares the validator's cache key.
   - Unknown node types raise `NodeType`'s own `ValueError`, without the `Malformed` prefix.
   - Level 4 step 3: `POST /validate-document` was not run live (it needs auth). The TestClient test covers it.
+- 2026-10-05 (PR #475 review fixes, `.claude/reports/pr-475-review-fixes.md`):
+  - F1: `nodes._px` coerces every int length field. A whole float loads as `int`; a bool or fraction raises `TypeError` → `ValueError`. The loader and `validate()` now accept the same lengths.
+  - F2: the four child unions dispatch on `type` with `if`/`then` instead of `oneOf`, so errors report at the failing field. AC 3, the Task 7 bullets and the line-149 reference are amended. The schema accepts the same documents (18 shapes probed against both schemas, 0 disagreements). `validate()` keeps the first and last 120 characters of a longer message.
+  - F3: `from_json` also turns `AttributeError` into `ValueError`.
