@@ -6703,7 +6703,7 @@
           "design-sync"
         ],
         "summary": "Validate Document",
-        "description": "Validate a JSON body against the EmailDesignDocument v1 schema.",
+        "description": "Validate a JSON body against the EmailDesignDocument schema for its version (1.0, 2.0).",
         "operationId": "validate_document_api_v1_design_sync_validate_document_post",
         "responses": {
           "200": {

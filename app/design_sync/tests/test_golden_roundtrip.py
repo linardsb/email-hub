@@ -16,6 +16,7 @@ Validates:
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from unittest.mock import patch
@@ -85,6 +86,8 @@ class TestGoldenSchemaValidation:
         doc = await _import_component(html)
         errors = EmailDesignDocument.validate(doc.to_json())
         assert errors == [], f"Schema errors for {component}: {errors}"
+        restored = EmailDesignDocument.from_json(doc.to_json())
+        assert json.dumps(restored.to_json()) == json.dumps(doc.to_json())
 
 
 # ── Import fidelity ──────────────────────────────────────────────

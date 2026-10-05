@@ -572,7 +572,7 @@
       "id": "phase-53.7-typography-maxitems-cap",
       "phase": "53.7",
       "title": "email-design-document-v1.json caps tokens.typography at maxItems:200 — LEGO converter output emits 234, so validate() would reject a real document",
-      "status": "deferred",
+      "status": "closed",
       "severity": "speculative",
       "introduced": "2026-06-12",
       "introduced_commit": "33d20b9d",
@@ -582,7 +582,9 @@
         "app/design_sync/email_design_document.py:1379 (validate())"
       ],
       "symptom_if_broken": "Any future feature that schema-validates a persisted EmailDesignDocument (import gate, API contract check, snapshot lint) hard-fails on typography-rich designs like LEGO with a maxItems violation — looking like a converter regression when it is a stale schema cap.",
-      "closes_when": "The cap is raised (or typography tokens deduped below it) AND EmailDesignDocument.validate() passes on case-7 converter output, guarded by a test that validates a real fixture document."
+      "closes_when": "The cap is raised (or typography tokens deduped below it) AND EmailDesignDocument.validate() passes on case-7 converter output, guarded by a test that validates a real fixture document.",
+      "closed_commit": "pending",
+      "notes": "2026-10-05 CE-26 (#466): closed. All 7 committed cases (5-10, reframe) emit 234 typography tokens, not only LEGO, and every from_legacy document also failed on the undeclared column `dividers` (cases 5, 8, 9, 10). Cap raised to 1000 and `dividers` declared in v1 and v2; guarded by app/design_sync/tests/test_document_v2.py::test_case_v1_document_validates (all 7 cases, validate() == [])."
     },
     {
       "id": "phase-53.7-asset-reexport-prerequisite",
@@ -1490,7 +1492,25 @@
       ],
       "symptom_if_broken": "A CE-16 change that feeds FIXED/FILL/HUG into compute_column_width_fractions passes a RED test written against _build_column_groups, but on the real converter path every group reads sizing_horizontal=None and column widths fall back to geometry without any error (same inert-bridge trap as RC-A/RC-B).",
       "closes_when": "CE-16 or CE-26 carries sizing_horizontal across from_legacy -> to_layout_description (DocumentColumn and, if used, DocumentSection plus its cache canonical form), with a test that asserts the value on the to_layout_description output.",
-      "fix_sketch": "Add sizing_horizontal to DocumentColumn (from_column_group/to_column_group/to_dict/from_dict) when CE-16 starts reading it; decide the DocumentSection side together with the section-cache canonical form."
+      "fix_sketch": "Add sizing_horizontal to DocumentColumn (from_column_group/to_column_group/to_dict/from_dict) when CE-16 starts reading it; decide the DocumentSection side together with the section-cache canonical form.",
+      "notes": "2026-10-05 CE-26 (#466) left this open on purpose: adding the field changes v1 sections that nothing reads yet, and DSL nodes carry their own `sizing`. CE-16 is the first reader and closes it."
+    },
+    {
+      "id": "ce-26-whole-file-documents-exceed-v1-caps",
+      "phase": "ce-26",
+      "title": "Whole-design-system-file documents exceed v1 schema caps, so validate() rejects persisted rows that load fine",
+      "status": "deferred",
+      "severity": "speculative",
+      "introduced": "2026-10-05",
+      "introduced_commit": "pending",
+      "summary": "The 2 local design_token_snapshots.document_json rows are one whole design-system file (\"The Ultimate Email Design System (Community)\"): 397 sections vs cap 100, section texts 103 vs 50, element_gaps 106 vs 100, content-group texts 73 vs 50 (observed 2026-10-05). They load and round-trip, but EmailDesignDocument.validate() rejects them. Latent because no load path validates. CE-26 raised only the typography cap and declared `dividers` (user decision 2026-10-05).",
+      "code_refs": [
+        "data/schemas/email-design-document-v1.json (properties.sections maxItems 100, $defs/section texts/element_gaps, $defs/content_group texts)",
+        "app/design_sync/email_design_document.py (EmailDesignDocument.validate)",
+        "app/design_sync/import_service.py:239 (persisted-document load, no validate)"
+      ],
+      "symptom_if_broken": "A future import gate, snapshot lint or API contract check that validates persisted documents hard-fails on whole-file imports with maxItems errors, looking like a converter regression.",
+      "closes_when": "Either the caps are sized for whole-file imports, or whole-file snapshots stop being persisted as one document; and a test validates a whole-file document."
     }
   ],
   "tooling_followups": [
