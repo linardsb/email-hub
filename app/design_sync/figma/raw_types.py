@@ -117,6 +117,15 @@ class RawFigmaNode(TypedDict, total=False):
     counterAxisSpacing: float
     primaryAxisAlignItems: str  # "MIN" | "CENTER" | "MAX" | "SPACE_BETWEEN" | "SPACE_AROUND"
     counterAxisAlignItems: str
+    # Auto-layout child sizing (CE-6) — Figma omits each field at its default
+    layoutSizingHorizontal: str  # "FIXED" | "HUG" | "FILL"
+    layoutSizingVertical: str  # "FIXED" | "HUG" | "FILL"
+    layoutGrow: float  # 0 | 1
+    layoutAlign: str  # "INHERIT" | "STRETCH" | legacy "MIN" | "CENTER" | "MAX"
+    layoutPositioning: str  # "AUTO" | "ABSOLUTE"
+    layoutWrap: str  # "NO_WRAP" | "WRAP" (auto-layout containers only)
+    minWidth: Any  # number or null; _float_or_none guards
+    maxWidth: Any  # number or null; _float_or_none guards
     cornerRadius: float
     # Typed as list[Any] so the parser's per-item ``isinstance(item, dict)``
     # guards remain necessary; the entry-level ``isinstance(field, list)``

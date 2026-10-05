@@ -94,6 +94,28 @@ def serialize_node(node: DesignNode) -> dict[str, Any]:
         d["visible"] = False
     if node.opacity != 1.0:
         d["opacity"] = node.opacity
+    if node.scale_mode is not None:
+        d["scale_mode"] = node.scale_mode
+    if node.rotation is not None:
+        d["rotation"] = node.rotation
+    if node.effects_summary is not None:
+        d["effects_summary"] = node.effects_summary
+    if node.layout_sizing_horizontal is not None:
+        d["layout_sizing_horizontal"] = node.layout_sizing_horizontal
+    if node.layout_sizing_vertical is not None:
+        d["layout_sizing_vertical"] = node.layout_sizing_vertical
+    if node.layout_grow is not None:
+        d["layout_grow"] = node.layout_grow
+    if node.layout_align is not None:
+        d["layout_align"] = node.layout_align
+    if node.layout_positioning is not None:
+        d["layout_positioning"] = node.layout_positioning
+    if node.layout_wrap is not None:
+        d["layout_wrap"] = node.layout_wrap
+    if node.min_width is not None:
+        d["min_width"] = node.min_width
+    if node.max_width is not None:
+        d["max_width"] = node.max_width
     return d
 
 
@@ -216,4 +238,15 @@ def cached_dict_to_node(data: dict[str, Any]) -> DesignNode:
         style_runs=tuple(StyleRun(**sr) for sr in raw_runs),
         visible=bool(data.get("visible", True)),
         opacity=float(data.get("opacity", 1.0)),
+        scale_mode=data.get("scale_mode"),
+        rotation=data.get("rotation"),
+        effects_summary=data.get("effects_summary"),
+        layout_sizing_horizontal=data.get("layout_sizing_horizontal"),
+        layout_sizing_vertical=data.get("layout_sizing_vertical"),
+        layout_grow=data.get("layout_grow"),
+        layout_align=data.get("layout_align"),
+        layout_positioning=data.get("layout_positioning"),
+        layout_wrap=data.get("layout_wrap"),
+        min_width=data.get("min_width"),
+        max_width=data.get("max_width"),
     )

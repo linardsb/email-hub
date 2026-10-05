@@ -99,6 +99,11 @@ _AXIS_ALIGN_MAP: dict[str, str] = {
     "SPACE_AROUND": "space-around",
 }
 _HYPERLINK_SCHEMES = frozenset({"http", "https", "mailto"})
+# CE-6 (#424) — allowed auto-layout child sizing values; anything else → None
+_SIZING_VALUES = frozenset({"FIXED", "HUG", "FILL"})
+_LAYOUT_ALIGN_VALUES = frozenset({"INHERIT", "STRETCH", "MIN", "CENTER", "MAX"})
+_LAYOUT_POSITIONING_VALUES = frozenset({"AUTO", "ABSOLUTE"})
+_LAYOUT_WRAP_VALUES = frozenset({"NO_WRAP", "WRAP"})
 
 
 def _validate_hyperlink(raw: Any) -> str | None:
@@ -377,6 +382,14 @@ class _LayoutProps(NamedTuple):
     counter_axis_align: str | None
     corner_radius: float | None
     corner_radii: tuple[float, ...] | None
+    layout_sizing_horizontal: str | None
+    layout_sizing_vertical: str | None
+    layout_grow: float | None
+    layout_align: str | None
+    layout_positioning: str | None
+    layout_wrap: str | None
+    min_width: float | None
+    max_width: float | None
 
 
 def _parse_layout_props(node_data: RawFigmaNode, raw_type: str) -> _LayoutProps:
@@ -396,6 +409,20 @@ def _parse_layout_props(node_data: RawFigmaNode, raw_type: str) -> _LayoutProps:
         x = float(raw_x) if isinstance(raw_x, (int, float)) else None
         y = float(raw_y) if isinstance(raw_y, (int, float)) else None
 
+    # Auto-layout child sizing (CE-6) — a child property, so read on every
+    # node type, outside the frame / layoutMode gates below
+    raw_sizing_h = node_data.get("layoutSizingHorizontal")
+    raw_sizing_v = node_data.get("layoutSizingVertical")
+    raw_align = node_data.get("layoutAlign")
+    raw_positioning = node_data.get("layoutPositioning")
+    layout_sizing_horizontal = raw_sizing_h if raw_sizing_h in _SIZING_VALUES else None
+    layout_sizing_vertical = raw_sizing_v if raw_sizing_v in _SIZING_VALUES else None
+    layout_grow = _float_or_none(node_data.get("layoutGrow"))
+    layout_align = raw_align if raw_align in _LAYOUT_ALIGN_VALUES else None
+    layout_positioning = raw_positioning if raw_positioning in _LAYOUT_POSITIONING_VALUES else None
+    min_width = _float_or_none(node_data.get("minWidth"))
+    max_width = _float_or_none(node_data.get("maxWidth"))
+
     # Auto-layout (FRAME-like only, and only when layoutMode is set/non-NONE)
     padding_top: float | None = None
     padding_right: float | None = None
@@ -404,6 +431,7 @@ def _parse_layout_props(node_data: RawFigmaNode, raw_type: str) -> _LayoutProps:
     item_spacing: float | None = None
     counter_axis_spacing: float | None = None
     layout_mode_str: str | None = None
+    layout_wrap: str | None = None
     if raw_type in ("FRAME", "COMPONENT", "COMPONENT_SET", "INSTANCE"):
         layout_mode_str = node_data.get("layoutMode")
         if layout_mode_str and layout_mode_str != "NONE":
@@ -413,6 +441,8 @@ def _parse_layout_props(node_data: RawFigmaNode, raw_type: str) -> _LayoutProps:
             padding_left = _float_or_none(node_data.get("paddingLeft"))
             item_spacing = _float_or_none(node_data.get("itemSpacing"))
             counter_axis_spacing = _float_or_none(node_data.get("counterAxisSpacing"))
+            raw_wrap = node_data.get("layoutWrap")
+            layout_wrap = raw_wrap if raw_wrap in _LAYOUT_WRAP_VALUES else None
 
     # Axis alignment (FRAME-like)
     primary_axis_align: str | None = None
@@ -447,6 +477,14 @@ def _parse_layout_props(node_data: RawFigmaNode, raw_type: str) -> _LayoutProps:
         counter_axis_align=counter_axis_align,
         corner_radius=corner_radius,
         corner_radii=corner_radii,
+        layout_sizing_horizontal=layout_sizing_horizontal,
+        layout_sizing_vertical=layout_sizing_vertical,
+        layout_grow=layout_grow,
+        layout_align=layout_align,
+        layout_positioning=layout_positioning,
+        layout_wrap=layout_wrap,
+        min_width=min_width,
+        max_width=max_width,
     )
 
 
@@ -1674,6 +1712,14 @@ class FigmaDesignSyncService:
             scale_mode=visual.scale_mode,
             rotation=rotation,
             effects_summary=_parse_effects_summary(node_data),
+            layout_sizing_horizontal=layout.layout_sizing_horizontal,
+            layout_sizing_vertical=layout.layout_sizing_vertical,
+            layout_grow=layout.layout_grow,
+            layout_align=layout.layout_align,
+            layout_positioning=layout.layout_positioning,
+            layout_wrap=layout.layout_wrap,
+            min_width=layout.min_width,
+            max_width=layout.max_width,
         )
 
     async def list_components(self, file_ref: str, access_token: str) -> list[DesignComponent]:

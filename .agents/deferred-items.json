@@ -1352,17 +1352,19 @@
       "id": "ce-3-fixture-schema-lag-6-10",
       "phase": "ce-3",
       "title": "Cases 6-10 structure.json predate 4 dump-schema keys (effects_summary, line_height_relative, rotation, scale_mode)",
-      "status": "deferred",
+      "status": "closed",
       "severity": "speculative",
       "introduced": "2026-10-02",
       "introduced_commit": "35d82942",
+      "closed_commit": "pending",
       "summary": "CE-3 re-synced case 5 from its raw Figma snapshot and added a schema-freshness test over every committed structure. Cases 6-10 (extracted 2026-06-06) lack 4 keys the current dump writes (observed: round trip on every node), so they load defaults for those fields. Tolerated by name in _KNOWN_LAGGING_KEYS; re-syncing them is out of CE-3's scope and would move their baselines (image_ref and these fields).",
       "code_refs": [
         "app/design_sync/tests/test_converter_data_regression.py (_KNOWN_LAGGING_KEYS per case, TestFixtureFreshness)",
         "scripts/resync-case-structure.py:34 (main)"
       ],
       "symptom_if_broken": "A converter fix that reads line_height_relative, rotation, scale_mode or effects_summary cannot move cases 6-10.",
-      "closes_when": "Cases 6-10 are re-synced with scripts/resync-case-structure.py, their baselines audited and re-stamped, and _KNOWN_LAGGING_KEYS is emptied."
+      "closes_when": "Cases 6-10 are re-synced with scripts/resync-case-structure.py, their baselines audited and re-stamped, and _KNOWN_LAGGING_KEYS is emptied.",
+      "notes": "Closed by CE-6 (#424), 2026-10-05: cases 5-10 and reframe re-synced with scripts/resync-case-structure.py; every case now carries the 4 keys (TestFixtureFreshness green with _KNOWN_LAGGING_KEYS = {}), image_ref null -> hash restored on 11/23/10/13/17/16 nodes (6/7/8/9/10/reframe). Baseline audit: converter output byte-identical to expected.html for 5/6/7/9/10/reframe and byte-identical to the base-structure output for case 8 (known c8 whitespace churn vs expected.html), so no re-stamp was needed (observed)."
     },
     {
       "id": "ce-9-peel-row-fixed-width-wrap",

@@ -16,6 +16,7 @@ Run a single case::
 
 from __future__ import annotations
 
+import dataclasses
 import html as html_lib
 import json
 import re
@@ -28,7 +29,15 @@ from _pytest.mark.structures import ParameterSet
 from lxml import etree
 
 from app.design_sync.converter_service import ConversionResult
-from app.design_sync.diagnose.report import dump_structure_to_json, load_structure_from_json
+from app.design_sync.diagnose.report import (
+    _node_from_dict,
+    dump_structure_to_json,
+    load_structure_from_json,
+    load_tokens_from_json,
+)
+from app.design_sync.email_design_document import EmailDesignDocument
+from app.design_sync.protocol import DesignNode, DesignNodeType
+from app.design_sync.services._serialization import serialize_node
 from app.design_sync.tests.known_failures import apply_known_failures, known_failure_marks
 from app.design_sync.tests.ladder_harness import (
     SEMANTIC_UNDERCOUNT_CASES,
@@ -480,14 +489,11 @@ class TestMetricsReport:
 
 # ── Fixture freshness (CE-3) ─────────────────────────────────────
 
-# Keys the current dump writes that cases 6-10 predate (their structures were
-# extracted 2026-06-06). Tolerated per case until re-synced; deferred item
-# ce-3-fixture-schema-lag-6-10. A case not listed here must carry every key, and
+# Keys the current dump writes that a case's structure.json predates, tolerated
+# per case until re-synced. Empty since CE-6 re-synced every case (closed
+# ce-3-fixture-schema-lag-6-10). A case not listed here must carry every key, and
 # a listed key that a case now carries fails the test (delete it from the map).
-_LAG_6_10 = frozenset({"effects_summary", "line_height_relative", "rotation", "scale_mode"})
-_KNOWN_LAGGING_KEYS: dict[str, frozenset[str]] = dict.fromkeys(
-    ("6", "7", "8", "9", "10"), _LAG_6_10
-)
+_KNOWN_LAGGING_KEYS: dict[str, frozenset[str]] = {}
 
 
 def _node_key_sets(structure: dict[str, Any]) -> list[tuple[str, frozenset[str]]]:
@@ -530,6 +536,77 @@ class TestFixtureFreshness:
         assert not stale, (
             f"case {case_id}: no longer lags {stale}; drop it from _KNOWN_LAGGING_KEYS"
         )
+
+
+# ── Auto-layout sizing capture (CE-6) ────────────────────────────
+
+_SIZING = frozenset({"FIXED", "HUG", "FILL"})
+
+
+def _walk_nodes(node: DesignNode) -> list[DesignNode]:
+    out = [node]
+    for child in node.children:
+        out.extend(_walk_nodes(child))
+    return out
+
+
+class TestSizingCapture:
+    """Invariants over every committed case; per-design counts live in the CE-6 report."""
+
+    @pytest.mark.parametrize("case_id", _structure_case_ids())
+    def test_every_parsed_node_has_sizing(self, case_id: str) -> None:
+        structure = load_structure_from_json(_DEBUG_DIR / case_id / "structure.json")
+        bad = [
+            (n.id, n.layout_sizing_horizontal, n.layout_sizing_vertical)
+            for page in structure.pages
+            for n in _walk_nodes(page)
+            if n.type != DesignNodeType.PAGE
+            and (
+                n.layout_sizing_horizontal not in _SIZING or n.layout_sizing_vertical not in _SIZING
+            )
+        ]
+        assert not bad, f"case {case_id}: {len(bad)} nodes without sizing, first {bad[:3]}"
+
+    @pytest.mark.parametrize("case_id", _structure_case_ids())
+    def test_wrap_on_every_auto_layout_frame(self, case_id: str) -> None:
+        structure = load_structure_from_json(_DEBUG_DIR / case_id / "structure.json")
+        bad = [
+            n.id
+            for page in structure.pages
+            for n in _walk_nodes(page)
+            if (n.layout_wrap is not None) != (n.layout_mode not in (None, "NONE"))
+        ]
+        assert not bad, f"case {case_id}: wrap/layout_mode mismatch on {bad[:5]}"
+
+    @pytest.mark.parametrize("case_id", _structure_case_ids())
+    def test_root_frame_is_fixed(self, case_id: str) -> None:
+        structure = load_structure_from_json(_DEBUG_DIR / case_id / "structure.json")
+        (page,) = structure.pages
+        (root,) = page.children
+        assert root.layout_sizing_horizontal == "FIXED"
+
+    @pytest.mark.parametrize("case_id", _structure_case_ids())
+    def test_root_width_is_container_width(self, case_id: str) -> None:
+        """Verification invariant (green before CE-6): the email width is the root frame width."""
+        case_dir = _DEBUG_DIR / case_id
+        structure = load_structure_from_json(case_dir / "structure.json")
+        tokens = load_tokens_from_json(case_dir / "tokens.json")
+        (page,) = structure.pages
+        (root,) = page.children
+        assert root.width is not None
+        document = EmailDesignDocument.from_legacy(structure, tokens)
+        assert int(root.width) == document.layout.container_width
+
+    @pytest.mark.parametrize("case_id", _structure_case_ids())
+    def test_live_cache_path_matches_corpus_load(self, case_id: str) -> None:
+        """The production read (cache dict -> JSON -> _node_from_dict) loses no field."""
+        structure = load_structure_from_json(_DEBUG_DIR / case_id / "structure.json")
+        names = [f.name for f in dataclasses.fields(DesignNode) if f.name != "children"]
+        for page in structure.pages:
+            live = _node_from_dict(json.loads(json.dumps(serialize_node(page))))
+            for want, got in zip(_walk_nodes(page), _walk_nodes(live), strict=True):
+                diff = [n for n in names if getattr(got, n) != getattr(want, n)]
+                assert not diff, f"case {case_id}: node {want.id} lost {diff}"
 
 
 # ── known_failures rows (CE-3) ───────────────────────────────────

@@ -113,3 +113,93 @@ def test_parse_visual_props_reclassifies_vector_with_image_fill() -> None:
     text_out = _parse_visual_props(text_node, DesignNodeType.TEXT, node_opacity=1.0)
     assert text_out.text_color == "#FF0000"
     assert text_out.fill_color is None
+
+
+# ── CE-6 (#424): auto-layout child sizing ──
+
+
+def test_parse_layout_props_reads_all_sizing_fields_on_autolayout_frame() -> None:
+    node: RawFigmaNode = {
+        "type": "FRAME",
+        "layoutMode": "HORIZONTAL",
+        "layoutSizingHorizontal": "FILL",
+        "layoutSizingVertical": "HUG",
+        "layoutGrow": 1,
+        "layoutAlign": "STRETCH",
+        "layoutPositioning": "ABSOLUTE",
+        "layoutWrap": "WRAP",
+        "minWidth": 120,
+        "maxWidth": 480,
+    }
+    out = _parse_layout_props(node, "FRAME")
+    assert out.layout_sizing_horizontal == "FILL"
+    assert out.layout_sizing_vertical == "HUG"
+    assert out.layout_grow == 1.0
+    assert out.layout_align == "STRETCH"
+    assert out.layout_positioning == "ABSOLUTE"
+    assert out.layout_wrap == "WRAP"
+    assert out.min_width == 120.0
+    assert out.max_width == 480.0
+
+
+def test_parse_layout_props_reads_sizing_on_non_frame_node() -> None:
+    node: RawFigmaNode = {
+        "type": "TEXT",
+        "layoutSizingHorizontal": "FILL",
+        "layoutSizingVertical": "HUG",
+        "layoutGrow": 1,
+        "layoutAlign": "STRETCH",
+    }
+    out = _parse_layout_props(node, "TEXT")
+    assert out.layout_sizing_horizontal == "FILL"
+    assert out.layout_sizing_vertical == "HUG"
+    assert out.layout_grow == 1.0
+    assert out.layout_align == "STRETCH"
+    assert out.layout_wrap is None
+
+
+def test_parse_layout_props_non_autolayout_frame_keeps_sizing_without_wrap() -> None:
+    node: RawFigmaNode = {
+        "type": "FRAME",
+        "layoutMode": "NONE",
+        "layoutSizingHorizontal": "FIXED",
+        "layoutWrap": "NO_WRAP",
+    }
+    out = _parse_layout_props(node, "FRAME")
+    assert out.layout_sizing_horizontal == "FIXED"
+    assert out.layout_wrap is None
+
+
+def test_parse_layout_props_rejects_unknown_sizing_values() -> None:
+    node: RawFigmaNode = {
+        "type": "FRAME",
+        "layoutMode": "VERTICAL",
+        "layoutSizingHorizontal": "BOGUS",
+        "layoutSizingVertical": "fill",
+        "layoutAlign": "BOGUS",
+        "layoutPositioning": "BOGUS",
+        "layoutWrap": "BOGUS",
+        "minWidth": "120px",
+        "maxWidth": None,
+    }
+    out = _parse_layout_props(node, "FRAME")
+    assert out.layout_sizing_horizontal is None
+    assert out.layout_sizing_vertical is None
+    assert out.layout_align is None
+    assert out.layout_positioning is None
+    assert out.layout_wrap is None
+    assert out.min_width is None
+    assert out.max_width is None
+
+
+def test_parse_layout_props_absent_sizing_fields_are_none() -> None:
+    node: RawFigmaNode = {"type": "FRAME", "layoutMode": "VERTICAL"}
+    out = _parse_layout_props(node, "FRAME")
+    assert out.layout_sizing_horizontal is None
+    assert out.layout_sizing_vertical is None
+    assert out.layout_grow is None
+    assert out.layout_align is None
+    assert out.layout_positioning is None
+    assert out.layout_wrap is None
+    assert out.min_width is None
+    assert out.max_width is None
