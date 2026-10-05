@@ -140,3 +140,21 @@ class TestRenderFieldRoundTrip:
             if f.name == "children":
                 continue
             assert getattr(got, f.name) == getattr(node, f.name), f.name
+
+    def test_every_field_survives_the_production_cache_read(self) -> None:
+        """Every field must survive serialize_node → JSON → report._node_from_dict.
+
+        This is the pair conversion_service reads the DB cache with; the test
+        above covers cached_dict_to_node, which production does not call there.
+        """
+        import dataclasses
+        import json
+
+        from app.design_sync.diagnose.report import _node_from_dict
+
+        node = make_full_design_node()
+        got = _node_from_dict(json.loads(json.dumps(serialize_node(node))))
+        for f in dataclasses.fields(DesignNode):
+            if f.name == "children":
+                continue
+            assert getattr(got, f.name) == getattr(node, f.name), f.name

@@ -117,7 +117,8 @@ class RawFigmaNode(TypedDict, total=False):
     counterAxisSpacing: float
     primaryAxisAlignItems: str  # "MIN" | "CENTER" | "MAX" | "SPACE_BETWEEN" | "SPACE_AROUND"
     counterAxisAlignItems: str
-    # Auto-layout child sizing (CE-6) — Figma omits each field at its default
+    # Auto-layout child sizing (CE-6) — any may be absent; absent means not
+    # captured, not the default (fixtures carry explicit FIXED/0/INHERIT/NO_WRAP)
     layoutSizingHorizontal: str  # "FIXED" | "HUG" | "FILL"
     layoutSizingVertical: str  # "FIXED" | "HUG" | "FILL"
     layoutGrow: float  # 0 | 1

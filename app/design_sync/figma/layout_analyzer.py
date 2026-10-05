@@ -176,7 +176,9 @@ class ColumnGroup:
     # border-left divider between hug-row cells (c7 user-info #D9D9D9/1px).
     stroke_color: str | None = None
     stroke_weight: float | None = None
-    # CE-6 (#424) — source frame's layoutSizingHorizontal; read by CE-16
+    # CE-6 (#424) — source frame's layoutSizingHorizontal; read by CE-16.
+    # Dropped at the document bridge (to_layout_description rebuilds this
+    # without it): ledger ce-6-sizing-horizontal-dropped-at-document-bridge
     sizing_horizontal: str | None = None
 
 
@@ -281,7 +283,9 @@ class EmailSection:
     # blurs/blends are not reproducible in email HTML (ceiling doc §2); this
     # carries the loss into conversion warnings instead of silence.
     effects_summary: str | None = None
-    # CE-6 (#424) — source frame's layoutSizingHorizontal; read by CE-16
+    # CE-6 (#424) — source frame's layoutSizingHorizontal; read by CE-16.
+    # Dropped at the document bridge (to_layout_description rebuilds this
+    # without it): ledger ce-6-sizing-horizontal-dropped-at-document-bridge
     sizing_horizontal: str | None = None
 
 

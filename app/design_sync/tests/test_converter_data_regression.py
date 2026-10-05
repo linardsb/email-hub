@@ -599,7 +599,11 @@ class TestSizingCapture:
 
     @pytest.mark.parametrize("case_id", _structure_case_ids())
     def test_live_cache_path_matches_corpus_load(self, case_id: str) -> None:
-        """The production read (cache dict -> JSON -> _node_from_dict) loses no field."""
+        """The production read (cache dict -> JSON -> _node_from_dict) keeps corpus values.
+
+        Only covers fields the corpus sets; a field None on every node compares
+        None to None. Full-field coverage is in test_serialization_roundtrip.py.
+        """
         structure = load_structure_from_json(_DEBUG_DIR / case_id / "structure.json")
         names = [f.name for f in dataclasses.fields(DesignNode) if f.name != "children"]
         for page in structure.pages:
