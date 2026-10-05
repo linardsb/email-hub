@@ -206,13 +206,56 @@ class TestSchemaValidation:
 
     def test_wrong_version(self) -> None:
         data: dict[str, Any] = {
-            "version": "2.0",
+            "version": "3.0",
             "tokens": {},
             "sections": [],
             "layout": {"container_width": 600},
         }
         errors = EmailDesignDocument.validate(data)
         assert any("version" in e.lower() or "1.0" in e for e in errors)
+
+    def test_non_string_version_reports_error(self) -> None:
+        data: dict[str, Any] = {
+            "version": ["1.0"],
+            "tokens": {},
+            "sections": [],
+            "layout": {"container_width": 600},
+        }
+        errors = EmailDesignDocument.validate(data)
+        assert errors != []
+
+    def test_v1_with_body_key_fails_validation_and_load(self) -> None:
+        data: dict[str, Any] = {
+            "version": "1.0",
+            "tokens": {},
+            "sections": [],
+            "layout": {"container_width": 600},
+            "body": [],
+        }
+        errors = EmailDesignDocument.validate(data)
+        assert any(e.startswith("(root)") and "body" in e for e in errors)
+        with pytest.raises(ValueError, match="body"):
+            EmailDesignDocument.from_json(data)
+
+    def test_unsupported_version_from_json_raises_value_error(self) -> None:
+        data: dict[str, Any] = {
+            "version": "3.0",
+            "tokens": {},
+            "sections": [],
+            "layout": {"container_width": 600},
+        }
+        with pytest.raises(ValueError, match="Unsupported EmailDesignDocument version"):
+            EmailDesignDocument.from_json(data)
+
+    def test_v1_constructor_rejects_body(self) -> None:
+        from app.design_sync.dsl.nodes import RawNode
+
+        raw = RawNode(id="1:1", name="raw", html="<table></table>", reason="dsl.overlap")
+        with pytest.raises(ValueError, match=r"body requires version 2\.0"):
+            _make_document(body=(raw,))
+
+    def test_v1_to_json_has_no_body_key(self) -> None:
+        assert "body" not in _make_full_document().to_json()
 
     def test_invalid_section_type(self) -> None:
         data: dict[str, Any] = {
@@ -571,6 +614,8 @@ class TestDocumentEndpoints:
         assert body["$schema"] == "https://json-schema.org/draft/2020-12/schema"
         assert "$defs" in body
         assert resp.headers.get("cache-control") == "public, max-age=86400"
+        assert body["$defs"]["tokens"]["properties"]["typography"]["maxItems"] == 1000
+        assert "dividers" in body["$defs"]["column"]["properties"]
 
     @pytest.mark.usefixtures("_auth_admin")
     def test_validate_document_valid(self, client: TestClient) -> None:
@@ -585,6 +630,16 @@ class TestDocumentEndpoints:
         body = resp.json()
         assert body["valid"] is True
         assert body["errors"] == []
+
+    @pytest.mark.usefixtures("_auth_admin")
+    def test_validate_document_accepts_v2(self, client: TestClient) -> None:
+        from app.design_sync.tests.test_document_v2 import v2_case5_json
+
+        resp = client.post("/api/v1/design-sync/validate-document", json=v2_case5_json())
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["errors"] == []
+        assert body["valid"] is True
 
     @pytest.mark.usefixtures("_auth_admin")
     def test_validate_document_invalid(self, client: TestClient) -> None:

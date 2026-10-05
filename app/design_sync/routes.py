@@ -884,7 +884,7 @@ async def validate_document(
     request: Request,
     current_user: User = Depends(require_role("viewer")),
 ) -> DocumentValidationResponse:
-    """Validate a JSON body against the EmailDesignDocument v1 schema."""
+    """Validate a JSON body against the EmailDesignDocument schema for its version (1.0, 2.0)."""
     _ = current_user
     content_length = request.headers.get("content-length")
     if content_length is not None:

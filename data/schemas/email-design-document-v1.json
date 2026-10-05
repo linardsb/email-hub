@@ -64,7 +64,7 @@
         "typography": {
           "type": "array",
           "items": { "$ref": "#/$defs/typography" },
-          "maxItems": 200,
+          "maxItems": 1000,
           "default": []
         },
         "spacing": {
@@ -468,6 +468,21 @@
           "items": { "$ref": "#/$defs/button" },
           "maxItems": 30,
           "default": []
+        },
+        "dividers": {
+          "type": "array",
+          "maxItems": 50,
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": ["node_id", "stroke_color"],
+            "additionalProperties": false,
+            "properties": {
+              "node_id": { "type": "string", "maxLength": 200 },
+              "stroke_color": { "type": "string", "maxLength": 20 },
+              "stroke_weight": { "type": ["number", "null"], "default": null }
+            }
+          }
         }
       }
     },

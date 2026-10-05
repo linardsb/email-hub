@@ -1,8 +1,10 @@
-"""EmailDesignDocument v1 — canonical intermediate representation.
+"""EmailDesignDocument — canonical intermediate representation.
 
 Single contract between all input sources (Figma, Penpot, MJML, HTML)
-and the email converter.  JSON Schema lives at
-``data/schemas/email-design-document-v1.json``.
+and the email converter.  JSON Schemas live at
+``data/schemas/email-design-document-v1.json`` (``version`` "1.0") and
+``data/schemas/email-design-document-v2.json`` ("2.0": v1 plus the ``body``
+layout tree, :mod:`app.design_sync.dsl.nodes`).
 """
 
 from __future__ import annotations
@@ -40,25 +42,40 @@ from app.design_sync.protocol import (
 )
 
 if TYPE_CHECKING:
+    from app.design_sync.dsl.nodes import BodyNode
     from app.design_sync.protocol import DesignFileStructure, DesignNode
     from app.design_sync.vlm_classifier import VLMSectionClassification
 
-_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[2] / "data" / "schemas" / "email-design-document-v1.json"
-)
+_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "data" / "schemas"
+_SCHEMA_FILES: dict[str, str] = {
+    "1.0": "email-design-document-v1.json",
+    "2.0": "email-design-document-v2.json",
+}
 
 
 # ── helpers ─────────────────────────────────────────────────────────
 
 
-@lru_cache(maxsize=1)
-def _load_schema() -> dict[str, Any]:
-    return json.loads(_SCHEMA_PATH.read_text())  # type: ignore[no-any-return]
+@lru_cache(maxsize=len(_SCHEMA_FILES))
+def _load_schema(version: str = "1.0") -> dict[str, Any]:
+    return json.loads((_SCHEMA_DIR / _SCHEMA_FILES[version]).read_text())  # type: ignore[no-any-return]
 
 
-@lru_cache(maxsize=1)
-def _get_validator() -> Draft202012Validator:
-    return Draft202012Validator(_load_schema())
+@lru_cache(maxsize=len(_SCHEMA_FILES))
+def _get_validator(version: str = "1.0") -> Draft202012Validator:
+    return Draft202012Validator(_load_schema(version))
+
+
+# jsonschema messages open with the repr of the failing value, which can be a
+# 100 kB raw.html string; keep both ends so the verb ("is too long") survives.
+_ERROR_HEAD = 120
+_ERROR_TAIL = 120
+
+
+def _cap_message(message: str) -> str:
+    if len(message) <= _ERROR_HEAD + _ERROR_TAIL:
+        return message
+    return f"{message[:_ERROR_HEAD]} … {message[-_ERROR_TAIL:]}"
 
 
 # ── Document sub-structures ─────────────────────────────────────────
@@ -1436,6 +1453,12 @@ class EmailDesignDocument:
     source: DocumentSource | None = None
     compatibility_hints: list[CompatibilityHint] = field(default_factory=list[CompatibilityHint])
     token_warnings: list[TokenWarning] = field(default_factory=list[TokenWarning])
+    # CE-26 — layout tree, version "2.0" only; v1 documents carry ().
+    body: tuple[BodyNode, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.version != "2.0" and self.body:
+            raise ValueError("body requires version 2.0")
 
     def to_json(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -1444,6 +1467,9 @@ class EmailDesignDocument:
             "sections": [s.to_json() for s in self.sections],
             "layout": self.layout.to_json(),
         }
+        # Always written for v2 (the schema requires it); never for v1.
+        if self.version == "2.0":
+            d["body"] = [n.to_json() for n in self.body]
         if self.source is not None:
             d["source"] = self.source.to_json()
         if self.compatibility_hints:
@@ -1456,12 +1482,27 @@ class EmailDesignDocument:
     def from_json(cls, data: dict[str, Any]) -> EmailDesignDocument:
         """Deserialize from a JSON-compatible dict.
 
-        Raises ``ValueError`` if the data is malformed (missing keys, wrong types).
+        Raises ``ValueError`` if the data is malformed (missing keys, wrong types),
+        the version is unsupported, or a "1.0" document carries ``body``.
         """
         try:
+            version = data["version"]
+            body: tuple[BodyNode, ...]
+            if version == "1.0":
+                if "body" in data:
+                    raise ValueError(
+                        "Malformed EmailDesignDocument: body is not allowed in version 1.0"
+                    )
+                body = ()
+            elif version == "2.0":
+                from app.design_sync.dsl.nodes import body_from_json
+
+                body = body_from_json(data["body"])
+            else:
+                raise ValueError(f"Unsupported EmailDesignDocument version: {version!r}")
             source_data = data.get("source")
             return cls(
-                version=data["version"],
+                version=version,
                 tokens=DocumentTokens.from_json(data["tokens"]),
                 sections=[DocumentSection.from_json(s) for s in data["sections"]],
                 layout=DocumentLayout.from_json(data["layout"]),
@@ -1470,26 +1511,33 @@ class EmailDesignDocument:
                     CompatibilityHint.from_json(h) for h in data.get("compatibility_hints", [])
                 ],
                 token_warnings=[TokenWarning.from_json(w) for w in data.get("token_warnings", [])],
+                body=body,
             )
-        except (KeyError, TypeError) as exc:
+        except (KeyError, TypeError, AttributeError) as exc:
             raise ValueError(f"Malformed EmailDesignDocument: {exc}") from exc
 
     @staticmethod
     def validate(data: dict[str, Any]) -> list[str]:
-        """Validate a dict against the JSON Schema.  Returns error messages (empty = valid)."""
-        validator = _get_validator()
+        """Validate a dict against the JSON Schema for its ``version``.
+
+        Returns error messages (empty = valid).  A missing, unknown or
+        non-string version is checked against v1, which reports it.
+        """
+        version = data.get("version")
+        key = version if isinstance(version, str) and version in _SCHEMA_FILES else "1.0"
+        validator = _get_validator(key)
         errors: list[str] = []
         for error in validator.iter_errors(data):  # pyright: ignore[reportUnknownMemberType]
             path = (
                 ".".join(str(p) for p in error.absolute_path) if error.absolute_path else "(root)"
             )
-            errors.append(f"{path}: {error.message}")
+            errors.append(f"{path}: {_cap_message(error.message)}")
         return errors
 
     @staticmethod
     def schema() -> dict[str, Any]:
         """Return the raw JSON Schema dict (cached)."""
-        return _load_schema()
+        return _load_schema("1.0")
 
     # ── Bridge methods ──────────────────────────────────────────────
 

@@ -1795,7 +1795,7 @@ export const getDocumentSchemaApiV1DesignSyncSchemaV1Get = <ThrowOnError extends
 /**
  * Validate Document
  *
- * Validate a JSON body against the EmailDesignDocument v1 schema.
+ * Validate a JSON body against the EmailDesignDocument schema for its version (1.0, 2.0).
  */
 export const validateDocumentApiV1DesignSyncValidateDocumentPost = <ThrowOnError extends boolean = false>(options?: Options<ValidateDocumentApiV1DesignSyncValidateDocumentPostData, ThrowOnError>): RequestResult<ValidateDocumentApiV1DesignSyncValidateDocumentPostResponses, unknown, ThrowOnError> => (options?.client ?? client).post<ValidateDocumentApiV1DesignSyncValidateDocumentPostResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
