@@ -20,9 +20,9 @@ Inventory of `app/rendering/` at `45d71cea` (observed, source read 2026-10-06). 
 
 | Component | What it is | Classic-Outlook source? |
 |---|---|---|
-| `app/rendering/litmus/service.py:1-44` | Docstring "placeholder implementation"; `submit_test` returns a hash-derived id, `get_results` returns hard-coded `https://placeholder.litmus.com/...` URLs | No: no HTTP call, no key read |
-| `app/rendering/eoa/service.py:1-40` | Same shape, `placeholder.emailonacid.com` URLs | No |
-| `app/rendering/service.py:76-80,93-104` | Provider registry (litmus, eoa, local); `_get_provider` instantiates the class with no arguments, so no API key reaches a provider | No |
+| `app/rendering/litmus/service.py:1-42` | Docstring "placeholder implementation"; `submit_test` returns a hash-derived id, `get_results` returns hard-coded `https://placeholder.litmus.com/...` URLs | No: no HTTP call, no key read |
+| `app/rendering/eoa/service.py:1-42` | Same shape, `placeholder.emailonacid.com` URLs | No |
+| `app/rendering/service.py:75-79,93-104` | Provider registry (litmus, eoa, local); `_get_provider` instantiates the class with no arguments, so no API key reaches a provider | No |
 | `app/core/config/rendering.py:33` | `provider: str = "litmus"`, so real callers get the placeholder by default | No (ledger `ce-4-rendering-providers-placeholder`) |
 | `app/rendering/local/profiles.py:109-116` | `outlook_desktop` profile: `browser="cr"`, labelled "Word engine — CSS preprocessing only" | No: Chromium |
 | `app/rendering/local/emulators.py:338+` | Word-engine emulator: regex removal of CSS the Word engine ignores, plus MSO-conditional handling | No: a browser still draws the result and cannot draw VML |
