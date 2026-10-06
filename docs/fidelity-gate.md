@@ -117,6 +117,16 @@ Each stamp appends `{date, commit, reason, cases}` to `stamps`. `commit` is the 
 2. Write `data/debug/<case>/reference_1x.png` at frame width (the `scripts/prepare-fidelity-fixtures.py` recipe) and commit the referenced assets (≤ 600px wide), allowlisted per file in `.gitignore`.
 3. `make fidelity-restamp REASON="add case <case>" CASES="<case>"`. Until then the check reports its sections as `new` and fails.
 
+## Scoring another converter path (CE-27)
+
+`app/design_sync/fidelity_runner.py` scores any path's `ConversionResult` with the gate's own renderer and scorer: `check_conversion(case, result)` returns the gate's `GateReport` for that one case against the committed baseline (`score_conversion` returns the scores alone).
+
+- **Id rule, checked before any render:** the result's `section_node_ids` must equal the case's baseline `sections` ∪ `skipped`, with no duplicates. `unmarked` (layout sections the template path does not mark) is not part of the set.
+- **`SectionIdMismatch`** (a `GateError`) lists `missing`, `extra` and `duplicates`. It means the path did not mark the analyser's sections; fix the path rather than re-stamping over it.
+- **`GateError` "marked section ids not in the layout"**, also before any render: every marked id must be a `node_id` in `result.layout.sections`, or `score_rendered_case` could not crop its design box.
+- A path that marks a section the template path leaves unmarked (cases 7, 9, 10 have some) fails as `extra`. Adding those sections to the gate is a re-stamp decision for that case, not something the runner allows.
+- `TestRunnerReproducesGate` (`make fidelity-gate`) proves runner == gate on the template path: both score every gated case identically and hold the baseline.
+
 ## Fixture preparation
 
 `scripts/prepare-fidelity-fixtures.py` (one-shot, needs the untracked design exports) wrote the six references and downscaled the 71 referenced assets of cases 6–10 to ≤ 600px. The full-resolution originals stay at `data/debug/<case>/assets_fullres/` (gitignored); A3 now renders the downscaled copies; for a full-resolution A3 comparison, copy the originals over `assets/` for that run and restore the committed files afterwards with `git checkout -- data/debug`.

@@ -178,7 +178,7 @@ FIDELITY_RUN = docker run --rm --ipc=host -v "$(CURDIR)":/work -w /work \
 FIDELITY_SETUP = pip install -q uv==0.9.18 && uv sync --frozen -q
 
 fidelity-gate: ## Per-section fidelity gate in the pinned Playwright image
-	$(FIDELITY_RUN) "$(FIDELITY_SETUP) && uv run pytest -m fidelity_gate app/design_sync/tests/test_fidelity_gate.py -v -p no:cacheprovider"
+	$(FIDELITY_RUN) "$(FIDELITY_SETUP) && uv run pytest -m fidelity_gate app/design_sync/tests/test_fidelity_gate.py app/design_sync/tests/test_fidelity_runner.py -v -p no:cacheprovider"
 
 fidelity-restamp: ## Re-stamp the fidelity baseline (REASON="..." required; CASES="5 6", FROM=path optional)
 	@test -n "$(REASON)" || (echo 'REASON="..." is required'; exit 1)
