@@ -123,6 +123,7 @@ Each stamp appends `{date, commit, reason, cases}` to `stamps`. `commit` is the 
 
 - **Id rule, checked before any render:** the result's `section_node_ids` must equal the case's baseline `sections` ∪ `skipped`, with no duplicates. `unmarked` (layout sections the template path does not mark) is not part of the set.
 - **`SectionIdMismatch`** (a `GateError`) lists `missing`, `extra` and `duplicates`. It means the path did not mark the analyser's sections; fix the path rather than re-stamping over it.
+- **`GateError` "marked section ids not in the layout"**, also before any render: every marked id must be a `node_id` in `result.layout.sections`, or `score_rendered_case` could not crop its design box.
 - A path that marks a section the template path leaves unmarked (cases 7, 9, 10 have some) fails as `extra`. Adding those sections to the gate is a re-stamp decision for that case, not something the runner allows.
 - `TestRunnerReproducesGate` (`make fidelity-gate`) proves runner == gate on the template path: both score every gated case identically and hold the baseline.
 
