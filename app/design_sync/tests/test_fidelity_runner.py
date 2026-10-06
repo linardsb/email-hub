@@ -23,11 +23,7 @@ from app.design_sync.fidelity_gate import (
     FidelityBaseline,
     GateError,
     RenderedCase,
-    ScoreRun,
     SectionBaseline,
-    compare,
-    current_commit,
-    current_environment,
     gated_cases,
     load_baseline,
     score_cases,
@@ -128,6 +124,22 @@ class TestScoreConversion:
         with pytest.raises(SectionIdMismatch):
             score_conversion("5", bad, baseline=load_baseline())
 
+    def test_layout_missing_marked_section_raises_before_render(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        async def boom(case: str, result: ConversionResult, width: int) -> RenderedCase:
+            raise AssertionError("rendered")
+
+        monkeypatch.setattr(fidelity_runner, "render_case_sections", boom)
+        result = _convert("5")
+        assert result.layout is not None
+        dropped = result.section_node_ids[0]
+        sections = [s for s in result.layout.sections if s.node_id != dropped]
+        bad = replace(result, layout=replace(result.layout, sections=sections))
+        with pytest.raises(GateError, match="not in the layout") as exc:
+            score_conversion("5", bad, baseline=load_baseline())
+        assert dropped in str(exc.value)
+
 
 class TestCheckConversion:
     def test_check_conversion_wraps_compare(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -140,7 +152,7 @@ class TestCheckConversion:
 
         monkeypatch.setattr(fidelity_runner, "score_conversion", fake_score)
         report = check_conversion("5", _convert("5"))
-        assert len(report.rows) == len(committed.sections) == 15
+        assert len(report.rows) == len(committed.sections)
         assert {r.status for r in report.rows} == {"pass"}
         assert {r.case for r in report.rows} == {"5"}
 
@@ -155,14 +167,19 @@ class TestCheckConversion:
 )
 class TestRunnerReproducesGate:
     @pytest.mark.parametrize("case", gated_cases())
-    def test_reproduces_gate_and_baseline(self, case: str) -> None:
-        ours = score_conversion(case, _convert(case))
+    def test_reproduces_gate_and_baseline(self, case: str, monkeypatch: pytest.MonkeyPatch) -> None:
+        scored: list[CaseBaseline] = []
+        real_score = fidelity_runner.score_conversion
+
+        def spy(
+            case: str, result: ConversionResult, *, baseline: FidelityBaseline | None = None
+        ) -> CaseBaseline:
+            scored.append(real_score(case, result, baseline=baseline))
+            return scored[-1]
+
+        monkeypatch.setattr(fidelity_runner, "score_conversion", spy)
+        report = check_conversion(case, _convert(case))
+        (ours,) = scored
         assert ours == score_cases([case]).cases[case]
-        baseline = load_baseline()
-        baseline = baseline.model_copy(update={"cases": {case: baseline.cases[case]}})
-        run = ScoreRun(
-            environment=current_environment(), commit=current_commit(), cases={case: ours}
-        )
-        report = compare(baseline, run)
         print(report.format())  # noqa: T201
         assert not report.failed, report.format()

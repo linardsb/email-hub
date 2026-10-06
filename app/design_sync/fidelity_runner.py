@@ -3,9 +3,10 @@
 ``fidelity_gate.score_cases`` converts each case itself through the template
 path. ``score_conversion`` takes a ``ConversionResult`` from any path instead,
 checks that its section ids are exactly the baseline's ids for the case
-(``SectionIdMismatch`` before any render), then renders and scores it with the
-gate's own renderer and scorer. ``check_conversion`` compares the score with
-the committed baseline for that one case.
+(``SectionIdMismatch`` before any render) and that each is a layout section,
+then renders and scores it with the gate's own renderer and scorer.
+``check_conversion`` compares the score with the committed baseline for that
+one case.
 
 Docs: ``docs/fidelity-gate.md`` (Scoring another converter path).
 """
@@ -59,7 +60,7 @@ def assert_section_ids(case: str, result: ConversionResult, baseline: FidelityBa
         ]
         raise SectionIdMismatch(
             f"case {case}: section ids differ from the fidelity baseline ({'; '.join(groups)}): "
-            "the path must mark exactly the baseline's sections, or re-stamp"
+            "fix the path to mark exactly the baseline's sections rather than re-stamping over it"
         )
 
 
@@ -71,6 +72,10 @@ def score_conversion(
     assert_section_ids(case, result, baseline)
     if result.layout is None:
         raise GateError(f"case {case}: conversion has no layout")
+    in_layout = {s.node_id for s in result.layout.sections}
+    absent = sorted(set(result.section_node_ids) - in_layout)
+    if absent:
+        raise GateError(f"case {case}: marked section ids not in the layout: {absent}")
     width = frame_width(result.layout.sections)
     rendered = asyncio.run(render_case_sections(case, result, width))
     return score_rendered_case(case, rendered)
