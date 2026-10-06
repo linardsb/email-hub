@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Outlook render prep</title>
+<style>
+:root { --bg:#fbfaf7; --fg:#1d1d1b; --muted:#6b6a64; --line:#e3e0d8; --card:#ffffff; --accent:#2f5d8a; --code:#f2efe8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16171a; --fg:#ecebe6; --muted:#9a9890; --line:#2c2d31; --card:#1e1f23; --accent:#8db4dc; --code:#24252a; } }
+:root[data-theme="dark"] { --bg:#16171a; --fg:#ecebe6; --muted:#9a9890; --line:#2c2d31; --card:#1e1f23; --accent:#8db4dc; --code:#24252a; }
+* { box-sizing: border-box }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.55 -apple-system, system-ui, "Segoe UI", sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 4px } h2 { font-size: 18px; margin: 36px 0 10px; color: var(--accent) }
+.src { color: var(--muted); font-size: 14px } a { color: var(--accent) }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin: 10px 0 }
+.card h3 { margin: 0 0 6px; font-size: 16px }
+pre { background: var(--code); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 13px; margin: 8px 0 0 }
+code { font-family: ui-monospace, Menlo, monospace; font-size: 13px }
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.box { border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 8px 10px; font-size: 14px }
+.box.later { border-style: dashed; color: var(--muted) }
+.arrow { color: var(--muted) }
+table { border-collapse: collapse; width: 100%; font-size: 14px } td { border-top: 1px solid var(--line); padding: 6px 4px; vertical-align: top }
+ul.prompts { list-style: none; padding: 0; margin: 0 }
+ul.prompts li { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0 }
+.copy { opacity: .35; border: 0; background: none; color: inherit; cursor: pointer; font-size: 15px; line-height: 1 }
+.copy:hover, .copy:focus-visible { opacity: 1 }
+.copy::before { content: '⧉' }
+.copy.copied::before { content: '✓' }
+</style>
+</head>
+<body>
+<main>
+<h1>Getting ready for real Outlook screenshots</h1>
+<p class="src">Brief for <a href="ce-4-outlook-render-prep.md">ce-4-outlook-render-prep.md</a> (issue #422, part 1). The plan is the source of truth.</p>
+
+<h2>What we're building and why</h2>
+<p>Today nobody can see how our emails look in desktop Outlook; we only guess from the code. After this, the options for getting real screenshots are written down, and each design is packaged so any option can render it.</p>
+
+<h2>The concepts this plan rests on</h2>
+
+<div class="card">
+<h3>Desktop Outlook draws email with Word</h3>
+<p>Classic Outlook on Windows uses Microsoft Word's layout engine (the code that turns HTML into pixels), not a browser. So a Chrome screenshot says nothing about it. Every option in the plan must run the real Word engine.</p>
+</div>
+
+<div class="card">
+<h3>VML: Outlook-only drawing code</h3>
+<p>Word ignores rounded corners in CSS. Emails therefore include VML (an old Microsoft drawing language) inside comments only Outlook reads. Our buttons use it, and only a real Outlook render shows whether they come out right.</p>
+<pre><code>&lt;!--[if mso]&gt;
+  &lt;v:roundrect arcsize="20%" fillcolor="#4e3092"&gt;…
+&lt;![endif]--&gt;</code></pre>
+</div>
+
+<div class="card">
+<h3>Images must be reachable from outside</h3>
+<p>Our converter points images at our own server (<code>/api/v1/…</code>), which a rendering service can't reach. The export copies each image next to the HTML, or rewrites links to a public address. Like posting a letter with a full address instead of "the house next door".</p>
+</div>
+
+<div class="card">
+<h3>Placeholders that look real</h3>
+<p>The existing Litmus and Email on Acid code is a placeholder: it returns made-up screenshot links. Building on it would produce fake evidence, so this plan logs it as a known bug instead.</p>
+</div>
+
+<h2>How the pieces fit</h2>
+<div class="flow">
+<span class="box">Figma design files</span><span class="arrow">→</span>
+<span class="box">converter HTML</span><span class="arrow">→</span>
+<span class="box">export bundle: HTML + images</span><span class="arrow">→</span>
+<span class="box later">chosen render source (later)</span><span class="arrow">→</span>
+<span class="box later">Outlook screenshots + button report (later)</span>
+</div>
+<p class="src">Solid boxes ship now. Dashed boxes wait for your choice of Litmus, Email on Acid, or our own Windows machine.</p>
+
+<h2>The plan at a glance</h2>
+<table>
+<tr><td>Phase 0</td><td>New branch from main.</td></tr>
+<tr><td>Phase 1</td><td>Write failing tests for the export first.</td></tr>
+<tr><td>Phase 2</td><td>Write the export script until they pass (needs phase 1).</td></tr>
+<tr><td>Phase 3</td><td>Decision doc and ledger entry (independent).</td></tr>
+</table>
+<pre><code>docs/outlook-render-source.md            # options, costs, decision pending
+scripts/export-outlook-cases.py          # bundles each design: HTML + images + manifest
+app/design_sync/tests/test_outlook_export.py  # checks the bundle on all 7 real designs
+.agents/deferred-items.json              # logs the placeholder providers</code></pre>
+<table>
+<tr><td>AC 1</td><td>Decision doc merged, decision marked pending.</td></tr>
+<tr><td>AC 2</td><td>Existing render code inventoried; none renders real Outlook.</td></tr>
+<tr><td>AC 3</td><td>Every design exports with all images found.</td></tr>
+<tr><td>AC 4</td><td>The export never changes the email markup, only image links.</td></tr>
+<tr><td>AC 5</td><td>Placeholder providers logged in the ledger.</td></tr>
+<tr><td>AC 6</td><td>Full check suite green.</td></tr>
+<tr><td>AC 7–8</td><td>Real renders and button report: still owed by #422.</td></tr>
+</table>
+
+<h2>Go deeper</h2>
+<ul class="prompts">
+<li data-prompt="/learn how classic Outlook's Word rendering engine differs from a browser"><span><b>/learn how classic Outlook's Word rendering engine differs from a browser</b></span><button class="copy" aria-label="Copy prompt"></button></li>
+<li data-prompt="/learn VML and MSO conditional comments in HTML email"><span><b>/learn VML and MSO conditional comments in HTML email</b></span><button class="copy" aria-label="Copy prompt"></button></li>
+<li data-prompt="/learn how email images are hosted and referenced (absolute URLs vs CID attachments)"><span><b>/learn how email images are hosted and referenced (absolute URLs vs CID attachments)</b></span><button class="copy" aria-label="Copy prompt"></button></li>
+<li data-prompt="/learn mock providers and why fake test data hides real gaps"><span><b>/learn mock providers and why fake test data hides real gaps</b></span><button class="copy" aria-label="Copy prompt"></button></li>
+</ul>
+</main>
+<script>
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.copy')
+  if (!btn) return
+  const text = btn.closest('[data-prompt]').dataset.prompt
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const ta = Object.assign(document.createElement('textarea'), { value: text })
+    ta.style.cssText = 'position:fixed;opacity:0'
+    document.body.append(ta)
+    ta.select()
+    document.execCommand('copy')
+    ta.remove()
+  }
+  btn.classList.add('copied')
+  setTimeout(() => btn.classList.remove('copied'), 1200)
+})
+</script>
+</body>
+</html>
